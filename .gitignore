@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+coverage/
+.htmlcov/
+.tox/
+venv/
+.venv/
+env/
+ENV/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/node_modules/
+frontend/tsconfig.tsbuildinfo
+
+# Dependencies
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+!.env.example
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# Outputs and workspace data
+outputs/
+workspace/ideas.yaml
+workspace/ideas/
+
+# Knowledge base generated content
+knowledge-base/processed/
+knowledge-base/learning-memory/
+
+# Build artifacts
+*.tsbuildinfo
+
+# shadcn
+frontend/public/

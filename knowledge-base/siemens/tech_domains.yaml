@@ -1,0 +1,62 @@
+# Siemens Strategic Technology Domains
+
+digital_industries:
+  name: "Digital Industries"
+  description: "Automation, digitalization, and industrial software"
+  sub_domains:
+    - "Industrial Automation & Control Systems"
+    - "PLM Software (NX, Teamcenter)"
+    - "Industrial Edge & IoT"
+    - "Digital Twin Technology"
+    - "Industrial AI & Machine Learning"
+    - "Industrial Communication (PROFINET)"
+
+smart_infrastructure:
+  name: "Smart Infrastructure"
+  description: "Buildings, grids, and electrical infrastructure"
+  sub_domains:
+    - "Building Automation & Fire Safety"
+    - "Smart Grid & Energy Distribution"
+    - "Electric Vehicle Charging Infrastructure"
+    - "Low-Voltage Power Distribution"
+    - "Cyber Security for Critical Infrastructure"
+
+mobility:
+  name: "Mobility"
+  description: "Rail transport and intelligent traffic systems"
+  sub_domains:
+    - "Rail Automation & Control"
+    - "Rail Electrification"
+    - "Intelligent Traffic Systems"
+    - "Rail Digitalization & IoT"
+    - "Autonomous Train Operation"
+
+healthcare:
+  name: "Healthineers"
+  description: "Medical technology and healthcare solutions"
+  sub_domains:
+    - "Medical Imaging (MRI, CT, X-ray, Ultrasound)"
+    - "Diagnostics & Laboratory Solutions"
+    - "Point-of-Care Testing"
+    - "Digital Health & AI Diagnostics"
+    - "Molecular Imaging & Theranostics"
+
+financial_services:
+  name: "Financial Services"
+  description: "Equipment financing, leasing, and digital金融服务"
+  sub_domains:
+    - "Equipment & Project Financing"
+    - "Digital Payment Solutions"
+    - "Asset Lifecycle Management"
+    - "Trade & Working Capital Finance"
+
+cross_cutting:
+  name: "Cross-Cutting Technologies"
+  description: "Technologies spanning multiple Siemens businesses"
+  sub_domains:
+    - "Cybersecurity"
+    - "Artificial Intelligence & Machine Learning"
+    - "Digital Twin & Simulation"
+    - "Connectivity & Edge Computing"
+    - "Additive Manufacturing"
+    - "Sustainable Energy Technologies"

@@ -1,0 +1,69 @@
+# Patent Idea Generator System Configuration
+
+workflow:
+  interval_minutes: 15
+  max_retries_per_state: 3
+  idle_timeout_minutes: 60
+
+scoring:
+  composite_threshold: 70
+  gate_threshold_percent: 50
+  criteria:
+    novelty:
+      weight: 0.25
+      label: "Novelty (Prior-Art Gap)"
+    siemens_alignment:
+      weight: 0.15
+      label: "Siemens Strategic Alignment"
+    technical_feasibility:
+      weight: 0.15
+      label: "Technical Feasibility"
+    detectability:
+      weight: 0.10
+      label: "Detectability"
+    business_value:
+      weight: 0.15
+      label: "Business Value (Siemens-specific)"
+    originality:
+      weight: 0.10
+      label: "Originality (Non-Obviousness)"
+    completeness:
+      weight: 0.10
+      label: "Completeness"
+
+  strength_ratings:
+    very_strong:
+      min: 85
+      action: "Fast-track Siemens filing"
+    strong:
+      min: 70
+      action: "Auto-promote to drafting"
+    moderate:
+      min: 50
+      action: "Route for improvement pass"
+    weak:
+      min: 30
+      action: "Hold for significant improvement"
+    reject:
+      min: 0
+      action: "Archive with learning"
+
+states:
+  - raw_signal_collected
+  - idea_discovery
+  - idea_clarification
+  - novelty_hypothesis
+  - prior_art_review
+  - detectability_review
+  - business_value_review
+  - siemens_innovation_alignment
+  - ideascope_draft
+  - siemens_internal_filing_check
+  - manager_or_enabler_review
+  - ip_review
+  - siemens_ip_counsel_validation
+  - ready_for_submission
+  - submitted
+  - feedback_received
+  - revision_in_progress
+  - accepted_or_closed

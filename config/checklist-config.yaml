@@ -1,0 +1,129 @@
+# Siemens Patent Gate Checklists
+# Each transition has a gate checklist that validate() enforces
+
+gates:
+  idea_discovery_to_idea_clarification:
+    items:
+      - id: signal_coherent
+        description: "Signal description is coherent and unambiguous"
+      - id: min_sources
+        description: "At least 2 distinct source references documented"
+      - id: problem_identifiable
+        description: "Problem statement is identifiable"
+
+  idea_clarification_to_novelty_hypothesis:
+    items:
+      - id: technical_context
+        description: "Problem statement is framed with technical context"
+      - id: solution_direction
+        description: "Initial solution direction articulated"
+      - id: siemens_domain
+        description: "Siemens domain area identified"
+
+  novelty_hypothesis_to_prior_art_review:
+    items:
+      - id: novelty_claims_testable
+        description: "Novelty claims are specific and testable"
+      - id: search_terms
+        description: "Search terms defined (min 5 keywords)"
+      - id: patent_classes
+        description: "Patent classes identified (IPC/CPC)"
+
+  prior_art_review_to_detectability_review:
+    items:
+      - id: prior_art_examined
+        description: "Min 10 prior art references examined"
+      - id: novelty_gap_analysis
+        description: "Novelty gap analysis complete"
+      - id: differentiating_features
+        description: "Key differentiating features extracted"
+
+  detectability_review_to_business_value_review:
+    items:
+      - id: observability_evaluated
+        description: "Observability criteria evaluated (can infringement be detected?)"
+      - id: detection_method
+        description: "Detection method documented"
+      - id: non_obviousness_drafted
+        description: "Non-obviousness argument drafted"
+
+  business_value_review_to_siemens_innovation_alignment:
+    items:
+      - id: business_value_minimum
+        description: "Business value score >= 40/100"
+      - id: siemens_unit_identified
+        description: "Siemens business unit identified"
+      - id: market_impact
+        description: "Market impact estimated"
+
+  siemens_innovation_alignment:
+    items:
+      - id: strategic_alignment
+        description: "Aligns with >= 1 Siemens strategic tech area"
+      - id: business_units_identified
+        description: "Siemens business unit(s) identified with org hierarchy"
+      - id: no_portfolio_conflict
+        description: "No conflict with existing Siemens patent portfolio"
+      - id: competitive_advantage
+        description: "Siemens-specific competitive advantage articulated"
+      - id: trl_estimated
+        description: "Technology readiness level estimated"
+
+  ideascope_draft_to_siemens_internal_filing_check:
+    items:
+      - id: mandatory_fields_complete
+        description: "All mandatory IdeaScope fields completed"
+      - id: co_inventors_identified
+        description: "Co-inventors identified (Siemens employee IDs)"
+      - id: prior_art_attached
+        description: "Prior art attached (min 3 sources)"
+      - id: no_confidential_leak
+        description: "No confidential info leaked"
+      - id: business_benefit_quantified
+        description: "Business benefit quantified"
+      - id: detectability_complete
+        description: "Detectability assessment complete"
+      - id: source_evidence_preserved
+        description: "Source evidence preserved"
+
+  siemens_internal_filing_check:
+    items:
+      - id: ideascope_complete
+        description: "IdeaScope document is complete"
+      - id: filing_checklist_passes
+        description: "Internal filing checklist passes all 7 items"
+      - id: scoring_minimum
+        description: "Scoring composite >= 70"
+      - id: no_gate_below_threshold
+        description: "No gate checklist below 50%"
+
+  manager_or_enabler_review:
+    items:
+      - id: manager_signoff
+        description: "Manager sign-off recorded (with timestamp)"
+      - id: manager_comments
+        description: "Manager comments documented"
+      - id: resource_commitment
+        description: "Resource commitment confirmed (if applicable)"
+
+  ip_review:
+    items:
+      - id: ip_reviewer_assigned
+        description: "IP reviewer assigned"
+      - id: patentability_opinion
+        description: "Patentability preliminary opinion obtained"
+      - id: filing_jurisdiction
+        description: "Filing jurisdiction recommended"
+      - id: international_considerations
+        description: "International filing considerations noted"
+
+  siemens_ip_counsel_validation:
+    items:
+      - id: patentability_confirmed
+        description: "Patentability confirmed in writing"
+      - id: filing_strategy
+        description: "Filing strategy recommended (provisional/non-provisional/PCT)"
+      - id: committee_signoff
+        description: "Committee sign-off (if committee-level invention)"
+      - id: counsel_approval
+        description: "Siemens IP counsel approval recorded"
