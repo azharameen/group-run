@@ -1,0 +1,162 @@
+[
+    {
+        "TopicId": 1,
+        "TopicName": "5G cellular communications",
+        "TopicDescription": "5G cellular communications"
+    },
+    {
+        "TopicId": 2,
+        "TopicName": "Artificial Intelligence",
+        "TopicDescription": "Artificial Intelligence"
+    },
+    {
+        "TopicId": 3,
+        "TopicName": "Augmented reality",
+        "TopicDescription": "Augmented reality"
+    },
+    {
+        "TopicId": 4,
+        "TopicName": "Blockchain or distributed ledger technology",
+        "TopicDescription": "Blockchain or distributed ledger technology"
+    },
+    {
+        "TopicId": 5,
+        "TopicName": "Cryptocurrency",
+        "TopicDescription": "Cryptocurrency"
+    },
+    {
+        "TopicId": 6,
+        "TopicName": "DNA digital data storage",
+        "TopicDescription": "DNA digital data storage"
+    },
+    {
+        "TopicId": 7,
+        "TopicName": "Exascale computing",
+        "TopicDescription": "Exascale computing"
+    },
+    {
+        "TopicId": 8,
+        "TopicName": "Gesture recognition",
+        "TopicDescription": "Gesture recognition"
+    },
+    {
+        "TopicId": 9,
+        "TopicName": "Internet of Things",
+        "TopicDescription": "Internet of Things"
+    },
+    {
+        "TopicId": 10,
+        "TopicName": "Emerging memory technologies",
+        "TopicDescription": "Emerging memory technologies"
+    },
+    {
+        "TopicId": 11,
+        "TopicName": "Emerging magnetic data storage technologies",
+        "TopicDescription": "Emerging magnetic data storage technologies"
+    },
+    {
+        "TopicId": 12,
+        "TopicName": "Li-Fi",
+        "TopicDescription": "Li-Fi"
+    },
+    {
+        "TopicId": 13,
+        "TopicName": "Machine Learning",
+        "TopicDescription": "Machine Learning"
+    },
+    {
+        "TopicId": 14,
+        "TopicName": "Optical computing",
+        "TopicDescription": "Optical computing"
+    },
+    {
+        "TopicId": 15,
+        "TopicName": "Quantum computing",
+        "TopicDescription": "Quantum computing"
+    },
+    {
+        "TopicId": 16,
+        "TopicName": "Cryptography",
+        "TopicDescription": "Cryptography"
+    },
+    {
+        "TopicId": 17,
+        "TopicName": "Speech recognition",
+        "TopicDescription": "Speech recognition"
+    },
+    {
+        "TopicId": 18,
+        "TopicName": "Subvocal recognition",
+        "TopicDescription": "Subvocal recognition"
+    },
+    {
+        "TopicId": 19,
+        "TopicName": "Virtual Reality",
+        "TopicDescription": "Virtual Reality"
+    },
+    {
+        "TopicId": 20,
+        "TopicName": "Cyber Security",
+        "TopicDescription": "Cyber Security"
+    },
+    {
+        "TopicId": 21,
+        "TopicName": "Edge connectivity",
+        "TopicDescription": "Edge connectivity"
+    },
+    {
+        "TopicId": 22,
+        "TopicName": "Open Source Software Clearing",
+        "TopicDescription": "Open Source Software Clearing"
+    },
+    {
+        "TopicId": 23,
+        "TopicName": "UX/UI Design",
+        "TopicDescription": "UX/UI Design"
+    },
+    {
+        "TopicId": 24,
+        "TopicName": "Embedded System Design (HW + SW)  ",
+        "TopicDescription": "Embedded System Design (HW + SW)  "
+    },
+    {
+        "TopicId": 25,
+        "TopicName": "DevOps",
+        "TopicDescription": "DevOps"
+    },
+    {
+        "TopicId": 26,
+        "TopicName": "Generative AI",
+        "TopicDescription": "Generative AI"
+    },
+    {
+        "TopicId": 27,
+        "TopicName": "Quality Management",
+        "TopicDescription": "Quality Management"
+    },
+    {
+        "TopicId": 28,
+        "TopicName": "GSW Solutions",
+        "TopicDescription": "GSW Solutions"
+    },
+    {
+        "TopicId": 29,
+        "TopicName": "Grid Operations",
+        "TopicDescription": "Grid Operations"
+    },
+    {
+        "TopicId": 30,
+        "TopicName": "Grid Planning",
+        "TopicDescription": "Grid Planning"
+    },
+    {
+        "TopicId": 31,
+        "TopicName": "Technology, Tools, Processes (Leveraging emerging trends, enhancing productivity using GenAI)",
+        "TopicDescription": "Technology, Tools, Processes (Leveraging emerging trends, enhancing productivity using GenAI)"
+    },
+    {
+        "TopicId": 32,
+        "TopicName": "Grid Modeling",
+        "TopicDescription": "Grid Modelling"
+    }
+]

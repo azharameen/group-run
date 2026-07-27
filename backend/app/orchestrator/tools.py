@@ -17,6 +17,7 @@ from ..storage.yaml_io import (
     create_idea_folder,
     save_idea_yaml,
     load_idea_yaml,
+    delete_idea_folder,
 )
 
 # Active workflow machines, keyed by idea_id
@@ -42,6 +43,11 @@ def get_machine(idea_id: str) -> PatentWorkflowMachine:
     if idea_id not in _machines:
         _machines[idea_id] = create_workflow_machine(idea_id)
     return _machines[idea_id]
+
+
+def remove_idea_machine(idea_id: str) -> None:
+    """Remove a cached workflow machine for an idea."""
+    _machines.pop(idea_id, None)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -115,6 +121,14 @@ def advance_workflow(idea_id: str, target_state: str) -> dict:
     """
     machine = get_machine(idea_id)
     current = machine.state
+
+    data = load_idea_yaml(idea_id, "idea.yaml") or {}
+    if data.get("paused_processing", False):
+        return {
+            "success": False,
+            "error": "Idea is paused",
+            "current_state": current,
+        }
 
     # Find the registered trigger that leads to target_state
     trigger_name = None
@@ -256,6 +270,42 @@ def update_idea_field(idea_id: str, field: str, value) -> dict:
     })
 
     return {"idea_id": idea_id, "field": field, "value": value}
+
+
+def set_idea_paused(idea_id: str, paused: bool) -> dict:
+    """Mark an idea as paused or resumed."""
+    data = load_idea_yaml(idea_id, "idea.yaml") or {}
+    data["paused_processing"] = paused
+    data["active_processing"] = False if paused else data.get("active_processing", False)
+    data["active_agent"] = "" if paused else data.get("active_agent", "")
+    data["active_state"] = "" if paused else data.get("active_state", "")
+    data["active_message"] = "Paused by user" if paused else ""
+    data["updated_at"] = datetime.utcnow().isoformat()
+    save_idea_yaml(idea_id, "idea.yaml", data)
+
+    registry = load_idea_registry()
+    for idea in registry["ideas"]:
+        if idea["idea_id"] == idea_id:
+            idea["paused_processing"] = paused
+            break
+    save_idea_registry(registry)
+
+    _emit("idea.paused" if paused else "idea.resumed", {"idea_id": idea_id})
+    return {"idea_id": idea_id, "paused_processing": paused}
+
+
+def delete_idea(idea_id: str) -> dict:
+    """Delete an idea from the registry, cache, and filesystem."""
+    remove_idea_machine(idea_id)
+    removed_folder = delete_idea_folder(idea_id)
+    registry = load_idea_registry()
+    before = len(registry.get("ideas", []))
+    registry["ideas"] = [idea for idea in registry.get("ideas", []) if idea.get("idea_id") != idea_id]
+    removed_registry = len(registry["ideas"]) < before
+    if removed_registry:
+        save_idea_registry(registry)
+    _emit("idea.deleted", {"idea_id": idea_id})
+    return {"idea_id": idea_id, "deleted": removed_folder or removed_registry}
 
 
 # ═══════════════════════════════════════════════════════════

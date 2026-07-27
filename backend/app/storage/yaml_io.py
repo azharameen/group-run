@@ -92,6 +92,59 @@ def write_handover(idea_id: str, from_state: str, to_state: str, content: str):
     write_markdown(path, content)
 
 
+def delete_idea_folder(idea_id: str) -> bool:
+    """Delete an idea's entire workspace folder."""
+    folder = idea_folder_path(idea_id)
+    if not os.path.exists(folder):
+        return False
+    shutil.rmtree(folder)
+    return True
+
+
+def clear_idea_runtime_state(idea_id: str) -> None:
+    """Clear runtime markers before deleting or pausing an idea."""
+    idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
+    idea_data["active_processing"] = False
+    idea_data["active_agent"] = ""
+    idea_data["active_state"] = ""
+    idea_data["active_message"] = ""
+    idea_data["updated_at"] = datetime.utcnow().isoformat()
+    save_idea_yaml(idea_id, "idea.yaml", idea_data)
+
+
+def remove_from_registry(idea_id: str) -> bool:
+    """Remove an idea from the registry."""
+    registry = load_idea_registry()
+    before = len(registry.get("ideas", []))
+    registry["ideas"] = [e for e in registry.get("ideas", []) if e.get("idea_id") != idea_id]
+    if len(registry["ideas"]) < before:
+        save_idea_registry(registry)
+        return True
+    return False
+
+
+def load_comments(idea_id: str) -> list[dict]:
+    """Load comments for an idea from its comments.yaml file."""
+    path = os.path.join(idea_folder_path(idea_id), "comments.yaml")
+    if not os.path.exists(path):
+        return []
+    data = read_yaml(path)
+    return data if isinstance(data, list) else []
+
+
+def save_comment(idea_id: str, author: str, text: str) -> dict:
+    """Append a comment to the idea's comments.yaml."""
+    comments = load_comments(idea_id)
+    entry = {
+        "author": author,
+        "text": text,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    comments.append(entry)
+    write_yaml(os.path.join(idea_folder_path(idea_id), "comments.yaml"), comments)
+    return entry
+
+
 def get_all_idea_files(idea_id: str) -> list[dict]:
     """Recursively discover and return all files in an idea's workspace folder."""
     folder = idea_folder_path(idea_id)

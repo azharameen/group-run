@@ -23,6 +23,7 @@ export interface IdeaListItem {
   strength_rating: string
   running_agent: string
   active_processing?: boolean
+  paused_processing?: boolean
   active_agent?: string
   active_state?: string
   created_at: string
@@ -33,6 +34,11 @@ export interface IdeaDetail {
   idea: Record<string, any>
   state: Record<string, any>
   scores: Record<string, any>
+  comments?: Array<{
+    author: string
+    text: string
+    timestamp: string
+  }>
 }
 
 export interface CriterionDetail {
@@ -115,6 +121,25 @@ export async function scoreIdea(ideaId: string): Promise<ScoreResult> {
   return request(`/ideas/${ideaId}/score`, { method: 'POST' })
 }
 
+export async function deleteIdea(ideaId: string): Promise<{ idea_id: string; deleted: boolean }> {
+  return request(`/ideas/${ideaId}`, { method: 'DELETE' })
+}
+
+export async function pauseIdea(ideaId: string): Promise<{ idea_id: string; paused_processing: boolean }> {
+  return request(`/ideas/${ideaId}/pause`, { method: 'POST' })
+}
+
+export async function resumeIdea(ideaId: string): Promise<{ idea_id: string; paused_processing: boolean }> {
+  return request(`/ideas/${ideaId}/resume`, { method: 'POST' })
+}
+
+export async function addIdeaComment(ideaId: string, text: string, author = 'User'): Promise<any> {
+  return request(`/ideas/${ideaId}/comment`, {
+    method: 'POST',
+    body: JSON.stringify({ author, text }),
+  })
+}
+
 export async function validateGate(ideaId: string, gateName: string): Promise<any> {
   return request(`/ideas/${ideaId}/validate-gate`, {
     method: 'POST',
@@ -180,6 +205,7 @@ export interface WorkflowStatus {
     state: string
     phase: string
     active_processing: boolean
+    paused_processing?: boolean
     active_agent: string
     active_state: string
     active_message: string
@@ -194,6 +220,7 @@ export interface WorkflowStatus {
     state: string
     phase: string
     active_processing: boolean
+    paused_processing?: boolean
     active_agent: string
     active_state: string
     active_message: string
@@ -206,6 +233,79 @@ export interface WorkflowStatus {
 
 export async function fetchWorkflowStatus(): Promise<WorkflowStatus> {
   return request<WorkflowStatus>('/workflow/status')
+}
+
+// ── Config API ──
+
+export interface StateConfig {
+  label: string
+  phase: string
+  description: string
+}
+
+export interface PhaseMeta {
+  label: string
+  color: string
+}
+
+export interface WorkflowConfig {
+  states: Record<string, StateConfig>
+  phases: Record<string, PhaseMeta>
+  ordered_states: string[]
+}
+
+export async function fetchWorkflowConfig(): Promise<WorkflowConfig> {
+  return request<WorkflowConfig>('/config/workflow')
+}
+
+export interface GateItem {
+  id: string
+  description: string
+}
+
+export interface GateChecklist {
+  items: GateItem[]
+}
+
+export interface GateConfig {
+  gates: Record<string, GateChecklist>
+}
+
+export async function fetchGateConfig(): Promise<GateConfig> {
+  return request<GateConfig>('/config/gates')
+}
+
+export async function fetchCriteriaConfig(): Promise<any> {
+  return request('/config/criteria')
+}
+
+export interface Topic {
+  TopicId: number
+  TopicName: string
+  TopicDescription: string
+}
+
+export async function fetchTopics(): Promise<Topic[]> {
+  try {
+    return await request<Topic[]>('/config/topics')
+  } catch {
+    return []
+  }
+}
+
+export interface Project {
+  ProjectID: number
+  ProjectName: string
+  SBUName: string
+  LoBName: string
+}
+
+export async function fetchProjects(): Promise<Project[]> {
+  try {
+    return await request<Project[]>('/config/projects')
+  } catch {
+    return []
+  }
 }
 
 export async function generateAutonomousIdeas(maxIdeas: number = 3): Promise<any> {
@@ -222,10 +322,20 @@ export async function findAutoPipeline(inputText: string, maxIdeas: number = 3):
   })
 }
 
-export async function submitPipeline(inputText: string = '', maxIdeas: number = 3): Promise<any> {
+export async function submitPipeline(
+  inputText: string = '',
+  maxIdeas: number = 3,
+  extra?: { topicName?: string; ideaCategory?: string; projectName?: string },
+): Promise<any> {
   return request('/submit-pipeline', {
     method: 'POST',
-    body: JSON.stringify({ input_text: inputText, max_ideas: maxIdeas }),
+    body: JSON.stringify({
+      input_text: inputText,
+      max_ideas: maxIdeas,
+      topic_name: extra?.topicName || '',
+      idea_category: extra?.ideaCategory || '',
+      project_name: extra?.projectName || '',
+    }),
   })
 }
 

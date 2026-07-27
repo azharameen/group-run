@@ -25,6 +25,8 @@ from .orchestrator.tools import (
     advance_to_next_state,
     get_all_machines,
     set_emit_sse_callback as tools_set_emit,
+    delete_idea,
+    set_idea_paused,
 )
 from .orchestrator.workflow import (
     run_generation_cycle,
@@ -32,6 +34,8 @@ from .orchestrator.workflow import (
     run_full_pipeline,
     get_active_idea,
     set_emit_sse_callback as workflow_set_emit,
+    pause_idea,
+    resume_idea,
 )
 from .state.machine import set_emit_sse_callback as state_set_emit
 from .scheduler import start_scheduler, stop_scheduler
@@ -43,8 +47,9 @@ from .storage.yaml_io import (
     read_yaml,
     read_markdown,
     get_all_idea_files,
+    load_comments,
+    save_comment,
 )
-
 
 # ── SSE Event Bus ──
 
@@ -187,6 +192,7 @@ async def list_ideas(
             "strength_rating": latest_score.get("strength_rating", ""),
             "running_agent": idea_data.get("running_agent", ""),
             "active_processing": idea_data.get("active_processing", False),
+            "paused_processing": idea_data.get("paused_processing", False),
             "active_agent": idea_data.get("active_agent", ""),
             "active_state": idea_data.get("active_state", ""),
             "created_at": idea_data.get("created_at", ""),
@@ -210,6 +216,7 @@ async def get_idea(idea_id: str):
         "idea": idea_data,
         "state": state_data,
         "scores": scores_data,
+        "comments": load_comments(idea_id),
     }
 
 
@@ -304,6 +311,33 @@ async def add_evidence_endpoint(idea_id: str, payload: dict):
     return result
 
 
+@app.delete("/api/ideas/{idea_id}")
+async def delete_idea_endpoint(idea_id: str):
+    return delete_idea(idea_id)
+
+
+@app.post("/api/ideas/{idea_id}/pause")
+async def pause_idea_endpoint(idea_id: str):
+    pause_idea(idea_id)
+    return set_idea_paused(idea_id, True)
+
+
+@app.post("/api/ideas/{idea_id}/resume")
+async def resume_idea_endpoint(idea_id: str):
+    resume_idea(idea_id)
+    return set_idea_paused(idea_id, False)
+
+
+@app.post("/api/ideas/{idea_id}/comment")
+async def add_comment_endpoint(idea_id: str, payload: dict):
+    author = str(payload.get("author", "User")).strip() or "User"
+    text = str(payload.get("text", "")).strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Comment text is required")
+    comment = save_comment(idea_id, author, text)
+    return {"idea_id": idea_id, "comment": comment}
+
+
 @app.post("/api/workflow/cycle")
 async def trigger_cycle():
     """Manually trigger a generation cycle."""
@@ -367,6 +401,7 @@ async def workflow_status():
             "state": state,
             "phase": idea_data.get("phase", entry.get("phase", "discovery")),
             "active_processing": idea_data.get("active_processing", False),
+            "paused_processing": idea_data.get("paused_processing", False),
             "active_agent": idea_data.get("active_agent", ""),
             "active_state": idea_data.get("active_state", ""),
             "active_message": idea_data.get("active_message", ""),
@@ -397,6 +432,102 @@ async def get_siemens_domains():
     return {"error": "Tech domains file not found"}
 
 
+# ── Config Endpoints ──
+
+STATE_LABELS: dict[str, dict] = {
+    "raw_signal_collected": {"label": "1. Raw Signal Collected", "phase": "discovery", "description": "Initial signal or technology trend ingested into pipeline."},
+    "idea_discovery": {"label": "2. Idea Discovery", "phase": "discovery", "description": "Autonomous agent extracts core idea concept."},
+    "idea_clarification": {"label": "3. Idea Clarification", "phase": "discovery", "description": "Refining problem statement and target domain."},
+    "novelty_hypothesis": {"label": "4. Novelty Hypothesis", "phase": "research", "description": "Formulating non-obviousness argument."},
+    "prior_art_review": {"label": "5. Prior Art Review", "phase": "research", "description": "Searching Google Patents, USPTO & EPO for existing art."},
+    "detectability_review": {"label": "6. Detectability Review", "phase": "research", "description": "Evaluating how infringement can be detected."},
+    "business_value_review": {"label": "7. Business Value Review", "phase": "analysis", "description": "Evaluating economic value and market impact."},
+    "siemens_innovation_alignment": {"label": "8. Siemens Alignment", "phase": "analysis", "description": "Matching with Siemens strategic business units."},
+    "ideascope_draft": {"label": "9. IdeaScope Draft", "phase": "drafting", "description": "Drafting structured Siemens IdeaScope disclosure."},
+    "siemens_internal_filing_check": {"label": "10. Internal Filing Check", "phase": "drafting", "description": "Verifying mandatory Siemens disclosure fields."},
+    "manager_or_enabler_review": {"label": "11. Manager Review", "phase": "review", "description": "Siemens innovation manager sign-off."},
+    "ip_review": {"label": "12. IP Department Review", "phase": "review", "description": "Internal IP team prior art assessment."},
+    "siemens_ip_counsel_validation": {"label": "13. IP Counsel Validation", "phase": "review", "description": "Written legal patentability validation."},
+    "ready_for_submission": {"label": "14. Ready for Submission", "phase": "submission", "description": "All gate checks passed for formal filing."},
+    "submitted": {"label": "15. Formally Submitted", "phase": "submission", "description": "Submitted to Siemens IP filing system."},
+    "feedback_received": {"label": "16. Feedback Received", "phase": "submission", "description": "Reviewer or patent office response."},
+    "accepted_or_closed": {"label": "17. Accepted / Closed", "phase": "submission", "description": "Filing accepted and registered."},
+    "revision_in_progress": {"label": "18. Revision in Progress", "phase": "revision", "description": "Active revision based on feedback."},
+    "on_hold": {"label": "19. On Hold", "phase": "archive", "description": "Temporarily deferred for future context."},
+    "archived": {"label": "20. Archived", "phase": "archive", "description": "Pipeline run archived."},
+}
+
+PHASE_META: dict[str, dict] = {
+    "discovery": {"label": "Discovery", "color": "amber"},
+    "research": {"label": "Research", "color": "blue"},
+    "analysis": {"label": "Analysis", "color": "emerald"},
+    "drafting": {"label": "Drafting", "color": "orange"},
+    "review": {"label": "Review", "color": "purple"},
+    "submission": {"label": "Submission", "color": "emerald"},
+    "revision": {"label": "Revision", "color": "amber"},
+    "archive": {"label": "Archive", "color": "slate"},
+}
+
+
+@app.get("/api/config/workflow")
+async def get_workflow_config():
+    """Return workflow state definitions with labels, phases, and descriptions."""
+    return {
+        "states": STATE_LABELS,
+        "phases": PHASE_META,
+        "ordered_states": [s.value for s in WorkflowState],
+    }
+
+
+@app.get("/api/config/gates")
+async def get_gate_config():
+    """Return gate checklists from checklist-config.yaml."""
+    path = os.path.join(CONFIG_DIR, "checklist-config.yaml")
+    if not os.path.exists(path):
+        return {"gates": []}
+    config = read_yaml(path)
+    gates = config.get("gates", {}) if isinstance(config, dict) else {}
+    return {"gates": gates}
+
+
+@app.get("/api/config/topics")
+async def get_topics():
+    """Return available topics from knowledge-base."""
+    path = os.path.join(KNOWLEDGE_BASE_DIR, "siemens", "topics-list.json")
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+
+@app.get("/api/config/projects")
+async def get_projects():
+    """Return existing projects list from knowledge-base."""
+    path = os.path.join(KNOWLEDGE_BASE_DIR, "siemens", "projects-list.json")
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+
+@app.get("/api/config/criteria")
+async def get_criteria_config():
+    """Return scoring criteria config."""
+    path = os.path.join(CONFIG_DIR, "system-config.yaml")
+    if not os.path.exists(path):
+        return {"criteria": {}, "strength_ratings": [], "thresholds": {}}
+    config = read_yaml(path) or {}
+    scoring = config.get("scoring", {}) if isinstance(config, dict) else {}
+    return {
+        "criteria": scoring.get("criteria", {}),
+        "strength_ratings": scoring.get("strength_ratings", {}),
+        "thresholds": {
+            "composite_threshold": scoring.get("composite_threshold", 70),
+            "gate_threshold_percent": scoring.get("gate_threshold_percent", 50),
+        },
+    }
+
+
 
 # ── Pipeline Request Model ──
 
@@ -404,6 +535,11 @@ async def get_siemens_domains():
 class PipelineRequest(BaseModel):
     input_text: str = ""
     max_ideas: int = 3
+    topic_id: int = 0
+    topic_name: str = ""
+    idea_category: str = "New Product Idea"
+    project_id: int = 0
+    project_name: str = ""
 
 
 class PipelineResponse(BaseModel):
@@ -423,8 +559,10 @@ async def submit_pipeline(req: PipelineRequest):
     """
     # Run in a thread to avoid blocking the event loop
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, run_full_pipeline, req.input_text, req.max_ideas)
-
+    result = await loop.run_in_executor(
+        None, run_full_pipeline, req.input_text, req.max_ideas,
+        req.topic_name, req.idea_category, req.project_name,
+    )
     return result
 
 
@@ -440,7 +578,10 @@ async def autonomous_pipeline(req: PipelineRequest):
 async def auto_pipeline(req: PipelineRequest):
     """Alias for /api/submit-pipeline — same full autonomous pipeline."""
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, run_full_pipeline, req.input_text, req.max_ideas)
+    result = await loop.run_in_executor(
+        None, run_full_pipeline, req.input_text, req.max_ideas,
+        req.topic_name, req.idea_category, req.project_name,
+    )
     return result
 
 

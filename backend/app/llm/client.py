@@ -6,6 +6,7 @@ token tracking, and error handling.
 
 import ast
 import json
+import os
 import re
 from typing import Any, Optional
 
@@ -84,17 +85,18 @@ from ..config import settings
 _llm: Optional[ChatOpenAI] = None
 
 
-def get_llm() -> ChatOpenAI:
+def get_llm(**overrides) -> ChatOpenAI:
     """Get or create the LLM client singleton."""
     global _llm
-    if _llm is None:
+    if _llm is None or overrides:
+        timeout = int(os.environ.get("OPENAI_TIMEOUT", "30"))
         _llm = ChatOpenAI(
-            model=settings.openai_model_name,
-            base_url=settings.openai_api_base,
-            api_key=settings.openai_api_key,
-            temperature=0.7,
-            max_tokens=4096,
-            timeout=120,
+            model=overrides.get("model") or settings.openai_model_name,
+            base_url=overrides.get("base_url") or settings.openai_api_base,
+            api_key=overrides.get("api_key") or settings.openai_api_key,
+            temperature=overrides.get("temperature", 0.7),
+            max_tokens=overrides.get("max_tokens", 4096),
+            timeout=overrides.get("timeout", timeout),
         )
     return _llm
 

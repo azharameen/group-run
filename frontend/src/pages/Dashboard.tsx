@@ -1,35 +1,45 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   Search,
-  Plus,
-  Play,
   Sparkles,
   BarChart3,
   Loader2,
   TrendingUp,
   Lightbulb,
   Shield,
-  Zap,
+  Play,
 } from 'lucide-react'
 import {
   fetchIdeas,
   fetchStats,
   triggerCycle,
-  generateAutonomousIdeas,
   submitPipeline,
+  fetchWorkflowConfig,
+  fetchTopics,
+  fetchProjects,
   connectSSE,
   type IdeaListItem,
   type Stats,
+  type WorkflowConfig,
+  type Topic,
+  type Project,
 } from '../api/client'
 import IdeaCard from '../components/IdeaCard'
 import IdeasInProgress from '../components/IdeasInProgress'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -40,36 +50,54 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const PHASES = [
-  { key: 'discovery', label: 'Discovery', color: 'bg-amber-500' },
-  { key: 'research', label: 'Research', color: 'bg-blue-500' },
-  { key: 'analysis', label: 'Analysis', color: 'bg-emerald-500' },
-  { key: 'drafting', label: 'Drafting', color: 'bg-orange-500' },
-  { key: 'review', label: 'Review', color: 'bg-rose-500' },
-  { key: 'done', label: 'Done', color: 'bg-slate-500' },
+const PHASE_COLORS: Record<string, string> = {
+  discovery: 'bg-amber-500',
+  research: 'bg-blue-500',
+  analysis: 'bg-emerald-500',
+  drafting: 'bg-orange-500',
+  review: 'bg-purple-500',
+  submission: 'bg-emerald-600',
+  revision: 'bg-amber-600',
+  archive: 'bg-slate-500',
+}
+
+const IDEA_CATEGORIES = [
+  { value: 'Product Enhancement / Feature', label: 'Product Enhancement / Feature' },
+  { value: 'New Product Idea', label: 'New Product Idea' },
+  { value: 'Existing Project', label: 'Existing Project' },
+  { value: 'Others', label: 'Others' },
 ]
 
 export default function Dashboard() {
   const [ideas, setIdeas] = useState<IdeaListItem[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
+  const [workflowConfig, setWorkflowConfig] = useState<WorkflowConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [cycling, setCycling] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [steering, setSteering] = useState(false)
-  const [showSteerModal, setShowSteerModal] = useState(false)
-  const [steerText, setSteerText] = useState('')
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [promptText, setPromptText] = useState('')
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [phaseFilter, setPhaseFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Generate Idea form state
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [selectedTopic, setSelectedTopic] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('New Product Idea')
+  const [selectedProject, setSelectedProject] = useState('')
+
   const loadData = useCallback(async () => {
     try {
-      const [ideasData, statsData] = await Promise.all([
+      const [ideasData, statsData, wfConfig] = await Promise.all([
         fetchIdeas(),
         fetchStats(),
+        fetchWorkflowConfig().catch(() => null),
       ])
       setIdeas(ideasData)
       setStats(statsData)
+      if (wfConfig) setWorkflowConfig(wfConfig)
     } catch (err) {
       console.error('Failed to load dashboard data:', err)
     } finally {
@@ -89,6 +117,38 @@ export default function Dashboard() {
     return () => es.close()
   }, [loadData])
 
+  const openGenerateDialog = () => {
+    fetchTopics().then(setTopics)
+    fetchProjects().then(setProjects)
+    setSelectedTopic('')
+    setSelectedCategory('New Product Idea')
+    setSelectedProject('')
+    setPromptText('')
+    setShowGenerateModal(true)
+  }
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    setActionMessage(null)
+    try {
+      const topicObj = topics.find((t) => String(t.TopicId) === selectedTopic)
+      const projectObj = projects.find((p) => String(p.ProjectID) === selectedProject)
+      const result = await submitPipeline(promptText, 3, {
+        topicName: topicObj?.TopicName || '',
+        ideaCategory: selectedCategory,
+        projectName: projectObj?.ProjectName || '',
+      })
+      const count = result.ideas_count || result.ideas?.length || 0
+      setActionMessage(`Generated ${count} idea(s). Pipeline running.`)
+      setShowGenerateModal(false)
+      await loadData()
+    } catch (err) {
+      console.error('Generation error:', err)
+      setActionMessage(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+    setGenerating(false)
+  }
+
   const handleCycle = async () => {
     setCycling(true)
     try {
@@ -100,37 +160,6 @@ export default function Dashboard() {
       setActionMessage(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
     setCycling(false)
-  }
-
-  const handleAutonomousGenerate = async () => {
-    setGenerating(true)
-    setActionMessage(null)
-    try {
-      const result = await generateAutonomousIdeas(3)
-      setActionMessage(`Autonomous generation created ${result.ideas_count || result.ideas?.length || 0} idea(s).`)
-      await loadData()
-    } catch (err) {
-      console.error('Autonomous generation error:', err)
-      setActionMessage(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    }
-    setGenerating(false)
-  }
-
-  const handleSteeredGenerate = async () => {
-    if (!steerText.trim()) return
-    setSteering(true)
-    setActionMessage(null)
-    try {
-      const result = await submitPipeline(steerText)
-      setActionMessage(`Steered generation created ${result.ideas_count || result.ideas?.length || 0} idea(s).`)
-      setSteerText('')
-      setShowSteerModal(false)
-      await loadData()
-    } catch (err) {
-      console.error('Steered generation error:', err)
-      setActionMessage(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    }
-    setSteering(false)
   }
 
   const filteredIdeas = ideas.filter((idea) => {
@@ -204,16 +233,16 @@ export default function Dashboard() {
               <span className="text-xs font-medium">Phase Breakdown</span>
             </div>
             <div className="flex gap-1.5 mt-3">
-              {PHASES.map((p) => {
-                const count = stats?.by_phase?.[p.key] || 0
+              {Object.entries(workflowConfig?.phases || { discovery: { label: 'Discovery', color: 'amber' } }).map(([key, p]) => {
+                const count = stats?.by_phase?.[key] || 0
                 const total = stats?.total_ideas || 1
                 return (
                   <div
-                    key={p.key}
+                    key={key}
                     className="group relative flex-1 h-3 rounded-full overflow-hidden bg-muted"
                   >
                     <div
-                      className={`h-full rounded-full ${p.color} transition-all`}
+                      className={`h-full rounded-full ${PHASE_COLORS[key] || 'bg-slate-500'} transition-all`}
                       style={{ width: `${(count / total) * 100}%` }}
                     />
                   </div>
@@ -224,10 +253,9 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Ideas In Progress — agents actively working */}
       <IdeasInProgress />
 
-      {/* Control Bar: Filters & Actions */}
+      {/* Control Bar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -242,12 +270,12 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-wrap gap-1">
-            {PHASES.map((p) => (
+            {(Object.entries(workflowConfig?.phases || { discovery: { label: 'Discovery', color: 'amber' } }) ).map(([key, p]) => (
               <Badge
-                key={p.key}
-                variant={phaseFilter === p.key ? "default" : "outline"}
+                key={key}
+                variant={phaseFilter === key ? "default" : "outline"}
                 className="cursor-pointer transition-colors"
-                onClick={() => setPhaseFilter(phaseFilter === p.key ? null : p.key)}
+                onClick={() => setPhaseFilter(phaseFilter === key ? null : key)}
               >
                 {p.label}
               </Badge>
@@ -256,30 +284,12 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            onClick={handleAutonomousGenerate}
-            disabled={generating}
-            className="gap-2"
-          >
-            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {generating ? 'Generating...' : 'Autonomous Generate'}
+          <Button onClick={openGenerateDialog} className="gap-2">
+            <Sparkles className="w-4 h-4" />
+            Generate Idea
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => setShowSteerModal(true)}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Optional Hint
-          </Button>
-
-          <Button
-            variant="secondary"
-            onClick={handleCycle}
-            disabled={cycling}
-            className="gap-2"
-          >
+          <Button variant="secondary" onClick={handleCycle} disabled={cycling} className="gap-2">
             {cycling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 text-amber-500" />}
             {cycling ? 'Running...' : 'Advance Cycle'}
           </Button>
@@ -293,34 +303,92 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      {/* Steer Modal */}
-      <Dialog open={showSteerModal} onOpenChange={setShowSteerModal}>
-        <DialogContent className="sm:max-w-lg">
+      {/* Generate Idea Dialog */}
+      <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Optional Steering Hint</DialogTitle>
+            <DialogTitle>Generate New Idea</DialogTitle>
             <DialogDescription>
-              Provide a domain focus or specific target to direct the autonomous agent. Leave blank for organic discovery.
+              Select a topic, category, and optionally describe what you want. The agent will generate ideas through the full pipeline.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
-            <Textarea
-              value={steerText}
-              onChange={(e) => setSteerText(e.target.value)}
-              placeholder="e.g., Siemens energy automation, edge diagnostic sensors, motor efficiency telemetry..."
-              className="h-32 resize-none"
-            />
+
+          <div className="space-y-4 py-2">
+            {/* Topic */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Technology Topic</label>
+              <Select value={selectedTopic} onValueChange={setSelectedTopic}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Any</SelectItem>
+                  {topics.map((t) => (
+                    <SelectItem key={t.TopicId} value={String(t.TopicId)}>
+                      {t.TopicName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Idea Category */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Idea Category</label>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IDEA_CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Project (only when Existing Project) */}
+            {selectedCategory === 'Existing Project' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Select Project</label>
+                <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a project..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    {projects
+                      .filter((p) => p.ProjectName.trim())
+                      .map((p) => (
+                        <SelectItem key={p.ProjectID} value={String(p.ProjectID)}>
+                          {p.ProjectName}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Prompt */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Your Prompt (optional)</label>
+              <Textarea
+                value={promptText}
+                onChange={(e) => setPromptText(e.target.value)}
+                placeholder="Describe what kind of idea you're looking for... Leave empty for autonomous generation based on the topic above."
+                className="h-24 resize-none"
+              />
+            </div>
           </div>
+
           <DialogFooter>
-            <Button variant="ghost" onClick={() => { setShowSteerModal(false); setSteerText('') }}>
+            <Button variant="ghost" onClick={() => setShowGenerateModal(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSteeredGenerate}
-              disabled={steering || !steerText.trim()}
-              className="gap-2"
-            >
-              {steering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-              Generate with Hint
+            <Button onClick={handleGenerate} disabled={generating} className="gap-2">
+              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {generating ? 'Generating...' : 'Generate'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -330,20 +398,15 @@ export default function Dashboard() {
       {filteredIdeas.length === 0 ? (
         <Card className="p-12 text-center">
           <CardContent className="space-y-4">
-            <Zap className="w-12 h-12 text-muted-foreground mx-auto" />
+            <Sparkles className="w-12 h-12 text-muted-foreground mx-auto" />
             <div className="space-y-1">
               <h3 className="text-lg font-semibold">No ideas found</h3>
               <p className="text-sm text-muted-foreground">
-                Run autonomous generation to trigger the multi-agent patent pipeline.
+                Click Generate Idea to start the multi-agent pipeline.
               </p>
             </div>
-            <div className="flex justify-center gap-2 pt-2">
-              <Button onClick={handleAutonomousGenerate}>
-                Autonomous Generate
-              </Button>
-              <Button variant="outline" onClick={() => setShowSteerModal(true)}>
-                Optional Hint
-              </Button>
+            <div className="flex justify-center pt-2">
+              <Button onClick={openGenerateDialog}>Generate Idea</Button>
             </div>
           </CardContent>
         </Card>

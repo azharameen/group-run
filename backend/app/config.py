@@ -1,7 +1,7 @@
 """Application configuration from environment variables."""
 
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -17,7 +17,14 @@ class Settings(BaseSettings):
     composite_threshold: int = 70
     gate_threshold_percent: int = 50
 
-    model_config = {"env_prefix": "", "case_sensitive": False}
+    # Compute .env path relative to this file (backend/app/config.py -> repo root)
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        case_sensitive=False,
+        extra="ignore",
+        env_file=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env")),
+        env_file_encoding="utf-8",
+    )
 
 
 settings = Settings()

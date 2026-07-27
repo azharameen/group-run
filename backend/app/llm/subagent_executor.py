@@ -178,21 +178,34 @@ def _call_llm_json_with_fallback(
 # STATE 1: raw_signal_collected → generate novel ideas from user input
 # ---------------------------------------------------------------------------
 
-def execute_raw_signal(user_signal: str) -> list[dict]:
+def execute_raw_signal(user_signal: str, *,
+                       topic_name: str = "", idea_category: str = "",
+                       project_name: str = "") -> list[dict]:
     """Generate patent ideas from a user's raw text signal.
 
     Returns a list of idea dicts.
     """
+    context_lines = []
+    if topic_name:
+        context_lines.append(f"Technology topic: {topic_name}")
+    if idea_category:
+        context_lines.append(f"Idea category: {idea_category}")
+    if project_name:
+        context_lines.append(f"Related project: {project_name}")
+
+    sd = "\n".join(context_lines)
+    domain_hint = f"\n\nContext:\n{sd}" if context_lines else ""
+
     prompt = f"""Based on the following user-provided signal, generate 3 distinct,
-novel patent idea concepts suitable for Siemens.
+novel patent idea concepts.
+{domain_hint}
 
 For each idea, provide:
 1. title (concise, descriptive)
 2. problem_statement (2-3 sentences describing the technical problem)
 3. solution_concept (4-6 sentences describing the novel solution)
-4. siemens_domain (best-fit domain from: Digital Industries, Smart Infrastructure, Mobility, Healthcare, Energy, Industrial Automation, Building Technologies, Rail Automation, Grid Technologies)
-5. tags (3-5 relevant technology keywords)
-6. source_evidence (2-3 sentences on why this is relevant now)
+4. tags (3-5 relevant technology keywords)
+5. source_evidence (2-3 sentences on why this is relevant now)
 
 User signal: {user_signal}
 
@@ -207,9 +220,11 @@ Respond with a JSON array of exactly 3 idea objects with these exact fields.
     return result if isinstance(result, list) else []
 
 
-def execute_seed_ideas_from_input(input_text: str) -> list[dict]:
+def execute_seed_ideas_from_input(input_text: str, *,
+                                   topic_name: str = "", idea_category: str = "",
+                                   project_name: str = "") -> list[dict]:
     """Alias for execute_raw_signal — called from seed endpoint."""
-    return execute_raw_signal(input_text)
+    return execute_raw_signal(input_text, topic_name=topic_name, idea_category=idea_category, project_name=project_name)
 
 
 def execute_autonomous_idea_generation(max_ideas: int = 3) -> list[dict]:
@@ -836,6 +851,8 @@ Provide:
         temperature=0.3,
         max_tokens=3072,
     )
+    result["_simulated"] = True
+    result["_simulated_reason"] = "Filing compliance check simulated by LLM. Replace with actual Siemens IP system integration."
     _write_idea_field(idea_id, "filing_check", result)
     return result
 
@@ -1082,31 +1099,36 @@ Provide as JSON:
 # ---------------------------------------------------------------------------
 
 def execute_submitted(idea_id: str) -> dict:
-    """Finalize submission state."""
-    data = _ensure_idea_folder(idea_id)
+    """Mark idea as submitted through the pipeline."""
     return {
         "status": "submitted",
         "idea_id": idea_id,
         "submitted_at": "auto_pipeline",
-        "notes": "Idea has been processed through the full pipeline and is ready for filing.",
+        "notes": "Idea processed through automated pipeline and marked as submitted.",
+        "_simulated": True,
+        "_simulated_reason": "Formal submission to Siemens IP filing system requires manual action or API integration.",
     }
 
 
 def execute_feedback_received(idea_id: str) -> dict:
-    """Log feedback received (simulated)."""
+    """Log feedback received (placeholder)."""
     return {
         "status": "feedback_received",
         "idea_id": idea_id,
-        "feedback": "Positive — idea has strong novelty and Siemens alignment.",
+        "feedback": "Awaiting actual feedback from Siemens IP review process.",
+        "_simulated": True,
+        "_simulated_reason": "Actual feedback must come from human reviewers or the official filing system.",
     }
 
 
 def execute_accepted_or_closed(idea_id: str) -> dict:
-    """Final terminal state."""
+    """Final terminal state marker."""
     return {
         "status": "accepted",
         "idea_id": idea_id,
-        "conclusion": "Idea accepted for patent filing pipeline.",
+        "conclusion": "Pipeline processing complete. Final disposition requires manual confirmation.",
+        "_simulated": True,
+        "_simulated_reason": "Final acceptance/rejection must be confirmed by Siemens IP team.",
     }
 
 

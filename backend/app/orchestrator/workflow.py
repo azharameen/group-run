@@ -25,6 +25,7 @@ from ..llm.subagent_executor import execute_autonomous_idea_generation
 _cycle_running = False
 _emit_sse_callback = None
 _active_idea_id: str = ""  # Single idea currently being processed
+_paused_idea_ids: set[str] = set()
 
 
 def set_emit_sse_callback(cb):
@@ -44,6 +45,21 @@ def is_cycle_running() -> bool:
 def get_active_idea() -> str:
     """Return the idea ID currently being processed by an agent."""
     return _active_idea_id
+
+
+def pause_idea(idea_id: str) -> None:
+    _paused_idea_ids.add(idea_id)
+
+
+def resume_idea(idea_id: str) -> None:
+    _paused_idea_ids.discard(idea_id)
+
+
+def is_idea_paused(idea_id: str) -> bool:
+    if idea_id in _paused_idea_ids:
+        return True
+    data = load_idea_yaml(idea_id, "idea.yaml") or {}
+    return bool(data.get("paused_processing", False))
 
 
 def _as_list(value):
@@ -97,6 +113,8 @@ def _select_focus_idea(ideas: list[dict]) -> dict | None:
         data = load_idea_yaml(idea_id, "idea.yaml") or {}
         current_state = data.get("current_state", entry.get("state", "raw_signal_collected"))
         if current_state in terminal_states:
+            continue
+        if data.get("paused_processing") or idea_id in _paused_idea_ids:
             continue
         candidates.append({
             **entry,
@@ -156,6 +174,9 @@ def _process_idea(idea_id: str) -> dict:
     _active_idea_id = idea_id
 
     try:
+        if is_idea_paused(idea_id):
+            return {"idea_id": idea_id, "status": "paused"}
+
         machine = get_machine(idea_id)
         current = machine.state
 
@@ -230,6 +251,14 @@ def run_generation_cycle(max_ideas: int = 10) -> dict:
         # Process only one focused idea per cycle to keep agent attention single-threaded.
         focus = _select_focus_idea(ideas[:max_ideas])
         if focus:
+            if is_idea_paused(focus["idea_id"]):
+                results.append({"idea_id": focus["idea_id"], "status": "paused"})
+                return {
+                    "cycle_complete": True,
+                    "ideas_processed": len(results),
+                    "results": results,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
             result = _process_idea(focus["idea_id"])
             results.append(result)
         else:
@@ -266,7 +295,9 @@ _STATE_EXECUTORS = [
 ]
 
 
-def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
+def run_full_pipeline(user_input: str, max_ideas: int = 3,
+                      topic_name: str = "", idea_category: str = "",
+                      project_name: str = "") -> dict:
     """Run the complete pipeline from autonomous discovery or manual steering to patent-ready.
 
     Steps:
@@ -287,7 +318,12 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
 
     # ── Step 1: Generate ideas autonomously or from optional steering ──
     if user_input.strip():
-        ideas = execute_seed_ideas_from_input(user_input)
+        ideas = execute_seed_ideas_from_input(
+            user_input,
+            topic_name=topic_name,
+            idea_category=idea_category,
+            project_name=project_name,
+        )
     else:
         ideas = execute_autonomous_idea_generation(max_ideas)
 
@@ -295,7 +331,12 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
         # Retry with the opposite path before failing hard.
         ideas = execute_autonomous_idea_generation(max_ideas)
         if not ideas and user_input.strip():
-            ideas = execute_seed_ideas_from_input(user_input)
+            ideas = execute_seed_ideas_from_input(
+                user_input,
+                topic_name=topic_name,
+                idea_category=idea_category,
+                project_name=project_name,
+            )
 
     if not ideas:
         raise RuntimeError("Autonomous idea generation returned no candidates")
@@ -358,6 +399,15 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
 
         # ── Step 2a: Run each executor in order ──
         for state_name, func_name, archive_file in _STATE_EXECUTORS:
+            if is_idea_paused(idea_id):
+                state_log.append({
+                    "state": state_name,
+                    "action": "skipped",
+                    "status": "paused",
+                })
+                pipeline_ok = False
+                break
+
             try:
                 _emit("agent.progress", {
                     "idea_id": idea_id,
@@ -414,13 +464,17 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
                 })
 
         # ── Step 2b: Final score and submission packet ──
-        final_score = score_idea(idea_id, "pipeline-final")
+        if is_idea_paused(idea_id):
+            final_score = load_idea_yaml(idea_id, "scores.yaml") or {}
+            pipeline_ok = False
+        else:
+            final_score = score_idea(idea_id, "pipeline-final")
         _emit("idea.scored", {
             "idea_id": idea_id,
             "state": "complete",
-            "composite": final_score.get("composite", 0),
-            "breakdown": final_score.get("breakdown", {}),
-            "strength_rating": final_score.get("strength_rating", ""),
+            "composite": final_score.get("composite", final_score.get("latest", {}).get("composite", 0)),
+            "breakdown": final_score.get("breakdown", final_score.get("latest", {}).get("breakdown", {})),
+            "strength_rating": final_score.get("strength_rating", final_score.get("latest", {}).get("strength_rating", "")),
         })
 
         _emit("gate.passed" if pipeline_ok else "gate.failed", {
@@ -432,7 +486,7 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
             "idea_id": idea_id,
             "title": title,
             "status": "ready_for_filing" if pipeline_ok else "partial",
-            "composite_score": final_score.get("composite", 0),
+            "composite_score": final_score.get("composite", final_score.get("latest", {}).get("composite", 0)),
             "states_executed": len(state_log),
             "states_failed": sum(1 for s in state_log if s.get("status") == "error"),
             "state_log": state_log,

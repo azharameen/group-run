@@ -1,0 +1,6062 @@
+[
+    {
+        "ProjectID": 8141,
+        "ProjectName": "Sherpa X",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT HUB"
+    },
+    {
+        "ProjectID": 8393,
+        "ProjectName": "Teamcenter PLM DevOps Service",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT EN"
+    },
+    {
+        "ProjectID": 8394,
+        "ProjectName": "Engineering services",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT EN"
+    },
+    {
+        "ProjectID": 8395,
+        "ProjectName": "DM SAP Continuity services",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT EN"
+    },
+    {
+        "ProjectID": 8396,
+        "ProjectName": "RALM Services",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT EN"
+    },
+    {
+        "ProjectID": 8397,
+        "ProjectName": "Mechanical Engineering services",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT EN"
+    },
+    {
+        "ProjectID": 8398,
+        "ProjectName": "Electrical Engineering services",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT EN AS"
+    },
+    {
+        "ProjectID": 8402,
+        "ProjectName": "Sherpa X for Engineering",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT EN"
+    },
+    {
+        "ProjectID": 8404,
+        "ProjectName": "ROCCIT",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT SF"
+    },
+    {
+        "ProjectID": 8409,
+        "ProjectName": "Azure Data Box Migration-2026",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN COP"
+    },
+    {
+        "ProjectID": 8410,
+        "ProjectName": "Project Management IT IN CW - 2026",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN CW"
+    },
+    {
+        "ProjectID": 8411,
+        "ProjectName": "Project Management IT IN COP",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN COP"
+    },
+    {
+        "ProjectID": 8412,
+        "ProjectName": "Project Management IT IN SIAM",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN SIAM"
+    },
+    {
+        "ProjectID": 8413,
+        "ProjectName": "IT Ramp UP- India Locomotive - 2026",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN"
+    },
+    {
+        "ProjectID": 8414,
+        "ProjectName": "Service Management IT IN SIAM",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN SIAM"
+    },
+    {
+        "ProjectID": 8415,
+        "ProjectName": "Service Management IT IN OC",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN OC"
+    },
+    {
+        "ProjectID": 8416,
+        "ProjectName": "Service Management IT IN CW - 2026",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN CW"
+    },
+    {
+        "ProjectID": 8419,
+        "ProjectName": "B_ Visualization_MO_B_00452",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT AI&D"
+    },
+    {
+        "ProjectID": 8420,
+        "ProjectName": "B_ Data_MO_B_00453",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT AI&D"
+    },
+    {
+        "ProjectID": 8421,
+        "ProjectName": "B_ Integration_MO_B_00454",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT AI&D"
+    },
+    {
+        "ProjectID": 8422,
+        "ProjectName": "B_ Data Warehouse_MO_B_00455",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT AI&D"
+    },
+    {
+        "ProjectID": 8423,
+        "ProjectName": "B_Management (MO_B_00272)",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT AI&D"
+    },
+    {
+        "ProjectID": 8424,
+        "ProjectName": "B_ AI@SMO_MO_B_00448",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT AI&D"
+    },
+    {
+        "ProjectID": 8425,
+        "ProjectName": "B_AI&DA Service_MO_B_00338",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT AI&D"
+    },
+    {
+        "ProjectID": 8426,
+        "ProjectName": "Sherpa X BRIDGE",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT HUB"
+    },
+    {
+        "ProjectID": 8427,
+        "ProjectName": "P22 Service",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT HUB"
+    },
+    {
+        "ProjectID": 8429,
+        "ProjectName": "Service Management IT IN COP",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN COP"
+    },
+    {
+        "ProjectID": 8432,
+        "ProjectName": "SherpaX Brownfield Bridge SF ATT",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT HUB"
+    },
+    {
+        "ProjectID": 8433,
+        "ProjectName": "ProjectDAsh_FY26",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT SF FPM"
+    },
+    {
+        "ProjectID": 8434,
+        "ProjectName": "Primavera R&D",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT SF"
+    },
+    {
+        "ProjectID": 8435,
+        "ProjectName": "EPIQ Support",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT SF"
+    },
+    {
+        "ProjectID": 8436,
+        "ProjectName": "Power BI Migration",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT SF"
+    },
+    {
+        "ProjectID": 8437,
+        "ProjectName": "SMO IT SF FPM 2026",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT SF FPM"
+    },
+    {
+        "ProjectID": 8438,
+        "ProjectName": "SherpaX Greenfield SF ATT",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT HUB"
+    },
+    {
+        "ProjectID": 8439,
+        "ProjectName": "Brightline West SF ATT",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT HUB"
+    },
+    {
+        "ProjectID": 8440,
+        "ProjectName": "SAP P22 SF ATT",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT HUB"
+    },
+    {
+        "ProjectID": 8441,
+        "ProjectName": "Tribe Data Factory",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT S&SE"
+    },
+    {
+        "ProjectID": 8443,
+        "ProjectName": "SMO IT SF - Hub Leadership",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT SF"
+    },
+    {
+        "ProjectID": 8444,
+        "ProjectName": "Project Management IT IN OC",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT IN OC"
+    },
+    {
+        "ProjectID": 8447,
+        "ProjectName": "Strategy & Governance",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT HUB"
+    },
+    {
+        "ProjectID": 8448,
+        "ProjectName": "Procurement - Support Functions",
+        "SBUName": "SMO IT",
+        "LoBName": "SMO IT SF OF"
+    },
+    {
+        "ProjectID": 587919,
+        "ProjectName": "OSPO1_OSS_SERVICES_FY24_AJAX",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 587940,
+        "ProjectName": "__OSPO1_SERVICES_FY24_Innomotics (Yevgeni)",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 591444,
+        "ProjectName": "Annex3 for Chennai Project-Billing only",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 591727,
+        "ProjectName": "GD Project Template",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA C"
+    },
+    {
+        "ProjectID": 592510,
+        "ProjectName": "Mondelez Development Project",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 593108,
+        "ProjectName": "PE_Support_HQ_DE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 593934,
+        "ProjectName": "test project",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 593978,
+        "ProjectName": "siecloud 2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594244,
+        "ProjectName": "COMMVALUT V2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594358,
+        "ProjectName": "CyberArk",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594360,
+        "ProjectName": "GFI LanGuard V2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594363,
+        "ProjectName": "Nessus v2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594365,
+        "ProjectName": "Network",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594367,
+        "ProjectName": "sDWP V2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594369,
+        "ProjectName": "Solarwind v2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594371,
+        "ProjectName": "Storage V2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 594373,
+        "ProjectName": "Backup V2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 595104,
+        "ProjectName": "ENEL-SPM Offer",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 595446,
+        "ProjectName": "ES - Digital Station Manager",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 595583,
+        "ProjectName": "TH PES SWZ FY24",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 595703,
+        "ProjectName": "Airlink TGMT Support",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 595992,
+        "ProjectName": "",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 596010,
+        "ProjectName": "Platform Engineering - SMO RS - DevOps",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 596226,
+        "ProjectName": "TH PES_ISP_ FY24",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 596381,
+        "ProjectName": "NextWorkTool3.0-Penetration",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Product Engineering"
+    },
+    {
+        "ProjectID": 596561,
+        "ProjectName": "Nextwork AI PoC",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA C"
+    },
+    {
+        "ProjectID": 596645,
+        "ProjectName": "eMobility Ops",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 597360,
+        "ProjectName": "SIEPM Project",
+        "SBUName": "Service Excellence",
+        "LoBName": "Process and Workflow Automation"
+    },
+    {
+        "ProjectID": 597588,
+        "ProjectName": "StartdriveS120",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 597660,
+        "ProjectName": "SDR Compatibilaty Test_FY24",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 597661,
+        "ProjectName": "DCC,DCB Studio CompatibilityTest_FY24",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 597679,
+        "ProjectName": "Mondelez Main",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 597930,
+        "ProjectName": "MC Documentation FY24",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 598253,
+        "ProjectName": "SGI_EA_IEB_TSMC_Support_FY24",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 598471,
+        "ProjectName": "Mondelez",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 598955,
+        "ProjectName": "NEOM  Satellite Use Case Integration",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA C"
+    },
+    {
+        "ProjectID": 599151,
+        "ProjectName": "",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA C"
+    },
+    {
+        "ProjectID": 599255,
+        "ProjectName": "X-Advanta Bid Efforts - EMEA - Q2",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 599566,
+        "ProjectName": "RailDNA",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 599730,
+        "ProjectName": "EP_NA_MendixApp_FY24",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 599731,
+        "ProjectName": "EP_NA_MendixApp_FY24",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 599844,
+        "ProjectName": "TEST - will be deleted after TEST",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D IN DTS CAD COM"
+    },
+    {
+        "ProjectID": 599990,
+        "ProjectName": "",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 600774,
+        "ProjectName": "",
+        "SBUName": "Service Excellence",
+        "LoBName": "Process and Workflow Automation"
+    },
+    {
+        "ProjectID": 600779,
+        "ProjectName": "SL eAcceptance Policy",
+        "SBUName": "Service Excellence",
+        "LoBName": "Process and Workflow Automation"
+    },
+    {
+        "ProjectID": 601165,
+        "ProjectName": "MED_Electrification X - FY24",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 601252,
+        "ProjectName": "Testing",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 601407,
+        "ProjectName": "PML3_PSS_Dummy",
+        "SBUName": "Mobility",
+        "LoBName": "Product & Solution Security_MO"
+    },
+    {
+        "ProjectID": 601970,
+        "ProjectName": "",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 602007,
+        "ProjectName": "SI GSW Italy ACP & OSS Coordinator Support",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 602885,
+        "ProjectName": "Technical Support H2",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 603725,
+        "ProjectName": "OSPO1_SERVICES_FY24_ADV Turkey (Dilek Ozer)",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA D"
+    },
+    {
+        "ProjectID": 604305,
+        "ProjectName": "Training Delivery for Python-Linux Shell Scripting for-SI E R&D SAT",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 604810,
+        "ProjectName": "RSS Projects - New project",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 604904,
+        "ProjectName": "EA_PROT_HV_Eng_FY24",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 604978,
+        "ProjectName": "",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Cybersecurity"
+    },
+    {
+        "ProjectID": 605277,
+        "ProjectName": "",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 605587,
+        "ProjectName": "SiePro_SmartAP_Jul_Sep_24",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 605762,
+        "ProjectName": "",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "Digitilization Hub"
+    },
+    {
+        "ProjectID": 606910,
+        "ProjectName": "Istanbul FC",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA D"
+    },
+    {
+        "ProjectID": 606984,
+        "ProjectName": "B X - E-Learnings",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 607228,
+        "ProjectName": "TNB_June",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 608246,
+        "ProjectName": "SI EA Sales ECOM STA & OMT FY24 H2",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 609711,
+        "ProjectName": "TH SYS_GIL_ FY24",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 609784,
+        "ProjectName": "SIMARIS S4 UX Design",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 617692,
+        "ProjectName": "SIMARIS_create_MS_FY25",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 617729,
+        "ProjectName": "Neom 3.1- Solution Architect",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA D"
+    },
+    {
+        "ProjectID": 617961,
+        "ProjectName": "OSPO1_SERVICES_FY24_SI GSW R&D_Fabio_FY24",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 618322,
+        "ProjectName": "TGMT OBCU ITV Germany",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 618906,
+        "ProjectName": "OSPO1_SERVICES_FY24_EVO DSI_FY24",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 618925,
+        "ProjectName": "OSPO1_SERVICES_FY24_SI GSW R&D_Fabio_FY24",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 622862,
+        "ProjectName": "Alarm Dashboard_FY25",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 626077,
+        "ProjectName": "SP7_FY25",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 626916,
+        "ProjectName": "Siemens Logistics - Automation Testing",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 630067,
+        "ProjectName": "HMI_OI_SiQ_Setup_FY25",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 630364,
+        "ProjectName": "Test Project",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA D"
+    },
+    {
+        "ProjectID": 630626,
+        "ProjectName": "BACnet Stack Developement",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 632540,
+        "ProjectName": "DI IT Software Development_FY25",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 633432,
+        "ProjectName": "MI Direct Cost_FY24-25",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 634174,
+        "ProjectName": "SINUMERIK OPERATE IT FY25",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 634177,
+        "ProjectName": "PLC1500_TIAPADD_FY25",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 634404,
+        "ProjectName": "SI CYS - E-Learnings",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 637623,
+        "ProjectName": "TFS_BUILD FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 637786,
+        "ProjectName": "Kahramaa_FY25",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 637801,
+        "ProjectName": "PSS_TK",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 638202,
+        "ProjectName": "ALDP - Batch 2 -2nd Tranche",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 638889,
+        "ProjectName": "EOT NA",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 639004,
+        "ProjectName": "RPD-PMI_Test_Tool_Development_P1",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 639043,
+        "ProjectName": "SMO _Project",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 639460,
+        "ProjectName": "ADV Strategic Project",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D IN GD IEB DI"
+    },
+    {
+        "ProjectID": 642395,
+        "ProjectName": "BNGLR CCTV",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 642397,
+        "ProjectName": "BNGLR CCTV",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 643013,
+        "ProjectName": "RailDNA",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 643303,
+        "ProjectName": "Software defined motion",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 643751,
+        "ProjectName": "PAM_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 643943,
+        "ProjectName": "CCE Extract ESB",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 644550,
+        "ProjectName": "POC",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 644672,
+        "ProjectName": "POD.AI FY25",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 645826,
+        "ProjectName": "COVERITY_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 645828,
+        "ProjectName": "SVN(Subversion)_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 645830,
+        "ProjectName": "SonarQube_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 645832,
+        "ProjectName": "Central_Jenkins_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 645876,
+        "ProjectName": "GIT_Runners_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 645947,
+        "ProjectName": "Energy Monitoring System",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 645950,
+        "ProjectName": "RVNL_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647680,
+        "ProjectName": "IT-DDI-INFRA",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647782,
+        "ProjectName": "SGI-INFRA",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647784,
+        "ProjectName": "ClearCase_Server",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647786,
+        "ProjectName": "CommVault_Rule",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647802,
+        "ProjectName": "PAMC-MC-startDriveG120",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647804,
+        "ProjectName": "PAMC-MC-TPA-CFT",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647809,
+        "ProjectName": "ICT - TECOM - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 647810,
+        "ProjectName": "Gitrunners",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647812,
+        "ProjectName": "PAMC-MC-MTS",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647814,
+        "ProjectName": "Jenkins",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647816,
+        "ProjectName": "Central_IT_Network_R&D",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647818,
+        "ProjectName": "PAMC-DCP-DH2",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647820,
+        "ProjectName": "KALI-LINUX",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647822,
+        "ProjectName": "SMIT_Siemens_Ltd",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647849,
+        "ProjectName": "SonarQube_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647851,
+        "ProjectName": "SVN(Subversion)_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647853,
+        "ProjectName": "Sigining-Server",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647855,
+        "ProjectName": "FCPQ_SGI",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647857,
+        "ProjectName": "Global-Rules-Build",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647859,
+        "ProjectName": "MERIT_INCREASE",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647861,
+        "ProjectName": "PAMC-MC-ARMOR",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647864,
+        "ProjectName": "SGI_PS_EA-MED_DPS",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647866,
+        "ProjectName": "SIVEILLANCE",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 647869,
+        "ProjectName": "SIVEILLANCE-STAGING",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 648264,
+        "ProjectName": "SieAssist",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 648328,
+        "ProjectName": "HL7 SORIS Adaptor",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 648720,
+        "ProjectName": "One MIS iPort FY25",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 648736,
+        "ProjectName": "BE Analytics Tool",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "Digitilization Hub"
+    },
+    {
+        "ProjectID": 649046,
+        "ProjectName": "FT D AA IN PAMC DCP RuggedCom Sales Consultancy Annexure 3 FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 649207,
+        "ProjectName": "FT D AA IN PAMC DCP Annexure 3 FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 649213,
+        "ProjectName": "FT D AA IN PAMC DCP SITOP Annexure 3 FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 649216,
+        "ProjectName": "FT D AA IN PAMC DCP RuggedCom Firmware Annexure 3  FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 649253,
+        "ProjectName": "FT D AA IN PAMC MI Annexure_FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 649367,
+        "ProjectName": "FT D IN PAMC MC_Annex3_FY26_Amendment",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 649815,
+        "ProjectName": "SGI EA Master Project FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 649936,
+        "ProjectName": "Tech Sales Support FY25-26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 650004,
+        "ProjectName": "SP5",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 650046,
+        "ProjectName": "GC_APMO_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 650052,
+        "ProjectName": "FY26_GS GR: DLR, PSSE, PSSE CloudX, Enablers (PSSE)",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 650068,
+        "ProjectName": "SP7_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 650087,
+        "ProjectName": "PE_Support_HQ_DE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 650232,
+        "ProjectName": "FT D AA IN OTC PA Annexure 3_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 650276,
+        "ProjectName": "Qiddiya Tech Masterplan",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 650358,
+        "ProjectName": "SP5_CSC",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 650364,
+        "ProjectName": "KACO Cloud FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 650381,
+        "ProjectName": "SIMARIS PROJECTS FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 650421,
+        "ProjectName": "SAP_SherpaX_CAPM_Evosoft_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 650441,
+        "ProjectName": "SAP_Innomotics_Evosoft_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 650466,
+        "ProjectName": "GC Engineering SysAdmin, MGMS & Defect Hunter support - FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 650503,
+        "ProjectName": "SI EA Sales FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 650714,
+        "ProjectName": "FT FDS Annex3_ARE7092_FY 2026",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 652030,
+        "ProjectName": "FT D engagement with FT FDS",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 652191,
+        "ProjectName": "I&S_Delivery_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 652267,
+        "ProjectName": "SRE-SCALA_AV-FT D AA IT",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 652290,
+        "ProjectName": "SiePrice_FY26",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D IN DTS GP"
+    },
+    {
+        "ProjectID": 652317,
+        "ProjectName": "SW360 - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 652416,
+        "ProjectName": "RedHeat-OpenShift",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 652494,
+        "ProjectName": "Omnissa Horizon- HPE VME",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 653347,
+        "ProjectName": "GridScaleX - Managed Services - FY'26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 653446,
+        "ProjectName": "SI B PRO - Tech Support, OEMing and Tools - FY2026",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 653533,
+        "ProjectName": "Battery Passport for FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Product Engineering"
+    },
+    {
+        "ProjectID": 653730,
+        "ProjectName": "COMPAS FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 653761,
+        "ProjectName": "COMPAS KB FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 653780,
+        "ProjectName": "Engineering Systems SI EP DTS - FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 653785,
+        "ProjectName": "BIMPOWER FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 653880,
+        "ProjectName": "SW_Annexure_FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 654256,
+        "ProjectName": "SE EDI Platform - Services - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 654634,
+        "ProjectName": "COMPAS KB FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 654881,
+        "ProjectName": "GenAI TPoC",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 654989,
+        "ProjectName": "SiGREEN Maintenance - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Product Engineering"
+    },
+    {
+        "ProjectID": 655271,
+        "ProjectName": "SOL_NAM_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 655284,
+        "ProjectName": "SOL_EMEA_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 655458,
+        "ProjectName": "SI EA NA PROJECT FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 655476,
+        "ProjectName": "ENOWA_SA_Support_FY25_26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 655858,
+        "ProjectName": "AMC-FY-2026",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 657402,
+        "ProjectName": "DEMA DEV FY26H1",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 657822,
+        "ProjectName": "FPM Managed Services FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 657835,
+        "ProjectName": "SI EA - IoT Applications Managed Services FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 658358,
+        "ProjectName": "IN-Hyper_V",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 658403,
+        "ProjectName": "Project Insight Board - Data Engineering",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Data Analytics"
+    },
+    {
+        "ProjectID": 658434,
+        "ProjectName": "Long-Term setup of AI development team for DI cranes-FY 26 (AI/ML)",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "Digitilization Hub"
+    },
+    {
+        "ProjectID": 658544,
+        "ProjectName": "Long-Term setup of AI development team for DI cranes-FY 26 (Application)",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "Digitilization Hub"
+    },
+    {
+        "ProjectID": 659054,
+        "ProjectName": "SI E R&D - FY 26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 659108,
+        "ProjectName": "AEP_TPS_Performance Tuning_FY26",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 659110,
+        "ProjectName": "SieSales_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 659261,
+        "ProjectName": "eMobility SAT - FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 659271,
+        "ProjectName": "ALDAR - BuildingX Integration",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 659333,
+        "ProjectName": "Lead Project - SI EA PA-SOL FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 659449,
+        "ProjectName": "Siemens AG - EDI - Development",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 659452,
+        "ProjectName": "Siemens AG - EDI - DevOps & Support",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 659455,
+        "ProjectName": "Siemens AG - EDI - Service Management",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 659459,
+        "ProjectName": "Siemens AG - Platform Engineering",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 659529,
+        "ProjectName": "SI_CTO_EaaS_PBC_Forecasting FY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 659552,
+        "ProjectName": "sDWP v2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 659953,
+        "ProjectName": "Master Data Management and Migration",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 659972,
+        "ProjectName": "Dolphin 2026",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 660014,
+        "ProjectName": "TH_CH FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 660021,
+        "ProjectName": "FY26_Germany",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 660370,
+        "ProjectName": "SCM_FE_CVE_OCT_SEP_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 660373,
+        "ProjectName": "DI_IT_IN_OCT_SEP_FY_26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 660470,
+        "ProjectName": "RGMS_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 660673,
+        "ProjectName": "FY26_SI EP",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 660809,
+        "ProjectName": "MDM FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 660818,
+        "ProjectName": "MDM R&D FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 660857,
+        "ProjectName": "GridScaleX_FY2025-26_CSW",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 660880,
+        "ProjectName": "IT APS App Factory FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 660892,
+        "ProjectName": "GSW_MDM_Product_Support_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 660975,
+        "ProjectName": "BRAZIL_KB_FY25",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 661095,
+        "ProjectName": "EP_SYA&T_EPIS_FY25",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 661189,
+        "ProjectName": "STA Application FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 661327,
+        "ProjectName": "IT DA_Common FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Data Analytics"
+    },
+    {
+        "ProjectID": 661345,
+        "ProjectName": "Scrum_Master_SMO_SHX_BT_PRJ_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 661358,
+        "ProjectName": "SI TO DO Software Development_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 661429,
+        "ProjectName": "Mars-Period End Support - DevOps Engineer",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 661584,
+        "ProjectName": "DI_IT_AIDA_OCT_SEP_FY_26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 661587,
+        "ProjectName": "Growth Talk",
+        "SBUName": "Service Excellence",
+        "LoBName": "Process and Workflow Automation"
+    },
+    {
+        "ProjectID": 661804,
+        "ProjectName": "DI FA MASTER ANNEX 3 FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 662044,
+        "ProjectName": "I&S_TNB_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 662183,
+        "ProjectName": "SherpaX_CAPM_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 662372,
+        "ProjectName": "Payroll India FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 662668,
+        "ProjectName": "Siemens AG -B2B Integration Modernization",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 662798,
+        "ProjectName": "OneDMI (10.1.X releases)",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 662807,
+        "ProjectName": "Portfolio Manager - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 662910,
+        "ProjectName": "Hazardous Material Management System",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 662931,
+        "ProjectName": "CT0000671_DI FA BE_Evosoft_DevOps_ADO-BMS_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Business Excellence-DASS"
+    },
+    {
+        "ProjectID": 663002,
+        "ProjectName": "US_HUBSupport_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 663035,
+        "ProjectName": "Electrification X - Infra Ops Managed Services FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 663573,
+        "ProjectName": "Engineering Systems SI EA T4S Support  -  FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 663765,
+        "ProjectName": "SE.GT.PRM.EI.DGO-FT.D.IN.DTS.SES_PYTHIA_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 663846,
+        "ProjectName": "SE.GS.C.GCO.BM.TDM-FT.D.IN.DTS.SES_CPP_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 663912,
+        "ProjectName": "CT0000661_DSP SUP HMI FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 663942,
+        "ProjectName": "BRAZIL_KB_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 663945,
+        "ProjectName": "SE TI SES PRM ANA-FT.D.IN.DTS.SES_HPS_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 663946,
+        "ProjectName": "SE.DC.GT.PE-FT.D.IN.DTS.SES_ExcelTemplateGenerator_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 663948,
+        "ProjectName": "cDNA",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 663954,
+        "ProjectName": "DepotCo NOC Managed Services FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 664278,
+        "ProjectName": "SW360 Support - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 664341,
+        "ProjectName": "FT FDS Annex3_FY 2026",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 664430,
+        "ProjectName": "ALDP - Batch 1 of 2025 (Luis)",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 664545,
+        "ProjectName": "OSPO1_SERVICES_FY26_SI GSW (Helmut)",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 664555,
+        "ProjectName": "Zuzana_FT D_Marcom _FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 664561,
+        "ProjectName": "OSPO-BLR_Projects_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 664563,
+        "ProjectName": "OSPO-B_SERVICES_FY26_FT GENX (StefanPannenberg)",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 664565,
+        "ProjectName": "CE OE PLM_Christine _Global_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 664578,
+        "ProjectName": "Brigitte_ADV MK&CM_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 665195,
+        "ProjectName": "GAVATAR - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 665290,
+        "ProjectName": "Siemens AG - GX  -  Development Services",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 665305,
+        "ProjectName": "RDS B2B",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 665308,
+        "ProjectName": "RDS DPE",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 665393,
+        "ProjectName": "Advantest Test & Validation Project – FY Oct2025 - March2026",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Advantest"
+    },
+    {
+        "ProjectID": 665630,
+        "ProjectName": "GA Radar Development Support",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 665639,
+        "ProjectName": "SITRANS Hub IQ OTC",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 665658,
+        "ProjectName": "EA_PROT_LicenseManager_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 665659,
+        "ProjectName": "SiePro_Oct_Mar_26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 666104,
+        "ProjectName": "Simcenter-FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 666127,
+        "ProjectName": "FDS-CDS",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 666307,
+        "ProjectName": "IT_MES_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 666334,
+        "ProjectName": "RDS DPE Oncall Allowance",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 666416,
+        "ProjectName": "ADT_DEV_FY26 H1",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Advantest"
+    },
+    {
+        "ProjectID": 666480,
+        "ProjectName": "IT_OpCenter_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 666512,
+        "ProjectName": "SITRANS mobile IQ & WebApp",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 666515,
+        "ProjectName": "UDM Assets",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 666528,
+        "ProjectName": "EA_PROT_SmartECO_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 666560,
+        "ProjectName": "EA_ECO_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 666575,
+        "ProjectName": "Si-Quote Application Suite 2.1",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 666582,
+        "ProjectName": "IT_TCM_FY26_H1",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 666593,
+        "ProjectName": "IT_Component_Design_FY26_H1",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 666606,
+        "ProjectName": "IT_OPS_FY26_H1",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 666618,
+        "ProjectName": "IT_DEV_FY26_H1",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 666636,
+        "ProjectName": "IT_OpCenter_Travel_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 666647,
+        "ProjectName": "SITRANS Hub IQ BU",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 666662,
+        "ProjectName": "Remote Seal",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 666668,
+        "ProjectName": "Assetfox OTC",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 666721,
+        "ProjectName": "SE.PE.EN-FT.D.IN.DTS.SES_Earn+Piping & Civil_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 666726,
+        "ProjectName": "EA_AU_SICAM_SW_Value_Stream_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 666749,
+        "ProjectName": "SI_CTO_EaaS_IoT  FY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 666949,
+        "ProjectName": "SE.PE.EN.EO.DT-FT.D.IN.DTS.SES_COMOS_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 666975,
+        "ProjectName": "EP_SW2_PAI_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667004,
+        "ProjectName": "SE.PE.DPO.DIG-FT.D.IN.DTS.SES_PE_Integration_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667044,
+        "ProjectName": "F26OrderEngineering-Lead",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 667054,
+        "ProjectName": "OE-PDE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 667058,
+        "ProjectName": "SE DC GS C GCO -FT.D.IN.DTS.SES_Krawal Chatbot_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667067,
+        "ProjectName": "SE.PE.DPO.PST-FT.D.IN.DTS.SES_Site_Companion-FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667084,
+        "ProjectName": "SE.PE.EN-FT.D.IN.DTS.SES_Earn+Piping & Civil_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667088,
+        "ProjectName": "SE GS C GCO BM TD&BOP SD-FT.D.IN.DTS.SES_Krawal_Sipep_Equator_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667096,
+        "ProjectName": "OE-LPE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 667102,
+        "ProjectName": "OE-BSE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 667128,
+        "ProjectName": "OE-DOCK",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 667132,
+        "ProjectName": "SE.PE.EN.EO.DT-FT.D.AA.IN.DTS.SES_Enhancement Engineering Data Backbone for PE Engineering_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667141,
+        "ProjectName": "SE.GT.GS.CP.ENP-FT.D.IN.DTS.SES_PAM_QA Support_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667155,
+        "ProjectName": "SE.GS.CD.NA.EN-FT.D.IN.DTS.SES_OmniView Support_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667179,
+        "ProjectName": "FY26 eMobility SAT Agile Coaching",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 667262,
+        "ProjectName": "EA_PROT_DIGSI5_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 667265,
+        "ProjectName": "Infra Management Services",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 667267,
+        "ProjectName": "InsightsHub Documentation FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 667301,
+        "ProjectName": "EP_SW2_PCFG_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667366,
+        "ProjectName": "OE-RPE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 667374,
+        "ProjectName": "OE-ESD",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 667383,
+        "ProjectName": "FDS CDS services documentation  FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 667386,
+        "ProjectName": "XPF documentation 2026",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 667406,
+        "ProjectName": "EP_BLR_Common_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667514,
+        "ProjectName": "SE.IT.B.SO.PE-FT.D.IN.DTS.SES_PE_SalesCalculation_Dev_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667531,
+        "ProjectName": "SE.GS.S.C.GSO.SOP..PS.PI-FT.D.IN.DTS.SES_MDM_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667559,
+        "ProjectName": "SE.GS.S.C.GSO.SOP..PS.PI-FT.D.IN.DTS.SES_PastMarketToolsDatabase & PIT Pricing Tool Development_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 667597,
+        "ProjectName": "EP_SW2_TIASentron_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667625,
+        "ProjectName": "EP_SW1_SENTRON_Powercenter3000_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667646,
+        "ProjectName": "EP_PLATFORM_MOSAIC_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667648,
+        "ProjectName": "EP_Master_Use_Case_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667656,
+        "ProjectName": "EP_SW2_PCMA_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667719,
+        "ProjectName": "Historical Data Dashboard",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 667732,
+        "ProjectName": "EBT_MES_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 667737,
+        "ProjectName": "EP_SW2_CPD_CLOUD_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667738,
+        "ProjectName": "EP_SW2_STS_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667743,
+        "ProjectName": "Tools and Infra Mgt",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 667801,
+        "ProjectName": "BE Analytics Tool",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "Digitilization Hub"
+    },
+    {
+        "ProjectID": 667804,
+        "ProjectName": "AEP_TPS_FAC008_FY26",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 667834,
+        "ProjectName": "Kavach - Phase 1",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 667841,
+        "ProjectName": "TFS_BUILD FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667845,
+        "ProjectName": "RPD-PMI_Test_Tool_Development_P1",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667847,
+        "ProjectName": "SMO _Project",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667851,
+        "ProjectName": "BNGLR CCTV",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667858,
+        "ProjectName": "COVERITY_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667860,
+        "ProjectName": "SVN(Subversion)_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667862,
+        "ProjectName": "SonarQube_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667864,
+        "ProjectName": "Central_Jenkins_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667866,
+        "ProjectName": "GIT_Runners_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667868,
+        "ProjectName": "Energy Monitoring System",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667870,
+        "ProjectName": "RVNL_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667872,
+        "ProjectName": "IT-DDI-INFRA",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667874,
+        "ProjectName": "SGI-INFRA",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667876,
+        "ProjectName": "ClearCase_Server",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667878,
+        "ProjectName": "CommVault_Rule",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667880,
+        "ProjectName": "PAMC-MC-startDriveG120",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667882,
+        "ProjectName": "Gitrunners",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667884,
+        "ProjectName": "PAMC-MC-MTS",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667886,
+        "ProjectName": "Jenkins",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667888,
+        "ProjectName": "SMIT_Siemens_Ltd",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667890,
+        "ProjectName": "SonarQube_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667892,
+        "ProjectName": "SVN(Subversion)_FY25",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667894,
+        "ProjectName": "Sigining-Server",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667896,
+        "ProjectName": "FCPQ_SGI",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667898,
+        "ProjectName": "Global-Rules-Build",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667900,
+        "ProjectName": "MERIT_INCREASE",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667902,
+        "ProjectName": "PAMC-MC-ARMOR",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667904,
+        "ProjectName": "SGI_PS_EA-MED_DPS",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667906,
+        "ProjectName": "SIVEILLANCE",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667908,
+        "ProjectName": "SIVEILLANCE-STAGING",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667910,
+        "ProjectName": "RedHeat-OpenShift",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667912,
+        "ProjectName": "Omnissa Horizon- HPE VME",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667917,
+        "ProjectName": "Application development - GIS Gas Density Monitoring",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 667924,
+        "ProjectName": "GenAI TPoC",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 667935,
+        "ProjectName": "sDWP v2.0",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 667937,
+        "ProjectName": "EP_SYA&T_EPIS_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667940,
+        "ProjectName": "Engineering Systems SI EA NX - FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 667987,
+        "ProjectName": "EP_SW2_SIM_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 667988,
+        "ProjectName": "EA_PROT_DigitalTwin_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 667990,
+        "ProjectName": "EA_PROT_VirtualTEP_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 668013,
+        "ProjectName": "FT D AA IN PAMC DCP SEMS Annexure 3 FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 668363,
+        "ProjectName": "DesigoCC_ART_MP_10.0",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 668385,
+        "ProjectName": "ClimatixIC-AUT_Billing Only",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 668387,
+        "ProjectName": "EA_PROT_SPIP_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 668447,
+        "ProjectName": "ID_Electrification X - FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 668471,
+        "ProjectName": "FY26 Cyber Security Support-SIE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 668544,
+        "ProjectName": "Test Project for OTC",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 668602,
+        "ProjectName": "CT0000639_DSP_TPC_Product_Care_FY_25_26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "TIA Engineering"
+    },
+    {
+        "ProjectID": 668616,
+        "ProjectName": "EA_PROT_CSC_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 668645,
+        "ProjectName": "OE-FSE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 668804,
+        "ProjectName": "EBT_ProcessAutomation_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 669086,
+        "ProjectName": "SGRE Services",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 669535,
+        "ProjectName": "FY26 Sifinity Control",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 669541,
+        "ProjectName": "NEM-FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 669543,
+        "ProjectName": "GPC_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 669554,
+        "ProjectName": "Simatic APC - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 669571,
+        "ProjectName": "OE-PMS",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 670108,
+        "ProjectName": "EP_SW1_Powermanager_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 670750,
+        "ProjectName": "OSS Clearing_DI SW _FY-26(H2)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 670751,
+        "ProjectName": "NEOM Topian Greenhouse",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 670787,
+        "ProjectName": "Storage V2.1",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 671128,
+        "ProjectName": "Universal Control Plane - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 671136,
+        "ProjectName": "Octopus - GenAI Development_Billing Only",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 671138,
+        "ProjectName": "SIFIX Support FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 671173,
+        "ProjectName": "OSPO1_SERVICES_FY26_T SSP (OliverFendt)",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 671261,
+        "ProjectName": "BACnet Stack Developement",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 671272,
+        "ProjectName": "EP_SYA&T_PDE_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 671329,
+        "ProjectName": "FT D AA IN MC OTC BLR Annex3_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 671330,
+        "ProjectName": "IoT Stack Developement",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 671338,
+        "ProjectName": "EP_NA_FY26_Common",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 671340,
+        "ProjectName": "SINEC ANS_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 671342,
+        "ProjectName": "FY26 DepotFinity",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 671434,
+        "ProjectName": "FY26 AC Maintenance",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 671435,
+        "ProjectName": "FY26 eMobility  Software  Lifecycle  Management System",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 671436,
+        "ProjectName": "FY26 eMobility Expert",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 671463,
+        "ProjectName": "SINEC_TrafficAnalyzer_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 671469,
+        "ProjectName": "SINEC NMS FY 26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 671486,
+        "ProjectName": "Customer Interaction Portal (CIP) Ecosystem",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 671489,
+        "ProjectName": "Device Integration Maintenance",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 671510,
+        "ProjectName": "FT D IN FA_FT OTC BLR ANNEX 3",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 671511,
+        "ProjectName": "SINEC_Security Monitor_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 671512,
+        "ProjectName": "EP_DTE_IC: Integration in TIA ES & STEP7_Test_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 671565,
+        "ProjectName": "EP_SYA&T_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 671636,
+        "ProjectName": "Analyzer System Manager & SSE IQ",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 671637,
+        "ProjectName": "FT D AA IN PAMC DCP SSG Annexure 3 FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 671640,
+        "ProjectName": "RSS-HQ Developement",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 671645,
+        "ProjectName": "Pre-BTL_Projects_EUR",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 671656,
+        "ProjectName": "Pre-Dev FY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 671678,
+        "ProjectName": "BBS EDGE BMS (J2)  Zug",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 671783,
+        "ProjectName": "SITRANS SCM IQ System",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 671977,
+        "ProjectName": "MI_Pool",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 672073,
+        "ProjectName": "SINEC PNI FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 672074,
+        "ProjectName": "SINEC INS FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 672077,
+        "ProjectName": "SEMS FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 672078,
+        "ProjectName": "LOCATION INTELLIGENCE FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 672083,
+        "ProjectName": "Airbyte - FAROS AI - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 672097,
+        "ProjectName": "Innomotics Support",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 672098,
+        "ProjectName": "EOTT",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 672099,
+        "ProjectName": "AW060 & AW050GP PCB Design & Test",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 672115,
+        "ProjectName": "SITRANS MS200 & P4x0 H/W Design",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 672130,
+        "ProjectName": "MAG8000 4G/LoRa/BLE FW Development",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 672172,
+        "ProjectName": "FT D AA IN PAMC XO-IAH Annexure 3",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 672201,
+        "ProjectName": "EP_DTE_IC: Product Maintenance and HW System test_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 672338,
+        "ProjectName": "SI EA S PEG Hosting - FY2026",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 672410,
+        "ProjectName": "SIPORT_Maintenance",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 672436,
+        "ProjectName": "SiPass integrated",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 672449,
+        "ProjectName": "US_R&D_PSS_FY26",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 672455,
+        "ProjectName": "Siveillance Access",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 672554,
+        "ProjectName": "FT D AA IN PAMC DCP SINEC ANS Operational and Hardware Cost Annexure 3 FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 672559,
+        "ProjectName": "CT0000652_DSP_TPC RT_DIAG_IOWA_RTC_FY_25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 672560,
+        "ProjectName": "CT0000639_DSP_TPC_TIA_Engineering_R&D_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "TIA Engineering"
+    },
+    {
+        "ProjectID": 672561,
+        "ProjectName": "CT0000646_HMI URT WCC-Simatic Edge Apps_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 672569,
+        "ProjectName": "CT0000663_HMI_URT_RT_SIA_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 672625,
+        "ProjectName": "Simis W",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 672637,
+        "ProjectName": "CT0000640_AS_EE_STEP7 TIA PORTAL DEVELOPMENT FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 672663,
+        "ProjectName": "CT0000649_HMI_VS_Colorado_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 672664,
+        "ProjectName": "CT0000658_HMI_EE_VS_TIA_SCREEN_EDITOR_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 672730,
+        "ProjectName": "RuggedCom Sales Consultancy_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 672735,
+        "ProjectName": "CT0000667_HMI SW WCC-Simatic Edge Apps_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 672746,
+        "ProjectName": "SI EA PLM IOT Hosting - FY2026",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 672753,
+        "ProjectName": "EA_AU_SICAM_SDA_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 672767,
+        "ProjectName": "EA_AU_SICAM_SDA_Goa_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 672779,
+        "ProjectName": "CT0000667-HMI SW WCC_WinCC Dev FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 672786,
+        "ProjectName": "Data Driven & AI",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 672796,
+        "ProjectName": "CT0000659_HMI_SW RT_SiQ_LCS_SES_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 672807,
+        "ProjectName": "CT0000642_AS_SAFI_Failsafe ES V21.1_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 672809,
+        "ProjectName": "CT0000649_HMI URT Panel - Base Team_FY_25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 672884,
+        "ProjectName": "SITOP FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 672888,
+        "ProjectName": "Vendigital Software Support FY25 -26",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 672912,
+        "ProjectName": "CT0000663_HMI_URT_RT_WinCC Unified RT HGCD FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 672932,
+        "ProjectName": "CT0000667_HMI SW WCC_PIO_PFI_SHC-FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 672944,
+        "ProjectName": "CT0000669_DSP_SEN_Technology_Management_FY_25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 672961,
+        "ProjectName": "PSSO Efforts_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 672994,
+        "ProjectName": "CT0000659_HMI_SW RT_SiQ_LCS_SES_WUP_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 673006,
+        "ProjectName": "CT0000659_HMI_SW RT_SiQ_LCS_SES_VAPT_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 673010,
+        "ProjectName": "CT0000659_HMI_SW RT_MTP-POL_STUDIO_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 673024,
+        "ProjectName": "CT0000659_HMI_SW RT_Energy_Suite_WUP_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 673063,
+        "ProjectName": "CT0000667-HMI SW WCC_WinCC Test FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 673065,
+        "ProjectName": "CT0000653_HMI EE RT_SiVArc_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 673068,
+        "ProjectName": "GenAI Experience Center",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 673072,
+        "ProjectName": "TGMT",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 673108,
+        "ProjectName": "CT0000641_AS_IO_ES_MDD&GSDML_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 673119,
+        "ProjectName": "CT0000644_HMI_CA_Engineering (TIA, GSDML) SIPLUS extreme - WuP_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 673154,
+        "ProjectName": "CT0000641_AS_IO_DASS_IO-Link GSDML Composer_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 673217,
+        "ProjectName": "SIMIT SW_Dev1_OTS_25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 673232,
+        "ProjectName": "PAMC_SW_SIMIT_SYT_FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 673237,
+        "ProjectName": "SIMIT SW_Dev1_RpT_25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 673254,
+        "ProjectName": "SSG_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 673255,
+        "ProjectName": "SINEC ANS Operational Cost_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 673258,
+        "ProjectName": "FY26 Recoy load management",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 673263,
+        "ProjectName": "CT0000666_HMI_SW_WCC_SCADA_COMM_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 673264,
+        "ProjectName": "CT0000666_HMI_SW_VS_UnifiedApps_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 673268,
+        "ProjectName": "Support to ADV EMEA_GC_Project_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 673296,
+        "ProjectName": "SL_INDIA_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 673300,
+        "ProjectName": "CT0000651_AS_PLC_DASS_Basic Motion Control S7-PID, TDC FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 673356,
+        "ProjectName": "EA_AU_iPASuite_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 673386,
+        "ProjectName": "SIWA - DI PA SW 2_FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 673400,
+        "ProjectName": "CT0000639_DSP_TPC_DL_BLR_Cloud_Offerings_FY_25_26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "TIA Engineering"
+    },
+    {
+        "ProjectID": 673504,
+        "ProjectName": "PNS Batch_OTC_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "PCS neo System"
+    },
+    {
+        "ProjectID": 673542,
+        "ProjectName": "CT0000651_AS_PLC_DV_BGL_Development&Test&Maintenance 1500_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 673547,
+        "ProjectName": "Ruggedcom_Dev_FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 673558,
+        "ProjectName": "Ruggedcom_Testing_FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 673571,
+        "ProjectName": "DVPI - Phase 4 -FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Automation Energy & Digitalisation"
+    },
+    {
+        "ProjectID": 673716,
+        "ProjectName": "SINUMERIK OPERATE IT FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673717,
+        "ProjectName": "Armor_WLX-FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673768,
+        "ProjectName": "SystemOne FY25-26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 673869,
+        "ProjectName": "MC_Documentation_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673875,
+        "ProjectName": "SPECS FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 673885,
+        "ProjectName": "OPCUA-Promethean-FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673907,
+        "ProjectName": "Motion on Jupiter-FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673915,
+        "ProjectName": "FDI for G220_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673919,
+        "ProjectName": "TIA Round Off_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673922,
+        "ProjectName": "Industrial copilot for Drives",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673924,
+        "ProjectName": "CT0000639_DSP_TPC_TE_WinCC RT Setup - FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "TIA Engineering"
+    },
+    {
+        "ProjectID": 673925,
+        "ProjectName": "SINAMICS Compatibility Test_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673927,
+        "ProjectName": "Software Defined Motion-FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673931,
+        "ProjectName": "PLC1500_TIAPADD_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673940,
+        "ProjectName": "Startdrive S120_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673952,
+        "ProjectName": "Operate_Veto_Mavericks_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673971,
+        "ProjectName": "Startdrive G120_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673988,
+        "ProjectName": "AI-powered test logfile analysis",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 673991,
+        "ProjectName": "Provisioning of Digital Product Passport (DPP) and Asset Administartion",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 674104,
+        "ProjectName": "ID_EA_PA-SOL_Engineering_CoPilot_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 674106,
+        "ProjectName": "EA_AU_iPASuite_MACRO_DBA_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 674117,
+        "ProjectName": "Digital Service Center",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 674119,
+        "ProjectName": "Desigo Classic - XWP V6.3",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 674123,
+        "ProjectName": "Utility Bill Management Application Support",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 674134,
+        "ProjectName": "Qlaus Test_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 674135,
+        "ProjectName": "CT0000659_HMI_SW_RT_SIQENCE_Setup_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 674149,
+        "ProjectName": "Sinumerik CFT Continuous Test_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 674180,
+        "ProjectName": "Anchor Model Integration and Connectivity_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 674233,
+        "ProjectName": "Standard Controls",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 674258,
+        "ProjectName": "SW_IPID_MatchingService_25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 674268,
+        "ProjectName": "CT0000667-HMI URT RT_OPCUA_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 674300,
+        "ProjectName": "CT0000649_HMI_VS_SIQENCE_Setup_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 674374,
+        "ProjectName": "Security_Manager_BY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 674380,
+        "ProjectName": "UK Mobility",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674387,
+        "ProjectName": "Customer Interaction Portal (CIP) Ecosystem- New",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 674426,
+        "ProjectName": "Application Integration Center (EU)",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 674433,
+        "ProjectName": "HL7 SORIS Adaptor",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 674438,
+        "ProjectName": "SunPharma - Application Integration Center",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 674466,
+        "ProjectName": "Cybersecurity-FS",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 674476,
+        "ProjectName": "ID_EA_AI_Enabler_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 674552,
+        "ProjectName": "Secure Patch Management",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 674611,
+        "ProjectName": "YARD Solutions",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674612,
+        "ProjectName": "Xing Monitoring",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674613,
+        "ProjectName": "SP4_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 674642,
+        "ProjectName": "ACSES Test Automation",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674663,
+        "ProjectName": "ECTF HW",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674667,
+        "ProjectName": "R9K_Validation 2026",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674690,
+        "ProjectName": "Wayside Products",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674700,
+        "ProjectName": "ES-IXL",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674701,
+        "ProjectName": "Platform Engineering - SMO RI",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 674720,
+        "ProjectName": "Control Guide- Productive",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674728,
+        "ProjectName": "Kavach - Wayside",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 674731,
+        "ProjectName": "T2G : On Premises RTE for GCG - POC",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674750,
+        "ProjectName": "GUIDO-Productive",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674756,
+        "ProjectName": "Westrace DPS",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674758,
+        "ProjectName": "ES-MT R&D",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 674817,
+        "ProjectName": "Building X Operations & Maintenance",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 674858,
+        "ProjectName": "RS LMC SAS PROV",
+        "SBUName": "Mobility",
+        "LoBName": "Product & Solution Security_MO"
+    },
+    {
+        "ProjectID": 674870,
+        "ProjectName": "Building X Building Twin",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 674880,
+        "ProjectName": "VRC Backend Services",
+        "SBUName": "Mobility",
+        "LoBName": "Product & Solution Security_MO"
+    },
+    {
+        "ProjectID": 674892,
+        "ProjectName": "iPort FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 674927,
+        "ProjectName": "Apogee Design Tool",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 674928,
+        "ProjectName": "Validation Controlguide RBC-Workstation",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 674930,
+        "ProjectName": "Engineering Systems SI EA NXCAD - FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 675115,
+        "ProjectName": "Defect Hunter_FY26 (Austria)",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 675134,
+        "ProjectName": "OSPO1_SERVICES_FY26_GBS (Jithu)",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 675143,
+        "ProjectName": "Bidworks",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 675144,
+        "ProjectName": "FT D AA IN OTC PA_NRS_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 675181,
+        "ProjectName": "FS20M_FY202526",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 675206,
+        "ProjectName": "Cloudification_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675293,
+        "ProjectName": "CAMOS",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675305,
+        "ProjectName": "WebApps",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675309,
+        "ProjectName": "SharedServices",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675313,
+        "ProjectName": "UniCore",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675316,
+        "ProjectName": "OnePortal",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675318,
+        "ProjectName": "RPA",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675338,
+        "ProjectName": "FS Cloud Apps FY25-26 - New",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 675343,
+        "ProjectName": "PNS-FBE-OTC-VAPC_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "PCS neo System"
+    },
+    {
+        "ProjectID": 675345,
+        "ProjectName": "ECS",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 675348,
+        "ProjectName": "CT0000580_FA OTC_Unified Elements_WebES_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 675349,
+        "ProjectName": "RBC Core",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 675351,
+        "ProjectName": "CT0000580_FA OTC P_ NRS_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 675394,
+        "ProjectName": "FT D AA IN MC OTC BLR_FY26_NRS Billing",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 675424,
+        "ProjectName": "DRM",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675432,
+        "ProjectName": "CT0000673_FT OTC P_NRS FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 675435,
+        "ProjectName": "ProposAi",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675460,
+        "ProjectName": "Zuora",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675472,
+        "ProjectName": "NXTools+",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675474,
+        "ProjectName": "Infra Cost Recovery",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 675495,
+        "ProjectName": "Digital Station Manager- Spain",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 675510,
+        "ProjectName": "Cross Function_PRODUCTION",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 675553,
+        "ProjectName": "EP_DTE_IC: 3WA customizing shop APS_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 675567,
+        "ProjectName": "SIMARIS FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 675569,
+        "ProjectName": "DCP",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 675575,
+        "ProjectName": "R9K_R&D",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 675578,
+        "ProjectName": "FT FDS CES EDS FY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 675587,
+        "ProjectName": "Internal Project Support for Middle East",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 675673,
+        "ProjectName": "Project - NRS billing - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 675694,
+        "ProjectName": "CT0000672_FT FDS Annex3_NRS_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 675705,
+        "ProjectName": "AUTOMATIC TRAIN SUPERVISION_EURO",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 675707,
+        "ProjectName": "Control BY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 675711,
+        "ProjectName": "Building X Energy and Sustainability Product Line - Energy Manager",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 675712,
+        "ProjectName": "Global PMO FY' 26",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 675724,
+        "ProjectName": "Building X Energy and Sustainability Product Line - Sustainability Manager, CAI and Optimization Top",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 675852,
+        "ProjectName": "CT0000719_Digital Offering and Services FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 675911,
+        "ProjectName": "Productivity Measurement Pilot in SIEIR - FY' 26",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 675924,
+        "ProjectName": "SE DC GS C GCO -FT.D.IN.DTS.SES_ESD_Copilot_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 675926,
+        "ProjectName": "ToolsSuite_BY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 675933,
+        "ProjectName": "Sustainability Dashboard Development-Productive",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 676052,
+        "ProjectName": "Productivity  Measurement in Faros.AI - FY' 26",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 676062,
+        "ProjectName": "CT0000656_DASS Infra_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Business Excellence-DASS"
+    },
+    {
+        "ProjectID": 676087,
+        "ProjectName": "SI demo tool BY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676213,
+        "ProjectName": "Cybersecurity-PRO",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676214,
+        "ProjectName": "Cybersecurity-BX",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 676243,
+        "ProjectName": "AMS-Australia-SW-FY25",
+        "SBUName": "Mobility",
+        "LoBName": "Customer Service & Rolling Stock"
+    },
+    {
+        "ProjectID": 676244,
+        "ProjectName": "CS DS Engagement",
+        "SBUName": "Mobility",
+        "LoBName": "Customer Service & Rolling Stock"
+    },
+    {
+        "ProjectID": 676278,
+        "ProjectName": "Automatic Train Operation",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 676353,
+        "ProjectName": "OneDMI FY 2026 (10.1.2 Release)",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 676358,
+        "ProjectName": "Engineering Systems SI EA NX AI Validation - FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 676379,
+        "ProjectName": "SI B PRO - Tech Support, OEMing and Tools for BY 26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676383,
+        "ProjectName": "SI B PRO - E Learnings for BY 26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676390,
+        "ProjectName": "SI B B X - E Learnings for BY 26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 676393,
+        "ProjectName": "cRSP Router Services for BY 26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676412,
+        "ProjectName": "ADV C - FMC Projects",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 676454,
+        "ProjectName": "Engineering Intelligence Platform (SIEIR -P) Development - FY' 26",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 676509,
+        "ProjectName": "LI EB-Continental Hannover_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 676539,
+        "ProjectName": "DSPM_GERMANY",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 676575,
+        "ProjectName": "ETCS CG [Workstation]",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 676613,
+        "ProjectName": "CC220 rearchitecture",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 676615,
+        "ProjectName": "XO-IAH - FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 676624,
+        "ProjectName": "UK-FRACAS Multiple Projects",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 676626,
+        "ProjectName": "SI B PRODUCTS - SW UX - BILLING ONLY",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 676751,
+        "ProjectName": "Application Integration Center (US)",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 676847,
+        "ProjectName": "PSS_TK_FY26",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 676848,
+        "ProjectName": "Location Intelligence External Business - FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 676850,
+        "ProjectName": "PML3_PSS_FY26",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 676851,
+        "ProjectName": "LCB Projects - RIL Engg Services",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676855,
+        "ProjectName": "LCB Projects - RIL CBM",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676857,
+        "ProjectName": "LCB Projects - TKML",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676859,
+        "ProjectName": "PSS_RS_FY26",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 676861,
+        "ProjectName": "PSS_CS_FY26",
+        "SBUName": "Mobility",
+        "LoBName": "Customer Service & Rolling Stock"
+    },
+    {
+        "ProjectID": 676868,
+        "ProjectName": "LCB Projects - HCL",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676870,
+        "ProjectName": "EA COC FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 676879,
+        "ProjectName": "LCB Projects - Dubai Expo Engg Services",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676890,
+        "ProjectName": "AMS_PSS_FY_26",
+        "SBUName": "Mobility",
+        "LoBName": "Customer Service & Rolling Stock"
+    },
+    {
+        "ProjectID": 676895,
+        "ProjectName": "LCB Projects - Siv Control - Vitra Weil",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676898,
+        "ProjectName": "LCB Projects - Siv Control - Takeda Singen",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676940,
+        "ProjectName": "CT0000580_FA_OTC_Industrial Copilot for Engineering_FY2025-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 676974,
+        "ProjectName": "LCB Projects - Saudi Telecom",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676976,
+        "ProjectName": "LCB Projects - US Army Jubail Project",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676979,
+        "ProjectName": "LCB Projects - University of Queensland",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676982,
+        "ProjectName": "LCB Projects - Singapore Engg Services",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 676991,
+        "ProjectName": "CT0000649_HMI_VS_PPM_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 676994,
+        "ProjectName": "CT0000667_Genie&Curie_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 677000,
+        "ProjectName": "CT0000580_FA OTC_SDC-DCA-RSC-Alarm&Dig_FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 677087,
+        "ProjectName": "GDCP - GSMR",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 677089,
+        "ProjectName": "DTV - RIU",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 677412,
+        "ProjectName": "DevOps enablement - 2026",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 677431,
+        "ProjectName": "Norway GA Validation",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 677434,
+        "ProjectName": "CHP project 2026",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 677444,
+        "ProjectName": "Engineering Systems SI EA NXOpen - FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 677494,
+        "ProjectName": "BOS",
+        "SBUName": "Mobility",
+        "LoBName": "HACON"
+    },
+    {
+        "ProjectID": 677496,
+        "ProjectName": "AMS-Australia-HW-FY26",
+        "SBUName": "Mobility",
+        "LoBName": "Customer Service & Rolling Stock"
+    },
+    {
+        "ProjectID": 677498,
+        "ProjectName": "Enable Your Manager",
+        "SBUName": "Service Excellence",
+        "LoBName": "Process and Workflow Automation"
+    },
+    {
+        "ProjectID": 677515,
+        "ProjectName": "CT0000673_FT OTC OneEdge_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 677522,
+        "ProjectName": "SITRANS Hub IQ EB",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 677602,
+        "ProjectName": "CT0000674_LRN CL_Muse&PioneerClub_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 677603,
+        "ProjectName": "CT0000673_FT OTC P_iX Development_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 677606,
+        "ProjectName": "DE-Engineering Tools-Mainline",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 677639,
+        "ProjectName": "System Design Tool 3.0",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 677640,
+        "ProjectName": "SE GS C LGT EN TDA TDS TD-FT.D.IN.DTS.SES_Architecture Activities_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 677646,
+        "ProjectName": "Location_Assesment_BillingOnly",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 677650,
+        "ProjectName": "SB_PRO_UI-UX_FY25-26_BillingOnly",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 677658,
+        "ProjectName": "CBTC",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 677663,
+        "ProjectName": "Airlink CBTC",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 677671,
+        "ProjectName": "SherpaX 3S configurator",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 677685,
+        "ProjectName": "ESBO",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 677701,
+        "ProjectName": "TGMT Airlink Support",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 677702,
+        "ProjectName": "ITS_UK",
+        "SBUName": "Mobility",
+        "LoBName": "Intelligent Traffic Systems R&D IN"
+    },
+    {
+        "ProjectID": 677706,
+        "ProjectName": "Building X Delivery Support_BillingOnly",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 677733,
+        "ProjectName": "Building X DevSecOps_BillingOnly",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 677737,
+        "ProjectName": "Building X Integration Platform_BillingOnly",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 677741,
+        "ProjectName": "Building X Site Controls",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 677750,
+        "ProjectName": "Building X SBA ToolKit",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 677764,
+        "ProjectName": "DxC - DI PA SW 2_FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 677767,
+        "ProjectName": "EConnect BY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 677771,
+        "ProjectName": "LCB Projects - Siv Control - BWKH",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 677774,
+        "ProjectName": "Stencil BY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 677846,
+        "ProjectName": "LI EB-Continental Sumter_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 677855,
+        "ProjectName": "ByteMark_Dev",
+        "SBUName": "Mobility",
+        "LoBName": "HACON"
+    },
+    {
+        "ProjectID": 677856,
+        "ProjectName": "TPS_Tech1",
+        "SBUName": "Mobility",
+        "LoBName": "HACON"
+    },
+    {
+        "ProjectID": 677872,
+        "ProjectName": "TPS_Tech2",
+        "SBUName": "Mobility",
+        "LoBName": "HACON"
+    },
+    {
+        "ProjectID": 677895,
+        "ProjectName": "UK-RAMS Activities",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 677999,
+        "ProjectName": "CT0000672_FT FDS_Industrial Information Hub_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 678000,
+        "ProjectName": "CT0000672_FT FDS_Industrial Information Hub_Essentials_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 678027,
+        "ProjectName": "EL Projects",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 678057,
+        "ProjectName": "SMS - HK",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 678063,
+        "ProjectName": "EL UK Projects",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 678071,
+        "ProjectName": "OE-IEA",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 678085,
+        "ProjectName": "OE-BAE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 678141,
+        "ProjectName": "Digital Service Center EU",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 678161,
+        "ProjectName": "POD.AI FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 678164,
+        "ProjectName": "LI-Eli Lilly Customization_FY25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 678210,
+        "ProjectName": "DE Engineering Tool R&D - DS3 & TCM",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 678214,
+        "ProjectName": "SI EA CS EF FE Resource Hosting - FY2026",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 678261,
+        "ProjectName": "Internal Audits for FDS",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 678320,
+        "ProjectName": "FDS - Core and Connectivity UX FY 2026_BillingOnly",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 678325,
+        "ProjectName": "Airbyte - FAROS AI - FY26 Q2-Q4",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 678348,
+        "ProjectName": "APM",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 678368,
+        "ProjectName": "RailXplore Fusion",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 678450,
+        "ProjectName": "IT_Component_Design - RDS DPE NRS billing",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 678468,
+        "ProjectName": "Anchor Model Integration and Connectivity_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 678483,
+        "ProjectName": "Platform Engineering - SMO CS",
+        "SBUName": "Mobility",
+        "LoBName": "Customer Service & Rolling Stock"
+    },
+    {
+        "ProjectID": 678485,
+        "ProjectName": "FY26_PT_NRS",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 678492,
+        "ProjectName": "CT0000672_FT FDS _Industrial Edge_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 678496,
+        "ProjectName": "CT0000672_FT FDS _Anchor Model Integration and Connectivity_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 678533,
+        "ProjectName": "HMI-RT_AI",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 678542,
+        "ProjectName": "CMMS_Implementation_APC_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 678668,
+        "ProjectName": "FY26_CH - NRS",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 678673,
+        "ProjectName": "FY26_Germany-NRS",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 678675,
+        "ProjectName": "FDS - Core FY 2026 - New",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 678708,
+        "ProjectName": "Internal Project Support for Middle East",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 678775,
+        "ProjectName": "WAG10 Reporting",
+        "SBUName": "Mobility",
+        "LoBName": "Customer Service & Rolling Stock"
+    },
+    {
+        "ProjectID": 678777,
+        "ProjectName": "DS3 Integration Support India",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 678779,
+        "ProjectName": "JRU ML-TC",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 678794,
+        "ProjectName": "AP4FS - FY26 V1",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 678888,
+        "ProjectName": "NRS billing - DevCon FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 678925,
+        "ProjectName": "CT0000640_Travel_For_CategoryOwner_WvS_Aanchal_Travel_FY2026",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 678940,
+        "ProjectName": "OSES Agentic Development - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 679032,
+        "ProjectName": "EP_SW2_PRMPO_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 679039,
+        "ProjectName": "ICT DASS",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 679123,
+        "ProjectName": "ICT_SNRE",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 679140,
+        "ProjectName": "OSPO1_SERVICES_FY26_SICHARGE (Alexander)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 679202,
+        "ProjectName": "CT0000662_DI FA DSP Documentation_FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 679311,
+        "ProjectName": "Security Config Converter",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 679322,
+        "ProjectName": "SILTS",
+        "SBUName": "Mobility",
+        "LoBName": "Customer Service & Rolling Stock"
+    },
+    {
+        "ProjectID": 679354,
+        "ProjectName": "ADV Bid Support Project",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 679377,
+        "ProjectName": "HPE_Synergy",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 679389,
+        "ProjectName": "IBM_PAM_Solution",
+        "SBUName": "IT AA",
+        "LoBName": "IOT DS OPS&TR IT AA"
+    },
+    {
+        "ProjectID": 679419,
+        "ProjectName": "Pre-BTL_Projects_USD",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 679465,
+        "ProjectName": "Insight_DCR",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 679479,
+        "ProjectName": "ALDP - Batch 1 of 2026",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 679490,
+        "ProjectName": "EMM_Digineers Award_Sahain",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 679760,
+        "ProjectName": "CKAN Phase 4",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 679767,
+        "ProjectName": "ICT-Nexus Service Manager",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 679771,
+        "ProjectName": "ICT-Model X",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 679774,
+        "ProjectName": "ICT- SGI",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 679776,
+        "ProjectName": "ICT- DASS",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 679833,
+        "ProjectName": "ChalkTalk 3.5",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Systems and Solutions"
+    },
+    {
+        "ProjectID": 679981,
+        "ProjectName": "GA Radar Development Support Q2",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 679985,
+        "ProjectName": "OSPO-B_SERVICES_FY26_ADV TECH (Ignacio)",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 679987,
+        "ProjectName": "OSPO1_SERVICES_Innomotics (Yevgeni)_FY26",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 679997,
+        "ProjectName": "OSPO-B_SERVICES_SI E R&D (Dan)_FY26",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 680030,
+        "ProjectName": "AI ML",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 680033,
+        "ProjectName": "Dockers-Kubernetes",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 680035,
+        "ProjectName": "STEG - Infrastructure Support FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 680086,
+        "ProjectName": "Solution_NG_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 680234,
+        "ProjectName": "CT0000719_Digital Offering and Services_Q2 to Q4_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 680438,
+        "ProjectName": "EP_SW2_NovaConfig_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrical Products"
+    },
+    {
+        "ProjectID": 680645,
+        "ProjectName": "AEP_SSI_Tool_Enhancement(Facilities)",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 680785,
+        "ProjectName": "Mendix low code_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 680861,
+        "ProjectName": "OSPO-B_SERVICES_Altair (Clement)_FY26",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 680869,
+        "ProjectName": "SI B PRO QM_PA_FY26_Billing Only",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 680904,
+        "ProjectName": "LCB Projects - Siv Control Web App BY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 680995,
+        "ProjectName": "SI EA CS AI Support - FY2026",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 681010,
+        "ProjectName": "CYBER_SEC_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 681384,
+        "ProjectName": "EA_AU_EE_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 681401,
+        "ProjectName": "Belgium GA Validation",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 681540,
+        "ProjectName": "Dispatcher",
+        "SBUName": "Mobility",
+        "LoBName": "HACON"
+    },
+    {
+        "ProjectID": 681542,
+        "ProjectName": "Project Insight Board - Data Engineering_2",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Data Analytics"
+    },
+    {
+        "ProjectID": 681572,
+        "ProjectName": "RCM",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 681577,
+        "ProjectName": "Agentic AI Training",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 681692,
+        "ProjectName": "Portfolio Manager New - FY26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 681700,
+        "ProjectName": "Gravito_ICT FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 681716,
+        "ProjectName": "DI IT_ICT FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 681789,
+        "ProjectName": "CT0000671_DI FA BE_Evosoft_DevOps_ADO-BMS_FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Business Excellence-DASS"
+    },
+    {
+        "ProjectID": 681793,
+        "ProjectName": "LCB Projects - Siv Control - PZN",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 681824,
+        "ProjectName": "PIMO",
+        "SBUName": "Mobility",
+        "LoBName": "Product & Solution Security_MO"
+    },
+    {
+        "ProjectID": 681831,
+        "ProjectName": "Defect Hunter_FY26 (XM Evergreen Upgrade 2)",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 681904,
+        "ProjectName": "FT D AA IN PAMC DCP SSM Add On Annexure 3 FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 682063,
+        "ProjectName": "RIPC Digital Asset Management Study",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 682067,
+        "ProjectName": "Unified Display System 2.0",
+        "SBUName": "Mobility",
+        "LoBName": "Rail Infrastructure Train Control"
+    },
+    {
+        "ProjectID": 682072,
+        "ProjectName": "GSW_Enablement_Services-Trainings_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 682077,
+        "ProjectName": "ADV INDIA BENCH",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 682159,
+        "ProjectName": "OSPO1_SERVICES_FY26_SI GSW CSS_130Hrs (Jasmin)",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 682161,
+        "ProjectName": "OSPO1_SERVICES_FY26_SI GSW CSS_500Hrs (Jasmin)",
+        "SBUName": "Service Excellence",
+        "LoBName": "Open-Source Program Office 1 (Bangalore)"
+    },
+    {
+        "ProjectID": 682163,
+        "ProjectName": "PHED_Maintenance",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Innovation & Digitalization"
+    },
+    {
+        "ProjectID": 682217,
+        "ProjectName": "ADV Bid Support Project",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 682245,
+        "ProjectName": "NRS - IoT Core Documentation FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 682291,
+        "ProjectName": "DI IT CS KONY FY26 H2",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 682304,
+        "ProjectName": "GAVATAR - Q4_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 682376,
+        "ProjectName": "PHED_Maintenance_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Innovation & Digitalization"
+    },
+    {
+        "ProjectID": 682452,
+        "ProjectName": "SDS Expert - English",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 682514,
+        "ProjectName": "PWA SUPPORT FY 26",
+        "SBUName": "Service Excellence",
+        "LoBName": "Process and Workflow Automation"
+    },
+    {
+        "ProjectID": 682592,
+        "ProjectName": "DI PA  - FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 682657,
+        "ProjectName": "ProDoCX Dashboard ML-Productive",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 682660,
+        "ProjectName": "O2P Susbstation Training",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 682817,
+        "ProjectName": "FY26_CH",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 682858,
+        "ProjectName": "ADVANTEST_FY26_H2",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Advantest"
+    },
+    {
+        "ProjectID": 682884,
+        "ProjectName": "Internal Project Support for Middle East - Offshore",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 682889,
+        "ProjectName": "Internal Project Support for Middle East - THoP",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 683013,
+        "ProjectName": "CT0000667_QAFCO_MELAMINE_BAGGING_SYSTEM",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "WCC Sub Segment"
+    },
+    {
+        "ProjectID": 683091,
+        "ProjectName": "FY26_CH_PES",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 683129,
+        "ProjectName": "LCB Projects - Siv Control - MPI Stuttgart",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 683131,
+        "ProjectName": "LCB Projects - Q-Chem",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 683136,
+        "ProjectName": "LCB Projects - Siemens AU",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 683144,
+        "ProjectName": "LCB Projects - HIKMA",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 683165,
+        "ProjectName": "SINEC_Security Monitor_AddOn_Resource_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 683218,
+        "ProjectName": "XS DEV FY26H2",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 683225,
+        "ProjectName": "ADVANTEST_SHIP_FY26_H2",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Advantest"
+    },
+    {
+        "ProjectID": 683375,
+        "ProjectName": "LMT",
+        "SBUName": "Mobility",
+        "LoBName": "Mobility LOB"
+    },
+    {
+        "ProjectID": 683410,
+        "ProjectName": "CT0000643_FA_FIN_ProSourceNextGen_Mendix_FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 683552,
+        "ProjectName": "IT_DEV_FY26_H2",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 683559,
+        "ProjectName": "Assetfox DevOps",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Measurement Intelligence"
+    },
+    {
+        "ProjectID": 683562,
+        "ProjectName": "IT_OPS_FY26_H2",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 683574,
+        "ProjectName": "IT_TCM_FY26_H2",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 683583,
+        "ProjectName": "DTS Infra Management",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Technology and Innovation"
+    },
+    {
+        "ProjectID": 683739,
+        "ProjectName": "CSS_PCS GS&GR",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 683786,
+        "ProjectName": "GA Radar Development Support Q3",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 683797,
+        "ProjectName": "LI EB-Continental Otrokovice_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 683817,
+        "ProjectName": "Cross Product Alignment - CPA",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 683818,
+        "ProjectName": "FY26_SMO IT_DIRECT",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 683829,
+        "ProjectName": "RDS B2B Gen AI Initiative",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 684063,
+        "ProjectName": "SI IT DE VC S",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 684098,
+        "ProjectName": "CH VC PES NRS billing",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 684119,
+        "ProjectName": "OSPO-B_SERVICES_Vanderlande-Logistics_OliverStrobel_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 684168,
+        "ProjectName": "CT0000644_HMI_CA_FT IT FIN Dashboard FY25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Visu Systems"
+    },
+    {
+        "ProjectID": 684174,
+        "ProjectName": "evosoft_FT D EVO COM_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 684176,
+        "ProjectName": "SE GT SV SLM TRF-FT.D.IN.DTS.SES_Markus",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 684185,
+        "ProjectName": "SE GS C GSO SOP AS-FT.D.IN.DTS.SES_Haejin",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 684187,
+        "ProjectName": "SE.GT.SG.EU.OFM-FT.D.IN.DTS.SES_Tobias",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 684202,
+        "ProjectName": "SE TI EAD SVD GSVO-FT.D.IN.DTS.SES_Juergen",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 684446,
+        "ProjectName": "FDS-CDS (Apr-Sep'26)",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 684828,
+        "ProjectName": "MOF UI - RC-US SI EA CS",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 685139,
+        "ProjectName": "Cyber Range Web Application",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 685174,
+        "ProjectName": "SMO RI R&D OSS",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685247,
+        "ProjectName": "GenX - DevSecOps (Apr-May'26)",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 685254,
+        "ProjectName": "OSS Clearing_SI CTO FY-26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685258,
+        "ProjectName": "SI B PRO Code Audit_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685265,
+        "ProjectName": "OSS Clearing_FT FDS FY-26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685267,
+        "ProjectName": "SI B SW OSS Clearing(H2)_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685270,
+        "ProjectName": "SHS OSS Clearing FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685279,
+        "ProjectName": "SI B SER_OSS clearing FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685281,
+        "ProjectName": "OSS Clearing_LC FY-26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685283,
+        "ProjectName": "SI B PRO_OSS Clearing_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685289,
+        "ProjectName": "OSPO1_SERVICES_FY26_SI GSW CSS_500Hrs (Jasmin)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685293,
+        "ProjectName": "OSPO-B_SERVICES_Altair (Clement)_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685296,
+        "ProjectName": "OSPO-B_SERVICES_SI E R&D (Dan)_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685298,
+        "ProjectName": "OSPO-B_SERVICES_Innomotics (Yevgeni)_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685302,
+        "ProjectName": "OSPO1_SERVICES_FY26_GBS (Jithu)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685305,
+        "ProjectName": "OSPO-B_SERVICES_FY26_T SSP (OliverFendt)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685307,
+        "ProjectName": "OSPO-B_SERVICES_FY26_FT GENX (StefanPannenberg)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685309,
+        "ProjectName": "OSPO-BLR_Projects_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685311,
+        "ProjectName": "OSPO1_SERVICES_FY26_SI GSW (Helmut)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685324,
+        "ProjectName": "SBMS - Software Business Management Solution",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 685332,
+        "ProjectName": "Master Data Management and Migration",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685345,
+        "ProjectName": "OSPO-B_SERVICES_FY26_SICHARGE (Alexander)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685516,
+        "ProjectName": "Power BI Development Serv",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 685617,
+        "ProjectName": "King Fahad",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 685630,
+        "ProjectName": "E-DPS",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 685800,
+        "ProjectName": "PSO Component Testing",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 685812,
+        "ProjectName": "SI B SU_OSS clearing FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 685821,
+        "ProjectName": "RDS B2B Connexx Transition",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 685832,
+        "ProjectName": "RDS DPE Extension",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 685987,
+        "ProjectName": "SGI EA Master Project FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Electrification & Automation"
+    },
+    {
+        "ProjectID": 686030,
+        "ProjectName": "EIS_Evosoft_DevOps_ADO-BMS_FY25-26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 686154,
+        "ProjectName": "LI EB-Continental Hannover_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 686192,
+        "ProjectName": "PCI Version 2.1",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 686318,
+        "ProjectName": "DI_IT_AIDA_OCT_SEP_FY_26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Data Analytics"
+    },
+    {
+        "ProjectID": 686330,
+        "ProjectName": "SINEC_Security Monitor_Hardware_NFR_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 686374,
+        "ProjectName": "SW_NRS_25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 686403,
+        "ProjectName": "SiePortal_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Sales Platform"
+    },
+    {
+        "ProjectID": 686463,
+        "ProjectName": "Life Sciences | Sanofi Dark Factory",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 686479,
+        "ProjectName": "GAVATAR - FY26 Till Q3",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 686482,
+        "ProjectName": "SIFIX Support FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 686731,
+        "ProjectName": "FY26_Germany_ SHERPA X",
+        "SBUName": "India",
+        "LoBName": "India"
+    },
+    {
+        "ProjectID": 686793,
+        "ProjectName": "Data Modelling-Support",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 686930,
+        "ProjectName": "Luma platform from dotmatic",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 687136,
+        "ProjectName": "FY26_CH_SIIT_ SHERPA X",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 687229,
+        "ProjectName": "MES3Shape_Travel_Singapore",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 687260,
+        "ProjectName": "LCB Projects - Singapore Engg Services for Project Robin",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 687268,
+        "ProjectName": "LCB Projects - RVNL",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 687327,
+        "ProjectName": "LCB Projects - Siv Control - UKD Düsseldorf Chirurgie",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 687475,
+        "ProjectName": "CT0000669_DI_CTO_AAS_MVP_FY 25-26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 687479,
+        "ProjectName": "SI_B_PRO_FY26_27",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 687616,
+        "ProjectName": "CT0000643_DAI_EigenEnggAgent_FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "HMI RunTime"
+    },
+    {
+        "ProjectID": 687646,
+        "ProjectName": "SMO RI R&D OSS CCM and Ramp up",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 687657,
+        "ProjectName": "CKAN Phase 5",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 687663,
+        "ProjectName": "SW_SIMIT_Setup",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 687672,
+        "ProjectName": "SMO RS - OSS Clearing",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 687697,
+        "ProjectName": "American Water MDMS Implementation",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "ADV D GD ADVANTA SOL"
+    },
+    {
+        "ProjectID": 687715,
+        "ProjectName": "Circularity Intelligence_POC Development_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 687781,
+        "ProjectName": "OSPO1_SERVICES_SI GSW EU PRO (Sisinio)_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 687813,
+        "ProjectName": "Circularity Intelligence_POC Development_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 687924,
+        "ProjectName": "OTC_FDI_Additional_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Motion Control"
+    },
+    {
+        "ProjectID": 687962,
+        "ProjectName": "APEX",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 688285,
+        "ProjectName": "OSPO-B_SERVICES_ADV CN (Xu Li)_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 688287,
+        "ProjectName": "OSPO1_SERVICES_SI GSW-EMeter (Jaro)_FY26",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 688292,
+        "ProjectName": "RC-SE SI SWE EA-FT.D.IN.DTS.SES_Credit Limit Workflow_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 688364,
+        "ProjectName": "CT0000640_AS_EE_STEP7 CFC DEVELOPMENT FY26",
+        "SBUName": "Discrete Automation Systems & Software",
+        "LoBName": "Innovation Control Engineering"
+    },
+    {
+        "ProjectID": 688628,
+        "ProjectName": "BuildingX",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Cloud Software"
+    },
+    {
+        "ProjectID": 688695,
+        "ProjectName": "LCB Projects - Siv Control - UKD Düsseldorf Chirurgie (U)",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 688710,
+        "ProjectName": "AWS OpenTofu",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Development"
+    },
+    {
+        "ProjectID": 688715,
+        "ProjectName": "LCB Projects - Singapore Engg Services for Project Robin (U)",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 688721,
+        "ProjectName": "SIMARIS PROJECTS FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 689788,
+        "ProjectName": "FAT_Validator_FY26",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 689790,
+        "ProjectName": "System One FW Development FY25-26",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 689884,
+        "ProjectName": "OSPO-B_SERVICES_FY26_SI GSW CSS_PO2_500Hrs (Jasmin)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 690004,
+        "ProjectName": "Productivity Measurement in Faros.AI - FY' 26 (Q3-Q4)",
+        "SBUName": "Operations & Transformation",
+        "LoBName": "Quality Management - IN"
+    },
+    {
+        "ProjectID": 690117,
+        "ProjectName": "SINEC NMS FY 26 - HW & SW costs",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 690118,
+        "ProjectName": "CYS-Athena",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 690146,
+        "ProjectName": "PSS Hours for RS PSSEs",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 690190,
+        "ProjectName": "LI EB-Continental Otrokovice_FY26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 690643,
+        "ProjectName": "SI E R&D - FY 27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 690727,
+        "ProjectName": "FDS-CDS-Innovation (Jun-Sep'26)",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 690747,
+        "ProjectName": "ADVANTEST FY27",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Advantest"
+    },
+    {
+        "ProjectID": 690840,
+        "ProjectName": "Upskill (L&D)",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Digitalization"
+    },
+    {
+        "ProjectID": 690842,
+        "ProjectName": "SAP_Innomotics_Evosoft_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 690848,
+        "ProjectName": "SherpaX_CAPM_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 690859,
+        "ProjectName": "FY27_IT ECP ERP-AM_ SHERPA X",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 690864,
+        "ProjectName": "FY27_SI EP-BW4HANA Data Analytics",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Enterprise Core Platform"
+    },
+    {
+        "ProjectID": 690893,
+        "ProjectName": "SI EA NA PROJECT FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement Tech Hub"
+    },
+    {
+        "ProjectID": 690899,
+        "ProjectName": "COMPAS KB FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 690905,
+        "ProjectName": "BIMPOWER FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 691011,
+        "ProjectName": "COMPAS FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 691028,
+        "ProjectName": "AEP Estimates",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 691050,
+        "ProjectName": "MDM FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 691106,
+        "ProjectName": "SE GS SO PSI-FT.D.IN.DTS.SES_Shubham",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 691190,
+        "ProjectName": "Command and Control Centre Demo - Internal Investment",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 691193,
+        "ProjectName": "SieSales_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Sales Platform"
+    },
+    {
+        "ProjectID": 691257,
+        "ProjectName": "SGP – SE CD I-FT.D.IN.DTS.SES_Travis",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 691429,
+        "ProjectName": "SiePortal_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Sales Platform"
+    },
+    {
+        "ProjectID": 691439,
+        "ProjectName": "OSPO-B_SERVICES_Innomotics (Yevgeni)_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 691451,
+        "ProjectName": "SP5 FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 691455,
+        "ProjectName": "OSPO-B_SERVICES_SI GSW CSS_Jasmin_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 691458,
+        "ProjectName": "cDNA FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 691463,
+        "ProjectName": "OSPO-B_SERVICES_SI GSW EU PRO (Sisinio)_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 691479,
+        "ProjectName": "FY27_GS GR: DLR, PSSE, PSSE Copilot, Enabler - PSSE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 691558,
+        "ProjectName": "IT DA_Common FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Data Analytics"
+    },
+    {
+        "ProjectID": 691682,
+        "ProjectName": "B2B NextGen Integration",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 691921,
+        "ProjectName": "Audiology FY27",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Audiology"
+    },
+    {
+        "ProjectID": 692043,
+        "ProjectName": "Siemens AG - EDI - Development  FY2027",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692045,
+        "ProjectName": "Siemens AG - EDI - DevOps & Support FY2027",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692047,
+        "ProjectName": "Siemens AG - EDI - Service Management FY2027",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692050,
+        "ProjectName": "Siemens AG - GX  -  Development Services FY2027",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692079,
+        "ProjectName": "Westlock - UK",
+        "SBUName": "Mobility",
+        "LoBName": "Rail infrastucture Product & Systems"
+    },
+    {
+        "ProjectID": 692177,
+        "ProjectName": "Integration Services and Platform Dev",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692385,
+        "ProjectName": "SI.EA.CS-FT.D.IN.DTS.SES_AI Search Engine-POC_FY26",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 692402,
+        "ProjectName": "PSS_RI_FY26",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 692459,
+        "ProjectName": "Qiddiya Implementation",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 692461,
+        "ProjectName": "PSS - SI B SER",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Technology & Innovation_SB"
+    },
+    {
+        "ProjectID": 692469,
+        "ProjectName": "GAVATAR _FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692472,
+        "ProjectName": "XS DEV FY27 H1",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692474,
+        "ProjectName": "DI IT CS KONY FY27-H1",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692481,
+        "ProjectName": "IT APS LCW FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 692590,
+        "ProjectName": "PAMC_CYS_FSS_25-26",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Software"
+    },
+    {
+        "ProjectID": 692601,
+        "ProjectName": "Siemens Energy FY27",
+        "SBUName": "Digitalization and Technology Solutions",
+        "LoBName": "Solutions and Services"
+    },
+    {
+        "ProjectID": 692837,
+        "ProjectName": "LCB Projects - Siv Control - MPI Gottingen",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 693010,
+        "ProjectName": "LCB Projects - SiSentinel CH",
+        "SBUName": "Smart Buildings",
+        "LoBName": "Products"
+    },
+    {
+        "ProjectID": 693344,
+        "ProjectName": "LI EB-Continental Sumter_FY26_Battery management change request",
+        "SBUName": "Process Automation & Motion Control",
+        "LoBName": "Digital Connectivity and Power"
+    },
+    {
+        "ProjectID": 693391,
+        "ProjectName": "SMO RI R&D OSS",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 693401,
+        "ProjectName": "OSPO-B_SERVICES_FY27_SI GSW (Helmut)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 693501,
+        "ProjectName": "OSPO-B_SERVICES_FY27_SICHARGE (Alexander)",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    },
+    {
+        "ProjectID": 693615,
+        "ProjectName": "Viper D9 Project Support",
+        "SBUName": "Mobility",
+        "LoBName": "Infrastructure and Tools"
+    },
+    {
+        "ProjectID": 693727,
+        "ProjectName": "GC_APMO_FY26_New",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 693858,
+        "ProjectName": "SP5_CSC",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 693861,
+        "ProjectName": "GC_APMO_FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 693873,
+        "ProjectName": "OE-LPE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 693928,
+        "ProjectName": "GridScaleX - Managed Services - FY'27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 693936,
+        "ProjectName": "AMC-FY-2027",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 693938,
+        "ProjectName": "Aldar",
+        "SBUName": "Global Delivery (GD)",
+        "LoBName": "FT D GD IEB MO IND"
+    },
+    {
+        "ProjectID": 693942,
+        "ProjectName": "SI EA LM Managed Services FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 693983,
+        "ProjectName": "OE-BSE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 693988,
+        "ProjectName": "OE-RPE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 693999,
+        "ProjectName": "OE-ESD",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 694040,
+        "ProjectName": "OE-QPS",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 694046,
+        "ProjectName": "OE-BOS",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 694051,
+        "ProjectName": "STEG - Infrastructure Support FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 694072,
+        "ProjectName": "OE-PDE",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 694084,
+        "ProjectName": "OE-PMS",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 694111,
+        "ProjectName": "CSS_APS GS&GR",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "eMobility & Grid Software"
+    },
+    {
+        "ProjectID": 694181,
+        "ProjectName": "OE-IEA",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 694207,
+        "ProjectName": "Engineering Systems SI EP DTS - FY27",
+        "SBUName": "Smart Grids & Infrastructure",
+        "LoBName": "Digital Enablement and Managed Services"
+    },
+    {
+        "ProjectID": 694275,
+        "ProjectName": "OSPO-B_SERVICES_SI E R&D (Dan)_FY27",
+        "SBUName": "Enterprise IT Services",
+        "LoBName": "Application Platforms Services"
+    }
+]

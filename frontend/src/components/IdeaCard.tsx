@@ -69,16 +69,24 @@ export default function IdeaCard({ idea }: { idea: IdeaListItem }) {
 								<span className="text-xs font-mono text-muted-foreground">
 									{idea.idea_id}
 								</span>
-								{idea.active_processing && (
-									<Badge
-										variant="default"
-										className="text-[10px] h-5 gap-1 font-normal bg-emerald-600 hover:bg-emerald-600"
-									>
-										<Loader2 className="w-2.5 h-2.5 animate-spin" />
-										Working
-									</Badge>
-								)}
-								{idea.running_agent && !idea.active_processing && (
+						{idea.active_processing && (
+							<Badge
+								variant="default"
+								className="text-[10px] h-5 gap-1 font-normal bg-emerald-600 hover:bg-emerald-600"
+							>
+								<Loader2 className="w-2.5 h-2.5 animate-spin" />
+								Working
+							</Badge>
+						)}
+						{idea.paused_processing && !idea.active_processing && (
+							<Badge
+								variant="outline"
+								className="text-[10px] h-5 gap-1 font-normal"
+							>
+								Paused
+							</Badge>
+						)}
+						{idea.running_agent && !idea.active_processing && (
 									<Badge
 										variant="secondary"
 										className="text-[10px] h-5 gap-1 font-normal"

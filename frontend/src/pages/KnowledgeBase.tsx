@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Database, FileText, FolderOpen, Upload, ChevronDown, ChevronRight, File, Loader2, BookOpen } from 'lucide-react'
-import { fetchIdeas, fetchKnowledgeBase, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE } from '../api/client'
+import { Database, FileText, FolderOpen, Upload, ChevronDown, ChevronRight, File, Loader2, BookOpen, Search, Globe } from 'lucide-react'
+import { fetchIdeas, fetchKnowledgeBase, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE, fetchGateConfig } from '../api/client'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -13,14 +13,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-
-type SourceCategory = {
-  name: string
-  type: string
-  status: 'Connected' | 'Available' | 'Stub'
-  icon: string
-  docs: KBDocument[]
-}
 
 export default function KnowledgeBase() {
   const [ideas, setIdeas] = useState<IdeaListItem[]>([])
@@ -81,52 +73,8 @@ export default function KnowledgeBase() {
     )
   }
 
-  const sources: SourceCategory[] = [
-    {
-      name: 'Google Patents', type: 'Patent', status: 'Connected', icon: '🔍',
-      docs: [],
-    },
-    {
-      name: 'Espacenet (EPO)', type: 'Patent', status: 'Connected', icon: '🌐',
-      docs: [],
-    },
-    {
-      name: 'USPTO', type: 'Patent', status: 'Connected', icon: '🇺🇸',
-      docs: [],
-    },
-    {
-      name: 'WIPO PATENTSCOPE', type: 'Patent', status: 'Connected', icon: '🌍',
-      docs: [],
-    },
-    {
-      name: 'DPMA (German)', type: 'Patent', status: 'Connected', icon: '🇩🇪',
-      docs: [],
-    },
-    {
-      name: 'Knowledge Base (Local)', type: 'Research', status: 'Available', icon: '📄',
-      docs: (kbData?.documents ?? []).filter(d => d.source === 'raw'),
-    },
-    {
-      name: 'Processed Knowledge', type: 'Research', status: 'Available', icon: '🎓',
-      docs: (kbData?.documents ?? []).filter(d => d.source === 'processed'),
-    },
-    {
-      name: 'GitHub Code Search', type: 'Code', status: 'Available', icon: '💻',
-      docs: [],
-    },
-    {
-      name: 'Wikipedia', type: 'Reference', status: 'Available', icon: '📚',
-      docs: [],
-    },
-    {
-      name: 'Hugging Face Models', type: 'AI/ML', status: 'Available', icon: '🤗',
-      docs: [],
-    },
-    {
-      name: 'Siemens Portfolio (Internal)', type: 'Internal', status: 'Stub', icon: '🏢',
-      docs: [],
-    },
-  ]
+  const rawDocs = (kbData?.documents ?? []).filter(d => d.source === 'raw')
+  const processedDocs = (kbData?.documents ?? []).filter(d => d.source === 'processed')
 
   return (
     <div className="space-y-6">
@@ -152,11 +100,9 @@ export default function KnowledgeBase() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <FileText className="w-4 h-4 text-primary" />
-              <span className="text-xs font-medium">Repository Categories</span>
+              <span className="text-xs font-medium">Repository Sources</span>
             </div>
-            <p className="text-3xl font-bold tracking-tight">
-              {kbData ? Object.keys(kbData.sources).length : 0}
-            </p>
+            <p className="text-3xl font-bold tracking-tight">{kbData ? Object.keys(kbData.sources).length : 0}</p>
             <p className="text-xs text-muted-foreground mt-1">Ingested document categories</p>
           </CardContent>
         </Card>
@@ -244,34 +190,25 @@ export default function KnowledgeBase() {
         </Card>
       )}
 
-      {/* External Patent Sources */}
+      {/* External Sources */}
       <Card className="overflow-hidden">
         <CardHeader className="p-4 border-b bg-muted/20">
-          <CardTitle className="text-sm font-semibold">External Patent & Knowledge Corpora</CardTitle>
+          <CardTitle className="text-sm font-semibold">External Patent & Knowledge Sources</CardTitle>
         </CardHeader>
-        <ScrollArea className="max-h-[500px]">
-          <div className="divide-y">
-            {sources.map((source, i) => (
-              <div key={i} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-xl shrink-0">{source.icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">{source.name}</p>
-                    <p className="text-xs text-muted-foreground">{source.type}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {source.docs.length > 0 && (
-                    <span className="text-xs text-muted-foreground">{source.docs.length} doc(s)</span>
-                  )}
-                  <Badge variant={source.status === 'Connected' ? 'default' : source.status === 'Available' ? 'secondary' : 'outline'}>
-                    {source.status}
-                  </Badge>
-                </div>
-              </div>
+        <CardContent className="p-4">
+          <p className="text-xs text-muted-foreground mb-3">
+            Knowledge agents search external sources during the prior art and research phases.
+            Results appear in each idea's Research Data tab once processed.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {['Google Patents', 'Espacenet (EPO)', 'USPTO', 'WIPO PATENTSCOPE', 'DPMA', 'GitHub', 'Wikipedia', 'Hugging Face'].map((name) => (
+              <Badge key={name} variant="secondary" className="text-xs gap-1">
+                <Globe className="w-3 h-3" />
+                {name}
+              </Badge>
             ))}
           </div>
-        </ScrollArea>
+        </CardContent>
       </Card>
 
       {/* Document Viewer Dialog */}

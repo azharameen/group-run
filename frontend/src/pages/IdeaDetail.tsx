@@ -22,16 +22,27 @@ import {
     Globe,
     Layers,
     MessageSquare,
-    Folder
+    Folder,
+    Trash2,
+    Pause,
+    Play,
+    SendHorizonal
 } from 'lucide-react'
 import {
     fetchIdeaDetail,
     fetchIdeaFiles,
     scoreIdea,
     advanceIdea,
+    deleteIdea,
+    pauseIdea,
+    resumeIdea,
+    addIdeaComment,
+    fetchGateConfig,
+    fetchCriteriaConfig,
     connectSSE,
     type IdeaDetail as IdeaDetailType,
     type IdeaFile,
+    type GateConfig,
 } from '../api/client'
 
 import ScoreRadar from '../components/ScoreRadar'
@@ -121,7 +132,14 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
   const [loading, setLoading] = useState(true)
   const [scoring, setScoring] = useState(false)
   const [advancing, setAdvancing] = useState(false)
+  const [pausing, setPausing] = useState(false)
+  const [resuming, setResuming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [savingComment, setSavingComment] = useState(false)
   const [error, setError] = useState('')
+  const [gateConfig, setGateConfig] = useState<GateConfig | null>(null)
+  const [compositeThreshold, setCompositeThreshold] = useState(70)
 
   const loadData = async () => {
     if (!ideaId) return
@@ -140,6 +158,13 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    fetchGateConfig().then(setGateConfig).catch(() => {})
+    fetchCriteriaConfig().then((cfg) => {
+      if (cfg?.thresholds?.composite_threshold) setCompositeThreshold(cfg.thresholds.composite_threshold)
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     loadData()
@@ -176,6 +201,56 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
     setAdvancing(false)
   }
 
+  const handleDelete = async () => {
+    if (!ideaId) return
+    if (!window.confirm('Delete this idea and all files?')) return
+    setDeleting(true)
+    try {
+      await deleteIdea(ideaId)
+      window.location.href = '/'
+    } catch (err: any) {
+      console.error(err)
+    }
+    setDeleting(false)
+  }
+
+  const handlePause = async () => {
+    if (!ideaId) return
+    setPausing(true)
+    try {
+      await pauseIdea(ideaId)
+      await loadData()
+    } catch (err: any) {
+      console.error(err)
+    }
+    setPausing(false)
+  }
+
+  const handleResume = async () => {
+    if (!ideaId) return
+    setResuming(true)
+    try {
+      await resumeIdea(ideaId)
+      await loadData()
+    } catch (err: any) {
+      console.error(err)
+    }
+    setResuming(false)
+  }
+
+  const handleComment = async () => {
+    if (!ideaId || !commentText.trim()) return
+    setSavingComment(true)
+    try {
+      await addIdeaComment(ideaId, commentText.trim())
+      setCommentText('')
+      await loadData()
+    } catch (err: any) {
+      console.error(err)
+    }
+    setSavingComment(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -204,6 +279,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
   const composite = latestScores?.composite || 0
   const strengthRating = latestScores?.strength_rating || ''
   const currentState = idea?.current_state || stateData?.current_state || ''
+  const pausedProcessing = Boolean(idea?.paused_processing)
 
   return (
     <div className="space-y-6">
@@ -225,14 +301,22 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={handleScore} disabled={scoring} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${scoring ? 'animate-spin' : ''}`} />
-            Re-Score Idea
+            <Button variant="outline" size="sm" onClick={pausedProcessing ? handleResume : handlePause} disabled={pausing || resuming} className="gap-2">
+              {pausedProcessing ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+              {pausedProcessing ? 'Resume' : 'Pause'}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting} className="gap-2">
+            <Trash2 className="w-4 h-4" />
+            Delete
           </Button>
-          <Button size="sm" onClick={() => handleAdvance()} disabled={advancing} className="gap-2">
-            {advancing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Advance Workflow
-          </Button>
+            <Button variant="outline" size="sm" onClick={handleScore} disabled={scoring} className="gap-2">
+              <RefreshCw className={`w-4 h-4 ${scoring ? 'animate-spin' : ''}`} />
+              Re-Score Idea
+            </Button>
+            <Button size="sm" onClick={() => handleAdvance()} disabled={advancing} className="gap-2">
+              {advancing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Advance Workflow
+            </Button>
         </div>
       </div>
 
@@ -293,6 +377,13 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
           >
             <MessageSquare className="w-4 h-4" />
             Agent Timeline
+          </TabsTrigger>
+          <TabsTrigger
+            value="comments"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2.5 gap-2 text-sm font-medium transition-all"
+          >
+            <SendHorizonal className="w-4 h-4" />
+            Comments
           </TabsTrigger>
           <TabsTrigger
             value="filesystem"
@@ -380,12 +471,24 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
             {/* Right Column */}
             <div className="space-y-5">
               <SiemensGateStatus
-                gates={[
-                  { name: 'Prior Art Review', status: composite >= 50 ? 'pass' : 'pending', detail: `${composite}/100` },
-                  { name: 'Business Value', status: composite >= 40 ? 'pass' : 'pending', detail: `${composite >= 40 ? '✓' : '—'}` },
-                  { name: 'Siemens Alignment', status: composite >= 60 ? 'pass' : 'pending', detail: composite >= 60 ? 'Aligned' : 'Not checked' },
-                  { name: 'Composite ≥ 70', status: composite >= 70 ? 'pass' : currentState !== 'raw_signal_collected' ? 'fail' : 'pending', detail: `${composite}/70` },
-                ]}
+                gates={(() => {
+                  const rawGates = gateConfig?.gates || {}
+                  const entries = Object.entries(rawGates)
+                  if (entries.length === 0) {
+                    return [
+                      { name: 'Composite Threshold', status: (composite >= compositeThreshold ? 'pass' : currentState !== 'raw_signal_collected' ? 'fail' : 'pending') as 'pass' | 'fail' | 'pending', detail: `${composite}/${compositeThreshold}` },
+                    ]
+                  }
+                  return entries.slice(0, 4).map(([key, gate]) => {
+                    const items = gate.items || []
+                    const passed = composite >= 50
+                    return {
+                      name: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+                      status: (passed ? 'pass' : 'pending') as 'pass' | 'fail' | 'pending',
+                      detail: `${items.length} items`,
+                    }
+                  })
+                })()}
               />
 
               <Card>
@@ -428,6 +531,28 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
         {/* ── Timeline Activity & Agent Conversations Tab ── */}
         <TabsContent value="history" className="pt-4">
           <IdeaHistoryTimeline detail={detail} files={files} />
+        </TabsContent>
+
+        <TabsContent value="comments" className="space-y-4 pt-4">
+          <Card>
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm font-semibold">Add Comment</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1 space-y-3">
+              <textarea
+                className="w-full min-h-28 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Write a note for this idea"
+              />
+              <div className="flex justify-end">
+                <Button onClick={handleComment} disabled={savingComment || !commentText.trim()} className="gap-2">
+                  <SendHorizonal className="w-4 h-4" />
+                  Add Comment
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Filesystem Explorer Tab ── */}
