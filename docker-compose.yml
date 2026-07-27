@@ -6,6 +6,13 @@ services:
     container_name: ideator-backend
     env_file:
       - .env
+    environment:
+      # Pin the app's root directory explicitly. The Dockerfile copies the
+      # "app" package straight into WORKDIR /app (no intermediate "backend"
+      # folder like the local checkout has), so the default path-depth-based
+      # detection in app/config.py would otherwise resolve to "/" instead of
+      # "/app" and silently write data outside the mounted volumes below.
+      - APP_ROOT_DIR=/app
     ports:
       - "8000:8000"
     volumes:

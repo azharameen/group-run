@@ -92,6 +92,36 @@ def write_handover(idea_id: str, from_state: str, to_state: str, content: str):
     write_markdown(path, content)
 
 
+def get_all_idea_files(idea_id: str) -> list[dict]:
+    """Recursively discover and return all files in an idea's workspace folder."""
+    folder = idea_folder_path(idea_id)
+    files: list[dict] = []
+    if not os.path.exists(folder):
+        return files
+
+    for root, _, filenames in os.walk(folder):
+        for fname in sorted(filenames):
+            fpath = os.path.join(root, fname)
+            rel_path = os.path.relpath(fpath, folder).replace("\\", "/")
+            ext = os.path.splitext(fname)[1].lower()
+            stat = os.stat(fpath)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+            except Exception:
+                content = "<binary file or unreadable content>"
+
+            files.append({
+                "path": rel_path,
+                "filename": fname,
+                "ext": ext,
+                "size_bytes": stat.st_size,
+                "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "content": content,
+            })
+    return files
+
+
 def _load_documents_from_dir(root: str, source: str) -> list[dict]:
     docs: list[dict] = []
     if not os.path.exists(root):
@@ -126,13 +156,7 @@ def load_knowledge_base() -> list[dict]:
 
 
 def recover_from_filesystem() -> int:
-    """Scan workspace/ideas/ for idea folders not yet registered in ideas.yaml.
-    
-    For each unregistered folder, load its idea.yaml and register it in the
-    registry so data is preserved across restarts.
-    
-    Returns the number of ideas recovered.
-    """
+    """Scan workspace/ideas/ for idea folders not yet registered in ideas.yaml."""
     registry = load_idea_registry()
     registered_ids = {e["idea_id"] for e in registry.get("ideas", [])}
     ideas_dir = os.path.join(WORKSPACE_DIR, "ideas")
@@ -148,9 +172,8 @@ def recover_from_filesystem() -> int:
         if not os.path.isdir(folder_path):
             continue
 
-        idea_id = folder_name  # e.g. IDEA-0001
+        idea_id = folder_name
         if idea_id in registered_ids:
-            # Extract numeric part for max_id tracking
             parts = idea_id.split("-")
             if len(parts) == 2 and parts[1].isdigit():
                 num = int(parts[1])
@@ -158,7 +181,6 @@ def recover_from_filesystem() -> int:
                     max_id = num + 1
             continue
 
-        # Try to load the idea's metadata
         idea_yaml_path = os.path.join(folder_path, "idea.yaml")
         if not os.path.exists(idea_yaml_path):
             continue
@@ -167,7 +189,6 @@ def recover_from_filesystem() -> int:
         if not idea_data or not isinstance(idea_data, dict):
             continue
 
-        # Register in the registry
         registry["ideas"].append({
             "idea_id": idea_id,
             "title": idea_data.get("title", idea_id),
@@ -176,7 +197,6 @@ def recover_from_filesystem() -> int:
             "created_at": idea_data.get("created_at", ""),
         })
 
-        # Track max numeric id
         parts = idea_id.split("-")
         if len(parts) == 2 and parts[1].isdigit():
             num = int(parts[1])

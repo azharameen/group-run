@@ -13,7 +13,14 @@ import os
 from typing import Any, Optional
 
 from ..config import KNOWLEDGE_BASE_DIR, INSTRUCTIONS_DIR
-from ..storage.yaml_io import load_knowledge_base, load_idea_registry, read_yaml, write_yaml, write_markdown
+from ..storage.yaml_io import (
+    load_knowledge_base,
+    load_idea_registry,
+    read_yaml,
+    write_yaml,
+    write_markdown,
+    idea_folder_path,
+)
 from ..models.idea import WorkflowState
 from .client import call_llm_json
 
@@ -109,8 +116,9 @@ def _render_context_summary(context: dict[str, Any], max_documents: int = 12) ->
 
 def _ensure_idea_folder(idea_id: str) -> dict:
     """Load idea.yaml, returning empty dict if not found."""
+    path = os.path.join(idea_folder_path(idea_id), "idea.yaml")
     try:
-        return read_yaml(f"workspace/ideas/{idea_id}/idea.yaml") or {}
+        return read_yaml(path) or {}
     except FileNotFoundError:
         return {}
 
@@ -119,12 +127,12 @@ def _write_idea_field(idea_id: str, field: str, value: Any) -> None:
     """Update a single field in idea.yaml."""
     data = _ensure_idea_folder(idea_id)
     data[field] = value
-    write_yaml(f"workspace/ideas/{idea_id}/idea.yaml", data)
+    write_yaml(os.path.join(idea_folder_path(idea_id), "idea.yaml"), data)
 
 
 def _write_markdown(idea_id: str, filename: str, content: str) -> None:
     """Write content to a markdown file in the idea folder."""
-    write_markdown(f"workspace/ideas/{idea_id}/{filename}", content)
+    write_markdown(os.path.join(idea_folder_path(idea_id), filename), content)
 
 
 def _call_llm_json_with_fallback(
@@ -134,19 +142,36 @@ def _call_llm_json_with_fallback(
     temperature: float,
     max_tokens: int,
     fallback_factory,
+    max_retries: int = 2,
 ):
-    try:
-        result = call_llm_json(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        if result:
-            return result
-    except Exception:
-        pass
-    return fallback_factory()
+    """Call LLM with retry logic, then fall back to factory data.
+    
+    Retries up to max_retries times before giving up.
+    All fallback data is marked with _fallback: true so UI can warn users.
+    """
+    last_error = None
+    for attempt in range(1 + max_retries):
+        try:
+            result = call_llm_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            if result:
+                return result
+            # Empty result — retry
+            last_error = "Empty result from LLM"
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                continue
+
+    # All retries exhausted — use fallback
+    fallback = fallback_factory()
+    fallback["_fallback"] = True
+    fallback["_fallback_reason"] = str(last_error)
+    return fallback
 
 
 # ---------------------------------------------------------------------------
@@ -407,6 +432,18 @@ Provide a JSON object with:
 5. "ipc_classes_suggested" — array of 3-5 suggested IPC/CPC classes
 6. "initial_novelty_score" — integer 0-100 with brief justification
 """
+    # Build dynamic fallback from actual idea data
+    _title = data.get("title", "")
+    _solution = data.get("solution_concept", "")
+    _domain = data.get("siemens_domain", "")
+    _clarification = data.get("clarification_data", {})
+    _innovation_aspects = _clarification.get("innovation_aspects", []) if isinstance(_clarification, dict) else []
+    _key_components = _clarification.get("key_technical_components", []) if isinstance(_clarification, dict) else []
+    # Extract keywords from solution for search terms
+    _solution_words = _solution.replace(".", " ").replace(",", " ").replace(";", " ").split() if _solution else []
+    _search_kw = [w for w in _solution_words if len(w) > 4][:8]
+    _fallback_search = [f"{_domain} {kw}" if _domain else kw for kw in _search_kw] if _search_kw else [_title]
+
     result = _call_llm_json_with_fallback(
         system_prompt=f"{SYSTEM_BASE}\nYou are a patent novelty analyst expert.",
         user_prompt=prompt,
@@ -415,23 +452,18 @@ Provide a JSON object with:
         fallback_factory=lambda: {
             "novelty_elements": [
                 {
-                    "description": "Edge-native digital-twin control loops and thermal prediction tied to converter station operation",
-                    "confidence": 65,
+                    "description": aspect if isinstance(aspect, str) else str(aspect),
+                    "confidence": 50,
                 }
+                for aspect in (_innovation_aspects or [_solution[:200] if _solution else _title])[:3]
             ],
-            "novelty_hypothesis_statement": "The invention appears novel because it couples predictive thermal control with a digital twin and localized edge inference.",
+            "novelty_hypothesis_statement": f"The invention ({_title}) addresses a gap in {_domain or 'the relevant domain'} through {_solution[:150] if _solution else 'the proposed solution'}.",
             "differentiating_features": [
-                "Digital twin-driven predictive control",
-                "Converter-station-specific thermal optimization",
-                "Closed-loop edge deployment"
+                str(c) for c in (_key_components or [_solution[:150]] if _solution else [])[:3]
             ],
-            "search_terms": [
-                "digital twin thermal control",
-                "converter station predictive maintenance",
-                "edge thermal anomaly detection",
-            ],
-            "ipc_classes_suggested": ["H02J", "G05B", "H02M"],
-            "initial_novelty_score": 65,
+            "search_terms": _fallback_search[:8],
+            "ipc_classes_suggested": ["G06F", "H04L", "G05B"] if not _domain else ["G05B"],
+            "initial_novelty_score": 50,
         },
     )
     _write_idea_field(idea_id, "novelty_hypothesis", result)
@@ -443,7 +475,10 @@ Provide a JSON object with:
 # ---------------------------------------------------------------------------
 
 def execute_prior_art_review(idea_id: str) -> dict:
-    """Simulate prior art review using LLM knowledge."""
+    """Simulate prior art review using LLM knowledge (NOT a real patent database).
+    
+    TODO: Replace with Google Patents API, USPTO API, or Espacenet API integration.
+    """
     data = _ensure_idea_folder(idea_id)
     title = data.get("title", "")
     solution = data.get("solution_concept", "")
@@ -454,6 +489,9 @@ def execute_prior_art_review(idea_id: str) -> dict:
 Title: {title}
 Solution: {solution}
 Search Terms: {json.dumps(search_terms)}
+
+IMPORTANT: You are simulating a prior art search using your training knowledge.
+Mark all references as simulated since you do not have access to a live patent database.
 
 Provide a JSON object with:
 1. "references_found" — array of up to 8 simulated prior art references (each with: title, source, year, relevance_brief, similarity_score 0-100)
@@ -468,6 +506,8 @@ Provide a JSON object with:
         temperature=0.4,
         max_tokens=4096,
     )
+    result["_simulated"] = True
+    result["_simulated_reason"] = "Prior art references generated from LLM training knowledge, not a live patent database."
     _write_idea_field(idea_id, "prior_art_review", result)
     return result
 
@@ -494,20 +534,31 @@ Provide a JSON object with:
 4. "reverse_engineering_difficulty" — "Easy", "Moderate", "Hard", or "Very Hard"
 5. "detectability_notes" — 2-3 sentences summary
 """
+    # Build dynamic fallback from actual idea data
+    _sol = data.get("solution_concept", "")
+    _has_monitoring = any(kw in _sol.lower() for kw in ["monitor", "detect", "sensor", "telemetry", "log", "measure"])
+    _has_hardware = any(kw in _sol.lower() for kw in ["hardware", "device", "sensor", "physical", "embedded", "edge"])
+    _has_software = any(kw in _sol.lower() for kw in ["software", "algorithm", "model", "api", "cloud", "service"])
+
     result = _call_llm_json_with_fallback(
         system_prompt=f"{SYSTEM_BASE}\nYou specialize in patent detectability and non-obviousness analysis.",
         user_prompt=prompt,
         temperature=0.5,
         max_tokens=2048,
         fallback_factory=lambda: {
-            "detectability_score": 65,
+            "detectability_score": 70 if _has_monitoring else (55 if _has_hardware else 40),
             "detection_methods": [
-                "Monitor digital twin setpoint adjustments against operational telemetry",
-                "Inspect edge gateway logs for thermal optimization events",
+                "Monitor operational outputs and compare against baseline behavior",
+                "Inspect system logs for characteristic patterns described in the solution",
+                "Analyze network traffic or API calls for unique signatures",
+            ] if _has_software else [
+                "Inspect physical devices for unique hardware configurations",
+                "Monitor sensor outputs for characteristic patterns",
+                "Analyze system behavior logs for unique operational signatures",
             ],
-            "non_obviousness_argument": "The claim set is anchored in specific hardware-tied thermal optimization and edge inference rather than generic analytics.",
-            "reverse_engineering_difficulty": "Hard",
-            "detectability_notes": "The architecture is sufficiently tied to operational signals and control behavior to support infringement detection.",
+            "non_obviousness_argument": f"The claim set involves {_sol[:120] if _sol else 'specific technical elements'} that go beyond generic solutions in the domain.",
+            "reverse_engineering_difficulty": "Hard" if _has_hardware else ("Moderate" if _has_software else "Moderate"),
+            "detectability_notes": f"The solution ({data.get('title', '')}) {'includes monitoring/detection mechanisms that aid infringement detection.' if _has_monitoring else 'requires careful analysis to detect infringement.'}",
         },
     )
     _write_idea_field(idea_id, "detectability_review", result)
@@ -539,17 +590,25 @@ Provide a JSON object with:
 5. "competitive_advantage" — 2-3 sentences
 6. "licensing_potential" — "Low", "Medium", or "High" with reasoning
 """
+    # Build dynamic fallback from actual idea data
+    _bv_solution = data.get("solution_concept", "")
+    _bv_problem = data.get("problem_statement", "")
+    _bv_domain = domain or "Smart Infrastructure"
+    # Estimate complexity from solution length
+    _bv_sol_words = len(_bv_solution.split()) if _bv_solution else 0
+    _bv_ttm = "1-2 years" if _bv_sol_words < 50 else ("2-3 years" if _bv_sol_words < 150 else "3-5 years")
+
     result = _call_llm_json_with_fallback(
         system_prompt=f"{SYSTEM_BASE}\nYou are a business value analyst evaluating patent portfolios.",
         user_prompt=prompt,
         temperature=0.5,
         max_tokens=2048,
         fallback_factory=lambda: {
-            "business_value_score": 70,
-            "market_impact": "The invention targets grid reliability and substation uptime, which have clear operational value.",
-            "siemens_business_units": [domain or "Smart Infrastructure"],
-            "estimated_time_to_market": "2-3 years",
-            "competitive_advantage": "The solution combines thermal control and edge analytics in a way that can reduce downtime.",
+            "business_value_score": 55,
+            "market_impact": f"The invention addresses {_bv_problem[:120] if _bv_problem else 'a technical problem'} within the {_bv_domain} domain.",
+            "siemens_business_units": [_bv_domain],
+            "estimated_time_to_market": _bv_ttm,
+            "competitive_advantage": f"The solution {_bv_solution[:150] if _bv_solution else 'proposes a novel approach'} that could differentiate Siemens in this space.",
             "licensing_potential": "Medium",
         },
     )
@@ -582,18 +641,35 @@ Provide a JSON object with:
 5. "technology_readiness" — estimated TRL level 1-9
 6. "alignment_notes" — 2-3 sentences overall assessment
 """
+    # Build dynamic fallback from actual idea data
+    _sa_domain = domain or "Smart Infrastructure"
+    _sa_solution = data.get("solution_concept", "")
+    _sa_problem = data.get("problem_statement", "")
+    # Load tech domains for better alignment
+    _tech_domains_path = os.path.join(KNOWLEDGE_BASE_DIR, "siemens", "tech_domains.yaml")
+    _tech_domains = read_yaml(_tech_domains_path) if os.path.exists(_tech_domains_path) else {}
+    _aligned_areas = [_sa_domain]
+    if isinstance(_tech_domains, dict):
+        for td_key, td_val in _tech_domains.items():
+            if _sa_domain.lower() in td_key.lower() or td_key.lower() in _sa_domain.lower():
+                if isinstance(td_val, dict):
+                    _aligned_areas.extend(td_val.get("strategic_areas", []) or td_val.get("areas", []))
+                elif isinstance(td_val, list):
+                    _aligned_areas.extend(td_val)
+    _aligned_areas = list(dict.fromkeys(_aligned_areas))[:5]  # dedupe, limit
+
     result = _call_llm_json_with_fallback(
         system_prompt=f"{SYSTEM_BASE}\nYou are a Siemens innovation strategy expert.",
         user_prompt=prompt,
         temperature=0.5,
         max_tokens=2048,
         fallback_factory=lambda: {
-            "alignment_score": 75,
-            "aligned_strategic_areas": [domain or "Smart Infrastructure"],
-            "portfolio_gap_analysis": "The idea fits a practical gap in industrial monitoring and thermal control.",
-            "competitive_advantage_siemens": "It builds on Siemens' industrial footprint and edge-control capabilities.",
-            "technology_readiness": 6,
-            "alignment_notes": "The invention aligns with Siemens' industrial and infrastructure focus.",
+            "alignment_score": 55,
+            "aligned_strategic_areas": _aligned_areas,
+            "portfolio_gap_analysis": f"The idea addresses {_sa_problem[:120] if _sa_problem else 'a technical need'} in the {_sa_domain} domain.",
+            "competitive_advantage_siemens": f"It leverages Siemens' capabilities in {_sa_domain.lower()} through {_sa_solution[:120] if _sa_solution else 'the proposed approach'}.",
+            "technology_readiness": 5,
+            "alignment_notes": f"The invention ({data.get('title', '')}) targets the {_sa_domain} domain.",
         },
     )
     _write_idea_field(idea_id, "siemens_alignment", result)
@@ -769,7 +845,11 @@ Provide:
 # ---------------------------------------------------------------------------
 
 def execute_manager_review(idea_id: str) -> dict:
-    """Simulate manager/enabler review sign-off."""
+    """Simulate manager/enabler review sign-off (NOT a real human manager).
+    
+    TODO: Replace with human-in-the-loop: pause workflow, notify actual manager via email/Teams,
+    collect decision through web form or API endpoint.
+    """
     data = _ensure_idea_folder(idea_id)
     title = data.get("title", "")
     score = data.get("composite_score", 0)
@@ -792,6 +872,8 @@ Provide as JSON:
         temperature=0.5,
         max_tokens=2048,
     )
+    result["_simulated"] = True
+    result["_simulated_reason"] = "Manager review simulated by LLM. Replace with actual human manager approval."
     _write_idea_field(idea_id, "manager_review", result)
     return result
 
@@ -801,7 +883,11 @@ Provide as JSON:
 # ---------------------------------------------------------------------------
 
 def execute_ip_review(idea_id: str) -> dict:
-    """Simulate IP review by patent attorney."""
+    """Simulate IP review by patent attorney (NOT a real attorney).
+    
+    TODO: Replace with human-in-the-loop: actual IP attorney review required before filing.
+    LLM can provide pre-screening, but not final legal opinion.
+    """
     data = _ensure_idea_folder(idea_id)
     title = data.get("title", "")
     ideascope = data.get("ideascope_draft", {})
@@ -826,6 +912,8 @@ Provide as JSON:
         temperature=0.4,
         max_tokens=3072,
     )
+    result["_simulated"] = True
+    result["_simulated_reason"] = "IP attorney review simulated by LLM. Replace with actual qualified attorney review."
     _write_idea_field(idea_id, "ip_review", result)
     return result
 
@@ -852,19 +940,35 @@ Provide as JSON:
 6. "next_steps" — array of clear next steps for filing
 7. "overall_grade" — "A" (fast-track), "B" (standard), "C" (needs work)
 """
+    # Build dynamic fallback from actual idea data
+    _ip_score = data.get("composite_score", 0)
+    _ip_ideascope = data.get("ideascope_draft", {})
+    _ip_claims = _ip_ideascope.get("claims", []) if isinstance(_ip_ideascope, dict) else []
+    _ip_has_claims = len(_ip_claims) >= 3
+    # Decision based on score and claim completeness
+    if _ip_score >= 70 and _ip_has_claims:
+        _ip_decision = "Approved for Filing"
+        _ip_grade = "A"
+    elif _ip_score >= 50:
+        _ip_decision = "Conditional Approval"
+        _ip_grade = "B"
+    else:
+        _ip_decision = "Needs Review"
+        _ip_grade = "C"
+
     result = _call_llm_json_with_fallback(
         system_prompt=f"{SYSTEM_BASE}\nYou are Siemens Chief IP Counsel with final authority.",
         user_prompt=prompt,
         temperature=0.3,
         max_tokens=2048,
         fallback_factory=lambda: {
-            "validation_decision": "Conditional Approval",
-            "patentability_confirmed": True,
-            "filing_strategy_final": "PCT",
-            "committee_signoff_required": True,
-            "counsel_notes": "Proceed once claim language is reviewed for jurisdictional fit.",
-            "next_steps": ["Finalize claim language", "Prepare filing package"],
-            "overall_grade": "B",
+            "validation_decision": _ip_decision,
+            "patentability_confirmed": _ip_score >= 50,
+            "filing_strategy_final": "PCT" if _ip_score >= 60 else "Provisional",
+            "committee_signoff_required": _ip_score < 70,
+            "counsel_notes": f"Idea ({title}) has composite score {_ip_score} and {len(_ip_claims)} claims. {'Ready for filing.' if _ip_decision == 'Approved for Filing' else 'Needs further review before filing.'}",
+            "next_steps": ["Finalize claim language", "Prepare filing package"] if _ip_has_claims else ["Draft minimum 3 claims", "Review prior art", "Prepare filing package"],
+            "overall_grade": _ip_grade,
         },
     )
     _write_idea_field(idea_id, "ip_counsel_validation", result)
@@ -895,18 +999,56 @@ Provide as JSON:
 5. "filing_packet_ready" — boolean
 6. "submission_readiness_score" — integer 0-100
 """
+    # Build dynamic fallback — check actual completeness
+    _sub_ideascope = data.get("ideascope_draft", {})
+    _sub_claims = _sub_ideascope.get("claims", []) if isinstance(_sub_ideascope, dict) else []
+    _sub_scores = data.get("composite_score", 0)
+    _sub_novelty = data.get("novelty_hypothesis", {})
+    _sub_prior_art = data.get("prior_art_review", {})
+    _sub_detect = data.get("detectability_review", {})
+    _sub_bv = data.get("business_value", {})
+    _sub_alignment = data.get("siemens_alignment", {})
+    # Check which sections are complete
+    _sections_done = sum(1 for s in [_sub_novelty, _sub_prior_art, _sub_detect, _sub_bv, _sub_alignment, _sub_ideascope] if s)
+    _readiness = min(100, int((_sections_done / 6) * 100))
+    _is_ready = _sections_done >= 5 and len(_sub_claims) >= 3 and _sub_scores >= 40
+    # Build highlights from actual data
+    _highlights = []
+    if title:
+        _highlights.append(f"Invention: {title}")
+    if _sub_novelty:
+        _highlights.append(f"Novelty hypothesis completed")
+    if _sub_prior_art:
+        _highlights.append(f"Prior art review completed")
+    if _sub_scores:
+        _highlights.append(f"Composite score: {_sub_scores}")
+    if data.get("siemens_domain"):
+        _highlights.append(f"Domain: {data['siemens_domain']}")
+    # Build risk factors from missing sections
+    _risks = []
+    if not _sub_prior_art:
+        _risks.append("Prior art review not yet completed")
+    if len(_sub_claims) < 3:
+        _risks.append(f"Insufficient claims ({len(_sub_claims)}/3)")
+    if _sub_scores < 50:
+        _risks.append(f"Low composite score ({_sub_scores})")
+    if not _sub_detect:
+        _risks.append("Detectability review pending")
+    if not _risks:
+        _risks.append("Manual claim tuning may be required")
+
     result = _call_llm_json_with_fallback(
         system_prompt=f"{SYSTEM_BASE}\nYou are a patent portfolio manager preparing final submissions.",
         user_prompt=prompt,
         temperature=0.4,
         max_tokens=3072,
         fallback_factory=lambda: {
-            "submission_summary": f"Submission packet for {title} is ready for filing review.",
-            "key_highlights": [title or "Autonomous idea"],
-            "risk_factors": ["Manual claim tuning may be required."],
-            "recommended_next_steps": ["Review claims", "Prepare filing packet"],
-            "filing_packet_ready": True,
-            "submission_readiness_score": 80,
+            "submission_summary": f"Submission packet for {title}. {_sections_done}/6 analysis sections complete. {'Ready for filing review.' if _is_ready else 'Additional analysis needed before filing.'}",
+            "key_highlights": _highlights or [title or "Autonomous idea"],
+            "risk_factors": _risks,
+            "recommended_next_steps": ["Review claims", "Prepare filing packet"] if _is_ready else ["Complete pending analyses", "Draft claims", "Review claims", "Prepare filing packet"],
+            "filing_packet_ready": _is_ready,
+            "submission_readiness_score": _readiness,
         },
     )
     _write_idea_field(idea_id, "submission_packet", result)

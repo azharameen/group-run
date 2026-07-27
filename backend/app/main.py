@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from .config import settings, WORKSPACE_DIR, CONFIG_DIR
+from .config import settings, WORKSPACE_DIR, CONFIG_DIR, KNOWLEDGE_BASE_DIR
 from .models.idea import WorkflowState, PHASE_GROUPS
 from .orchestrator.tools import (
     create_idea,
@@ -30,6 +30,7 @@ from .orchestrator.workflow import (
     run_generation_cycle,
     seed_ideas,
     run_full_pipeline,
+    get_active_idea,
     set_emit_sse_callback as workflow_set_emit,
 )
 from .state.machine import set_emit_sse_callback as state_set_emit
@@ -41,6 +42,7 @@ from .storage.yaml_io import (
     recover_from_filesystem,
     read_yaml,
     read_markdown,
+    get_all_idea_files,
 )
 
 
@@ -184,6 +186,9 @@ async def list_ideas(
             "composite_score": composite,
             "strength_rating": latest_score.get("strength_rating", ""),
             "running_agent": idea_data.get("running_agent", ""),
+            "active_processing": idea_data.get("active_processing", False),
+            "active_agent": idea_data.get("active_agent", ""),
+            "active_state": idea_data.get("active_state", ""),
             "created_at": idea_data.get("created_at", ""),
             "updated_at": idea_data.get("updated_at", ""),
         })
@@ -206,6 +211,13 @@ async def get_idea(idea_id: str):
         "state": state_data,
         "scores": scores_data,
     }
+
+
+@app.get("/api/ideas/{idea_id}/files")
+async def get_idea_files(idea_id: str):
+    """Get all workspace files for a specific idea."""
+    files = get_all_idea_files(idea_id)
+    return {"idea_id": idea_id, "files": files, "count": len(files)}
 
 
 @app.post("/api/ideas")
@@ -332,6 +344,50 @@ async def get_knowledge_base():
     }
 
 
+@app.get("/api/workflow/status")
+async def workflow_status():
+    """Return the currently active idea and queued ideas for the scheduler/UI."""
+    registry = load_idea_registry()
+    ideas = registry.get("ideas", [])
+    active_idea_id = get_active_idea()
+    active_idea = None
+    queued = []
+
+    for entry in ideas:
+        idea_id = entry.get("idea_id")
+        if not idea_id:
+            continue
+        idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
+        scores = load_idea_yaml(idea_id, "scores.yaml") or {}
+        latest = scores.get("latest", {})
+        state = idea_data.get("current_state", entry.get("state", "raw_signal_collected"))
+        payload = {
+            "idea_id": idea_id,
+            "title": idea_data.get("title", entry.get("title", "")),
+            "state": state,
+            "phase": idea_data.get("phase", entry.get("phase", "discovery")),
+            "active_processing": idea_data.get("active_processing", False),
+            "active_agent": idea_data.get("active_agent", ""),
+            "active_state": idea_data.get("active_state", ""),
+            "active_message": idea_data.get("active_message", ""),
+            "running_agent": idea_data.get("running_agent", ""),
+            "composite_score": latest.get("composite", 0),
+            "created_at": idea_data.get("created_at", entry.get("created_at", "")),
+        }
+        if idea_id == active_idea_id:
+            active_idea = payload
+        else:
+            queued.append(payload)
+
+    return {
+        "active_idea_id": active_idea_id,
+        "active_idea": active_idea,
+        "queued_count": len(queued),
+        "queued_ideas": queued,
+        "one_idea_focus": True,
+    }
+
+
 @app.get("/api/config/siemens-domains")
 async def get_siemens_domains():
     """Get Siemens strategic technology domains."""
@@ -340,7 +396,8 @@ async def get_siemens_domains():
         return read_yaml(path)
     return {"error": "Tech domains file not found"}
 
-
+
+
 # ── Pipeline Request Model ──
 
 

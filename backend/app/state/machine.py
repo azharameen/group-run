@@ -73,6 +73,109 @@ class PatentWorkflowMachine:
         # Register transitions with condition (guard) and after (callback)
         self._add_transitions()
 
+    @property
+    def current_state(self) -> WorkflowState:
+        """Return the current workflow state as an enum for compatibility."""
+        return WorkflowState(self.state)
+
+    @property
+    def state_history(self) -> list[StateTransition]:
+        """Return the recorded state history as typed transition objects."""
+        state_data = load_idea_yaml(self.idea_id, "state.yaml") or {}
+        history = state_data.get("history", [])
+        transitions: list[StateTransition] = []
+        for item in history:
+            if not isinstance(item, dict):
+                continue
+            from_state = item.get("from") or item.get("from_state")
+            to_state = item.get("to") or item.get("to_state") or item.get("state")
+            if not from_state or not to_state:
+                continue
+            try:
+                transitions.append(StateTransition(
+                    from_state=WorkflowState(str(from_state)),
+                    to_state=WorkflowState(str(to_state)),
+                    timestamp=item.get("timestamp", datetime.utcnow()),
+                    agent_responsible=str(item.get("agent_responsible", "")),
+                    validation_passed=bool((item.get("validation") or {}).get("passed", False)),
+                ))
+            except Exception:
+                continue
+        return transitions
+
+    def advance_to_next(self) -> dict[str, Any]:
+        """Advance exactly one registered step, if possible."""
+        next_state = self._next_registered_state(self.state)
+        if not next_state:
+            return {"success": False, "reason": "No next state available", "state": self.state}
+        return self._advance_to_state(next_state)
+
+    def advance_to(self, target_state: str) -> dict[str, Any]:
+        """Advance to a specific target state if it is the next registered step.
+
+        The state machine advances one transition per call. Longer paths should
+        be achieved by repeated calls to `advance_to_next()` or by invoking this
+        method again after each successful step.
+        """
+        try:
+            target = WorkflowState(target_state)
+        except Exception:
+            return {"success": False, "reason": f"Unknown state: {target_state}", "state": self.state}
+
+        if target == self.current_state:
+            return {"success": True, "state": self.state, "message": "Already at target state"}
+
+        next_state = self._next_registered_state(self.state)
+        if next_state is None or next_state != target:
+            return {"success": False, "reason": f"{target.value} is not the next reachable state", "state": self.state}
+
+        return self._advance_to_state(target)
+
+    def _next_registered_state(self, current_state: str) -> WorkflowState | None:
+        """Return the next state in the linear workflow order, if any."""
+        try:
+            idx = ALL_STATES.index(current_state)
+        except ValueError:
+            return None
+        if idx + 1 >= len(ALL_STATES):
+            return None
+        try:
+            return WorkflowState(ALL_STATES[idx + 1])
+        except Exception:
+            return None
+
+    def _advance_to_state(self, target: WorkflowState) -> dict[str, Any]:
+        """Invoke the transition trigger that leads to the given target state."""
+        trigger_map = {
+            WorkflowState.idea_discovery: self.advance_to_idea_discovery,
+            WorkflowState.idea_clarification: self.advance_to_idea_clarification,
+            WorkflowState.novelty_hypothesis: self.advance_to_novelty_hypothesis,
+            WorkflowState.prior_art_review: self.advance_to_prior_art_review,
+            WorkflowState.detectability_review: self.advance_to_detectability_review,
+            WorkflowState.business_value_review: self.advance_to_business_value_review,
+            WorkflowState.siemens_innovation_alignment: self.advance_to_siemens_alignment,
+            WorkflowState.ideascope_draft: self.advance_to_ideascope_draft,
+            WorkflowState.siemens_internal_filing_check: self.advance_to_siemens_filing_check,
+            WorkflowState.manager_or_enabler_review: self.advance_to_manager_review,
+            WorkflowState.ip_review: self.advance_to_ip_review,
+            WorkflowState.siemens_ip_counsel_validation: self.advance_to_counsel_validation,
+            WorkflowState.ready_for_submission: self.advance_to_ready,
+            WorkflowState.submitted: self.advance_to_submitted,
+            WorkflowState.feedback_received: self.advance_to_feedback,
+            WorkflowState.revision_in_progress: self.advance_to_revision,
+            WorkflowState.accepted_or_closed: self.advance_to_accepted,
+        }
+
+        trigger = trigger_map.get(target)
+        if trigger is None:
+            return {"success": False, "reason": f"No trigger registered for {target.value}", "state": self.state}
+
+        try:
+            trigger()
+            return {"success": True, "state": self.state, "target": target.value}
+        except Exception as exc:
+            return {"success": False, "reason": str(exc), "state": self.state, "target": target.value}
+
     def _add_transitions(self):
         """Register all allowed state transitions."""
         transitions = [
@@ -179,6 +282,14 @@ class PatentWorkflowMachine:
         state_data["agent_responsible"] = self._agent_for_state(state)
         save_idea_yaml(idea_id, "state.yaml", state_data)
 
+        # Also update idea.yaml with running_agent so the dashboard picks it up
+        idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
+        idea_data["running_agent"] = self._agent_for_state(state)
+        idea_data["phase"] = phase_for_state(state)
+        idea_data["current_state"] = state.value
+        idea_data["updated_at"] = datetime.utcnow().isoformat()
+        save_idea_yaml(idea_id, "idea.yaml", idea_data)
+
         self._emit("idea.transition", {
             "idea_id": idea_id,
             "to": state.value,
@@ -269,8 +380,10 @@ class PatentWorkflowMachine:
         history.append({
             "from": source,
             "to": dest,
+            "state": dest,  # Keep for backward compat with timeline
             "timestamp": datetime.utcnow().isoformat(),
             "validation": self.last_validation_result,
+            "agent_responsible": self._agent_for_state(WorkflowState(dest)),
         })
         state_data["history"] = history
         state_data["previous_state"] = source
@@ -360,46 +473,69 @@ class PatentWorkflowMachine:
         if not idea_data:
             return False
 
-        # Simple heuristics: if the idea has content, basic checks pass
-        has_title = bool(idea_data.get("title", ""))
-        has_signal = bool(idea_data.get("signal_text", ""))
-        has_problem = bool(idea_data.get("problem_statement", ""))
+        # Stronger heuristics: require substantive content, not just a field placeholder.
+        has_title = len(str(idea_data.get("title", "")).strip()) >= 8
+        has_signal = len(str(idea_data.get("signal_text", "")).strip()) >= 20
+        has_problem = len(str(idea_data.get("problem_statement", "")).strip()) >= 40
+        has_solution = len(str(idea_data.get("solution_concept", "")).strip()) >= 40
+
+        source_evidence = idea_data.get("source_evidence", [])
+        if isinstance(source_evidence, str):
+            source_evidence = [source_evidence]
+        elif not isinstance(source_evidence, list):
+            source_evidence = []
+        evidence_items = [str(item).strip() for item in source_evidence if str(item).strip()]
+
+        novelty_hypothesis = idea_data.get("novelty_hypothesis", {})
+        if not isinstance(novelty_hypothesis, dict):
+            novelty_hypothesis = {}
+
+        detectability_review = idea_data.get("detectability_review", {})
+        if not isinstance(detectability_review, dict):
+            detectability_review = {}
+
+        business_value = idea_data.get("business_value", {})
+        if not isinstance(business_value, dict):
+            business_value = {}
 
         if item_id == "signal_coherent":
             return has_signal
         if item_id == "min_sources":
-            return len(idea_data.get("source_evidence", [])) >= 2
+            return len(evidence_items) >= 2
         if item_id == "problem_identifiable":
             return has_problem
         if item_id in ("technical_context", "solution_direction"):
-            return has_problem and bool(idea_data.get("solution_concept", ""))
+            return has_problem and has_solution
         if item_id == "siemens_domain":
             return bool(idea_data.get("siemens_domain", ""))
         if item_id == "search_terms":
-            # Would check for novelty claims in idea.yaml
-            return has_title
+            search_terms = novelty_hypothesis.get("search_terms", [])
+            return isinstance(search_terms, list) and len([term for term in search_terms if str(term).strip()]) >= 4
         if item_id == "prior_art_examined":
-            return len(idea_data.get("source_evidence", [])) >= 3
+            return bool(novelty_hypothesis.get("novelty_hypothesis_statement")) and len(evidence_items) >= 2
         if item_id in ("novelty_gap_analysis", "differentiating_features"):
-            return bool(idea_data.get("solution_concept", ""))
+            differentiating_features = novelty_hypothesis.get("differentiating_features", [])
+            return bool(novelty_hypothesis.get("novelty_hypothesis_statement")) and isinstance(differentiating_features, list) and len([f for f in differentiating_features if str(f).strip()]) >= 2
         if item_id == "observability_evaluated":
-            return has_problem
+            return bool(detectability_review.get("detectability_score") is not None)
         if item_id == "detection_method":
-            return bool(idea_data.get("solution_concept", ""))
+            methods = detectability_review.get("detection_methods", [])
+            return isinstance(methods, list) and len([m for m in methods if str(m).strip()]) >= 2
         if item_id == "non_obviousness_drafted":
-            return bool(idea_data.get("title", ""))
+            return has_title and has_solution
         if item_id == "business_value_minimum":
             scores = load_idea_yaml(idea_id, "scores.yaml")
             if scores and scores.get("history"):
                 return scores["history"][-1].get("composite", 0) >= 40
-            return True  # no scores yet = assume pass for minimum
+            return False
         if item_id == "siemens_unit_identified":
-            return bool(idea_data.get("siemens_business_unit", ""))
+            units = business_value.get("siemens_business_units", [])
+            return isinstance(units, list) and len([unit for unit in units if str(unit).strip()]) >= 1
         if item_id == "market_impact":
-            return has_problem
+            return bool(business_value.get("market_impact"))
 
-        # Default: item is checked if idea has a title
-        return has_title
+        # Default: unrecognized items should fail closed, not pass by title presence.
+        return False
 
     def validate_gate(self, idea_id: str, gate_name: str) -> dict:
         """Public API: run gate validation."""

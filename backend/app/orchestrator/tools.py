@@ -63,6 +63,7 @@ def create_idea(signal_text: str, title: str = "") -> str:
         current_state=WorkflowState.raw_signal_collected,
         phase="discovery",
         signal_text=signal_text,
+        running_agent="knowledge-curator",
     )
     save_idea_yaml(idea_id, "idea.yaml", record.model_dump(mode="json"))
 
@@ -164,6 +165,10 @@ def score_idea(idea_id: str, agent_name: str = "scoring-engine") -> dict:
     record = engine.score(agent_name)
     meets, reason = engine.meets_threshold()
 
+    criteria_detail = {
+        k: v.model_dump() for k, v in record.criteria_detail.items()
+    }
+
     _emit("idea.scored", {
         "idea_id": idea_id,
         "composite": record.composite,
@@ -174,6 +179,9 @@ def score_idea(idea_id: str, agent_name: str = "scoring-engine") -> dict:
     return {
         "composite": record.composite,
         "breakdown": record.breakdown.model_dump(),
+        "criteria_detail": criteria_detail,
+        "summary": record.summary,
+        "change_explanation": record.change_explanation,
         "strength_rating": record.strength_rating,
         "meets_threshold": meets,
         "threshold_reason": reason,

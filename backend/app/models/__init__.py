@@ -1,4 +1,4 @@
-from .idea import IdeaRecord, IdeaScopeDraft, ScoreRecord, ScoreBreakdown
+from .idea import IdeaRecord, IdeaScopeDraft, ScoreRecord, ScoreBreakdown, CriterionDetail
 from .siemens import SiemensAlignment, SiemensGateResult, SiemensValidation
 
 __all__ = [
@@ -6,6 +6,7 @@ __all__ = [
     "IdeaScopeDraft",
     "ScoreRecord",
     "ScoreBreakdown",
+    "CriterionDetail",
     "SiemensAlignment",
     "SiemensGateResult",
     "SiemensValidation",

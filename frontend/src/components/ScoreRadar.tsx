@@ -7,6 +7,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
 const ALL_CRITERIA = [
   'novelty',
@@ -33,7 +34,7 @@ interface Props {
   size?: number
 }
 
-export default function ScoreRadar({ breakdown, size = 300 }: Props) {
+export default function ScoreRadar({ breakdown, size = 280 }: Props) {
   const data = ALL_CRITERIA.map((key) => ({
     criterion: CRITERIA_LABELS[key] || key,
     score: breakdown?.[key] ?? 0,
@@ -41,24 +42,37 @@ export default function ScoreRadar({ breakdown, size = 300 }: Props) {
   }))
 
   return (
-    <ResponsiveContainer width="100%" height={size}>
-      <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
-        <PolarGrid stroke="#e5e7eb" />
-        <PolarAngleAxis dataKey="criterion" tick={{ fontSize: 10, fill: '#6b7280' }} />
-        <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-        <Tooltip
-          formatter={(value: number) => [`${value}/100`, 'Score']}
-          contentStyle={{ fontSize: 12, borderRadius: 8 }}
-        />
-        <Radar
-          name="Score"
-          dataKey="score"
-          stroke="#009999"
-          fill="#009999"
-          fillOpacity={0.15}
-          strokeWidth={2}
-        />
-      </RadarChart>
-    </ResponsiveContainer>
+    <Card>
+      <CardHeader className="p-4 pb-0">
+        <CardTitle className="text-sm font-semibold">Criteria Radar Score</CardTitle>
+      </CardHeader>
+      <CardContent className="p-2 pt-0">
+        <ResponsiveContainer width="100%" height={size}>
+          <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
+            <PolarGrid stroke="hsl(var(--border))" />
+            <PolarAngleAxis dataKey="criterion" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+            <Tooltip
+              formatter={(value: number) => [`${value}/100`, 'Score']}
+              contentStyle={{
+                backgroundColor: 'hsl(var(--popover))',
+                borderColor: 'hsl(var(--border))',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: 'hsl(var(--popover-foreground))',
+              }}
+            />
+            <Radar
+              name="Score"
+              dataKey="score"
+              stroke="hsl(var(--primary))"
+              fill="hsl(var(--primary))"
+              fillOpacity={0.2}
+              strokeWidth={2}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
   )
 }

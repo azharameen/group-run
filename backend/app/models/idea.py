@@ -79,6 +79,12 @@ class StateTransition(BaseModel):
     notes: str = ""
 
 
+class CriterionDetail(BaseModel):
+    score: float = 0.0
+    reasoning: str = ""
+    confidence: float = 0.0
+
+
 class ScoreBreakdown(BaseModel):
     novelty: float = 0.0
     siemens_alignment: float = 0.0
@@ -93,7 +99,10 @@ class ScoreRecord(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     composite: float = 0.0
     breakdown: ScoreBreakdown = Field(default_factory=ScoreBreakdown)
+    criteria_detail: dict[str, CriterionDetail] = Field(default_factory=dict)
     strength_rating: str = ""
+    summary: str = ""
+    change_explanation: str = ""
     agent_responsible: str = ""
 
 

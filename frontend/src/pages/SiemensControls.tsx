@@ -1,4 +1,7 @@
-import { Shield, CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-react'
+import { Shield, CheckCircle2, AlertTriangle, Info } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 const GATES = [
   {
@@ -70,80 +73,90 @@ export default function SiemensControls() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Shield className="w-6 h-6 text-siemens-green" />
+        <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <Shield className="w-6 h-6" />
+        </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Siemens Patent Controls</h1>
-          <p className="text-sm text-gray-500">Validation gates, checklists, and compliance rules</p>
+          <h1 className="text-2xl font-bold tracking-tight">Siemens Patent Controls</h1>
+          <p className="text-sm text-muted-foreground">Validation gates, quality controls, and filing governance rules</p>
         </div>
       </div>
 
-      {/* Gate Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 text-gray-500 mb-1">
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span className="text-xs font-medium">Total Gates</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{GATES.length}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 text-gray-500 mb-1">
-            <Info className="w-4 h-4" />
-            <span className="text-xs font-medium">Checklist Items</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">
-            {GATES.reduce((sum, g) => sum + g.items.length, 0)}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 text-gray-500 mb-1">
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-            <span className="text-xs font-medium">Min Composite to File</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">≥ 70</p>
-        </div>
+      {/* Gate Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-medium">Validation Gates</span>
+            </div>
+            <p className="text-3xl font-bold tracking-tight">{GATES.length}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Info className="w-4 h-4 text-blue-500" />
+              <span className="text-xs font-medium">Compliance Items</span>
+            </div>
+            <p className="text-3xl font-bold tracking-tight">
+              {GATES.reduce((sum, g) => sum + g.items.length, 0)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-medium">Min Threshold to File</span>
+            </div>
+            <p className="text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">≥ 70</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Gate Details */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {GATES.map((gate, i) => (
-          <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-900">{gate.name}</h3>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {gate.items.map((item, j) => (
-                <div key={j} className="flex items-center gap-3 px-4 py-2.5">
-                  <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-gray-300" />
-                  </div>
-                  <span className="text-sm text-gray-600">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Card key={i} className="overflow-hidden">
+            <CardHeader className="p-4 border-b bg-muted/20">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold">{gate.name}</CardTitle>
+                <Badge variant="outline" className="text-xs">{gate.items.length} items</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-2">
+              <ul className="space-y-2">
+                {gate.items.map((item, j) => (
+                  <li key={j} className="flex items-start gap-2.5 text-xs text-foreground">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      {/* Threshold Info */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div>
-            <h4 className="text-sm font-semibold text-amber-800">Composite Score Thresholds</h4>
-            <div className="mt-2 space-y-1 text-sm text-amber-700">
-              <p><strong>≥ 85</strong> Very Strong — Fast-track Siemens filing</p>
-              <p><strong>70-84</strong> Strong — Auto-promote to drafting</p>
-              <p><strong>50-69</strong> Moderate — Route for improvement pass</p>
-              <p><strong>30-49</strong> Weak — Hold for significant improvement</p>
-              <p><strong>&lt; 30</strong> Reject — Archive with learning</p>
-            </div>
-            <p className="mt-2 text-xs text-amber-600">
-              <strong>Minimum threshold:</strong> Composite ≥ 70 AND no gate checklist below 50%
-            </p>
+      {/* Threshold Information Alert */}
+      <Alert className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200">
+        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <AlertTitle className="text-sm font-semibold">Composite Score Thresholds & Filing Rules</AlertTitle>
+        <AlertDescription className="text-xs space-y-1.5 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono">
+            <div><strong className="text-emerald-700 dark:text-emerald-400">≥ 85:</strong> Very Strong (Fast-track filing)</div>
+            <div><strong className="text-blue-700 dark:text-blue-400">70-84:</strong> Strong (Auto-promote to drafting)</div>
+            <div><strong className="text-amber-700 dark:text-amber-400">50-69:</strong> Moderate (Improvement pass)</div>
+            <div><strong className="text-rose-700 dark:text-rose-400">&lt; 50:</strong> Weak/Reject (Archive with learning)</div>
           </div>
-        </div>
-      </div>
+          <p className="pt-2 text-[11px] text-amber-700 dark:text-amber-300 font-sans border-t border-amber-200/50">
+            * Minimum filing gate constraint: Composite Score ≥ 70 AND no single gate checklist below 50% approval.
+          </p>
+        </AlertDescription>
+      </Alert>
     </div>
   )
 }

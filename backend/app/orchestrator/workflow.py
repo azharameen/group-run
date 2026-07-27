@@ -4,9 +4,13 @@ Provides both the single-cycle advancement AND the full end-to-end pipeline
 that runs all 18 states from signal input to ready_for_submission.
 """
 
+import os
 from datetime import datetime
 
-from ..storage.yaml_io import load_idea_registry
+import yaml
+
+from ..config import CONFIG_DIR
+from ..storage.yaml_io import load_idea_registry, load_idea_yaml, save_idea_yaml
 from .tools import (
     get_machine,
     create_idea,
@@ -20,6 +24,7 @@ from ..llm.subagent_executor import execute_autonomous_idea_generation
 
 _cycle_running = False
 _emit_sse_callback = None
+_active_idea_id: str = ""  # Single idea currently being processed
 
 
 def set_emit_sse_callback(cb):
@@ -36,12 +41,78 @@ def is_cycle_running() -> bool:
     return _cycle_running
 
 
+def get_active_idea() -> str:
+    """Return the idea ID currently being processed by an agent."""
+    return _active_idea_id
+
+
 def _as_list(value):
     if value is None:
         return []
     if isinstance(value, list):
         return value
     return [value]
+
+
+def _load_terminal_states() -> set[str]:
+    """Load terminal workflow states from config, with a safe fallback."""
+    default_states = {"submitted", "accepted_or_closed"}
+    config_path = os.path.join(CONFIG_DIR, "system-config.yaml")
+    if not os.path.exists(config_path):
+        return default_states
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+    except Exception:
+        return default_states
+
+    workflow_cfg = config.get("workflow", {}) if isinstance(config, dict) else {}
+    terminal_states = workflow_cfg.get("terminal_states") if isinstance(workflow_cfg, dict) else None
+    if isinstance(terminal_states, list) and terminal_states:
+        return {str(state) for state in terminal_states if str(state).strip()}
+    return default_states
+
+
+def _set_active_processing(idea_id: str, active: bool, *, agent: str = "", state: str = "", message: str = ""):
+    """Persist a lightweight active-processing marker for UI/status endpoints."""
+    idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
+    idea_data["active_processing"] = active
+    idea_data["active_agent"] = agent
+    idea_data["active_state"] = state
+    idea_data["active_message"] = message
+    idea_data["updated_at"] = datetime.utcnow().isoformat()
+    save_idea_yaml(idea_id, "idea.yaml", idea_data)
+
+
+def _select_focus_idea(ideas: list[dict]) -> dict | None:
+    """Pick a single idea to work on, preferring an active or incomplete idea."""
+    terminal_states = _load_terminal_states()
+    candidates: list[dict] = []
+
+    for entry in ideas:
+        idea_id = entry.get("idea_id")
+        if not idea_id:
+            continue
+        data = load_idea_yaml(idea_id, "idea.yaml") or {}
+        current_state = data.get("current_state", entry.get("state", "raw_signal_collected"))
+        if current_state in terminal_states:
+            continue
+        candidates.append({
+            **entry,
+            "current_state": current_state,
+            "active_processing": bool(data.get("active_processing", False)),
+            "created_at": data.get("created_at", entry.get("created_at", "")),
+        })
+
+    if not candidates:
+        return None
+
+    active = next((c for c in candidates if c.get("active_processing")), None)
+    if active:
+        return active
+
+    return sorted(candidates, key=lambda c: c.get("created_at") or "")[0]
 
 
 def seed_ideas(count: int = 3) -> list[str]:
@@ -81,31 +152,54 @@ def seed_ideas(count: int = 3) -> list[str]:
 
 def _process_idea(idea_id: str) -> dict:
     """Process a single idea through one workflow step."""
-    machine = get_machine(idea_id)
-    current = machine.state
+    global _active_idea_id
+    _active_idea_id = idea_id
 
-    # Find next available transition
-    transitions = machine.machine.get_transitions()
-    available = [t for t in transitions if t.source == current]
+    try:
+        machine = get_machine(idea_id)
+        current = machine.state
 
-    if not available:
-        return {"idea_id": idea_id, "status": "terminal", "state": current}
+        # Find next available transition
+        transitions = machine.machine.get_transitions()
+        available = [t for t in transitions if t.source == current]
 
-    # Try to advance to the first available state
-    target = available[0].dest
-    result = advance_workflow(idea_id, target)
+        if not available:
+            return {"idea_id": idea_id, "status": "terminal", "state": current}
 
-    if result.get("success"):
-        # Score after transition
-        score_idea(idea_id, "auto-workflow")
+        # Try to advance to the first available state
+        target = available[0].dest
 
-    return {
-        "idea_id": idea_id,
-        "status": "advanced" if result.get("success") else "blocked",
-        "from_state": current,
-        "to_state": target if result.get("success") else current,
-        "result": result,
-    }
+        _set_active_processing(
+            idea_id,
+            True,
+            agent="workflow-orchestrator",
+            state=current,
+            message=f"Advancing from {current} to {target}",
+        )
+
+        _emit("agent.progress", {
+            "idea_id": idea_id,
+            "agent": "scheduler",
+            "message": f"Advancing {idea_id} from {current} to {target}",
+            "state": target,
+        })
+
+        result = advance_workflow(idea_id, target)
+
+        if result.get("success"):
+            # Score after transition
+            score_idea(idea_id, "auto-workflow")
+
+        return {
+            "idea_id": idea_id,
+            "status": "advanced" if result.get("success") else "blocked",
+            "from_state": current,
+            "to_state": target if result.get("success") else current,
+            "result": result,
+        }
+    finally:
+        _set_active_processing(idea_id, False, agent="", state="", message="")
+        _active_idea_id = ""
 
 
 def run_generation_cycle(max_ideas: int = 10) -> dict:
@@ -133,11 +227,13 @@ def run_generation_cycle(max_ideas: int = 10) -> dict:
             registry = load_idea_registry()
             ideas = registry.get("ideas", [])
 
-        # Process each idea
-        for idea_entry in ideas[:max_ideas]:
-            idea_id = idea_entry["idea_id"]
-            result = _process_idea(idea_id)
+        # Process only one focused idea per cycle to keep agent attention single-threaded.
+        focus = _select_focus_idea(ideas[:max_ideas])
+        if focus:
+            result = _process_idea(focus["idea_id"])
             results.append(result)
+        else:
+            results.append({"status": "idle", "reason": "No incomplete ideas found"})
 
         return {
             "cycle_complete": True,
@@ -244,6 +340,8 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
         state_log = []
         pipeline_ok = True
 
+        _set_active_processing(idea_id, True, agent="full-pipeline", state="raw_signal_collected", message=f"Starting pipeline for {title}")
+
         _emit("agent.progress", {
             "idea_id": idea_id,
             "agent": "full-pipeline",
@@ -266,6 +364,14 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
                     "agent": "full-pipeline",
                     "message": f"Executing state: {state_name}",
                 })
+
+                _set_active_processing(
+                    idea_id,
+                    True,
+                    agent=state_name,
+                    state=state_name,
+                    message=f"Executing {state_name}",
+                )
 
                 # Execute the LLM subagent for this state
                 result = run_subagent(state_name, idea_id)
@@ -331,6 +437,8 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3) -> dict:
             "states_failed": sum(1 for s in state_log if s.get("status") == "error"),
             "state_log": state_log,
         })
+
+        _set_active_processing(idea_id, False, agent="", state="", message="Pipeline complete")
 
     return {
         "pipeline_complete": True,

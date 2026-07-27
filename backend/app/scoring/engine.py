@@ -107,22 +107,34 @@ class ScoringEngine:
 
     def score(self, agent_name: str = "scoring-engine") -> ScoreRecord:
         """Run all criteria evaluations and save results."""
-        breakdown = self.evaluator.evaluate_all()
+        breakdown, criteria_detail, summary = self.evaluator.evaluate_all_detailed()
         composite, rating = compute_composite(breakdown)
+
+        scores_data = load_idea_yaml(self.idea_id, "scores.yaml") or {
+            "idea_id": self.idea_id,
+            "history": [],
+        }
+        previous = scores_data["history"][-1] if scores_data.get("history") else None
+        change_explanation = self._build_change_explanation(
+            previous=previous,
+            current_breakdown=breakdown,
+            current_composite=composite,
+            current_summary=summary,
+            current_details=criteria_detail,
+        )
 
         record = ScoreRecord(
             timestamp=datetime.utcnow(),
             composite=composite,
             breakdown=breakdown,
+            criteria_detail=criteria_detail,
             strength_rating=rating,
+            summary=summary,
+            change_explanation=change_explanation,
             agent_responsible=agent_name,
         )
 
         # Save to scores.yaml
-        scores_data = load_idea_yaml(self.idea_id, "scores.yaml") or {
-            "idea_id": self.idea_id,
-            "history": [],
-        }
         scores_data["history"].append(record.model_dump(mode="json"))
         scores_data["latest"] = record.model_dump(mode="json")
         save_idea_yaml(self.idea_id, "scores.yaml", scores_data)
@@ -155,3 +167,51 @@ class ScoringEngine:
                 return False, f"{criterion} score {bd.get(criterion, 0)} < {min_val}%"
 
         return True, "Meets all thresholds"
+
+    def _build_change_explanation(
+        self,
+        *,
+        previous: dict | None,
+        current_breakdown: ScoreBreakdown,
+        current_composite: float,
+        current_summary: str,
+        current_details: dict[str, object],
+    ) -> str:
+        """Summarize how this score differs from the previous recorded score."""
+        if not previous:
+            return (
+                f"Initial recorded score. Composite {current_composite}. "
+                f"Summary: {current_summary}"
+            )
+
+        prev_breakdown = previous.get("breakdown", {}) if isinstance(previous, dict) else {}
+        prev_composite = float(previous.get("composite", 0) or 0) if isinstance(previous, dict) else 0.0
+
+        deltas: list[str] = []
+        for field in [
+            "novelty",
+            "siemens_alignment",
+            "technical_feasibility",
+            "detectability",
+            "business_value",
+            "originality",
+            "completeness",
+        ]:
+            current_value = getattr(current_breakdown, field)
+            previous_value = float(prev_breakdown.get(field, 0) or 0) if isinstance(prev_breakdown, dict) else 0.0
+            delta = round(current_value - previous_value, 1)
+            if delta:
+                detail = current_details.get(field)
+                reasoning = getattr(detail, "reasoning", "") if detail else ""
+                suffix = f" Reason: {reasoning}" if reasoning else ""
+                deltas.append(f"{field.replace('_', ' ').title()} {delta:+.1f}.{suffix}")
+
+        if not deltas:
+            deltas.append("No material changes from the previous score were detected.")
+
+        return (
+            f"Composite changed {current_composite - prev_composite:+.1f} "
+            f"from {prev_composite:.1f} to {current_composite:.1f}. "
+            + " ".join(deltas)
+            + f" Current summary: {current_summary}"
+        )

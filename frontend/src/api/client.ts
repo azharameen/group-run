@@ -22,6 +22,9 @@ export interface IdeaListItem {
   composite_score: number
   strength_rating: string
   running_agent: string
+  active_processing?: boolean
+  active_agent?: string
+  active_state?: string
   created_at: string
   updated_at: string
 }
@@ -32,9 +35,18 @@ export interface IdeaDetail {
   scores: Record<string, any>
 }
 
+export interface CriterionDetail {
+  score: number
+  reasoning: string
+  confidence: number
+}
+
 export interface ScoreResult {
   composite: number
   breakdown: Record<string, number>
+  criteria_detail: Record<string, CriterionDetail>
+  summary: string
+  change_explanation: string
   strength_rating: string
   meets_threshold: boolean
   threshold_reason: string
@@ -67,8 +79,22 @@ export async function fetchIdeas(params?: { phase?: string; state?: string; min_
   return data.ideas
 }
 
+export interface IdeaFile {
+  path: string
+  filename: string
+  ext: string
+  size_bytes: number
+  modified_at: string
+  content: string
+}
+
 export async function fetchIdeaDetail(ideaId: string): Promise<IdeaDetail> {
   return request<IdeaDetail>(`/ideas/${ideaId}`)
+}
+
+export async function fetchIdeaFiles(ideaId: string): Promise<IdeaFile[]> {
+  const res = await request<{ idea_id: string; files: IdeaFile[] }>(`/ideas/${ideaId}/files`)
+  return res.files || []
 }
 
 export async function createIdea(signalText: string, title?: string): Promise<{ idea_id: string; score: ScoreResult }> {
@@ -144,6 +170,42 @@ export interface KnowledgeBaseData {
 
 export async function fetchKnowledgeBase(): Promise<KnowledgeBaseData> {
   return request<KnowledgeBaseData>('/knowledge-base')
+}
+
+export interface WorkflowStatus {
+  active_idea_id: string
+  active_idea: {
+    idea_id: string
+    title: string
+    state: string
+    phase: string
+    active_processing: boolean
+    active_agent: string
+    active_state: string
+    active_message: string
+    composite_score: number
+    running_agent?: string
+    created_at?: string
+  } | null
+  queued_count: number
+  queued_ideas: Array<{
+    idea_id: string
+    title: string
+    state: string
+    phase: string
+    active_processing: boolean
+    active_agent: string
+    active_state: string
+    active_message: string
+    composite_score: number
+    running_agent?: string
+    created_at?: string
+  }>
+  one_idea_focus: boolean
+}
+
+export async function fetchWorkflowStatus(): Promise<WorkflowStatus> {
+  return request<WorkflowStatus>('/workflow/status')
 }
 
 export async function generateAutonomousIdeas(maxIdeas: number = 3): Promise<any> {

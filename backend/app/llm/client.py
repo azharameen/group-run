@@ -10,8 +10,8 @@ import re
 from typing import Any, Optional
 
 # Adapter for modern LangChain ChatOpenAI
-from langchain.chat_models import ChatOpenAI as _LCChatOpenAI
-from langchain.schema import SystemMessage, HumanMessage
+from langchain_openai import ChatOpenAI as _LCChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 
 
 class _LLMAdapter:
@@ -24,21 +24,17 @@ class _LLMAdapter:
     and falls back to generate() if necessary.
     """
 
-    def __init__(self, model_name, base_url, api_key, temperature, max_tokens, timeout):
-        # Map parameters to LangChain ChatOpenAI constructor
+    def __init__(self, model=None, model_name=None, base_url=None, api_key=None, temperature=0.7, max_tokens=4096, timeout=120):
+        # Map parameters to langchain_openai.ChatOpenAI constructor
         llm_kwargs = {
-            "model_name": model_name,
+            "model": model or model_name or "gpt-4o",
             "temperature": temperature,
         }
-        # max_tokens isn't universally accepted as a constructor arg in all
-        # LangChain versions; pass it per-call in invoke if necessary.
-        # Pass OpenAI credentials/base if provided
         if api_key:
-            llm_kwargs["openai_api_key"] = api_key
+            llm_kwargs["api_key"] = api_key
         if base_url:
-            llm_kwargs["openai_api_base"] = base_url
-        # request_timeout is the common parameter name for request timeout
-        llm_kwargs["request_timeout"] = timeout
+            llm_kwargs["base_url"] = base_url
+        llm_kwargs["timeout"] = timeout or 120
         self._llm = _LCChatOpenAI(**llm_kwargs)
         self._max_tokens = max_tokens
 

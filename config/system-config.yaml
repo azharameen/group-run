@@ -4,6 +4,9 @@ workflow:
   interval_minutes: 15
   max_retries_per_state: 3
   idle_timeout_minutes: 60
+  terminal_states:
+    - submitted
+    - accepted_or_closed
 
 scoring:
   composite_threshold: 70

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Database, FileText, FolderOpen, Upload, ChevronDown, ChevronRight, File, Loader2, BookOpen } from 'lucide-react'
 import { fetchIdeas, fetchKnowledgeBase, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE } from '../api/client'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -130,100 +131,108 @@ export default function KnowledgeBase() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-foreground">Knowledge Base</h1>
-        <p className="text-sm text-muted-foreground mt-1">Knowledge sources feeding idea generation</p>
+        <h1 className="text-2xl font-bold tracking-tight">Knowledge Base</h1>
+        <p className="text-sm text-muted-foreground mt-1">Multi-modal knowledge repositories and patent sources powering signal extraction</p>
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <Database className="w-4 h-4" />
-            <span className="text-xs font-medium">Source Count</span>
-          </div>
-          <p className="text-2xl font-bold text-card-foreground">{kbData ? kbData.sources.raw + kbData.sources.processed : 0}</p>
-          <p className="text-xs text-muted-foreground mt-1">{kbData?.documents.length ?? 0} total documents</p>
-        </div>
-        <div className="bg-card rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <FileText className="w-4 h-4" />
-            <span className="text-xs font-medium">Categories</span>
-          </div>
-          <p className="text-2xl font-bold text-card-foreground">
-            {kbData ? Object.keys(kbData.sources).length : 0}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">KB document categories</p>
-        </div>
-        <div className="bg-card rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <FolderOpen className="w-4 h-4" />
-            <span className="text-xs font-medium">Ideas Generated</span>
-          </div>
-          <p className="text-2xl font-bold text-card-foreground">{ideas.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">From knowledge base signals</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Database className="w-4 h-4 text-primary" />
+              <span className="text-xs font-medium">Source Documents</span>
+            </div>
+            <p className="text-3xl font-bold tracking-tight">{kbData ? kbData.sources.raw + kbData.sources.processed : 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">{kbData?.documents.length ?? 0} total documents</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <FileText className="w-4 h-4 text-primary" />
+              <span className="text-xs font-medium">Repository Categories</span>
+            </div>
+            <p className="text-3xl font-bold tracking-tight">
+              {kbData ? Object.keys(kbData.sources).length : 0}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Ingested document categories</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <FolderOpen className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-medium">Ideas Discovered</span>
+            </div>
+            <p className="text-3xl font-bold tracking-tight">{ideas.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Extracted signal concepts</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Upload Area */}
-      <div className="bg-card rounded-lg border-2 border-dashed p-8 text-center hover:border-primary/40 transition-colors">
-        <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-        <h3 className="font-medium text-card-foreground mb-1">Upload Knowledge Documents</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Drop PDFs, Markdown, or text files into <code className="text-xs bg-muted px-1 py-0.5 rounded">knowledge-base/raw/</code>
-        </p>
-        <p className="text-xs text-muted-foreground">
-          The Knowledge Curator agent will automatically ingest and extract signals from new documents
-        </p>
-      </div>
+      {/* Upload Drop Zone */}
+      <Card className="border-2 border-dashed bg-muted/20 hover:border-primary/50 transition-colors">
+        <CardContent className="p-8 text-center space-y-2">
+          <Upload className="w-10 h-10 text-muted-foreground mx-auto" />
+          <h3 className="font-semibold text-base">Upload Custom Knowledge Documents</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Place PDFs, Markdown, or text files in <code className="text-xs bg-muted px-1.5 py-0.5 rounded border font-mono">knowledge-base/raw/</code>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            The autonomous Knowledge Curator agent automatically extracts technical signals from newly added files.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Knowledge Base Documents (local) */}
       {kbData && kbData.documents.length > 0 && (
-        <div className="bg-card rounded-lg border overflow-hidden">
+        <Card className="overflow-hidden">
           <button
             onClick={() => toggleCategory('knowledge')}
-            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+            className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/40 transition-colors"
           >
-            <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              Local Knowledge Documents
-              <Badge variant="secondary" className="ml-2 text-xs">{kbData.documents.length}</Badge>
-            </h3>
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold">Local Knowledge Documents</h3>
+              <Badge variant="secondary" className="text-xs">{kbData.documents.length}</Badge>
+            </div>
             {expandedCategories.has('knowledge') ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
           </button>
-          {expandedCategories.has('knowledge') && (
-            <Separator />
-          )}
+          {expandedCategories.has('knowledge') && <Separator />}
           {expandedCategories.has('knowledge') && (
             <div className="divide-y">
               {kbData.documents.map((doc, i) => (
                 <div key={i}>
                   <button
                     onClick={() => toggleDocExpand(doc.path)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-muted/30 transition-colors"
+                    className="w-full flex items-center justify-between p-3.5 px-4 text-left hover:bg-muted/20 transition-colors"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <File className="w-4 h-4 shrink-0 text-muted-foreground" />
-                      <span className="text-sm text-card-foreground truncate">{doc.path}</span>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{doc.source}</Badge>
+                      <span className="text-xs font-mono text-foreground truncate">{doc.path}</span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{doc.source}</Badge>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 text-xs"
+                        className="h-7 text-xs"
                         onClick={(e) => {
                           e.stopPropagation()
                           setExpandedDoc(doc)
                         }}
                       >
-                        View
+                        View Content
                       </Button>
                       {expandedDocs.has(doc.path) ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                     </div>
                   </button>
                   {expandedDocs.has(doc.path) && (
                     <div className="px-4 pb-3 pt-1 pl-10">
-                      <pre className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-md overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">
+                      <pre className="text-xs text-muted-foreground bg-muted p-3 rounded-md overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">
                         {typeof doc.content === 'string' ? doc.content : JSON.stringify(doc.content, null, 2)}
                       </pre>
                     </div>
@@ -232,22 +241,22 @@ export default function KnowledgeBase() {
               ))}
             </div>
           )}
-        </div>
+        </Card>
       )}
 
-      {/* External Sources */}
-      <div className="bg-card rounded-lg border overflow-hidden">
-        <div className="px-4 py-3 border-b">
-          <h3 className="text-sm font-semibold text-card-foreground">Patent & Knowledge Sources</h3>
-        </div>
-        <ScrollArea className="max-h-[600px]">
+      {/* External Patent Sources */}
+      <Card className="overflow-hidden">
+        <CardHeader className="p-4 border-b bg-muted/20">
+          <CardTitle className="text-sm font-semibold">External Patent & Knowledge Corpora</CardTitle>
+        </CardHeader>
+        <ScrollArea className="max-h-[500px]">
           <div className="divide-y">
             {sources.map((source, i) => (
-              <div key={i} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
+              <div key={i} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-lg shrink-0">{source.icon}</span>
+                  <span className="text-xl shrink-0">{source.icon}</span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-card-foreground">{source.name}</p>
+                    <p className="text-sm font-medium text-foreground">{source.name}</p>
                     <p className="text-xs text-muted-foreground">{source.type}</p>
                   </div>
                 </div>
@@ -255,26 +264,22 @@ export default function KnowledgeBase() {
                   {source.docs.length > 0 && (
                     <span className="text-xs text-muted-foreground">{source.docs.length} doc(s)</span>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    source.status === 'Connected' ? 'bg-green-100 text-green-700' :
-                    source.status === 'Available' ? 'bg-blue-100 text-blue-700' :
-                    'bg-muted text-muted-foreground'
-                  }`}>
+                  <Badge variant={source.status === 'Connected' ? 'default' : source.status === 'Available' ? 'secondary' : 'outline'}>
                     {source.status}
-                  </span>
+                  </Badge>
                 </div>
               </div>
             ))}
           </div>
         </ScrollArea>
-      </div>
+      </Card>
 
       {/* Document Viewer Dialog */}
       <Dialog open={!!expandedDoc} onOpenChange={(open) => !open && setExpandedDoc(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <File className="w-4 h-4" />
+            <DialogTitle className="flex items-center gap-2 font-mono text-sm">
+              <File className="w-4 h-4 text-primary" />
               {expandedDoc?.path ?? ''}
             </DialogTitle>
             <DialogDescription>
@@ -282,7 +287,7 @@ export default function KnowledgeBase() {
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">
-            <pre className="text-xs text-card-foreground bg-muted/30 p-4 rounded-md overflow-x-auto whitespace-pre-wrap font-mono">
+            <pre className="text-xs text-foreground bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap font-mono">
               {expandedDoc
                 ? typeof expandedDoc.content === 'string'
                   ? expandedDoc.content
