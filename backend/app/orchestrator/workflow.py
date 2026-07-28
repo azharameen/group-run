@@ -120,6 +120,7 @@ def _select_focus_idea(ideas: list[dict]) -> dict | None:
             **entry,
             "current_state": current_state,
             "active_processing": bool(data.get("active_processing", False)),
+            "priority": int(data.get("priority", 2)),
             "created_at": data.get("created_at", entry.get("created_at", "")),
         })
 
@@ -130,7 +131,7 @@ def _select_focus_idea(ideas: list[dict]) -> dict | None:
     if active:
         return active
 
-    return sorted(candidates, key=lambda c: c.get("created_at") or "")[0]
+    return sorted(candidates, key=lambda c: (c.get("priority", 2), c.get("created_at") or ""))[0]
 
 
 def seed_ideas(count: int = 3) -> list[str]:

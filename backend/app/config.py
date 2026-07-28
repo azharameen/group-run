@@ -1,13 +1,17 @@
 """Application configuration from environment variables."""
 
 import os
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    openai_api_key: str = "sk-placeholder"
-    openai_api_base: str = "https://api.openai.com/v1"
-    openai_model_name: str = "gpt-4o"
+    openai_api_key: str = ""
+    openai_api_base: str = ""
+    openai_model_name: str = ""
+    deepagents_model: str = ""
+    deepagents_enabled: bool = False
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
@@ -25,6 +29,12 @@ class Settings(BaseSettings):
         env_file=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env")),
         env_file_encoding="utf-8",
     )
+
+    @model_validator(mode="after")
+    def derive_defaults(self) -> "Settings":
+        if not self.deepagents_model and self.openai_model_name:
+            self.deepagents_model = f"openai:{self.openai_model_name}"
+        return self
 
 
 settings = Settings()

@@ -1,0 +1,19 @@
+{
+  "categories": [
+    {
+      "code": "IND_AI",
+      "name": "Industrial Artificial Intelligence",
+      "keywords": ["neural networks", "predictive maintenance", "anomaly detection", "reinforcement learning"]
+    },
+    {
+      "code": "DIG_TWIN",
+      "name": "Digital Twin Systems",
+      "keywords": ["real-time simulation", "cad synchronization", "physics-informed model", "co-simulation"]
+    },
+    {
+      "code": "EDGE_IOT",
+      "name": "Industrial Edge & IoT",
+      "keywords": ["plc gateway", "time-sensitive networking", "mqtt-pubsub", "containerized control"]
+    }
+  ]
+}

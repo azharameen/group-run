@@ -10,15 +10,16 @@ import os
 from datetime import datetime
 from typing import Any, Optional, Callable
 
-import yaml
 from transitions import Machine
 
-from ..config import CONFIG_DIR, settings
+from ..config import settings
 from ..models.idea import (
     WorkflowState,
     StateTransition,
     phase_for_state,
 )
+from .definitions import TRANSITIONS, agent_for_state, gate_name_for_transition, load_checklist
+from .gates import check_evidence
 from ..storage.yaml_io import (
     load_idea_yaml,
     save_idea_yaml,
@@ -178,27 +179,7 @@ class PatentWorkflowMachine:
 
     def _add_transitions(self):
         """Register all allowed state transitions."""
-        transitions = [
-            ("advance_to_idea_discovery", WorkflowState.raw_signal_collected, WorkflowState.idea_discovery),
-            ("advance_to_idea_clarification", WorkflowState.idea_discovery, WorkflowState.idea_clarification),
-            ("advance_to_novelty_hypothesis", WorkflowState.idea_clarification, WorkflowState.novelty_hypothesis),
-            ("advance_to_prior_art_review", WorkflowState.novelty_hypothesis, WorkflowState.prior_art_review),
-            ("advance_to_detectability_review", WorkflowState.prior_art_review, WorkflowState.detectability_review),
-            ("advance_to_business_value_review", WorkflowState.detectability_review, WorkflowState.business_value_review),
-            ("advance_to_siemens_alignment", WorkflowState.business_value_review, WorkflowState.siemens_innovation_alignment),
-            ("advance_to_ideascope_draft", WorkflowState.siemens_innovation_alignment, WorkflowState.ideascope_draft),
-            ("advance_to_siemens_filing_check", WorkflowState.ideascope_draft, WorkflowState.siemens_internal_filing_check),
-            ("advance_to_manager_review", WorkflowState.siemens_internal_filing_check, WorkflowState.manager_or_enabler_review),
-            ("advance_to_ip_review", WorkflowState.manager_or_enabler_review, WorkflowState.ip_review),
-            ("advance_to_counsel_validation", WorkflowState.ip_review, WorkflowState.siemens_ip_counsel_validation),
-            ("advance_to_ready", WorkflowState.siemens_ip_counsel_validation, WorkflowState.ready_for_submission),
-            ("advance_to_submitted", WorkflowState.ready_for_submission, WorkflowState.submitted),
-            ("advance_to_feedback", WorkflowState.submitted, WorkflowState.feedback_received),
-            ("advance_to_revision", WorkflowState.feedback_received, WorkflowState.revision_in_progress),
-            ("advance_to_accepted", WorkflowState.revision_in_progress, WorkflowState.accepted_or_closed),
-        ]
-
-        for trigger, source, dest in transitions:
+        for trigger, source, dest in TRANSITIONS:
             self.machine.add_transition(
                 trigger=trigger,
                 source=source.value,
@@ -279,12 +260,12 @@ class PatentWorkflowMachine:
         state_data["current_state"] = state.value
         state_data["phase"] = phase_for_state(state)
         state_data["entered_at"] = datetime.utcnow().isoformat()
-        state_data["agent_responsible"] = self._agent_for_state(state)
+        state_data["agent_responsible"] = agent_for_state(state)
         save_idea_yaml(idea_id, "state.yaml", state_data)
 
         # Also update idea.yaml with running_agent so the dashboard picks it up
         idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
-        idea_data["running_agent"] = self._agent_for_state(state)
+        idea_data["running_agent"] = agent_for_state(state)
         idea_data["phase"] = phase_for_state(state)
         idea_data["current_state"] = state.value
         idea_data["updated_at"] = datetime.utcnow().isoformat()
@@ -299,8 +280,8 @@ class PatentWorkflowMachine:
     # ── Lifecycle: validate ──
     def _validate(self, idea_id: str, from_state: str, to_state: str) -> bool:
         """HOOK 2: Run gate checklist. Returns True (pass) or False (fail)."""
-        gate_name = self._gate_name_for_transition(from_state, to_state)
-        checklist = self._load_checklist(gate_name)
+        gate_name = gate_name_for_transition(from_state, to_state)
+        checklist = load_checklist(gate_name)
 
         if not checklist:
             # No gate checklist = auto-pass
@@ -310,8 +291,7 @@ class PatentWorkflowMachine:
         passed_items = 0
         failed_items = []
         for item in checklist:
-            # Check if evidence exists in idea folder for this item
-            item_passed = self._check_evidence(idea_id, item["id"])
+            item_passed = check_evidence(idea_id, item["id"])
             if item_passed:
                 passed_items += 1
             else:
@@ -364,8 +344,8 @@ class PatentWorkflowMachine:
         # Write handover packet
         handover = (
             f"## Handover: {source} → {dest}\n\n"
-            f"**From:** {self._agent_for_state(WorkflowState(source))}\n"
-            f"**To:** {self._agent_for_state(WorkflowState(dest))}\n"
+            f"**From:** {agent_for_state(WorkflowState(source))}\n"
+            f"**To:** {agent_for_state(WorkflowState(dest))}\n"
             f"**Timestamp:** {datetime.utcnow().isoformat()}\n\n"
             f"### Validation\n"
             f"Result: {'✅ PASS' if self.last_validation_result and self.last_validation_result['passed'] else '⚠️ See notes'}\n\n"
@@ -383,7 +363,7 @@ class PatentWorkflowMachine:
             "state": dest,  # Keep for backward compat with timeline
             "timestamp": datetime.utcnow().isoformat(),
             "validation": self.last_validation_result,
-            "agent_responsible": self._agent_for_state(WorkflowState(dest)),
+            "agent_responsible": agent_for_state(WorkflowState(dest)),
         })
         state_data["history"] = history
         state_data["previous_state"] = source
@@ -412,141 +392,16 @@ class PatentWorkflowMachine:
         if emit_sse_callback:
             emit_sse_callback(event_type, data)
 
-    def _agent_for_state(self, state: WorkflowState) -> str:
-        mapping = {
-            WorkflowState.raw_signal_collected: "knowledge-curator",
-            WorkflowState.idea_discovery: "idea-discoverer",
-            WorkflowState.idea_clarification: "problem-framer",
-            WorkflowState.novelty_hypothesis: "novelty-analyst",
-            WorkflowState.prior_art_review: "prior-art-researcher",
-            WorkflowState.detectability_review: "detectability-analyst",
-            WorkflowState.business_value_review: "business-value-analyst",
-            WorkflowState.siemens_innovation_alignment: "siemens-alignment",
-            WorkflowState.ideascope_draft: "patent-drafter",
-            WorkflowState.siemens_internal_filing_check: "checklist-validator",
-            WorkflowState.manager_or_enabler_review: "reviewer-summarizer",
-            WorkflowState.ip_review: "reviewer-summarizer",
-            WorkflowState.siemens_ip_counsel_validation: "checklist-validator",
-            WorkflowState.ready_for_submission: "reviewer-summarizer",
-            WorkflowState.submitted: "knowledge-curator",
-            WorkflowState.feedback_received: "knowledge-curator",
-            WorkflowState.revision_in_progress: "patent-drafter",
-            WorkflowState.accepted_or_closed: "knowledge-curator",
-        }
-        return mapping.get(state, "unknown")
-
-    def _gate_name_for_transition(self, from_state: str, to_state: str) -> str:
-        gate_map = {
-            ("idea_discovery", "idea_clarification"): "idea_discovery_to_idea_clarification",
-            ("idea_clarification", "novelty_hypothesis"): "idea_clarification_to_novelty_hypothesis",
-            ("novelty_hypothesis", "prior_art_review"): "novelty_hypothesis_to_prior_art_review",
-            ("prior_art_review", "detectability_review"): "prior_art_review_to_detectability_review",
-            ("detectability_review", "business_value_review"): "detectability_review_to_business_value_review",
-            ("business_value_review", "siemens_innovation_alignment"): "business_value_review_to_siemens_innovation_alignment",
-            ("siemens_innovation_alignment", "ideascope_draft"): "siemens_innovation_alignment",
-            ("ideascope_draft", "siemens_internal_filing_check"): "ideascope_draft_to_siemens_internal_filing_check",
-            ("siemens_internal_filing_check", "manager_or_enabler_review"): "siemens_internal_filing_check",
-            ("manager_or_enabler_review", "ip_review"): "manager_or_enabler_review",
-            ("ip_review", "siemens_ip_counsel_validation"): "ip_review",
-            ("siemens_ip_counsel_validation", "ready_for_submission"): "siemens_ip_counsel_validation",
-        }
-        return gate_map.get((from_state, to_state), "")
-
-    def _load_checklist(self, gate_name: str) -> list[dict]:
-        if not gate_name:
-            return []
-        path = os.path.join(CONFIG_DIR, "checklist-config.yaml")
-        if not os.path.exists(path):
-            return []
-        with open(path, "r") as f:
-            config = yaml.safe_load(f)
-        gate = config.get("gates", {}).get(gate_name)
-        return gate.get("items", []) if gate else []
-
-    def _check_evidence(self, idea_id: str, item_id: str) -> bool:
-        """Check if evidence exists for a checklist item in the idea folder.
-        
-        For now, checks if the idea has relevant data in idea.yaml.
-        In production, this would look for specific evidence files.
-        """
-        idea_data = load_idea_yaml(idea_id, "idea.yaml")
-        if not idea_data:
-            return False
-
-        # Stronger heuristics: require substantive content, not just a field placeholder.
-        has_title = len(str(idea_data.get("title", "")).strip()) >= 8
-        has_signal = len(str(idea_data.get("signal_text", "")).strip()) >= 20
-        has_problem = len(str(idea_data.get("problem_statement", "")).strip()) >= 40
-        has_solution = len(str(idea_data.get("solution_concept", "")).strip()) >= 40
-
-        source_evidence = idea_data.get("source_evidence", [])
-        if isinstance(source_evidence, str):
-            source_evidence = [source_evidence]
-        elif not isinstance(source_evidence, list):
-            source_evidence = []
-        evidence_items = [str(item).strip() for item in source_evidence if str(item).strip()]
-
-        novelty_hypothesis = idea_data.get("novelty_hypothesis", {})
-        if not isinstance(novelty_hypothesis, dict):
-            novelty_hypothesis = {}
-
-        detectability_review = idea_data.get("detectability_review", {})
-        if not isinstance(detectability_review, dict):
-            detectability_review = {}
-
-        business_value = idea_data.get("business_value", {})
-        if not isinstance(business_value, dict):
-            business_value = {}
-
-        if item_id == "signal_coherent":
-            return has_signal
-        if item_id == "min_sources":
-            return len(evidence_items) >= 2
-        if item_id == "problem_identifiable":
-            return has_problem
-        if item_id in ("technical_context", "solution_direction"):
-            return has_problem and has_solution
-        if item_id == "siemens_domain":
-            return bool(idea_data.get("siemens_domain", ""))
-        if item_id == "search_terms":
-            search_terms = novelty_hypothesis.get("search_terms", [])
-            return isinstance(search_terms, list) and len([term for term in search_terms if str(term).strip()]) >= 4
-        if item_id == "prior_art_examined":
-            return bool(novelty_hypothesis.get("novelty_hypothesis_statement")) and len(evidence_items) >= 2
-        if item_id in ("novelty_gap_analysis", "differentiating_features"):
-            differentiating_features = novelty_hypothesis.get("differentiating_features", [])
-            return bool(novelty_hypothesis.get("novelty_hypothesis_statement")) and isinstance(differentiating_features, list) and len([f for f in differentiating_features if str(f).strip()]) >= 2
-        if item_id == "observability_evaluated":
-            return bool(detectability_review.get("detectability_score") is not None)
-        if item_id == "detection_method":
-            methods = detectability_review.get("detection_methods", [])
-            return isinstance(methods, list) and len([m for m in methods if str(m).strip()]) >= 2
-        if item_id == "non_obviousness_drafted":
-            return has_title and has_solution
-        if item_id == "business_value_minimum":
-            scores = load_idea_yaml(idea_id, "scores.yaml")
-            if scores and scores.get("history"):
-                return scores["history"][-1].get("composite", 0) >= 40
-            return False
-        if item_id == "siemens_unit_identified":
-            units = business_value.get("siemens_business_units", [])
-            return isinstance(units, list) and len([unit for unit in units if str(unit).strip()]) >= 1
-        if item_id == "market_impact":
-            return bool(business_value.get("market_impact"))
-
-        # Default: unrecognized items should fail closed, not pass by title presence.
-        return False
-
     def validate_gate(self, idea_id: str, gate_name: str) -> dict:
         """Public API: run gate validation."""
-        checklist = self._load_checklist(gate_name)
+        checklist = load_checklist(gate_name)
         if not checklist:
             return {"passed": True, "gate": gate_name, "items": []}
 
         passed = 0
         failed = []
         for item in checklist:
-            if self._check_evidence(idea_id, item["id"]):
+            if check_evidence(idea_id, item["id"]):
                 passed += 1
             else:
                 failed.append(f"{item['id']}: {item['description']}")

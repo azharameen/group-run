@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useLocation, Link } from "react-router-dom";
-import { Moon, Sun, Search } from "lucide-react";
+import { Moon, Sun, Search, MessageSquare } from "lucide-react";
 
 import {
 	Breadcrumb,
@@ -15,7 +15,15 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
-export function SiteHeader({ ideaTitle }: { ideaTitle?: string }) {
+export function SiteHeader({
+	ideaTitle,
+	onToggleChat,
+	isChatOpen = true,
+}: {
+	ideaTitle?: string;
+	onToggleChat?: () => void;
+	isChatOpen?: boolean;
+}) {
 	const location = useLocation();
 	const [darkMode, setDarkMode] = React.useState(false);
 
@@ -80,7 +88,7 @@ export function SiteHeader({ ideaTitle }: { ideaTitle?: string }) {
 				</Breadcrumb>
 			</div>
 
-			<div className="ml-auto flex items-center gap-3">
+			<div className="ml-auto flex items-center gap-2">
 				<div className="relative hidden md:block w-48 lg:w-64">
 					<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 					<Input
@@ -104,6 +112,19 @@ export function SiteHeader({ ideaTitle }: { ideaTitle?: string }) {
 					)}
 					<span className="sr-only">Toggle theme</span>
 				</Button>
+
+				{onToggleChat && (
+					<Button
+						variant={isChatOpen ? "default" : "ghost"}
+						size="icon"
+						onClick={onToggleChat}
+						title="Toggle Agent Team Chat Sidebar"
+						className="h-8 w-8 rounded-lg"
+					>
+						<MessageSquare className="h-4 w-4" />
+						<span className="sr-only">Toggle Agent Chat Sidebar</span>
+					</Button>
+				)}
 			</div>
 		</header>
 	);

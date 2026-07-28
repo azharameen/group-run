@@ -370,3 +370,81 @@ export function connectSSE(
 
   return es
 }
+
+// ── Per-request Streaming Chat ─────────────────────────────────────────────────
+
+export type StreamEventType =
+  | 'thinking'
+  | 'tool_call'
+  | 'tool_result'
+  | 'subagent'
+  | 'handover'
+  | 'token'
+  | 'tasks_update'
+  | 'done'
+
+export interface StreamEvent {
+  type: StreamEventType
+  content?: string
+  agent?: string
+  tool?: string
+  params?: Record<string, any>
+  output?: string
+  action?: string
+  from_agent?: string
+  to_agent?: string
+  tasks?: any[]
+  completed?: number
+  total?: number
+}
+
+export async function streamChat(
+  ideaId: string | null,
+  text: string,
+  onEvent: (event: StreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const url = ideaId
+    ? `${API_BASE}/ideas/${ideaId}/chat/stream`
+    : `${API_BASE}/chat/stream`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, sender: 'user' }),
+    signal,
+  })
+
+  if (!res.ok) {
+    throw new Error(`Stream API ${res.status}`)
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) return
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.startsWith('data: ')) {
+        const raw = trimmed.slice(6)
+        if (!raw) continue
+        try {
+          const evt = JSON.parse(raw) as StreamEvent
+          onEvent(evt)
+        } catch {
+          // ignore malformed
+        }
+      }
+    }
+  }
+}

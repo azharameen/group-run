@@ -140,6 +140,8 @@ class IdeaRecord(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     running_agent: str = ""
+    priority: int = 2  # 1=High, 2=Medium, 3=Low
+    paused_processing: bool = False
 
     def update_phase(self):
         self.phase = phase_for_state(self.current_state)

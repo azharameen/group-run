@@ -81,6 +81,15 @@ ChatOpenAI = _LLMAdapter
 
 from ..config import settings
 
+
+def _ensure_llm_settings() -> None:
+    if not settings.openai_model_name:
+        raise ValueError("OPENAI_MODEL_NAME is not configured")
+    if not settings.openai_api_key:
+        raise ValueError("OPENAI_API_KEY is not configured")
+    if not settings.openai_api_base:
+        raise ValueError("OPENAI_API_BASE is not configured")
+
 # Singleton LLM instance
 _llm: Optional[ChatOpenAI] = None
 
@@ -89,6 +98,7 @@ def get_llm(**overrides) -> ChatOpenAI:
     """Get or create the LLM client singleton."""
     global _llm
     if _llm is None or overrides:
+        _ensure_llm_settings()
         timeout = int(os.environ.get("OPENAI_TIMEOUT", "30"))
         _llm = ChatOpenAI(
             model=overrides.get("model") or settings.openai_model_name,

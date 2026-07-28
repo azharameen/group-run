@@ -26,7 +26,8 @@ import {
     Trash2,
     Pause,
     Play,
-    SendHorizonal
+    SendHorizonal,
+    Bot
 } from 'lucide-react'
 import {
     fetchIdeaDetail,
@@ -50,6 +51,19 @@ import WorkflowTimeline from '../components/WorkflowTimeline'
 import SiemensGateStatus from '../components/SiemensGateStatus'
 import { IdeaHistoryTimeline } from '../components/IdeaHistoryTimeline'
 import { IdeaFilesystem } from '../components/IdeaFilesystem'
+import { InterruptInbox } from '../components/deepagents/InterruptInbox'
+import { SubagentActivityCard } from '../components/deepagents/SubagentActivityCard'
+import { AgentTodoPanel } from '../components/deepagents/AgentTodoPanel'
+import { ToolCallTimeline } from '../components/deepagents/ToolCallTimeline'
+import { ArtifactDiffPanel } from '../components/deepagents/ArtifactDiffPanel'
+import { fetchPendingInterrupts } from '../api/deepagents'
+import { InterruptItem } from '../types/deepagents'
+
+import { AgentHeaderStack } from '../components/agentic/AgentHeaderStack'
+import { LeftChatPane } from '../components/agentic/LeftChatPane'
+import { TaskKanbanBoard } from '../components/agentic/TaskKanbanBoard'
+import { FileTableView } from '../components/agentic/FileTableView'
+import { FileTreeEditor } from '../components/agentic/FileTreeEditor'
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -140,16 +154,19 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
   const [error, setError] = useState('')
   const [gateConfig, setGateConfig] = useState<GateConfig | null>(null)
   const [compositeThreshold, setCompositeThreshold] = useState(70)
+  const [interrupts, setInterrupts] = useState<InterruptItem[]>([])
 
   const loadData = async () => {
     if (!ideaId) return
     try {
-      const [detailRes, filesRes] = await Promise.all([
+      const [detailRes, filesRes, interruptsRes] = await Promise.all([
         fetchIdeaDetail(ideaId),
         fetchIdeaFiles(ideaId).catch(() => []),
+        fetchPendingInterrupts(ideaId).catch(() => []),
       ])
       setDetail(detailRes)
       setFiles(filesRes)
+      setInterrupts(interruptsRes)
       if (detailRes?.idea?.title && onIdeaLoaded) {
         onIdeaLoaded(detailRes.idea.title)
       }
@@ -283,131 +300,109 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div className="space-y-2 flex-1">
+      {/* Top Team Header Stack */}
+      <AgentHeaderStack activeAgent={idea?.active_agent || 'Discovery & Drafting Subagent Mesh'} />
+
+      {/* Header Info & Primary Actions */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 rounded-xl border bg-card text-card-foreground">
+        <div className="space-y-1.5 flex-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
             <span className="font-mono text-primary font-semibold">{ideaId}</span>
             <Separator orientation="vertical" className="h-3" />
             <Badge variant="outline" className="capitalize text-[11px]">
-              {idea?.phase || stateData?.phase || ''}
+              {idea?.phase || stateData?.phase || 'discovery'}
             </Badge>
             <Separator orientation="vertical" className="h-3" />
             <span className="font-medium text-foreground capitalize">{currentState.replace(/_/g, ' ')}</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground leading-snug">
+          <h1 className="text-xl font-bold tracking-tight text-foreground leading-snug">
             {idea?.title || ideaId}
           </h1>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={pausedProcessing ? handleResume : handlePause} disabled={pausing || resuming} className="gap-2">
-              {pausedProcessing ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-              {pausedProcessing ? 'Resume' : 'Pause'}
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting} className="gap-2">
-            <Trash2 className="w-4 h-4" />
+          <Button variant="outline" size="sm" onClick={pausedProcessing ? handleResume : handlePause} disabled={pausing || resuming} className="gap-1.5 h-8 text-xs">
+            {pausedProcessing ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+            {pausedProcessing ? 'Resume' : 'Pause'}
+          </Button>
+          <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting} className="gap-1.5 h-8 text-xs">
+            <Trash2 className="w-3.5 h-3.5" />
             Delete
           </Button>
-            <Button variant="outline" size="sm" onClick={handleScore} disabled={scoring} className="gap-2">
-              <RefreshCw className={`w-4 h-4 ${scoring ? 'animate-spin' : ''}`} />
-              Re-Score Idea
-            </Button>
-            <Button size="sm" onClick={() => handleAdvance()} disabled={advancing} className="gap-2">
-              {advancing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Advance Workflow
-            </Button>
+          <Button variant="outline" size="sm" onClick={handleScore} disabled={scoring} className="gap-1.5 h-8 text-xs">
+            <RefreshCw className={`w-3.5 h-3.5 ${scoring ? 'animate-spin' : ''}`} />
+            Re-Score
+          </Button>
+          <Button size="sm" onClick={() => handleAdvance()} disabled={advancing} className="gap-1.5 h-8 text-xs">
+            {advancing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            Advance Stage
+          </Button>
         </div>
       </div>
 
-      {/* Score Banner */}
-      {composite > 0 && (
-        <Card className="overflow-hidden border-primary/20 bg-gradient-to-r from-primary/5 via-background to-background">
-          <CardContent className="flex flex-wrap items-center gap-4 py-5 px-6">
-            <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl ${
-                composite >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40' : composite >= 50 ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-orange-100 dark:bg-orange-900/40'
-              }`}>
-                <TrendingUp className={`w-6 h-6 ${
-                  composite >= 70 ? 'text-emerald-600 dark:text-emerald-400' : composite >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-orange-600 dark:text-orange-400'
-                }`} />
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-4xl font-bold tracking-tight">{composite}</span>
-                  <span className="text-sm text-muted-foreground font-medium">/ 100</span>
-                </div>
-                <span className="text-xs text-muted-foreground">Composite Score</span>
-              </div>
-            </div>
-            {strengthRating && (
-              <Badge variant={STRENGTH_VARIANTS[strengthRating] || 'outline'} className="text-xs px-3 py-1">
-                {strengthRating}
-              </Badge>
-            )}
-            {latestScores.summary && (
-              <span className="text-xs text-muted-foreground border-l pl-3 truncate max-w-xl flex-1 min-w-[200px]">
-                {latestScores.summary}
-              </span>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Main Tabs Navigation */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full justify-start border-b rounded-none h-auto bg-transparent p-0 gap-4 overflow-x-auto flex-nowrap">
-          <TabsTrigger
-            value="overview"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2.5 gap-2 text-sm font-medium transition-all"
-          >
-            <BarChart3 className="w-4 h-4" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger
-            value="workflow"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2.5 gap-2 text-sm font-medium transition-all"
-          >
-            <Layers className="w-4 h-4" />
-            Workflow
-          </TabsTrigger>
-          <TabsTrigger
-            value="history"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2.5 gap-2 text-sm font-medium transition-all"
-          >
-            <MessageSquare className="w-4 h-4" />
-            Agent Timeline
-          </TabsTrigger>
-          <TabsTrigger
-            value="comments"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2.5 gap-2 text-sm font-medium transition-all"
-          >
-            <SendHorizonal className="w-4 h-4" />
-            Comments
-          </TabsTrigger>
-          <TabsTrigger
-            value="filesystem"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2.5 gap-2 text-sm font-medium transition-all"
-          >
-            <Folder className="w-4 h-4" />
-            Filesystem
-            {files.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[10px]">
-                {files.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="research"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2.5 gap-2 text-sm font-medium transition-all"
-          >
-            <BookOpen className="w-4 h-4" />
-            Research Data
-          </TabsTrigger>
-        </TabsList>
+      {/* Main Workspace Layout (Chat is persistently hosted in the Right Chat Sidebar) */}
+      <div className="w-full space-y-4">
+        <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="w-full justify-start border-b rounded-none h-auto bg-transparent p-0 gap-2 overflow-x-auto flex-nowrap">
+              <TabsTrigger
+                value="overview"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5"
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-primary" />
+                Overview & Scores
+              </TabsTrigger>
+              <TabsTrigger
+                value="filesystem"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5"
+              >
+                <Folder className="w-3.5 h-3.5 text-amber-500" />
+                Filesystem Explorer
+                {files.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[9px]">
+                    {files.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="workflow"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5"
+              >
+                <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                Workflow State
+              </TabsTrigger>
+              <TabsTrigger
+                value="history"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+                Agent Timeline
+              </TabsTrigger>
+              <TabsTrigger
+                value="deepagents"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5"
+              >
+                <Bot className="w-3.5 h-3.5 text-primary" />
+                DeepAgents Mesh
+                {interrupts.length > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-[9px] animate-pulse">
+                    {interrupts.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="research"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-blue-500" />
+                Research Data
+              </TabsTrigger>
+            </TabsList>
 
         {/* ── Overview Tab ── */}
         <TabsContent value="overview" className="space-y-6 pt-4">
+          {interrupts.length > 0 && (
+            <InterruptInbox ideaId={ideaId || ''} interrupts={interrupts} onActionComplete={loadData} />
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-5">
               {/* Problem Statement */}
@@ -560,6 +555,19 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
           <IdeaFilesystem files={files} ideaId={ideaId || ''} />
         </TabsContent>
 
+        {/* ── DeepAgents Mesh Tab ── */}
+        <TabsContent value="deepagents" className="space-y-6 pt-4">
+          <InterruptInbox ideaId={ideaId || ''} interrupts={interrupts} onActionComplete={loadData} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SubagentActivityCard subagents={[]} />
+            <AgentTodoPanel />
+          </div>
+
+          <ToolCallTimeline />
+          <ArtifactDiffPanel />
+        </TabsContent>
+
         {/* ── Research Data Tab ── */}
         <TabsContent value="research" className="space-y-4 pt-4">
           <p className="text-xs text-muted-foreground">
@@ -582,5 +590,6 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
         </TabsContent>
       </Tabs>
     </div>
-  )
+  </div>
+)
 }
