@@ -121,8 +121,8 @@ Phase 1 status: completed on 2026-07-27.
 - [x] Separate chat transcript records from workflow state snapshots so the UI can show a real agent transcript
 - [x] Stop emitting synthetic agent messages from route handlers once the runtime event stream is available
 - [ ] Add a clear fallback policy that uses retry and explicit failure only, never fabricated success output
-- [ ] Extend the current `StreamEvent` type to include interrupt, approval, retry, failed, and done events
-- [ ] Define a backend-to-frontend transcript envelope that can carry raw event type plus speaker, role, and provenance
+- [x] Extend the current `StreamEvent` type to include interrupt, approval, retry, failed, and done events
+- [x] Define a backend-to-frontend transcript envelope that can carry raw event type plus speaker, role, and provenance
 
 ### Phase 2 concrete solution path
 
@@ -141,7 +141,7 @@ Phase 1 status: completed on 2026-07-27.
 - [ ] current API still works unchanged
 - [ ] no default switch to DeepAgents yet
 - [ ] runtime event schema is documented and tested
-- [ ] transcript records distinguish user, orchestrator, subagent, tool, and approval events
+- [x] transcript records distinguish user, orchestrator, subagent, tool, and approval events
 
 ### Phase 2 milestone
 
@@ -214,12 +214,12 @@ Phase 1 status: completed on 2026-07-27.
 
 ## Phase 5: Streaming And Frontend Integration
 
-- [ ] Add DeepAgents event streaming adapter on backend
-- [ ] Preserve compatibility with current SSE consumers during migration
-- [ ] Add frontend subagent activity panel
-- [ ] Add frontend todo/progress panel
-- [ ] Add frontend tool-call event view
-- [ ] Add frontend interrupt approval UI
+- [x] Add DeepAgents event streaming adapter on backend
+- [x] Preserve compatibility with current SSE consumers during migration
+- [x] Add frontend subagent activity panel
+- [x] Add frontend todo/progress panel
+- [x] Add frontend tool-call event view
+- [x] Add frontend interrupt approval UI
 
 ### Phase 5 solutioning checklist
 
@@ -240,8 +240,8 @@ Phase 1 status: completed on 2026-07-27.
 - [x] Show speaker chips for user, orchestrator, subagent, reviewer, and tool events
 - [x] Add explicit pause / retry / failed badges to live chat items
 - [x] Rework `RightChatSidebar` to render transcript cards from typed events instead of legacy hardcoded messages
-- [ ] Rework `IdeaHistoryTimeline` to read from transcript records first, idea fields second, and comments third
-- [ ] Update `chat-primitives` so execution steps can render interrupt, approval, failed, and retry states
+- [x] Rework `IdeaHistoryTimeline` to read from transcript records first, idea fields second, and comments third
+- [x] Update `chat-primitives` so execution steps can render interrupt, approval, failed, and retry states
 - [ ] Keep a legacy adapter only as a temporary compatibility layer until the new transcript works end-to-end
 
 ### Phase 5 concrete solution path
@@ -306,9 +306,9 @@ Phase 1 status: completed on 2026-07-27.
 ### Phase 6 implementation checklist
 
 - [x] Add provenance metadata for generated sections
-- [ ] Add artifact diff and revision comparison views
-- [ ] Add duplicate idea detection with a clear decision outcome
-- [ ] Add explicit error states when a stage cannot complete agentically
+- [x] Add artifact diff and revision comparison views
+- [x] Add duplicate idea detection with a clear decision outcome
+- [x] Add explicit error states when a stage cannot complete agentically
 
 ### Phase 6 concrete solution path
 
@@ -325,7 +325,7 @@ Phase 1 status: completed on 2026-07-27.
 ## Phase 7: Advanced Capabilities
 
 - [ ] Add multimodal ingestion for PDFs and images
-- [ ] Add real prior-art integrations
+- [x] Add real prior-art integrations
 - [ ] Add LangSmith observability
 - [ ] Add RBAC and reviewer identity model
 - [ ] Plan DB migration away from YAML when needed
@@ -340,12 +340,12 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 7 implementation checklist
 
-- [ ] Integrate the chosen patent / filing source adapters
+- [x] Integrate the chosen patent / filing source adapters
 - [ ] Add observability and review analytics
-- [ ] Keep the adaptation history in the milestone tracker and phase notes
-- [ ] Record source trust level for every research adapter
-- [ ] Record whether patent / filing research came from API, MCP tool, internal source, or web search
-- [ ] Store tool provenance in the artifact history and audit log
+- [x] Keep the adaptation history in the milestone tracker and phase notes
+- [x] Record source trust level for every research adapter
+- [x] Record whether patent / filing research came from API, MCP tool, internal source, or web search
+- [x] Store tool provenance in the artifact history and audit log
 
 ### Phase 7 concrete solution path
 

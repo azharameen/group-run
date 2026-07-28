@@ -43,6 +43,19 @@ export interface IdeaDetail {
   transcript?: Array<Record<string, any>>
 }
 
+export interface ArtifactRevision {
+  artifact_name: string
+  version: number
+  timestamp: string
+  path: string
+  file_name: string
+  content: string
+  diff: string
+  provenance: string
+  trust: string
+  evidence_refs: string[]
+}
+
 export interface CriterionDetail {
   score: number
   reasoning: string
@@ -103,6 +116,15 @@ export async function fetchIdeaDetail(ideaId: string): Promise<IdeaDetail> {
 export async function fetchIdeaFiles(ideaId: string): Promise<IdeaFile[]> {
   const res = await request<{ idea_id: string; files: IdeaFile[] }>(`/ideas/${ideaId}/files`)
   return res.files || []
+}
+
+export async function fetchIdeaRevisions(ideaId: string): Promise<ArtifactRevision[]> {
+  const res = await request<{ idea_id: string; revisions: ArtifactRevision[] }>(`/ideas/${ideaId}/revisions`)
+  return res.revisions || []
+}
+
+export async function fetchArtifactDiff(ideaId: string, artifactName: string): Promise<any> {
+  return request(`/ideas/${ideaId}/artifacts/${encodeURIComponent(artifactName)}/diff`)
 }
 
 export async function createIdea(signalText: string, title?: string): Promise<{ idea_id: string; score: ScoreResult }> {

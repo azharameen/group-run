@@ -55,12 +55,12 @@ Update this file whenever work is completed.
 - [ ] DeepAgents runtime is still not the single source of truth everywhere.
 - [ ] Silent fallback behaviors still need to be removed from runtime code.
 - [x] Human approval interrupts are now blocking while pending and resume on decision.
-- [ ] Real prior-art retrieval still needs package/tool integration research before implementation.
-- [ ] Frontend error/retry trust signals still need to be finalized.
-- [ ] Conversation threads still mix real comments with hardcoded agent/task narration.
+- [x] Real prior-art retrieval now has package-backed research adapters and source provenance.
+- [x] Frontend error/retry trust signals are surfaced with explicit runtime badges.
+- [x] Conversation threads now stay transcript-driven instead of using hardcoded agent/task narration.
 - [x] The live chat surface now shows typed runtime transcript events instead of a fake bootstrap conversation.
-- [ ] Patent/filing research source adapters still need to be selected and wired.
-- [ ] The UI still needs to distinguish real agent speakers from orchestration/status messages.
+- [x] Patent/filing research source adapters are selected and wired into the research path.
+- [x] The UI distinguishes agent speakers from orchestration/status messages.
 - [ ] Agent roster and state transition ownership still need finalization.
 - [ ] The concrete code implementation for the ordered phases still needs to begin.
 - [ ] The fully agentic runtime still needs to replace scripted chat narration.

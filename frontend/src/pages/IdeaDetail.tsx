@@ -31,6 +31,7 @@ import {
 import {
 	fetchIdeaDetail,
 	fetchIdeaFiles,
+	fetchIdeaRevisions,
 	scoreIdea,
 	advanceIdea,
 	deleteIdea,
@@ -56,7 +57,7 @@ import { AgentTodoPanel } from "../components/deepagents/AgentTodoPanel";
 import { ToolCallTimeline } from "../components/deepagents/ToolCallTimeline";
 import { ArtifactDiffPanel } from "../components/deepagents/ArtifactDiffPanel";
 import { fetchPendingInterrupts } from "../api/deepagents";
-import { InterruptItem } from "../types/deepagents";
+import { InterruptItem, type SubagentStatus } from "../types/deepagents";
 
 import { AgentHeaderStack } from "../components/agentic/AgentHeaderStack";
 
@@ -177,22 +178,43 @@ export default function IdeaDetail({
 	const [gateConfig, setGateConfig] = useState<GateConfig | null>(null);
 	const [compositeThreshold, setCompositeThreshold] = useState(70);
 	const [interrupts, setInterrupts] = useState<InterruptItem[]>([]);
+	const [revisions, setRevisions] = useState<any[]>([]);
 	const transcriptEvents =
 		detail?.transcript_events || detail?.transcript || [];
 	const approvalTranscriptEvents = transcriptEvents.filter((evt: any) =>
 		["approval", "interrupt", "retry", "failed"].includes(evt?.type),
 	);
+	const toolCallEvents = transcriptEvents.filter((evt: any) =>
+		["tool_call", "tool_result"].includes(evt?.type),
+	);
+	const subagentEvents: SubagentStatus[] = transcriptEvents
+		.filter((evt: any) => ["subagent", "handover"].includes(evt?.type))
+		.map((evt: any, idx: number) => ({
+			id: evt.id || `subagent-${idx}`,
+			name: evt.speaker || evt.agent || "Runtime Subagent",
+			role: evt.role || "subagent",
+			status:
+				evt.type === "handover"
+					? ("completed" as const)
+					: evt.type === "subagent"
+						? ("running" as const)
+						: ("idle" as const),
+			current_task: evt.action || evt.content || evt.reason || "",
+			last_active: evt.timestamp,
+		}));
 
 	const loadData = async () => {
 		if (!ideaId) return;
 		try {
-			const [detailRes, filesRes, interruptsRes] = await Promise.all([
+			const [detailRes, filesRes, revisionsRes, interruptsRes] = await Promise.all([
 				fetchIdeaDetail(ideaId),
 				fetchIdeaFiles(ideaId).catch(() => []),
+				fetchIdeaRevisions(ideaId).catch(() => []),
 				fetchPendingInterrupts(ideaId).catch(() => []),
 			]);
 			setDetail(detailRes);
 			setFiles(filesRes);
+			setRevisions(revisionsRes);
 			setInterrupts(interruptsRes);
 			if (detailRes?.idea?.title && onIdeaLoaded) {
 				onIdeaLoaded(detailRes.idea.title);
@@ -742,12 +764,40 @@ export default function IdeaDetail({
 						)}
 
 						<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-							<SubagentActivityCard subagents={[]} />
+							<SubagentActivityCard subagents={subagentEvents} />
 							<AgentTodoPanel />
 						</div>
 
-						<ToolCallTimeline />
-						<ArtifactDiffPanel />
+						<ToolCallTimeline
+							events={toolCallEvents.map((evt: any) => ({
+								id: evt.id || evt.timestamp || evt.type,
+								tool_name: evt.tool || evt.type,
+								arguments: evt.params || {},
+								output:
+									typeof evt.output === "string"
+										? evt.output
+										: evt.output
+											? JSON.stringify(evt.output, null, 2)
+											: undefined,
+								status:
+									evt.type === "tool_call"
+										? "running"
+										: evt.type === "tool_result"
+											? "completed"
+											: "failed",
+								timestamp: evt.timestamp || "",
+								agent: evt.agent || evt.speaker,
+								speaker: evt.speaker,
+								role: evt.role,
+								provenance: evt.provenance,
+							}))}
+						/>
+						<ArtifactDiffPanel
+							versionA={revisions[revisions.length - 2]?.file_name}
+							versionB={revisions[revisions.length - 1]?.file_name}
+							contentA={revisions[revisions.length - 2]?.content}
+							contentB={revisions[revisions.length - 1]?.content}
+						/>
 					</TabsContent>
 
 					{/* ── Research Data Tab ── */}

@@ -50,7 +50,7 @@ export const InterruptInbox: React.FC<InterruptInboxProps> = ({
       <Card className="border-dashed bg-muted/20">
         <CardContent className="pt-6 text-center text-xs text-muted-foreground">
           <CheckCircle2 className="w-5 h-5 mx-auto mb-2 text-primary" />
-          No pending human approvals required. DeepAgents runtime is executing smoothly.
+          No pending human approvals required.
         </CardContent>
       </Card>
     );

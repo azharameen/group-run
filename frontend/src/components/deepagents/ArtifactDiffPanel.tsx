@@ -12,11 +12,32 @@ interface ArtifactDiffPanelProps {
 }
 
 export const ArtifactDiffPanel: React.FC<ArtifactDiffPanelProps> = ({
-  versionA = 'v1.0 (Initial Draft)',
-  versionB = 'v2.0 (Post-Review Revision)',
-  contentA = `## Abstract\nA system for industrial predictive maintenance using deep learning.\n\n## Claims\n1. An industrial sensor node.\n2. A prediction model.`,
-  contentB = `## Abstract\nA physics-informed neural network system for industrial predictive maintenance in Siemens edge nodes.\n\n## Claims\n1. An industrial sensor node with real-time vibration streaming.\n2. A physics-informed neural network model evaluating failure probability.`
+  versionA,
+  versionB,
+  contentA,
+  contentB
 }) => {
+  if (!versionA || !versionB || !contentA || !contentB) {
+    return (
+      <Card className="w-full">
+        <CardHeader className="pb-3 p-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <FileDiff className="w-4 h-4 text-primary" />
+              Artifact Revision Comparison
+            </CardTitle>
+            <Badge variant="outline" className="text-xs">
+              Diff Viewer
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 text-xs text-muted-foreground">
+          No artifact revisions are available yet.
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-3 p-4">

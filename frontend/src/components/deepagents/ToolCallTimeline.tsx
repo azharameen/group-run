@@ -10,33 +10,21 @@ interface ToolCallTimelineProps {
 
 export const ToolCallTimeline: React.FC<ToolCallTimelineProps> = ({ events = [] }) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  const defaultEvents: ToolCallEvent[] = events.length > 0 ? events : [
-    {
-      id: 't1',
-      tool_name: 'read_file',
-      arguments: { path: '/instructions/siemens-validator-instructions.md' },
-      output: 'Loaded 42 lines of governance criteria.',
-      status: 'completed',
-      timestamp: '11:20:15'
-    },
-    {
-      id: 't2',
-      tool_name: 'query_kb',
-      arguments: { query: 'industrial ai digital twin anomaly detection' },
-      output: 'Retrieved 3 prior-art patents matching category IND_AI.',
-      status: 'completed',
-      timestamp: '11:20:28'
-    },
-    {
-      id: 't3',
-      tool_name: 'write_file',
-      arguments: { path: '/workspace/ideas/ideascope-draft.md' },
-      output: 'File updated with 1200 bytes.',
-      status: 'running',
-      timestamp: '11:20:45'
-    }
-  ];
+  if (!events || events.length === 0) {
+    return (
+      <Card className="w-full">
+        <CardHeader className="pb-3 p-4">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Wrench className="w-4 h-4 text-primary" />
+            Tool Call Execution Stream
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 text-xs text-muted-foreground">
+          No tool calls have been recorded yet.
+        </CardContent>
+      </Card>
+    );
+  }
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -51,7 +39,7 @@ export const ToolCallTimeline: React.FC<ToolCallTimelineProps> = ({ events = [] 
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2.5 p-4 pt-0">
-        {defaultEvents.map((evt) => {
+        {events.map((evt) => {
           const isExp = !!expanded[evt.id];
           return (
             <div key={evt.id} className="border rounded-md bg-muted/20 text-xs">

@@ -330,6 +330,13 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3,
 
     if not ideas:
         # Retry with the opposite path before failing hard.
+        _emit("retry", {
+            "idea_id": "",
+            "speaker": "workflow-orchestrator",
+            "role": "orchestrator",
+            "reason": "Initial autonomous generation returned no candidates; retrying with alternate path.",
+            "provenance": "workflow:retry-generation",
+        })
         ideas = execute_autonomous_idea_generation(max_ideas)
         if not ideas and user_input.strip():
             ideas = execute_seed_ideas_from_input(
@@ -340,6 +347,13 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3,
             )
 
     if not ideas:
+        _emit("failed", {
+            "idea_id": "",
+            "speaker": "workflow-orchestrator",
+            "role": "orchestrator",
+            "reason": "Autonomous idea generation failed after retries.",
+            "provenance": "workflow:failed-generation",
+        })
         raise RuntimeError("Autonomous idea generation returned no candidates")
 
     created_ideas = []

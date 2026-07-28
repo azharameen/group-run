@@ -9,9 +9,10 @@ import {
 	SidebarMenuItem,
 	SidebarMenuButton,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageScroller, TurnMinimap } from "@/components/ui/chat-primitives";
+import { MessageScroller, Message, Bubble, Marker, MessageActions, LiveTrace, TurnMinimap, type TraceStep } from "@/components/ui/chat-primitives";
 import { connectSSE, streamChat, type StreamEvent } from "@/api/client";
 import {
 	MessageSquare,
@@ -46,6 +47,9 @@ interface ChatMessage {
 	speaker?: string;
 	text: string;
 	timestamp: string;
+	isStreaming?: boolean;
+	isTraceOpen?: boolean;
+	liveTrace?: TraceStep[];
 	eventType?: string;
 	provenance?: string;
 	details?: Record<string, any>;
@@ -79,7 +83,7 @@ const EVENT_LABELS: Record<string, string> = {
 	failed: "Failed",
 	completion: "Completion",
 	user_message: "User",
-	transition: "Transition",
+	transition: "Orchestrator",
 };
 
 const eventToMessage = (evt: StreamEvent): ChatMessage => {
@@ -102,8 +106,28 @@ const eventToMessage = (evt: StreamEvent): ChatMessage => {
 		role: evt.role,
 		text,
 		timestamp,
+		isStreaming: evt.type !== "done" && evt.type !== "completion",
 		eventType: evt.type,
 		provenance: evt.provenance,
+		liveTrace: [
+			{
+				type: (evt.type === "done" ? "approval" : evt.type) as TraceStep["type"],
+				agent: evt.agent || evt.speaker,
+				content: evt.content,
+				tool: evt.tool,
+				params: evt.params,
+				output: evt.output,
+				action: evt.action,
+				from_agent: evt.from_agent,
+				to_agent: evt.to_agent,
+				interrupt_id: evt.interrupt_id,
+				decision: evt.decision,
+				reason: evt.reason,
+				role: evt.role,
+				speaker: evt.speaker,
+				provenance: evt.provenance,
+			} as TraceStep,
+		],
 		details: {
 			action: evt.action,
 			from_agent: evt.from_agent,
@@ -186,11 +210,11 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 				setMessages((prev) => [
 					...prev,
 					eventToMessage({
-						type: "thinking",
+						type: "transition",
 						content: data.message,
-						agent: data.agent_name || "autonomous-runner",
-						speaker: data.agent_name || "autonomous-runner",
-						role: data.role,
+						agent: data.agent_name || "workflow-orchestrator",
+						speaker: data.agent_name || "Workflow Orchestrator",
+						role: "orchestrator",
 						provenance: `sse:${data.idea_id || "global"}`,
 					}),
 				]);
@@ -229,6 +253,14 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 		abortRef.current?.abort();
 		abortRef.current = null;
 		setIsGenerating(false);
+	};
+
+	const toggleTrace = (id: string) => {
+		setMessages((prev) =>
+			prev.map((msg) =>
+				msg.id === id ? { ...msg, isTraceOpen: !msg.isTraceOpen } : msg,
+			),
+		);
 	};
 
 	// ── Scroll to turn by index ───────────────────────────────────────────────
@@ -418,83 +450,48 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 								msg.sender === "You" ||
 								msg.sender === "Inventor" ||
 								msg.sender === "user";
-							const isEvent = Boolean(msg.eventType && !isUser);
 							const label = EVENT_LABELS[msg.eventType || ""] || "Message";
-
-							const eventIcon = (() => {
-								switch (msg.eventType) {
-									case "thinking":
-										return <Brain className="w-3.5 h-3.5 text-violet-500" />;
-									case "tool_call":
-										return <Terminal className="w-3.5 h-3.5 text-amber-500" />;
-									case "tool_result":
-										return <Wrench className="w-3.5 h-3.5 text-emerald-500" />;
-									case "subagent":
-										return <GitBranch className="w-3.5 h-3.5 text-blue-500" />;
-									case "handover":
-										return <ArrowRight className="w-3.5 h-3.5 text-pink-500" />;
-									case "interrupt":
-										return <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />;
-									case "approval":
-										return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />;
-									case "retry":
-										return <RotateCw className="w-3.5 h-3.5 text-sky-500" />;
-									case "failed":
-										return <AlertTriangle className="w-3.5 h-3.5 text-destructive" />;
-									case "completion":
-										return <CheckCircle2 className="w-3.5 h-3.5 text-primary" />;
-									default:
-										return isUser ? (
-											<User className="w-3.5 h-3.5 text-muted-foreground" />
-										) : (
-											<Bot className="w-3.5 h-3.5 text-muted-foreground" />
-										);
-								}
-							})();
+							const hasTrace = Boolean(msg.liveTrace?.length);
 
 							return (
-								<div
-									key={msg.id}
-									ref={(el) => {
-										messageRefs.current[idx] = el;
-									}}
-									className="rounded-lg border bg-card shadow-sm"
-								>
-									<div className="p-3 space-y-2">
-										<div className="flex items-center justify-between gap-2">
-											<div className="flex items-center gap-2 min-w-0">
-												{eventIcon}
-												<span className="text-xs font-semibold truncate">
-													{msg.sender}
+								<div key={msg.id} ref={(el) => { messageRefs.current[idx] = el; }}>
+									<Message variant={isUser ? "user" : "agent"} avatarText={isUser ? "YOU" : "AI"}>
+										<Marker sender={msg.sender} timestamp={msg.timestamp} />
+										<div className="flex items-center gap-2">
+											<Badge
+												variant={messageBadgeVariant(msg.eventType) as any}
+												className="text-[10px] uppercase font-mono"
+											>
+												{label}
+											</Badge>
+											{msg.provenance && (
+												<span className="text-[10px] font-mono text-muted-foreground truncate">
+													{msg.provenance}
 												</span>
-												<Badge
-													variant={messageBadgeVariant(msg.eventType) as any}
-													className="text-[10px] uppercase font-mono"
-												>
-													{label}
-												</Badge>
-											</div>
-											<span className="text-[10px] font-mono text-muted-foreground">
-												{msg.timestamp}
-											</span>
+											)}
 										</div>
 
-										{msg.text && (
-											<div
-												className={`text-xs leading-relaxed whitespace-pre-wrap rounded-md border p-2.5 ${
-													isUser
-														? "bg-primary/5 text-foreground"
-														: "bg-muted/30 text-foreground"
-												}`}
-											>
-												{msg.text}
-											</div>
+										{hasTrace && msg.isTraceOpen && (
+											<LiveTrace steps={msg.liveTrace || []} isStreaming={msg.isStreaming} />
 										)}
 
+										<Bubble variant={isUser ? "user" : "agent"} isStreaming={msg.isStreaming}>
+											{msg.text || (msg.isStreaming ? "" : "...")}
+										</Bubble>
+
 										{msg.eventType === "tool_call" && msg.params && (
-											<pre className="text-[11px] font-mono rounded border bg-muted/20 p-2 overflow-x-auto">
-												{JSON.stringify(msg.params, null, 2)}
-											</pre>
+											<Collapsible>
+												<CollapsibleTrigger asChild>
+													<Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]">
+														Tool arguments
+													</Button>
+												</CollapsibleTrigger>
+												<CollapsibleContent className="rounded-md border bg-muted/20 p-2 text-[11px] font-mono">
+													<pre className="whitespace-pre-wrap overflow-x-auto text-foreground">
+														{JSON.stringify(msg.params, null, 2)}
+													</pre>
+												</CollapsibleContent>
+											</Collapsible>
 										)}
 
 										{(msg.output || msg.from_agent || msg.to_agent || msg.decision || msg.reason) && (
@@ -507,15 +504,32 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 												{msg.decision && <div>Decision: {msg.decision}</div>}
 												{msg.reason && <div>{msg.reason}</div>}
 												{msg.output !== undefined && (
-													<pre className="font-mono rounded border bg-muted/20 p-2 overflow-x-auto whitespace-pre-wrap text-foreground">
-														{typeof msg.output === "string"
-															? msg.output
-															: JSON.stringify(msg.output, null, 2)}
-													</pre>
+													<Collapsible>
+														<CollapsibleTrigger asChild>
+															<Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]">
+																Result
+															</Button>
+														</CollapsibleTrigger>
+														<CollapsibleContent className="rounded border bg-muted/20 p-2">
+															<pre className="font-mono text-foreground whitespace-pre-wrap overflow-x-auto text-[11px]">
+																{typeof msg.output === "string"
+																	? msg.output
+																	: JSON.stringify(msg.output, null, 2)}
+															</pre>
+														</CollapsibleContent>
+													</Collapsible>
 												)}
 											</div>
 										)}
-									</div>
+
+										<MessageActions
+											text={msg.text}
+											variant={isUser ? "user" : "agent"}
+											hasTrace={hasTrace}
+											onRegenerate={!isUser ? () => executeSend(msg.text) : undefined}
+											onToggleTrace={hasTrace ? () => toggleTrace(msg.id) : undefined}
+										/>
+									</Message>
 								</div>
 							);
 						})}

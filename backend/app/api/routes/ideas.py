@@ -10,10 +10,14 @@ from ...orchestrator.tools import (
     advance_workflow,
     create_idea,
     delete_idea,
+    detect_duplicate_ideas,
+    build_review_packet,
     score_idea,
     set_idea_paused,
     update_idea_field,
     validate_gate,
+    get_prior_art_sources,
+    get_filing_sources,
 )
 from ...orchestrator.workflow import pause_idea, resume_idea
 from ...storage.yaml_io import (
@@ -25,6 +29,7 @@ from ...storage.yaml_io import (
     load_transcript_events,
     save_comment,
 )
+from ...storage.artifacts import load_artifact_revisions, build_artifact_comparison
 
 
 router = APIRouter(prefix="/api/ideas", tags=["ideas"])
@@ -100,6 +105,7 @@ async def get_idea_files(idea_id: str) -> dict:
 async def create_new_idea(payload: dict) -> dict:
     signal_text = payload.get("signal_text", "")
     title = payload.get("title", "")
+    duplicate_assessment = detect_duplicate_ideas(signal_text, title)
 
     if not signal_text:
         kb_docs = load_knowledge_base()
@@ -117,10 +123,18 @@ async def create_new_idea(payload: dict) -> dict:
             signal_text = "Autonomous discovery (no KB documents found)"
 
     idea_id = create_idea(signal_text, title)
+    if duplicate_assessment["is_duplicate"]:
+        from ...storage.yaml_io import load_idea_yaml, save_idea_yaml
+        data = load_idea_yaml(idea_id, "idea.yaml") or {}
+        data["duplicate_assessment"] = duplicate_assessment
+        data["duplicate_status"] = "review_required"
+        save_idea_yaml(idea_id, "idea.yaml", data)
     score_result = score_idea(idea_id, "api-create")
     return {
         "idea_id": idea_id,
         "score": score_result,
+        "duplicate_assessment": duplicate_assessment,
+        "duplicate_status": "review_required" if duplicate_assessment["is_duplicate"] else "clear",
         "message": f"Idea {idea_id} created and scored",
     }
 
@@ -151,6 +165,44 @@ async def update_idea(idea_id: str, payload: dict) -> dict:
 @router.post("/{idea_id}/evidence")
 async def add_evidence_endpoint(idea_id: str, payload: dict) -> dict:
     return add_evidence(idea_id, payload.get("source", ""), payload.get("content", ""))
+
+
+@router.get("/{idea_id}/revisions")
+async def get_idea_revisions(idea_id: str) -> dict:
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+    return {
+        "idea_id": idea_id,
+        "revisions": load_artifact_revisions(idea_id),
+    }
+
+
+@router.get("/{idea_id}/artifacts/{artifact_name}/diff")
+async def get_artifact_diff(idea_id: str, artifact_name: str) -> dict:
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+    return build_artifact_comparison(idea_id, artifact_name)
+
+
+@router.post("/{idea_id}/review-packet")
+async def create_review_packet(idea_id: str, payload: dict | None = None) -> dict:
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+    reviewer_role = (payload or {}).get("reviewer_role", "reviewer")
+    return build_review_packet(idea_id, reviewer_role)
+
+
+@router.get("/research/prior-art")
+async def research_prior_art(query: str, limit: int = 5) -> dict:
+    return get_prior_art_sources(query, limit=limit)
+
+
+@router.get("/research/filings")
+async def research_filings(query: str, limit: int = 5) -> dict:
+    return get_filing_sources(query, limit=limit)
 
 
 @router.delete("/{idea_id}")

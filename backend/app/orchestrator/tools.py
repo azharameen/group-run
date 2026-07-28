@@ -1,6 +1,8 @@
 """Custom tools used by DeepAgents subagents and the orchestrator."""
 
 from datetime import datetime
+from difflib import SequenceMatcher
+from pathlib import Path
 from typing import Optional
 
 from ..config import WORKSPACE_DIR, settings
@@ -19,6 +21,8 @@ from ..storage.yaml_io import (
     load_idea_yaml,
     delete_idea_folder,
 )
+from ..storage.artifacts import save_artifact_revision, build_artifact_comparison
+from ..research.adapters import search_prior_art, search_filing_sources
 
 # Active workflow machines, keyed by idea_id
 _machines: dict[str, PatentWorkflowMachine] = {}
@@ -48,6 +52,131 @@ def get_machine(idea_id: str) -> PatentWorkflowMachine:
 def remove_idea_machine(idea_id: str) -> None:
     """Remove a cached workflow machine for an idea."""
     _machines.pop(idea_id, None)
+
+
+def _normalize_text(value: str) -> str:
+    return " ".join(str(value or "").lower().split())
+
+
+def detect_duplicate_ideas(
+    signal_text: str,
+    title: str = "",
+    threshold: float = 0.72,
+) -> dict:
+    registry = load_idea_registry()
+    candidates: list[dict] = []
+    query = _normalize_text(" ".join([title, signal_text]))
+    idea_entries = list(registry.get("ideas", []))
+    ideas_root = Path(WORKSPACE_DIR) / "ideas"
+    if ideas_root.exists():
+        for folder in ideas_root.iterdir():
+            if folder.is_dir() and (folder / "idea.yaml").exists():
+                idea_entries.append({"idea_id": folder.name, "title": folder.name})
+
+    seen_ids: set[str] = set()
+    for idea in idea_entries:
+        idea_id = idea.get("idea_id")
+        if not idea_id or idea_id in seen_ids:
+            continue
+        seen_ids.add(idea_id)
+        data = load_idea_yaml(idea_id, "idea.yaml") or {}
+        corpus = _normalize_text(
+            " ".join(
+                str(part or "")
+                for part in [
+                    data.get("title", ""),
+                    data.get("signal_text", ""),
+                    data.get("problem_statement", ""),
+                    data.get("solution_concept", ""),
+                ]
+            )
+        )
+        if not corpus:
+            continue
+        title_score = SequenceMatcher(None, _normalize_text(title), _normalize_text(str(data.get("title", idea.get("title", ""))))).ratio()
+        query_tokens = set(query.split())
+        corpus_tokens = set(corpus.split())
+        token_score = 0.0
+        if query_tokens and corpus_tokens:
+            token_score = len(query_tokens & corpus_tokens) / max(min(len(query_tokens), len(corpus_tokens)), 1)
+        score = max(title_score, SequenceMatcher(None, query, corpus).ratio(), token_score)
+        if score >= threshold:
+            candidates.append(
+                {
+                    "idea_id": idea_id,
+                    "title": data.get("title", idea.get("title", "")),
+                    "state": data.get("current_state", idea.get("state", "")),
+                    "score": round(score, 3),
+                    "provenance": f"duplicate:{idea_id}",
+                }
+            )
+
+    candidates.sort(key=lambda item: item["score"], reverse=True)
+    return {
+        "query": query,
+        "threshold": threshold,
+        "matches": candidates,
+        "is_duplicate": bool(candidates),
+    }
+
+
+def build_review_packet(idea_id: str, reviewer_role: str = "reviewer") -> dict:
+    idea = load_idea_yaml(idea_id, "idea.yaml") or {}
+    scores = load_idea_yaml(idea_id, "scores.yaml") or {}
+    transcript = load_idea_yaml(idea_id, "transcript.yaml") or []
+    packet = {
+        "idea_id": idea_id,
+        "reviewer_role": reviewer_role,
+        "title": idea.get("title", ""),
+        "state": idea.get("current_state", ""),
+        "phase": idea.get("phase", ""),
+        "summary": idea.get("problem_statement", "")[:240],
+        "scores": scores.get("latest", {}),
+        "source_evidence": idea.get("source_evidence", []),
+        "transcript_highlights": [
+            evt for evt in transcript if evt.get("type") in {"thinking", "tool_call", "tool_result", "handover", "approval", "interrupt"}
+        ][-8:],
+        "artifact_revisions": idea.get("artifact_revisions", {}),
+        "provenance": f"review-packet:{idea_id}:{reviewer_role}",
+    }
+    packet_text = (
+        f"# Review Packet: {packet['title']}\n\n"
+        f"- Idea ID: {idea_id}\n"
+        f"- Reviewer Role: {reviewer_role}\n"
+        f"- State: {packet['state']}\n"
+        f"- Phase: {packet['phase']}\n\n"
+        f"## Summary\n{packet['summary']}\n\n"
+        f"## Scores\n{packet['scores']}\n\n"
+        f"## Evidence\n" + "\n".join(f"- {item}" for item in packet["source_evidence"]) + "\n"
+    )
+    save_artifact_revision(
+        idea_id,
+        f"review-packet-{reviewer_role.replace(' ', '-').lower()}",
+        packet_text,
+        provenance=packet["provenance"],
+        trust="trusted",
+        evidence_refs=packet["source_evidence"],
+    )
+    packet["rendered"] = packet_text
+    return packet
+
+
+def get_prior_art_sources(query: str, limit: int = 5) -> dict:
+    results = search_prior_art(query, limit=limit)
+    return {
+        "query": query,
+        "count": len(results),
+        "sources": [result.__dict__ for result in results],
+    }
+
+
+def get_filing_sources(query: str, limit: int = 5) -> dict:
+    results = search_filing_sources(query, limit=limit)
+    return {
+        "query": query,
+        "count": len(results),
+        "sources": [result.__dict__ for result in results],
+    }
 
 
 # ═══════════════════════════════════════════════════════════

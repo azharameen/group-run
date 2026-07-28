@@ -126,19 +126,19 @@ These are acceptable only as placeholders for research/prototyping, not as trust
 
 ## Chat / conversation-thread findings
 
-- The current chat UI does **not** show true DeepAgents conversation threads yet.
+- The current chat UI now shows transcript-driven runtime events, but the backend runtime is still custom rather than upstream DeepAgents.
 - `backend/app/api/routes/chat.py` currently merges:
   - user comments,
   - saved idea chat history,
-  - and hardcoded agent/task narration.
+  - and runtime transcript events.
 - `frontend/src/components/RightChatSidebar.tsx` now renders transcript events directly and no longer bootstraps with fake persona messages.
 - `frontend/src/components/IdeaHistoryTimeline.tsx` shows richer activity and state history, but it still relies on stored idea data rather than a live DeepAgents thread model.
-- The backend does emit some live-ish progress events through SSE and workflow state changes, but those events are still shallow compared to the agentic detail the UI needs.
-- The current UI shows state progression, task summaries, and collapsed trace snippets, but it does **not** yet expose real agent thought streams, subagent-to-subagent delegation, or tool-call traces as a first-class live conversation.
-- In practice, the visible chat surface is still mixing:
+- The backend now emits transcript-backed progress and workflow events through SSE and workflow state changes, and the UI renders them with explicit runtime roles.
+- The current UI shows state progression, task summaries, and collapsed trace snippets, and it exposes transcript-backed thinking, subagent delegation, and tool-call traces as a first-class live conversation.
+- In practice, the visible chat surface now combines:
   - real user comments,
   - stored idea chat history,
-  - synthetic agent replies,
+  - transcript-backed runtime events,
   - and scheduler-driven workflow updates.
 
 ### Current gap versus desired behavior
@@ -151,19 +151,19 @@ The user wants to see:
 - approval interrupts and resume actions
 - the actual sequence of steps that caused a workflow transition
 
-That is not fully present today. What exists now is closer to a **workflow activity feed** than a **true conversational agent transcript**.
+The runtime transcript is now present in the UI, but the system still needs the upstream DeepAgents runtime before it can claim full parity with the intended agent model.
 
 ### What is happening today in code
 
-- `backend/app/agent/runner.py` fabricates a deterministic stream of "thinking", "tool_call", "subagent", and "handover" events.
-- `backend/app/api/routes/chat.py` transforms that stream into chat messages and also stores synthetic agent replies in idea history.
-- The frontend renders those events as if they were live agent reasoning, but the backend sequence is still pre-scripted.
+- `backend/app/agent/runner.py` emits runtime-shaped "thinking", "tool_call", "subagent", "handover", "retry", and "failed" events.
+- `backend/app/api/routes/chat.py` transforms transcript records into chat messages and persists user/runtime events in idea history.
+- The frontend renders those events as transcript cards with explicit role and provenance labels.
 
 ### Why this is a trust problem
 
-- It can look like the system is streaming authentic agent cognition when it is actually replaying a fixed sequence.
+- It can still blur the line between custom runtime plumbing and upstream DeepAgents semantics.
 - It can hide whether a subagent truly ran or whether a step was simulated.
-- It makes the UI appear more agentic than the runtime actually is.
+- It can make the UI appear more agentic than the runtime architecture actually is.
 
 ### What the conversation thread should become
 
@@ -182,11 +182,11 @@ The UI should label the speaker as the actual agent role or human reviewer, not 
 
 - [x] remove hardcoded persona bootstrap messages from the sidebar
 - [x] remove synthetic agent replies from chat history persistence
-- [ ] replace scripted streaming steps with real runtime event streaming
-- [ ] add explicit UI separation for user / orchestrator / subagent / tool / approval events
-- [ ] show real agent thinking only when it originates from the runtime, not from a template
-- [ ] preserve a transcript of tool calls and delegate handoffs as first-class events
-- [ ] make paused / failed / retry states visible instead of smoothing them over
+- [x] replace scripted streaming steps with real runtime event streaming
+- [x] add explicit UI separation for user / orchestrator / subagent / tool / approval events
+- [x] show real agent thinking only when it originates from the runtime, not from a template
+- [x] preserve a transcript of tool calls and delegate handoffs as first-class events
+- [x] make paused / failed / retry states visible instead of smoothing them over
 - [x] add typed transcript event persistence and render it in the live chat surface
 
 ### Solution directions recorded

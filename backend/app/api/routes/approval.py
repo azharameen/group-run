@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from ...orchestrator.tools import get_machine
 from ...orchestrator.workflow import pause_idea, resume_idea
 from ...storage.yaml_io import load_idea_yaml as load_idea, save_idea_yaml as save_idea, save_transcript_event
+from ...orchestrator.tools import build_review_packet
 
 router = APIRouter(prefix="/api/workflow", tags=["approvals"])
 
@@ -16,6 +17,8 @@ _PENDING_INTERRUPTS: dict[str, list[dict[str, Any]]] = {}
 
 class ApprovalDecision(BaseModel):
     reviewer: str = "Manager"
+    reviewer_id: str = ""
+    reviewer_role: str = ""
     decision: str = "APPROVED"  # APPROVED or REJECTED
     comments: str = ""
 
@@ -55,6 +58,7 @@ def add_pending_interrupt(idea_id: str, interrupt_type: str, details: str):
         "content": details,
         "provenance": f"interrupt:{idea_id}:{interrupt['id']}",
     })
+    build_review_packet(idea_id, interrupt_type)
 
 
 def _record_review(idea_data: dict[str, Any], reviewer: str, status: str, comments: str) -> None:
@@ -112,7 +116,12 @@ async def approve_idea(idea_id: str, req: ApprovalDecision) -> dict[str, Any]:
         "reason": req.comments,
         "content": f"{req.reviewer} approved interrupt gate" if req.decision.upper() == "APPROVED" else f"{req.reviewer} rejected interrupt gate",
         "provenance": f"approval:{idea_id}",
+        "metadata": {
+            "reviewer_id": req.reviewer_id,
+            "reviewer_role": req.reviewer_role or req.reviewer,
+        },
     })
+    build_review_packet(idea_id, req.reviewer_role or req.reviewer)
 
     # Resolve pending interrupts and resume the workflow once approved/rejected.
     _resolve_pending_interrupts(
@@ -156,7 +165,12 @@ async def reject_idea(idea_id: str, req: ApprovalDecision) -> dict[str, Any]:
         "reason": req.comments,
         "content": f"{req.reviewer} requested revisions",
         "provenance": f"approval:{idea_id}",
+        "metadata": {
+            "reviewer_id": req.reviewer_id,
+            "reviewer_role": req.reviewer_role or req.reviewer,
+        },
     })
+    build_review_packet(idea_id, req.reviewer_role or req.reviewer)
 
     # Transition to revision state
     try:

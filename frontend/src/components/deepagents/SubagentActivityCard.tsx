@@ -9,11 +9,21 @@ interface SubagentActivityCardProps {
 }
 
 export const SubagentActivityCard: React.FC<SubagentActivityCardProps> = ({ subagents = [] }) => {
-  const defaultAgents: SubagentStatus[] = subagents.length > 0 ? subagents : [
-    { id: '1', name: 'Discovery Subagent', role: 'Prior-Art & Novelty Audit', status: 'completed', current_task: 'Search completed' },
-    { id: '2', name: 'Drafting Subagent', role: 'Patent Disclosure Generator', status: 'running', current_task: 'Drafting detailed claims' },
-    { id: '3', name: 'IP Counsel Subagent', role: 'Compliance & Governance Audit', status: 'idle', current_task: 'Waiting for draft' },
-  ];
+  if (!subagents || subagents.length === 0) {
+    return (
+      <Card className="w-full">
+        <CardHeader className="pb-3 p-4">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Bot className="w-4 h-4 text-primary" />
+            DeepAgents Subagent Mesh
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 text-xs text-muted-foreground">
+          No active subagent records are available yet.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full">
@@ -29,7 +39,7 @@ export const SubagentActivityCard: React.FC<SubagentActivityCardProps> = ({ suba
         </div>
       </CardHeader>
       <CardContent className="space-y-2.5 p-4 pt-0">
-        {defaultAgents.map((agent) => (
+        {subagents.map((agent) => (
           <div
             key={agent.id}
             className="flex items-center justify-between p-3 rounded-md bg-muted/30 border text-xs"

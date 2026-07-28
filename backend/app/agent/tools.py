@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 
 from ..config import KNOWLEDGE_BASE_DIR, WORKSPACE_DIR
 from ..storage.yaml_io import load_idea_yaml, save_idea_yaml, write_markdown
+from ..storage.artifacts import save_artifact_revision
 
 
 def generate_invention_ideas(
@@ -70,6 +71,14 @@ def draft_patent_section(
         idea_folder.mkdir(parents=True, exist_ok=True)
         file_path = idea_folder / f"{section_name}.md"
         write_markdown(str(file_path), content)
+        save_artifact_revision(
+            idea_id,
+            section_name,
+            content,
+            provenance=f"artifact:{idea_id}:{section_name}",
+            trust="generated",
+            evidence_refs=(load_idea_yaml(idea_id, "idea.yaml") or {}).get("source_evidence", []),
+        )
 
         # Update metadata state
         idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
