@@ -5,6 +5,11 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
+  Sun,
+  Moon,
+  Laptop,
+  Palette,
+  Check,
 } from "lucide-react"
 
 import {
@@ -20,6 +25,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
 import {
   SidebarMenu,
@@ -27,6 +36,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useTheme } from "@/components/theme-provider"
 
 export function NavUser({
   user,
@@ -38,6 +48,7 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const { theme, setTheme } = useTheme()
 
   return (
     <SidebarMenu>
@@ -99,6 +110,31 @@ export function NavUser({
                 <Bell className="mr-2 h-4 w-4" />
                 Notifications
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Palette className="mr-2 h-4 w-4" />
+                  <span>Theme</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => setTheme("light")}>
+                      <Sun className="mr-2 h-4 w-4" />
+                      <span>Light</span>
+                      {theme === "light" && <Check className="ml-auto h-4 w-4 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme("dark")}>
+                      <Moon className="mr-2 h-4 w-4" />
+                      <span>Dark</span>
+                      {theme === "dark" && <Check className="ml-auto h-4 w-4 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme("system")}>
+                      <Laptop className="mr-2 h-4 w-4" />
+                      <span>System</span>
+                      {theme === "system" && <Check className="ml-auto h-4 w-4 text-primary" />}
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
