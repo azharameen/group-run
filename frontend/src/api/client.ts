@@ -385,9 +385,12 @@ export type StreamEventType =
   | 'approval'
   | 'retry'
   | 'failed'
+  | 'completion'
   | 'token'
   | 'tasks_update'
   | 'done'
+  | 'transition'
+  | 'user_message'
 
 export interface StreamEvent {
   type: StreamEventType
@@ -397,7 +400,7 @@ export interface StreamEvent {
   role?: string
   tool?: string
   params?: Record<string, any>
-  output?: string
+  output?: any
   action?: string
   from_agent?: string
   to_agent?: string
@@ -405,6 +408,8 @@ export interface StreamEvent {
   decision?: 'approve' | 'edit' | 'reject' | 'retry'
   reason?: string
   provenance?: string
+  state?: string
+  status?: string
   tasks?: any[]
   completed?: number
   total?: number

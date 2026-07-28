@@ -398,6 +398,26 @@ class PatentWorkflowMachine:
             "validation": self.last_validation_result,
         })
 
+        if dest in {
+            WorkflowState.manager_or_enabler_review.value,
+            WorkflowState.ip_review.value,
+            WorkflowState.siemens_ip_counsel_validation.value,
+        }:
+            try:
+                from ..api.routes.approval import add_pending_interrupt
+
+                add_pending_interrupt(
+                    idea_id,
+                    "approval",
+                    f"Approval required before leaving {dest.replace('_', ' ')}.",
+                )
+            except Exception as exc:
+                self._emit("interrupt.failed", {
+                    "idea_id": idea_id,
+                    "state": dest,
+                    "error": str(exc),
+                })
+
         self.retry_count = 0
 
     # ── Helpers ──

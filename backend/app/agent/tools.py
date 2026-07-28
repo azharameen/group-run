@@ -77,6 +77,9 @@ def draft_patent_section(
             "summary": content[:200] + "...",
             "path": str(file_path),
             "updated_at": "now",
+            "provenance": f"artifact:{idea_id}:{section_name}",
+            "trust": "generated",
+            "evidence_refs": idea_data.get("source_evidence", []),
         }
         save_idea_yaml(idea_id, "idea.yaml", idea_data)
         return True
@@ -104,6 +107,8 @@ def record_approval_decision(
         "status": decision,
         "comments": comments,
         "timestamp": "now",
+        "provenance": f"approval:{idea_id}:{reviewer_role.lower()}",
+        "trust": "trusted",
     }
     idea_data["reviews"] = reviews
     save_idea_yaml(idea_id, "idea.yaml", idea_data)

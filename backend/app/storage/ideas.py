@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from ..config import WORKSPACE_DIR
+from ..models.transcript import normalize_transcript_event
 from .base import read_yaml, write_markdown, write_yaml
 
 
@@ -93,13 +94,10 @@ def load_transcript_events(idea_id: str) -> list[dict]:
 
 def save_transcript_event(idea_id: str, event: dict) -> dict:
     events = load_transcript_events(idea_id)
-    if "timestamp" not in event:
-        event["timestamp"] = datetime.utcnow().isoformat()
-    if "id" not in event:
-        event["id"] = f"evt_{len(events) + 1}"
-    events.append(event)
+    normalized = normalize_transcript_event(idea_id, event)
+    events.append(normalized)
     write_yaml(os.path.join(idea_folder_path(idea_id), "transcript.yaml"), events)
-    return event
+    return normalized
 
 
 def get_all_idea_files(idea_id: str) -> list[dict]:

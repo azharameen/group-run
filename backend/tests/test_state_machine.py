@@ -1,12 +1,16 @@
 """Tests for the workflow state machine."""
 
 import os
+from types import SimpleNamespace
 
 import pytest
 import yaml
+from fastapi.testclient import TestClient
 
+from app.api.app import create_app
 from app.models.idea import WorkflowState, phase_for_state
 from app.state.machine import create_workflow_machine, PatentWorkflowMachine
+from app.storage.yaml_io import load_transcript_events
 
 
 class TestWorkflowStateEnum:
@@ -81,3 +85,28 @@ class TestWorkflowMachine:
         last = machine.state_history[-1]
         assert last.from_state == WorkflowState.raw_signal_collected
         assert last.to_state == WorkflowState.idea_discovery
+
+    def test_review_transitions_create_pending_interrupt(self, patch_config):
+        """Transitioning into a review state should create a blocking interrupt."""
+        idea_id = "IDEA-TEST-006"
+        folder = os.path.join(patch_config, "ideas", idea_id)
+        os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, "idea.yaml"), "w", encoding="utf-8") as f:
+            yaml.dump({"title": "Test", "current_state": "manager_or_enabler_review"}, f)
+
+        machine = create_workflow_machine(idea_id)
+        machine._on_transition_complete(
+            SimpleNamespace(
+                transition=SimpleNamespace(
+                    source="ideascope_draft",
+                    dest="manager_or_enabler_review",
+                )
+            )
+        )
+
+        assert load_transcript_events(idea_id)[-1]["type"] == "interrupt"
+
+        client = TestClient(create_app())
+        interrupts = client.get(f"/api/workflow/interrupts?idea_id={idea_id}")
+        assert interrupts.status_code == 200
+        assert interrupts.json()["pending_interrupts"]

@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/card
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { Send, Plus, Mic, Bot, User, Sparkles, MessageSquare } from 'lucide-react';
+import { Send, Plus, Mic, MessageSquare } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -32,22 +32,7 @@ export const LeftChatPane: React.FC<LeftChatPaneProps> = ({
     if (messages.length > 0) {
       setChatList(messages);
     } else {
-      setChatList([
-        {
-          id: 'm1',
-          sender: 'Alex - Lead Engineer',
-          role: 'Subagent Specialist',
-          text: 'Welcome! Our agentic team is evaluating this patent candidate. How can we help steer your disclosure?',
-          timestamp: '12:00',
-        },
-        {
-          id: 'm2',
-          sender: 'David - Data Analyst',
-          role: 'Prior-Art Researcher',
-          text: 'I have compiled prior-art references from the Siemens knowledge base taxonomy for your review.',
-          timestamp: '12:01',
-        },
-      ]);
+      setChatList([]);
     }
   }, [messages]);
 
@@ -78,14 +63,16 @@ export const LeftChatPane: React.FC<LeftChatPaneProps> = ({
         });
         if (res.ok) {
           const data = await res.json();
-          const botReply: ChatMessage = {
-            id: `b_${Date.now()}`,
-            sender: data.active_agent || 'Subagent Mesh',
-            role: 'Subagent Specialist',
-            text: data.agent_reply || 'Feedback incorporated.',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          };
-          setChatList((prev) => [...prev, botReply]);
+          const transcriptMessages = Array.isArray(data.transcript_events)
+            ? data.transcript_events.map((evt: any) => ({
+                id: evt.id || `evt_${Date.now()}`,
+                sender: evt.speaker || evt.agent || 'Runtime',
+                role: evt.role,
+                text: evt.content || evt.reason || '',
+                timestamp: evt.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              }))
+            : [];
+          setChatList((prev) => [...prev, ...transcriptMessages]);
         }
       }
     } catch (err) {

@@ -117,9 +117,9 @@ Phase 1 status: completed on 2026-07-27.
 - [ ] Wire `FilesystemMiddleware`, `MemoryMiddleware`, `SkillsMiddleware`, `SubAgentMiddleware`, and `HumanInTheLoopMiddleware`
 - [ ] Route backend workspace, memory, instructions, and skills through the DeepAgents backend layer
 - [ ] Keep the current API stable while validating the new runtime in parallel
-- [ ] Add a typed runtime event schema for thinking, tool calls, handoffs, subagent delegation, interrupts, and completion
-- [ ] Separate chat transcript records from workflow state snapshots so the UI can show a real agent transcript
-- [ ] Stop emitting synthetic agent messages from route handlers once the runtime event stream is available
+- [x] Add a typed runtime event schema for thinking, tool calls, handoffs, subagent delegation, interrupts, and completion
+- [x] Separate chat transcript records from workflow state snapshots so the UI can show a real agent transcript
+- [x] Stop emitting synthetic agent messages from route handlers once the runtime event stream is available
 - [ ] Add a clear fallback policy that uses retry and explicit failure only, never fabricated success output
 - [ ] Extend the current `StreamEvent` type to include interrupt, approval, retry, failed, and done events
 - [ ] Define a backend-to-frontend transcript envelope that can carry raw event type plus speaker, role, and provenance
@@ -186,10 +186,10 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 4 implementation checklist
 
-- [ ] Replace simulated review executors with interrupt-driven handlers
-- [ ] Persist reviewer identity, decision, and reason
-- [ ] Pause workflow instead of auto-approving when a human is required
-- [ ] Expose approval / reject / revise endpoints for the UI
+- [x] Replace simulated review executors with interrupt-driven handlers
+- [x] Persist reviewer identity, decision, and reason
+- [x] Pause workflow instead of auto-approving when a human is required
+- [x] Expose approval / reject / revise endpoints for the UI
 
 ### Phase 4 concrete solution path
 
@@ -201,11 +201,11 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 4 checklist
 
-- [ ] manager review interrupt works
-- [ ] IP review interrupt works
-- [ ] counsel validation interrupt works
+- [x] manager review interrupt works
+- [x] IP review interrupt works
+- [x] counsel validation interrupt works
 - [ ] delete/archive interrupt works
-- [ ] reviewer decisions are persisted
+- [x] reviewer decisions are persisted
 
 ### Phase 4 milestone
 
@@ -237,9 +237,9 @@ Phase 1 status: completed on 2026-07-27.
 - [ ] Keep the current dashboard behavior stable while adding the richer stream
 - [ ] Remove synthetic thinking tokens from route handlers and use runtime-generated content only
 - [ ] Add a transcript viewer that can expand each event type separately
-- [ ] Show speaker chips for user, orchestrator, subagent, reviewer, and tool events
-- [ ] Add explicit pause / retry / failed badges to live chat items
-- [ ] Rework `RightChatSidebar` to render transcript cards from typed events instead of legacy hardcoded messages
+- [x] Show speaker chips for user, orchestrator, subagent, reviewer, and tool events
+- [x] Add explicit pause / retry / failed badges to live chat items
+- [x] Rework `RightChatSidebar` to render transcript cards from typed events instead of legacy hardcoded messages
 - [ ] Rework `IdeaHistoryTimeline` to read from transcript records first, idea fields second, and comments third
 - [ ] Update `chat-primitives` so execution steps can render interrupt, approval, failed, and retry states
 - [ ] Keep a legacy adapter only as a temporary compatibility layer until the new transcript works end-to-end
@@ -281,7 +281,7 @@ Phase 1 status: completed on 2026-07-27.
 - [ ] live transcript can be filtered by event type
 - [ ] user can tell at a glance which agent spoke last
 - [ ] user can tell which step caused a state transition
-- [ ] no synthetic agent persona message appears as if it were a real conversation speaker
+- [x] no synthetic agent persona message appears as if it were a real conversation speaker
 
 ### Phase 5 milestone
 
@@ -305,7 +305,7 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 6 implementation checklist
 
-- [ ] Add provenance metadata for generated sections
+- [x] Add provenance metadata for generated sections
 - [ ] Add artifact diff and revision comparison views
 - [ ] Add duplicate idea detection with a clear decision outcome
 - [ ] Add explicit error states when a stage cannot complete agentically

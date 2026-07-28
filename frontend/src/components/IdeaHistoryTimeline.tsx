@@ -14,6 +14,14 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Filter,
+	Brain,
+	Terminal,
+	Wrench,
+	GitBranch,
+	ArrowRight,
+	RotateCw,
+	AlertTriangle,
+	CheckCircle2,
 } from "lucide-react";
 
 export interface TimelineItem {
@@ -24,6 +32,7 @@ export interface TimelineItem {
 		| "score"
 		| "gate"
 		| "comment"
+		| "transcript"
 		| "interrupt"
 		| "approval"
 		| "retry"
@@ -44,6 +53,14 @@ export interface TimelineItem {
 	gateName?: string;
 	gatePassed?: boolean;
 	provenance?: string;
+	eventType?: string;
+	eventRole?: string;
+	eventSpeaker?: string;
+	eventTool?: string;
+	eventParams?: Record<string, any>;
+	eventOutput?: any;
+	eventDecision?: string;
+	eventReason?: string;
 }
 
 interface Props {
@@ -124,7 +141,7 @@ const AGENT_FIELD_MAP: Record<
 
 export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 	const [filterType, setFilterType] = useState<
-		"all" | "discussion" | "transition" | "score" | "gate" | "comment"
+		"all" | "discussion" | "transition" | "score" | "gate" | "comment" | "transcript"
 	>("all");
 	const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
@@ -191,18 +208,24 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 	// Runtime transcript items when available
 	transcriptEvents.forEach((evt, idx) => {
 		if (!evt?.type) return;
-		if (!["interrupt", "approval", "retry", "failed"].includes(evt.type))
-			return;
 		items.push({
 			id: `evt-${idx}`,
-			type: evt.type,
+			type: "transcript",
 			timestamp: evt.timestamp || idea.updated_at || new Date().toISOString(),
-			title: evt.title || evt.type.replace(/_/g, " "),
+			title: evt.type.replace(/_/g, " "),
 			agentName: evt.speaker || evt.agent || "Runtime Event",
 			agentRole: evt.role,
 			explanation:
-				evt.reason || evt.content || evt.details || "Runtime event recorded.",
+				evt.content || evt.reason || evt.details || "Runtime event recorded.",
 			provenance: evt.provenance,
+			eventType: evt.type,
+			eventRole: evt.role,
+			eventSpeaker: evt.speaker || evt.agent,
+			eventTool: evt.tool,
+			eventParams: evt.params,
+			eventOutput: evt.output,
+			eventDecision: evt.decision,
+			eventReason: evt.reason,
 		});
 	});
 
@@ -328,6 +351,13 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 						>
 							Comments ({items.filter((i) => i.type === "comment").length})
 						</Badge>
+						<Badge
+							variant={filterType === "transcript" ? "default" : "outline"}
+							className="cursor-pointer text-[11px]"
+							onClick={() => setFilterType("transcript")}
+						>
+							Transcript ({items.filter((i) => i.type === "transcript").length})
+						</Badge>
 					</div>
 				</div>
 			</CardHeader>
@@ -361,7 +391,34 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 										{item.type === "comment" && (
 											<User className="w-3.5 h-3.5 text-sky-500" />
 										)}
-									</div>
+												{item.type === "transcript" && item.eventType === "thinking" && (
+													<Brain className="w-3.5 h-3.5 text-violet-500" />
+												)}
+												{item.type === "transcript" && item.eventType === "tool_call" && (
+													<Terminal className="w-3.5 h-3.5 text-amber-500" />
+												)}
+												{item.type === "transcript" && item.eventType === "tool_result" && (
+													<Wrench className="w-3.5 h-3.5 text-emerald-500" />
+												)}
+												{item.type === "transcript" && item.eventType === "subagent" && (
+													<GitBranch className="w-3.5 h-3.5 text-blue-500" />
+												)}
+												{item.type === "transcript" && item.eventType === "handover" && (
+													<ArrowRight className="w-3.5 h-3.5 text-pink-500" />
+												)}
+												{item.type === "transcript" && item.eventType === "retry" && (
+													<RotateCw className="w-3.5 h-3.5 text-sky-500" />
+												)}
+												{item.type === "transcript" && item.eventType === "failed" && (
+													<AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+												)}
+												{item.type === "transcript" && item.eventType === "approval" && (
+													<CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+												)}
+												{item.type === "transcript" && item.eventType === "interrupt" && (
+													<ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+												)}
+											</div>
 
 									<div className="space-y-2">
 										<div className="flex flex-wrap items-center justify-between gap-2">
@@ -388,6 +445,21 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 											<p className="text-xs text-muted-foreground leading-relaxed">
 												{item.explanation}
 											</p>
+										)}
+
+										{item.type === "transcript" && (
+											<div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+												{item.eventRole && (
+													<Badge variant="outline" className="h-5 text-[10px]">
+														{item.eventRole}
+													</Badge>
+												)}
+												{item.eventTool && (
+													<Badge variant="outline" className="h-5 text-[10px]">
+														{item.eventTool}
+													</Badge>
+												)}
+											</div>
 										)}
 
 										{item.type === "discussion" && item.answer && (

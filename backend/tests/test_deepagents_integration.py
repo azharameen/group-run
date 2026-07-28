@@ -62,3 +62,14 @@ def test_hitl_approval_endpoints(client):
     r_data = reject_res.json()
     assert r_data["success"] is True
     assert r_data["decision"] == "REJECTED"
+
+
+def test_agent_tasks_use_runtime_roles(client):
+    """Agent task bootstrap should not use fake human persona labels."""
+    response = client.get("/api/agent-tasks")
+    assert response.status_code == 200
+    payload = response.json()
+    agents = {task["agent"] for task in payload["tasks"]}
+    assert "Alex - Lead Engineer" not in agents
+    assert "David - Data Analyst" not in agents
+    assert "Emma - IP Manager" not in agents

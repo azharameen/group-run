@@ -42,6 +42,13 @@ Update this file whenever work is completed.
 - [x] Removed the remaining fabricated agent reply path from the chat route.
 - [x] Added approval and rejection transcript events for HITL actions.
 - [x] Added dedicated approval and interrupt transcript cards in the DeepAgents detail view.
+- [x] Added a typed transcript event model plus transcript-backed chat history persistence.
+- [x] Replaced the live chat sidebar's fake bootstrap conversation with real transcript event rendering.
+- [x] Removed the remaining synthetic reply path from chat posting and streaming responses.
+- [x] Added provenance and trust metadata to persisted transcript events.
+- [x] Wired review-state transitions to create blocking approval interrupts.
+- [x] Added provenance metadata to generated artifact sections.
+- [x] Extended the historical timeline to render runtime transcript events with role-aware badges.
 
 ### Current reality
 
@@ -51,7 +58,7 @@ Update this file whenever work is completed.
 - [ ] Real prior-art retrieval still needs package/tool integration research before implementation.
 - [ ] Frontend error/retry trust signals still need to be finalized.
 - [ ] Conversation threads still mix real comments with hardcoded agent/task narration.
-- [ ] The live chat surface still does not show true agent thinking, tool calls, and delegate handoffs as first-class transcript events.
+- [x] The live chat surface now shows typed runtime transcript events instead of a fake bootstrap conversation.
 - [ ] Patent/filing research source adapters still need to be selected and wired.
 - [ ] The UI still needs to distinguish real agent speakers from orchestration/status messages.
 - [ ] Agent roster and state transition ownership still need finalization.

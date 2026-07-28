@@ -56,9 +56,12 @@ export type RuntimeEventType =
   | 'approval'
   | 'retry'
   | 'failed'
+  | 'completion'
   | 'done'
   | 'token'
   | 'tasks_update'
+  | 'transition'
+  | 'user_message'
 
 export interface RuntimeEvent {
   type: RuntimeEventType;
@@ -68,7 +71,7 @@ export interface RuntimeEvent {
   role?: string;
   tool?: string;
   params?: Record<string, any>;
-  output?: string;
+  output?: any;
   action?: string;
   from_agent?: string;
   to_agent?: string;
@@ -76,7 +79,15 @@ export interface RuntimeEvent {
   decision?: 'approve' | 'edit' | 'reject' | 'retry';
   reason?: string;
   provenance?: string;
+  state?: string;
+  status?: string;
   tasks?: any[];
   completed?: number;
   total?: number;
+}
+
+export interface TranscriptEvent extends RuntimeEvent {
+  idea_id?: string;
+  trust?: string;
+  metadata?: Record<string, any>;
 }

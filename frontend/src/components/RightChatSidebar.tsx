@@ -11,16 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-	MessageScroller,
-	Message,
-	Bubble,
-	Marker,
-	MessageActions,
-	LiveTrace,
-	TurnMinimap,
-	type TraceStep,
-} from "@/components/ui/chat-primitives";
+import { MessageScroller, TurnMinimap } from "@/components/ui/chat-primitives";
 import { connectSSE, streamChat, type StreamEvent } from "@/api/client";
 import {
 	MessageSquare,
@@ -34,6 +25,16 @@ import {
 	Clock,
 	Cpu,
 	ListTodo,
+	Brain,
+	GitBranch,
+	ArrowRight,
+	ShieldCheck,
+	AlertTriangle,
+	RotateCw,
+	Wrench,
+	Terminal,
+	Bot,
+	User,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -45,14 +46,17 @@ interface ChatMessage {
 	speaker?: string;
 	text: string;
 	timestamp: string;
-	isStreaming?: boolean;
-	/** legacy thinking tokens (from non-streaming messages) */
-	thinking?: string[];
-	/** live streaming trace steps */
-	liveTrace?: TraceStep[];
-	isTraceOpen?: boolean;
 	eventType?: string;
 	provenance?: string;
+	details?: Record<string, any>;
+	params?: Record<string, any>;
+	output?: any;
+	from_agent?: string;
+	to_agent?: string;
+	tool?: string;
+	decision?: string;
+	reason?: string;
+	status?: string;
 }
 
 interface TaskItem {
@@ -62,6 +66,86 @@ interface TaskItem {
 	status: "In Progress" | "To Do" | "Completed";
 	thought?: string;
 }
+
+const EVENT_LABELS: Record<string, string> = {
+	thinking: "Thinking",
+	tool_call: "Tool Call",
+	tool_result: "Tool Result",
+	subagent: "Subagent",
+	handover: "Handover",
+	interrupt: "Interrupt",
+	approval: "Approval",
+	retry: "Retry",
+	failed: "Failed",
+	completion: "Completion",
+	user_message: "User",
+	transition: "Transition",
+};
+
+const eventToMessage = (evt: StreamEvent): ChatMessage => {
+	const timestamp = new Date().toLocaleTimeString([], {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+	const text =
+		evt.content ||
+		evt.reason ||
+		(typeof evt.output === "string"
+			? evt.output
+			: evt.output
+				? JSON.stringify(evt.output, null, 2)
+				: "");
+	return {
+		id: `${evt.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+		sender: evt.speaker || evt.agent || EVENT_LABELS[evt.type] || "Runtime",
+		speaker: evt.speaker || evt.agent,
+		role: evt.role,
+		text,
+		timestamp,
+		eventType: evt.type,
+		provenance: evt.provenance,
+		details: {
+			action: evt.action,
+			from_agent: evt.from_agent,
+			to_agent: evt.to_agent,
+		},
+		params: evt.params,
+		output: evt.output,
+		from_agent: evt.from_agent,
+		to_agent: evt.to_agent,
+		tool: evt.tool,
+		decision: evt.decision,
+		reason: evt.reason,
+		status: evt.status,
+	};
+};
+
+const messageBadgeVariant = (type?: string) => {
+	switch (type) {
+		case "thinking":
+			return "secondary";
+		case "tool_call":
+			return "outline";
+		case "tool_result":
+			return "secondary";
+		case "subagent":
+			return "outline";
+		case "handover":
+			return "outline";
+		case "interrupt":
+			return "destructive";
+		case "approval":
+			return "secondary";
+		case "retry":
+			return "outline";
+		case "failed":
+			return "destructive";
+		case "completion":
+			return "default";
+		default:
+			return "outline";
+	}
+};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -80,61 +164,7 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 	const match = location.pathname.match(/\/ideas\/([^/]+)/);
 	const currentIdeaId = match ? match[1] : null;
 
-	const [messages, setMessages] = useState<ChatMessage[]>([
-		{
-			id: "m1",
-			sender: "Workflow Orchestrator",
-			speaker: "workflow-orchestrator",
-			text: "Welcome! Our agentic team is ready to evaluate your disclosure and generate patent assets.",
-			timestamp: "12:00",
-			eventType: "thinking",
-			liveTrace: [
-				{
-					type: "thinking",
-					content: "Initialized Siemens DeepAgents graph.",
-					agent: "Workflow Orchestrator",
-					role: "orchestrator",
-					speaker: "workflow-orchestrator",
-				},
-				{
-					type: "handover",
-					from_agent: "Orchestrator",
-					to_agent: "Alex — Lead Engineer",
-				},
-			],
-		},
-		{
-			id: "m2",
-			sender: "Prior Art Research Agent",
-			speaker: "prior-art-researcher",
-			text: "Knowledge base taxonomy synced with Siemens Patent Database.",
-			timestamp: "12:01",
-			eventType: "tool_result",
-			liveTrace: [
-				{
-					type: "thinking",
-					content: "Synced 1,420 Siemens patent claims.",
-					agent: "Prior Art Research Agent",
-					role: "subagent",
-					speaker: "prior-art-researcher",
-				},
-				{
-					type: "tool_call",
-					tool: "query_prior_art_taxonomy",
-					agent: "Prior Art Research Agent",
-					role: "tool",
-					speaker: "prior-art-researcher",
-				},
-				{
-					type: "tool_result",
-					output: "Synced 1,420 Siemens patent claims.",
-					agent: "Prior Art Research Agent",
-					role: "tool",
-					speaker: "prior-art-researcher",
-				},
-			],
-		},
-	]);
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
 
 	// ── Fetch initial tasks (one-time bootstrap only) ─────────────────────────
 	useEffect(() => {
@@ -153,27 +183,17 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 	useEffect(() => {
 		const es = connectSSE((event, data) => {
 			if (event === "agent.progress" && data) {
-				const streamMsg: ChatMessage = {
-					id: `sse_${Date.now()}`,
-					sender: data.agent_name || "Autonomous Runner",
-					speaker: data.agent_name || "autonomous-runner",
-					text: data.message || "Processing invention step...",
-					timestamp: new Date().toLocaleTimeString([], {
-						hour: "2-digit",
-						minute: "2-digit",
+				setMessages((prev) => [
+					...prev,
+					eventToMessage({
+						type: "thinking",
+						content: data.message,
+						agent: data.agent_name || "autonomous-runner",
+						speaker: data.agent_name || "autonomous-runner",
+						role: data.role,
+						provenance: `sse:${data.idea_id || "global"}`,
 					}),
-					eventType: "thinking",
-					liveTrace: [
-						{
-							type: "thinking",
-							content: data.message,
-							agent: data.agent_name || "Agent",
-							role: data.role,
-							speaker: data.agent_name || "autonomous-runner",
-						},
-					],
-				};
-				setMessages((prev) => [...prev, streamMsg]);
+				]);
 			}
 		});
 		return () => es.close();
@@ -185,33 +205,30 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 			fetch(`/api/ideas/${currentIdeaId}/chat`)
 				.then((res) => (res.ok ? res.json() : null))
 				.then((data) => {
-					if (data?.messages?.length > 0) {
-						setMessages(data.messages);
+					if (data?.transcript_events?.length > 0) {
+						setMessages(data.transcript_events.map(eventToMessage));
+					} else if (data?.messages?.length > 0) {
+						setMessages(data.messages.map((msg: any) => ({
+							id: msg.id,
+							sender: msg.sender,
+							speaker: msg.speaker,
+							role: msg.role,
+							text: msg.text,
+							timestamp: msg.timestamp,
+							eventType: msg.event_type,
+							provenance: msg.provenance,
+						})));
 					}
 				})
 				.catch((err) => console.error(err));
 		}
 	}, [currentIdeaId]);
 
-	// ── Toggle trace open/closed per message ─────────────────────────────────
-	const toggleTrace = (id: string) => {
-		setMessages((prev) =>
-			prev.map((msg) =>
-				msg.id === id ? { ...msg, isTraceOpen: !msg.isTraceOpen } : msg,
-			),
-		);
-	};
-
 	// ── Stop streaming ────────────────────────────────────────────────────────
 	const handleStopGeneration = () => {
 		abortRef.current?.abort();
 		abortRef.current = null;
 		setIsGenerating(false);
-		setMessages((prev) =>
-			prev.map((msg) =>
-				msg.isStreaming ? { ...msg, isStreaming: false } : msg,
-			),
-		);
 	};
 
 	// ── Scroll to turn by index ───────────────────────────────────────────────
@@ -236,27 +253,6 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 			setMessages((prev) => [...prev, userMsg]);
 			setIsGenerating(true);
 
-			// 2) Create a placeholder agent message that we'll update live
-			const agentId = `a_${Date.now()}`;
-			const agentTs = new Date().toLocaleTimeString([], {
-				hour: "2-digit",
-				minute: "2-digit",
-			});
-			setMessages((prev) => [
-				...prev,
-				{
-					id: agentId,
-					sender: "Workflow Orchestrator",
-					speaker: "workflow-orchestrator",
-					text: "",
-					timestamp: agentTs,
-					isStreaming: true,
-					liveTrace: [],
-					isTraceOpen: true,
-					eventType: "thinking",
-				},
-			]);
-
 			// 3) Open AbortController for stop support
 			const ctrl = new AbortController();
 			abortRef.current = ctrl;
@@ -266,150 +262,21 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 					currentIdeaId,
 					textToSend,
 					(evt: StreamEvent) => {
-						setMessages((prev) =>
-							prev.map((msg) => {
-								if (msg.id !== agentId) return msg;
+						if (evt.type === "tasks_update" && evt.tasks) {
+							setTasks(evt.tasks as TaskItem[]);
+							setTaskStats({
+								completed: evt.completed || 0,
+								total: evt.total || 0,
+							});
+							return;
+						}
 
-								switch (evt.type) {
-									case "thinking":
-										return {
-											...msg,
-											liveTrace: [
-												...(msg.liveTrace || []),
-												{
-													type: "thinking",
-													content: evt.content,
-													agent: evt.agent,
-													role: evt.role,
-													speaker: evt.speaker,
-													provenance: evt.provenance,
-												} as TraceStep,
-											],
-											eventType: evt.type,
-											speaker: evt.speaker || msg.speaker,
-										};
+						if (evt.type === "done") {
+							setIsGenerating(false);
+							return;
+						}
 
-									case "tool_call":
-										return {
-											...msg,
-											liveTrace: [
-												...(msg.liveTrace || []),
-												{
-													type: "tool_call",
-													tool: evt.tool,
-													params: evt.params,
-													agent: evt.agent,
-													role: evt.role,
-													speaker: evt.speaker,
-													provenance: evt.provenance,
-												} as TraceStep,
-											],
-											eventType: evt.type,
-										};
-
-									case "tool_result":
-										return {
-											...msg,
-											liveTrace: [
-												...(msg.liveTrace || []),
-												{
-													type: "tool_result",
-													tool: evt.tool,
-													output: evt.output,
-													agent: evt.agent,
-													role: evt.role,
-													speaker: evt.speaker,
-													provenance: evt.provenance,
-												} as TraceStep,
-											],
-											eventType: evt.type,
-										};
-
-									case "subagent":
-										return {
-											...msg,
-											liveTrace: [
-												...(msg.liveTrace || []),
-												{
-													type: "subagent",
-													agent: evt.agent,
-													action: evt.action,
-													role: evt.role,
-													speaker: evt.speaker,
-													provenance: evt.provenance,
-												} as TraceStep,
-											],
-											// Update sender to the spawned agent
-											sender: evt.agent || msg.sender,
-											speaker: evt.speaker || msg.speaker,
-											eventType: evt.type,
-										};
-
-									case "handover":
-										return {
-											...msg,
-											liveTrace: [
-												...(msg.liveTrace || []),
-												{
-													type: "handover",
-													from_agent: evt.from_agent,
-													to_agent: evt.to_agent,
-													role: evt.role,
-													speaker: evt.speaker,
-													provenance: evt.provenance,
-												} as TraceStep,
-											],
-											sender: evt.to_agent || msg.sender,
-											speaker: evt.speaker || msg.speaker,
-											eventType: evt.type,
-										};
-
-									case "interrupt":
-									case "approval":
-									case "retry":
-									case "failed":
-										return {
-											...msg,
-											liveTrace: [
-												...(msg.liveTrace || []),
-												{
-													type: evt.type,
-													content: evt.content,
-													agent: evt.agent,
-													role: evt.role,
-													speaker: evt.speaker,
-													interrupt_id: evt.interrupt_id,
-													decision: evt.decision,
-													reason: evt.reason,
-													provenance: evt.provenance,
-												} as TraceStep,
-											],
-											eventType: evt.type,
-											speaker: evt.speaker || msg.speaker,
-										};
-
-									case "token":
-										return { ...msg, text: msg.text + (evt.content || "") };
-
-									case "tasks_update":
-										// Update task panel from SSE (no polling)
-										if (evt.tasks) {
-											setTasks(evt.tasks as TaskItem[]);
-											setTaskStats({
-												completed: evt.completed || 0,
-												total: evt.total || 0,
-											});
-										}
-										return msg;
-
-									case "done":
-										return { ...msg, isStreaming: false };
-
-									default:
-										return msg;
-								}
-							}),
-						);
+						setMessages((prev) => [...prev, eventToMessage(evt)]);
 					},
 					ctrl.signal,
 				);
@@ -417,11 +284,6 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 				if (err?.name !== "AbortError") {
 					console.error("[Chat Stream Error]", err);
 				}
-				setMessages((prev) =>
-					prev.map((msg) =>
-						msg.id === agentId ? { ...msg, isStreaming: false } : msg,
-					),
-				);
 			} finally {
 				setIsGenerating(false);
 				abortRef.current = null;
@@ -552,13 +414,43 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 					<MessageScroller>
 						{messages.map((msg, idx) => {
 							const isUser =
+								msg.eventType === "user_message" ||
 								msg.sender === "You" ||
 								msg.sender === "Inventor" ||
 								msg.sender === "user";
-							const hasTrace = Boolean(
-								msg.liveTrace?.length || msg.thinking?.length,
-							);
-							const isTraceOpen = Boolean(msg.isTraceOpen);
+							const isEvent = Boolean(msg.eventType && !isUser);
+							const label = EVENT_LABELS[msg.eventType || ""] || "Message";
+
+							const eventIcon = (() => {
+								switch (msg.eventType) {
+									case "thinking":
+										return <Brain className="w-3.5 h-3.5 text-violet-500" />;
+									case "tool_call":
+										return <Terminal className="w-3.5 h-3.5 text-amber-500" />;
+									case "tool_result":
+										return <Wrench className="w-3.5 h-3.5 text-emerald-500" />;
+									case "subagent":
+										return <GitBranch className="w-3.5 h-3.5 text-blue-500" />;
+									case "handover":
+										return <ArrowRight className="w-3.5 h-3.5 text-pink-500" />;
+									case "interrupt":
+										return <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />;
+									case "approval":
+										return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />;
+									case "retry":
+										return <RotateCw className="w-3.5 h-3.5 text-sky-500" />;
+									case "failed":
+										return <AlertTriangle className="w-3.5 h-3.5 text-destructive" />;
+									case "completion":
+										return <CheckCircle2 className="w-3.5 h-3.5 text-primary" />;
+									default:
+										return isUser ? (
+											<User className="w-3.5 h-3.5 text-muted-foreground" />
+										) : (
+											<Bot className="w-3.5 h-3.5 text-muted-foreground" />
+										);
+								}
+							})();
 
 							return (
 								<div
@@ -566,52 +458,64 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 									ref={(el) => {
 										messageRefs.current[idx] = el;
 									}}
+									className="rounded-lg border bg-card shadow-sm"
 								>
-									<Message
-										variant={isUser ? "user" : "agent"}
-										avatarText={isUser ? "YOU" : "AI"}
-									>
-										<Marker sender={msg.sender} timestamp={msg.timestamp} />
+									<div className="p-3 space-y-2">
+										<div className="flex items-center justify-between gap-2">
+											<div className="flex items-center gap-2 min-w-0">
+												{eventIcon}
+												<span className="text-xs font-semibold truncate">
+													{msg.sender}
+												</span>
+												<Badge
+													variant={messageBadgeVariant(msg.eventType) as any}
+													className="text-[10px] uppercase font-mono"
+												>
+													{label}
+												</Badge>
+											</div>
+											<span className="text-[10px] font-mono text-muted-foreground">
+												{msg.timestamp}
+											</span>
+										</div>
 
-										{/* Live Trace — shows thinking, tool calls, handovers in real-time */}
-										{!isUser && hasTrace && isTraceOpen && msg.liveTrace && (
-											<LiveTrace
-												steps={msg.liveTrace}
-												isStreaming={msg.isStreaming}
-											/>
+										{msg.text && (
+											<div
+												className={`text-xs leading-relaxed whitespace-pre-wrap rounded-md border p-2.5 ${
+													isUser
+														? "bg-primary/5 text-foreground"
+														: "bg-muted/30 text-foreground"
+												}`}
+											>
+												{msg.text}
+											</div>
 										)}
 
-										{/* Legacy thinking (for historical messages loaded from backend) */}
-										{!isUser &&
-											!msg.liveTrace?.length &&
-											msg.thinking &&
-											isTraceOpen && (
-												<div className="mb-1.5 border rounded-lg bg-muted/30 text-[10px] p-2 space-y-1 font-mono text-muted-foreground">
-													{msg.thinking.map((t, i) => (
-														<div key={i} className="flex gap-1">
-															<span className="text-primary">›</span>
-															<span>{t}</span>
-														</div>
-													))}
-												</div>
-											)}
+										{msg.eventType === "tool_call" && msg.params && (
+											<pre className="text-[11px] font-mono rounded border bg-muted/20 p-2 overflow-x-auto">
+												{JSON.stringify(msg.params, null, 2)}
+											</pre>
+										)}
 
-										<Bubble
-											variant={isUser ? "user" : "agent"}
-											isStreaming={msg.isStreaming}
-										>
-											{msg.text || (msg.isStreaming ? "" : "...")}
-										</Bubble>
-
-										<MessageActions
-											text={msg.text}
-											variant={isUser ? "user" : "agent"}
-											hasTrace={hasTrace}
-											onEdit={(t) => setInput(t)}
-											onRegenerate={() => executeSend(msg.text)}
-											onToggleTrace={() => toggleTrace(msg.id)}
-										/>
-									</Message>
+										{(msg.output || msg.from_agent || msg.to_agent || msg.decision || msg.reason) && (
+											<div className="text-[11px] text-muted-foreground space-y-1">
+												{msg.from_agent && msg.to_agent && (
+													<div>
+														{msg.from_agent} → {msg.to_agent}
+													</div>
+												)}
+												{msg.decision && <div>Decision: {msg.decision}</div>}
+												{msg.reason && <div>{msg.reason}</div>}
+												{msg.output !== undefined && (
+													<pre className="font-mono rounded border bg-muted/20 p-2 overflow-x-auto whitespace-pre-wrap text-foreground">
+														{typeof msg.output === "string"
+															? msg.output
+															: JSON.stringify(msg.output, null, 2)}
+													</pre>
+												)}
+											</div>
+										)}
+									</div>
 								</div>
 							);
 						})}

@@ -120,7 +120,7 @@ async def execute_deep_agent_workflow_streaming(
       - tool_result:    {"type": "tool_result", "tool": "...", "output": "...", "agent": "..."}
       - subagent:       {"type": "subagent", "agent": "...", "action": "..."}
       - handover:       {"type": "handover", "from_agent": "...", "to_agent": "..."}
-      - token:          {"type": "token", "content": "..."}
+      - completion:     {"type": "completion", "content": "..."}
       - tasks_update:   {"type": "tasks_update", "tasks": [...]}
       - done:           {"type": "done"}
     """
@@ -129,123 +129,106 @@ async def execute_deep_agent_workflow_streaming(
     state = idea_data.get("workflow_state", "ideascope_draft")
 
     # ── Agent roster ──────────────────────────────────────────────────────────
-    LEAD = "Alex — Lead Engineer"
-    DATA = "David — Data Analyst"
-    IP   = "Emma — IP Manager"
-    DISC = "Discovery Agent"
-    ORCH = "Workflow Orchestrator"
+    LEAD = "lead-engineer"
+    DATA = "prior-art-researcher"
+    IP = "ip-manager"
+    DISC = "discovery-agent"
+    ORCH = "workflow-orchestrator"
 
     provenance = f"idea:{idea_id or 'global'}|state:{state}"
 
     # ── Phase 1: Orchestrator routes request ──────────────────────────────────
-    yield {"type": "thinking", "content": f"Routing user request to agentic mesh for idea: '{title}'.", "agent": ORCH, "speaker": "workflow-orchestrator", "role": "orchestrator", "provenance": provenance}
+    yield {"type": "thinking", "content": f"Route selected for idea '{title}'.", "agent": ORCH, "speaker": ORCH, "role": "orchestrator", "provenance": provenance}
     await asyncio.sleep(0.35)
 
-    yield {"type": "handover", "from_agent": ORCH, "to_agent": DISC, "speaker": "workflow-orchestrator", "role": "orchestrator", "provenance": provenance}
+    yield {"type": "handover", "from_agent": ORCH, "to_agent": DISC, "speaker": ORCH, "role": "orchestrator", "provenance": provenance}
     await asyncio.sleep(0.25)
 
     # ── Phase 2: Discovery Agent thinking ────────────────────────────────────
-    yield {"type": "thinking", "content": f"Parsing feedback: '{user_feedback}'. Determining relevant patent classes.", "agent": DISC, "speaker": "discovery-agent", "role": "subagent", "provenance": provenance}
+    yield {"type": "thinking", "content": f"Feedback parsed: '{user_feedback}'.", "agent": DISC, "speaker": DISC, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.4)
 
-    yield {"type": "thinking", "content": "Checking Siemens IP guidelines and claim boundary heuristics.", "agent": DISC, "speaker": "discovery-agent", "role": "subagent", "provenance": provenance}
+    yield {"type": "thinking", "content": "Policy and claim boundaries recorded.", "agent": DISC, "speaker": DISC, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.3)
 
     # ── Phase 3: Tool call — Prior Art Taxonomy ───────────────────────────────
-    yield {"type": "tool_call", "tool": "query_prior_art_taxonomy", "params": {"query": user_feedback, "patent_class": "IND_AI"}, "agent": DATA, "speaker": "prior-art-researcher", "role": "tool", "provenance": provenance}
+    yield {"type": "tool_call", "tool": "query_prior_art_taxonomy", "params": {"query": user_feedback, "patent_class": "IND_AI"}, "agent": DATA, "speaker": DATA, "role": "tool", "provenance": provenance}
     await asyncio.sleep(0.5)
 
     taxonomy = query_prior_art_taxonomy("IND_AI")
-    yield {"type": "tool_result", "tool": "query_prior_art_taxonomy", "output": f"Found keywords: {', '.join(taxonomy.get('keywords', [])[:5])}. Category: {taxonomy.get('name', 'IND_AI')}.", "agent": DATA, "speaker": "prior-art-researcher", "role": "tool", "provenance": provenance}
+    yield {"type": "tool_result", "tool": "query_prior_art_taxonomy", "output": {"keywords": taxonomy.get("keywords", [])[:5], "category": taxonomy.get("name", "IND_AI")}, "agent": DATA, "speaker": DATA, "role": "tool", "provenance": provenance}
     await asyncio.sleep(0.3)
 
     # ── Phase 4: Subagent spawn ───────────────────────────────────────────────
-    yield {"type": "subagent", "agent": DATA, "action": "Spawned to analyze prior-art taxonomy and novelty markers", "speaker": "prior-art-researcher", "role": "subagent", "provenance": provenance}
+    yield {"type": "subagent", "agent": DATA, "action": "analyze prior-art taxonomy and novelty markers", "speaker": DATA, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.25)
 
-    yield {"type": "thinking", "content": "Cross-referencing 1,420 Siemens patent claims in knowledge base.", "agent": DATA, "speaker": "prior-art-researcher", "role": "subagent", "provenance": provenance}
+    yield {"type": "thinking", "content": "Prior-art references cross-referenced.", "agent": DATA, "speaker": DATA, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.4)
 
-    yield {"type": "thinking", "content": "Identified 3 relevant prior-art references. Novelty gap confirmed.", "agent": DATA, "speaker": "prior-art-researcher", "role": "subagent", "provenance": provenance}
+    yield {"type": "thinking", "content": "Reference set captured for transcript.", "agent": DATA, "speaker": DATA, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.35)
 
     # ── Phase 5: Handover to Lead Engineer ───────────────────────────────────
-    yield {"type": "handover", "from_agent": DATA, "to_agent": LEAD, "speaker": "prior-art-researcher", "role": "handover", "provenance": provenance}
+    yield {"type": "handover", "from_agent": DATA, "to_agent": LEAD, "speaker": DATA, "role": "orchestrator", "provenance": provenance}
     await asyncio.sleep(0.2)
 
     # ── Phase 6: Lead Engineer — Patentability ────────────────────────────────
-    yield {"type": "thinking", "content": "Evaluating invention for novelty, non-obviousness, and industrial applicability.", "agent": LEAD, "speaker": "lead-engineer", "role": "subagent", "provenance": provenance}
+    yield {"type": "thinking", "content": "Novelty and applicability evaluation recorded.", "agent": LEAD, "speaker": LEAD, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.4)
 
-    yield {"type": "tool_call", "tool": "evaluate_patentability", "params": {"idea_id": idea_id, "min_score": 70}, "agent": LEAD, "speaker": "lead-engineer", "role": "tool", "provenance": provenance}
+    yield {"type": "tool_call", "tool": "evaluate_patentability", "params": {"idea_id": idea_id, "min_score": 70}, "agent": LEAD, "speaker": LEAD, "role": "tool", "provenance": provenance}
     await asyncio.sleep(0.6)
 
     score_res = evaluate_patentability(idea_id) if idea_id else {"composite": 78}
     composite = score_res.get("composite", 78)
-    yield {"type": "tool_result", "tool": "evaluate_patentability", "output": f"Composite Score: {composite}/100 ({'PASSED' if composite >= 70 else 'REVIEW NEEDED'}). Proceeding to disclosure drafting.", "agent": LEAD, "speaker": "lead-engineer", "role": "tool", "provenance": provenance}
+    yield {"type": "tool_result", "tool": "evaluate_patentability", "output": {"composite": composite, "threshold": 70, "passed": composite >= 70}, "agent": LEAD, "speaker": LEAD, "role": "tool", "provenance": provenance}
     await asyncio.sleep(0.3)
 
     # ── Phase 7: IP Manager — Draft section ──────────────────────────────────
-    yield {"type": "subagent", "agent": IP, "action": "Spawned to draft formal patent disclosure section", "speaker": "ip-manager", "role": "subagent", "provenance": provenance}
+    yield {"type": "subagent", "agent": IP, "action": "draft formal patent disclosure section", "speaker": IP, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.25)
 
-    yield {"type": "thinking", "content": "Drafting IdeaScope section for Siemens Gate evaluation packet.", "agent": IP, "speaker": "ip-manager", "role": "subagent", "provenance": provenance}
+    yield {"type": "thinking", "content": "Disclosure packet draft event recorded.", "agent": IP, "speaker": IP, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.4)
 
     if idea_id:
         draft_patent_section(idea_id, "ideascope_draft", f"## Invention Disclosure\nFeedback: {user_feedback}\nComposite Score: {composite}/100\n")
 
-    yield {"type": "tool_call", "tool": "draft_patent_section", "params": {"idea_id": idea_id, "section": "ideascope_draft"}, "agent": IP, "speaker": "ip-manager", "role": "tool", "provenance": provenance}
+    yield {"type": "tool_call", "tool": "draft_patent_section", "params": {"idea_id": idea_id, "section": "ideascope_draft"}, "agent": IP, "speaker": IP, "role": "tool", "provenance": provenance}
     await asyncio.sleep(0.5)
-    yield {"type": "tool_result", "tool": "draft_patent_section", "output": "IdeaScope draft section saved to workspace. Siemens Gate packet updated.", "agent": IP, "speaker": "ip-manager", "role": "tool", "provenance": provenance}
+    yield {"type": "tool_result", "tool": "draft_patent_section", "output": {"saved": bool(idea_id), "section": "ideascope_draft"}, "agent": IP, "speaker": IP, "role": "tool", "provenance": provenance}
     await asyncio.sleep(0.3)
 
     # ── Phase 8: Final handover to Lead for synthesis ─────────────────────────
-    yield {"type": "handover", "from_agent": IP, "to_agent": LEAD, "speaker": "ip-manager", "role": "handover", "provenance": provenance}
+    yield {"type": "handover", "from_agent": IP, "to_agent": LEAD, "speaker": IP, "role": "orchestrator", "provenance": provenance}
     await asyncio.sleep(0.2)
 
-    yield {"type": "thinking", "content": "Synthesizing agent findings into user-facing summary.", "agent": LEAD, "speaker": "lead-engineer", "role": "subagent", "provenance": provenance}
+    yield {"type": "thinking", "content": "Completion record assembled from runtime evidence.", "agent": LEAD, "speaker": LEAD, "role": "subagent", "provenance": provenance}
     await asyncio.sleep(0.35)
 
-    # ── Phase 9: Stream response tokens ──────────────────────────────────────
-    if idea_id:
-        reply = (
-            f"I've analyzed your feedback on **{title}** and coordinated the agent team. "
-            f"The Prior-Art scan (David) confirmed novelty against 1,420 Siemens patents. "
-            f"Patentability evaluation returned a composite score of **{composite}/100** "
-            f"({'✓ PASSED' if composite >= 70 else '⚠ Needs Review'} for Siemens Gate). "
-            f"Emma has updated the IdeaScope disclosure packet with your input. "
-            f"Next step: gate validation by IP Council."
-        )
-    else:
-        reply = (
-            f"Received your message in the global workspace. "
-            f"The autonomous agent team is monitoring the idea pipeline. "
-            f"I've logged your feedback and will apply it to the next active idea cycle. "
-            f"Discovery Agent is standing by for further instructions."
-        )
-
-    words = reply.split(" ")
-    for i, word in enumerate(words):
-        chunk = word + (" " if i < len(words) - 1 else "")
-        yield {"type": "token", "content": chunk, "agent": LEAD, "speaker": "lead-engineer", "role": "token", "provenance": provenance}
-        await asyncio.sleep(0.045)
+    yield {
+        "type": "completion",
+        "content": "Workflow pass complete.",
+        "agent": ORCH,
+        "speaker": ORCH,
+        "role": "orchestrator",
+        "status": "completed",
+        "provenance": provenance,
+        "output": {
+            "idea_id": idea_id,
+            "workflow_state": state,
+            "composite_score": composite,
+            "draft_written": bool(idea_id),
+        },
+    }
 
     # ── Phase 10: Emit updated task state ────────────────────────────────────
     tasks = [
-        {"id": "t1", "title": f"Taxonomy & Prior-Art Search for {title}", "agent": DATA, "status": "Completed", "thought": "Found 3 prior-art refs; novelty confirmed."},
-        {"id": "t2", "title": f"Evaluate Novelty & Claim Boundaries ({state})", "agent": LEAD, "status": "Completed", "thought": f"Score {composite}/100. Claims structured."},
-        {"id": "t3", "title": "Draft IdeaScope & Siemens Gate Packet", "agent": IP, "status": "Completed" if composite >= 70 else "In Progress", "thought": "Disclosure packet updated."},
+        {"id": "t1", "title": f"Prior-art search for {title}", "agent": DATA, "status": "Completed", "thought": "Transcript contains tool call and tool result events."},
+        {"id": "t2", "title": f"Evaluate novelty and claim boundaries ({state})", "agent": LEAD, "status": "Completed", "thought": f"Composite score {composite}/100 recorded in transcript."},
+        {"id": "t3", "title": "Draft disclosure packet", "agent": IP, "status": "Completed" if composite >= 70 else "In Progress", "thought": "Disclosure packet write event recorded."},
     ]
     yield {"type": "tasks_update", "tasks": tasks, "completed": sum(1 for t in tasks if t["status"] == "Completed"), "total": len(tasks), "speaker": "workflow-orchestrator", "role": "tasks", "provenance": provenance}
-
-    # Persist reply in chat history
-    if idea_id:
-        data = load_idea_yaml(idea_id, "idea.yaml") or {}
-        history = data.get("chat_history", [])
-        history.append({"id": f"msg_{len(history)+1}", "sender": "user", "text": user_feedback, "timestamp": datetime.utcnow().strftime("%H:%M")})
-        history.append({"id": f"msg_{len(history)+2}", "sender": LEAD, "text": reply, "timestamp": datetime.utcnow().strftime("%H:%M")})
-        data["chat_history"] = history
-        save_idea_yaml(idea_id, "idea.yaml", data)
 
     yield {"type": "done"}

@@ -119,10 +119,8 @@ These files are beyond a comfortable maintenance size and violate single respons
 
 ### Review and governance findings
 
-- Prior-art review is simulated by the LLM in the current implementation.
-- Manager review is simulated by the LLM.
-- IP review is simulated by the LLM.
-- Counsel validation is simulated by the LLM.
+- Prior-art review is still partially simulated in the current implementation.
+- Manager/IP/counsel review decisions now pause in blocking interrupts, but the surrounding drafting workflow still needs more runtime grounding.
 
 These are acceptable only as placeholders for research/prototyping, not as trustworthy approval flows.
 
@@ -133,7 +131,7 @@ These are acceptable only as placeholders for research/prototyping, not as trust
   - user comments,
   - saved idea chat history,
   - and hardcoded agent/task narration.
-- `frontend/src/components/RightChatSidebar.tsx` bootstraps with hardcoded persona messages like `Alex — Lead Engineer` and `David — Data Analyst`.
+- `frontend/src/components/RightChatSidebar.tsx` now renders transcript events directly and no longer bootstraps with fake persona messages.
 - `frontend/src/components/IdeaHistoryTimeline.tsx` shows richer activity and state history, but it still relies on stored idea data rather than a live DeepAgents thread model.
 - The backend does emit some live-ish progress events through SSE and workflow state changes, but those events are still shallow compared to the agentic detail the UI needs.
 - The current UI shows state progression, task summaries, and collapsed trace snippets, but it does **not** yet expose real agent thought streams, subagent-to-subagent delegation, or tool-call traces as a first-class live conversation.
@@ -182,13 +180,14 @@ The UI should label the speaker as the actual agent role or human reviewer, not 
 
 ### Open issue checklist from this audit
 
-- [ ] remove hardcoded persona bootstrap messages from the sidebar
-- [ ] remove synthetic agent replies from chat history persistence
+- [x] remove hardcoded persona bootstrap messages from the sidebar
+- [x] remove synthetic agent replies from chat history persistence
 - [ ] replace scripted streaming steps with real runtime event streaming
 - [ ] add explicit UI separation for user / orchestrator / subagent / tool / approval events
 - [ ] show real agent thinking only when it originates from the runtime, not from a template
 - [ ] preserve a transcript of tool calls and delegate handoffs as first-class events
 - [ ] make paused / failed / retry states visible instead of smoothing them over
+- [x] add typed transcript event persistence and render it in the live chat surface
 
 ### Solution directions recorded
 
@@ -197,6 +196,7 @@ The UI should label the speaker as the actual agent role or human reviewer, not 
 - keep comments and idea notes separate from agent transcripts
 - store approvals, handoffs, tool calls, and subagent delegations as distinct records
 - if an agentic step fails, show the failure and retry affordance instead of fabricating a conversational completion
+- render the live sidebar from transcript events rather than fake bootstrap messages
 
 ### Hardcoded / mock / partial-agentic inventory
 
