@@ -5,13 +5,19 @@
 - idea creation from manual signal text
 - autonomous idea seeding from knowledge-base content
 - custom workflow state progression
-- heuristic and LLM-assisted scoring
+- heuristic and LLM-assisted scoring, with some paths still requiring cleanup before the app can be called fully agentic
 - gate validation from checklist config
 - filesystem artifact storage per idea
 - comments on ideas
 - workflow status and progress views
 - SSE-based live dashboard updates
 - knowledge-base listing
+
+## Trust Constraints
+
+- No silent fallback to fabricated agent output
+- No simulated human approval for production-trust stages
+- Explicit retry/error states are preferred over hidden heuristics
 
 ## Features To Build Next
 
@@ -23,6 +29,8 @@
 - event-stream based tool and subagent updates
 - real DeepAgents memory and skills loading
 
+The existing upstream DeepAgents package already supports these primitives, so the roadmap should adapt the package rather than reimplementing them.
+
 ### Governance and review
 
 - human-in-the-loop approvals for manager, IP, and counsel stages
@@ -30,6 +38,8 @@
 - reviewer assignment and queues
 - audit log of approval decisions
 - protected final artifact writes
+
+If the review cannot be completed by a real human, the workflow should pause instead of auto-approving.
 
 ### Workflow and artifact quality
 

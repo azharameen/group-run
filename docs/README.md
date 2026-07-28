@@ -17,6 +17,7 @@ This folder tracks the backend and frontend migration from the current custom wo
 - Target architecture documented
 - Initial DeepAgents backend scaffold added without changing runtime behavior
 - Frontend audit complete: shadcn/ui and Radix UI are already in place
+- DeepAgents package research completed: upstream runtime primitives exist, but the repo still has hardcoded and simulated paths that must be removed before any full agentic claim
 
 ## Rules For Ongoing Work
 
@@ -24,3 +25,4 @@ This folder tracks the backend and frontend migration from the current custom wo
 - Prefer non-breaking phases over big-bang rewrites
 - Keep backend and frontend contracts aligned before switching runtime behavior
 - Do not enable sandbox execution in the first migration phases
+- Never silently convert failed agentic output into fabricated success output

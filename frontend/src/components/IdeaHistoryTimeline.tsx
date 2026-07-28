@@ -18,7 +18,16 @@ import {
 
 export interface TimelineItem {
 	id: string;
-	type: "discussion" | "transition" | "score" | "gate" | "comment";
+	type:
+		| "discussion"
+		| "transition"
+		| "score"
+		| "gate"
+		| "comment"
+		| "interrupt"
+		| "approval"
+		| "retry"
+		| "failed";
 	timestamp: string;
 	title: string;
 	agentName?: string;
@@ -34,6 +43,7 @@ export interface TimelineItem {
 	criteriaDetail?: Record<string, any>;
 	gateName?: string;
 	gatePassed?: boolean;
+	provenance?: string;
 }
 
 interface Props {
@@ -41,20 +51,75 @@ interface Props {
 	files?: any[];
 }
 
-const AGENT_FIELD_MAP: Record<string, { title: string; agentName: string; agentRole: string }> = {
-	discovery_data: { title: "Idea Discoverer - Signal Analysis", agentName: "idea-discoverer", agentRole: "Idea Discovery Agent" },
-	clarification_data: { title: "Problem Framer - Formal Problem Statement", agentName: "problem-framer", agentRole: "Problem Clarification Agent" },
-	novelty_hypothesis: { title: "Novelty Analyst - Novelty Hypothesis", agentName: "novelty-analyst", agentRole: "Novelty & Non-Obviousness Agent" },
-	prior_art_review: { title: "Prior Art Researcher - Prior Art Analysis", agentName: "prior-art-researcher", agentRole: "Prior Art & Novelty Analyst" },
-	detectability_review: { title: "Detectability Analyst - Infringement Detection", agentName: "detectability-analyst", agentRole: "Detectability & Enforcement Agent" },
-	business_value: { title: "Business Value Analyst - Market Assessment", agentName: "business-value-analyst", agentRole: "Business Value & Market Agent" },
-	siemens_alignment: { title: "Siemens Alignment Validator - Strategic Check", agentName: "siemens-alignment", agentRole: "Siemens Portfolio & BU Evaluator" },
-	ideascope_draft: { title: "Patent Drafter - IdeaScope Document", agentName: "patent-drafter", agentRole: "Patent Document Drafter" },
-	filing_check: { title: "Checklist Validator - Filing Compliance", agentName: "checklist-validator", agentRole: "Compliance & Checklist Agent" },
-	manager_review: { title: "Reviewer Summarizer - Manager Review", agentName: "reviewer-summarizer", agentRole: "Manager Review Agent" },
-	ip_review: { title: "Reviewer Summarizer - IP Attorney Review", agentName: "reviewer-summarizer", agentRole: "IP Attorney Review Agent" },
-	ip_counsel_validation: { title: "Checklist Validator - IP Counsel Final Validation", agentName: "checklist-validator", agentRole: "IP Counsel Validation Agent" },
-	submission_packet: { title: "Reviewer Summarizer - Submission Packet Ready", agentName: "reviewer-summarizer", agentRole: "Submission Readiness Agent" },
+const AGENT_FIELD_MAP: Record<
+	string,
+	{ title: string; agentName: string; agentRole: string }
+> = {
+	discovery_data: {
+		title: "Idea Discoverer - Signal Analysis",
+		agentName: "idea-discoverer",
+		agentRole: "Idea Discovery Agent",
+	},
+	clarification_data: {
+		title: "Problem Framer - Formal Problem Statement",
+		agentName: "problem-framer",
+		agentRole: "Problem Clarification Agent",
+	},
+	novelty_hypothesis: {
+		title: "Novelty Analyst - Novelty Hypothesis",
+		agentName: "novelty-analyst",
+		agentRole: "Novelty & Non-Obviousness Agent",
+	},
+	prior_art_review: {
+		title: "Prior Art Researcher - Prior Art Analysis",
+		agentName: "prior-art-researcher",
+		agentRole: "Prior Art & Novelty Analyst",
+	},
+	detectability_review: {
+		title: "Detectability Analyst - Infringement Detection",
+		agentName: "detectability-analyst",
+		agentRole: "Detectability & Enforcement Agent",
+	},
+	business_value: {
+		title: "Business Value Analyst - Market Assessment",
+		agentName: "business-value-analyst",
+		agentRole: "Business Value & Market Agent",
+	},
+	siemens_alignment: {
+		title: "Siemens Alignment Validator - Strategic Check",
+		agentName: "siemens-alignment",
+		agentRole: "Siemens Portfolio & BU Evaluator",
+	},
+	ideascope_draft: {
+		title: "Patent Drafter - IdeaScope Document",
+		agentName: "patent-drafter",
+		agentRole: "Patent Document Drafter",
+	},
+	filing_check: {
+		title: "Checklist Validator - Filing Compliance",
+		agentName: "checklist-validator",
+		agentRole: "Compliance & Checklist Agent",
+	},
+	manager_review: {
+		title: "Reviewer Summarizer - Manager Review",
+		agentName: "reviewer-summarizer",
+		agentRole: "Manager Review Agent",
+	},
+	ip_review: {
+		title: "Reviewer Summarizer - IP Attorney Review",
+		agentName: "reviewer-summarizer",
+		agentRole: "IP Attorney Review Agent",
+	},
+	ip_counsel_validation: {
+		title: "Checklist Validator - IP Counsel Final Validation",
+		agentName: "checklist-validator",
+		agentRole: "IP Counsel Validation Agent",
+	},
+	submission_packet: {
+		title: "Reviewer Summarizer - Submission Packet Ready",
+		agentName: "reviewer-summarizer",
+		agentRole: "Submission Readiness Agent",
+	},
 };
 
 export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
@@ -69,6 +134,8 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 	const stateHistory: any[] = stateData?.history || [];
 	const scoreHistory: any[] = scoresData?.history || [];
 	const comments: any[] = detail?.comments || [];
+	const transcriptEvents: any[] =
+		detail?.transcript_events || detail?.transcript || [];
 
 	const handoverFiles = files.filter((f) => f.path.startsWith("handovers/"));
 
@@ -78,7 +145,8 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 	stateHistory.forEach((h, idx) => {
 		const toState = h.to || h.state || h.to_state || "";
 		const fromState =
-			h.from || h.from_state ||
+			h.from ||
+			h.from_state ||
 			(idx > 0
 				? stateHistory[idx - 1].to || stateHistory[idx - 1].state
 				: "raw_signal_collected");
@@ -90,10 +158,16 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 			type: "transition",
 			timestamp: h.timestamp || idea.created_at || new Date().toISOString(),
 			title: `Workflow Transitioned to ${toState?.replace(/_/g, " ")}`,
-			agentName: h.agent_responsible || h.agent || idea.running_agent || "Workflow Orchestrator",
+			agentName:
+				h.agent_responsible ||
+				h.agent ||
+				idea.running_agent ||
+				"Workflow Orchestrator",
 			fromState,
 			toState,
-			explanation: h.reason || `Advanced from ${fromState?.replace(/_/g, " ")} to ${toState?.replace(/_/g, " ")}`,
+			explanation:
+				h.reason ||
+				`Advanced from ${fromState?.replace(/_/g, " ")} to ${toState?.replace(/_/g, " ")}`,
 			handoverContent: handover?.content,
 		});
 	});
@@ -114,6 +188,24 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 		});
 	}
 
+	// Runtime transcript items when available
+	transcriptEvents.forEach((evt, idx) => {
+		if (!evt?.type) return;
+		if (!["interrupt", "approval", "retry", "failed"].includes(evt.type))
+			return;
+		items.push({
+			id: `evt-${idx}`,
+			type: evt.type,
+			timestamp: evt.timestamp || idea.updated_at || new Date().toISOString(),
+			title: evt.title || evt.type.replace(/_/g, " "),
+			agentName: evt.speaker || evt.agent || "Runtime Event",
+			agentRole: evt.role,
+			explanation:
+				evt.reason || evt.content || evt.details || "Runtime event recorded.",
+			provenance: evt.provenance,
+		});
+	});
+
 	// Score evaluations
 	scoreHistory.forEach((s, idx) => {
 		items.push({
@@ -123,7 +215,10 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 			title: `Composite Score Evaluated: ${s.composite}/100 (${s.strength_rating || "Scored"})`,
 			agentName: s.agent_responsible || s.agent || "Evaluator Agent",
 			scoreAfter: s.composite,
-			explanation: s.change_explanation || s.summary || "Scoring engine evaluated 7 criteria.",
+			explanation:
+				s.change_explanation ||
+				s.summary ||
+				"Scoring engine evaluated 7 criteria.",
 			criteriaDetail: s.criteria_detail,
 		});
 	});
@@ -132,7 +227,8 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 		items.push({
 			id: `comment-${idx}`,
 			type: "comment",
-			timestamp: comment.timestamp || idea.updated_at || new Date().toISOString(),
+			timestamp:
+				comment.timestamp || idea.updated_at || new Date().toISOString(),
 			title: `Comment by ${comment.author || "User"}`,
 			agentName: comment.author || "User",
 			explanation: comment.text,
@@ -182,7 +278,8 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 							Activity Timeline & Agent Discussions
 						</CardTitle>
 						<p className="text-xs text-muted-foreground mt-0.5">
-							Chronological log of agent conversations, score updates, and state transitions
+							Chronological log of agent conversations, score updates, and state
+							transitions
 						</p>
 					</div>
 
@@ -207,7 +304,8 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 							className="cursor-pointer text-[11px]"
 							onClick={() => setFilterType("transition")}
 						>
-							Transitions ({items.filter((i) => i.type === "transition").length})
+							Transitions ({items.filter((i) => i.type === "transition").length}
+							)
 						</Badge>
 						<Badge
 							variant={filterType === "score" ? "default" : "outline"}
@@ -246,13 +344,23 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 							return (
 								<div key={item.id} className="relative group">
 									<div className="absolute -left-[27px] top-0 flex aspect-square size-6 items-center justify-center rounded-full bg-background border border-border shadow-2xs">
-										{item.type === "discussion" && <Bot className="w-3.5 h-3.5 text-primary" />}
-										{item.type === "transition" && <GitCommit className="w-3.5 h-3.5 text-blue-500" />}
-										{item.type === "score" && <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />}
-										{item.type === "gate" && (
-											<ShieldCheck className={`w-3.5 h-3.5 ${item.gatePassed ? "text-emerald-500" : "text-amber-500"}`} />
+										{item.type === "discussion" && (
+											<Bot className="w-3.5 h-3.5 text-primary" />
 										)}
-										{item.type === "comment" && <User className="w-3.5 h-3.5 text-sky-500" />}
+										{item.type === "transition" && (
+											<GitCommit className="w-3.5 h-3.5 text-blue-500" />
+										)}
+										{item.type === "score" && (
+											<TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+										)}
+										{item.type === "gate" && (
+											<ShieldCheck
+												className={`w-3.5 h-3.5 ${item.gatePassed ? "text-emerald-500" : "text-amber-500"}`}
+											/>
+										)}
+										{item.type === "comment" && (
+											<User className="w-3.5 h-3.5 text-sky-500" />
+										)}
 									</div>
 
 									<div className="space-y-2">
@@ -285,7 +393,9 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 										{item.type === "discussion" && item.answer && (
 											<div className="space-y-2 mt-2 bg-muted/30 p-3 rounded-lg border text-xs">
 												<div className="space-y-1">
-													<span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">Agent Findings</span>
+													<span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+														Agent Findings
+													</span>
 													<div className="text-xs font-mono bg-background p-2.5 rounded border overflow-x-auto">
 														<JsonViewer data={item.answer} />
 													</div>
@@ -295,7 +405,9 @@ export function IdeaHistoryTimeline({ detail, files = [] }: Props) {
 
 										{item.type === "comment" && item.explanation && (
 											<div className="space-y-2 mt-2 bg-sky-50/60 dark:bg-sky-950/20 p-3 rounded-lg border text-xs">
-												<p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{item.explanation}</p>
+												<p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
+													{item.explanation}
+												</p>
 											</div>
 										)}
 

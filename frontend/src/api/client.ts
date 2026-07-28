@@ -39,6 +39,8 @@ export interface IdeaDetail {
     text: string
     timestamp: string
   }>
+  transcript_events?: Array<Record<string, any>>
+  transcript?: Array<Record<string, any>>
 }
 
 export interface CriterionDetail {
@@ -379,6 +381,10 @@ export type StreamEventType =
   | 'tool_result'
   | 'subagent'
   | 'handover'
+  | 'interrupt'
+  | 'approval'
+  | 'retry'
+  | 'failed'
   | 'token'
   | 'tasks_update'
   | 'done'
@@ -387,12 +393,18 @@ export interface StreamEvent {
   type: StreamEventType
   content?: string
   agent?: string
+  speaker?: string
+  role?: string
   tool?: string
   params?: Record<string, any>
   output?: string
   action?: string
   from_agent?: string
   to_agent?: string
+  interrupt_id?: string
+  decision?: 'approve' | 'edit' | 'reject' | 'retry'
+  reason?: string
+  provenance?: string
   tasks?: any[]
   completed?: number
   total?: number

@@ -2,7 +2,13 @@
 
 ## Summary
 
-The current application is a working custom workflow system, not a real DeepAgents application.
+This repository currently mixes three different modes:
+
+1. **Real agent plumbing** — FastAPI, SSE, YAML persistence, a state machine, and a working LLM client.
+2. **Partial agentic behavior** — some workflows call the LLM and write artifacts, but many paths still fall back to heuristics or simulated outputs.
+3. **Non-agentic / mocked behavior** — hardcoded templates, simulated review decisions, and mock task/progress displays.
+
+That means the app is **not yet safe to claim as fully agentic AI**.
 
 The backend currently consists of:
 
@@ -19,17 +25,73 @@ The frontend currently consists of:
 - Radix UI primitives
 - Custom API client and SSE updates
 
-## Main Finding
+## Research update: what DeepAgents already supports upstream
 
-The code uses the names `DeepAgents` and `SubAgent`, but the backend does not currently use:
+The upstream `langchain-ai/deepagents` package already provides the primitives this app needs:
 
 - `create_deep_agent`
-- DeepAgents backends
-- DeepAgents permissions
-- DeepAgents middleware stack
-- DeepAgents event streaming
-- DeepAgents memory or skills as first-class runtime features
-- DeepAgents checkpointers for durable HITL flows
+- `FilesystemMiddleware`
+- `MemoryMiddleware`
+- `SkillsMiddleware`
+- `SubAgentMiddleware`
+- `HumanInTheLoopMiddleware`
+- checkpointer-backed approval / interrupt flows
+- subagent-specific middleware stacks
+
+That means the right direction is **adaptation**, not inventing a second agent runtime from scratch.
+
+## Source map: where information comes from
+
+### Current in-repo sources
+
+- `workspace/ideas/**/idea.yaml` and `scores.yaml` — source-of-truth workflow artifacts
+- `workspace/ideas.yaml` — idea registry
+- `workspace/ideas/**/state.yaml` — state history and transition metadata
+- `workspace/ideas/**/handovers/**` and `revisions/**` — human-readable handoff and revision artifacts
+- `knowledge-base/raw/**` and `knowledge-base/processed/**` — local research corpus
+- `instructions/global-agent-instructions.md` and `instructions/siemens-validator-instructions.md` — operating guidance
+
+### What is trusted today versus what is not
+
+- **Trusted enough as inputs:** the workspace files, knowledge-base documents, and instruction files above
+- **Not trusted enough as final truth:** heuristic scoring output, simulated review decisions, mock task lists, and hardcoded agent personas
+
+### Missing research sources that should be added before a full agentic claim
+
+- patent database search source
+- citation-backed web research source
+- filing-status or approval system source, if the org has one
+- optional internal Siemens source connectors if available
+
+### Patents and filings tooling status
+
+The repository does not yet have a real patent-search or patent-filing tool chain wired in as a production source of truth.
+
+No repo-local MCP configuration for patent search / filing was found in the workspace during this audit.
+
+DeepAgents can host the tools, memory, skills, and HITL interruptions, but the patent-specific retrieval layer still needs to be chosen and integrated.
+
+Recommended tool categories to evaluate:
+
+- patent search APIs or adapters
+- citation extraction / normalization tools
+- web-research tools that can be delegated to subagents
+- internal filing workflow connectors, if available
+
+## Main Finding
+
+The code uses the names `DeepAgents` and `SubAgent`, but the backend does not yet consistently use the upstream DeepAgents runtime as the source of truth.
+
+Instead, the repo contains a mix of:
+
+- custom orchestration layers
+- hardcoded idea templates
+- heuristic fallback scoring
+- simulated reviews
+- mock progress/task data
+- permissive gate checks
+
+These are the biggest trust risks because they can present fabricated output as if it were agent-produced reasoning.
 
 ## Backend Findings
 
@@ -57,18 +119,115 @@ These files are beyond a comfortable maintenance size and violate single respons
 
 ### Review and governance findings
 
-- Prior-art review is simulated by the LLM.
+- Prior-art review is simulated by the LLM in the current implementation.
 - Manager review is simulated by the LLM.
 - IP review is simulated by the LLM.
 - Counsel validation is simulated by the LLM.
 
-These are acceptable placeholders for internal prototyping, but not for a production approval flow.
+These are acceptable only as placeholders for research/prototyping, not as trustworthy approval flows.
 
-### Dependency findings
+## Chat / conversation-thread findings
+
+- The current chat UI does **not** show true DeepAgents conversation threads yet.
+- `backend/app/api/routes/chat.py` currently merges:
+  - user comments,
+  - saved idea chat history,
+  - and hardcoded agent/task narration.
+- `frontend/src/components/RightChatSidebar.tsx` bootstraps with hardcoded persona messages like `Alex — Lead Engineer` and `David — Data Analyst`.
+- `frontend/src/components/IdeaHistoryTimeline.tsx` shows richer activity and state history, but it still relies on stored idea data rather than a live DeepAgents thread model.
+- The backend does emit some live-ish progress events through SSE and workflow state changes, but those events are still shallow compared to the agentic detail the UI needs.
+- The current UI shows state progression, task summaries, and collapsed trace snippets, but it does **not** yet expose real agent thought streams, subagent-to-subagent delegation, or tool-call traces as a first-class live conversation.
+- In practice, the visible chat surface is still mixing:
+  - real user comments,
+  - stored idea chat history,
+  - synthetic agent replies,
+  - and scheduler-driven workflow updates.
+
+### Current gap versus desired behavior
+
+The user wants to see:
+
+- agent thinking in near real time
+- every tool call with parameters and results
+- delegation from one agent to another subagent
+- approval interrupts and resume actions
+- the actual sequence of steps that caused a workflow transition
+
+That is not fully present today. What exists now is closer to a **workflow activity feed** than a **true conversational agent transcript**.
+
+### What is happening today in code
+
+- `backend/app/agent/runner.py` fabricates a deterministic stream of "thinking", "tool_call", "subagent", and "handover" events.
+- `backend/app/api/routes/chat.py` transforms that stream into chat messages and also stores synthetic agent replies in idea history.
+- The frontend renders those events as if they were live agent reasoning, but the backend sequence is still pre-scripted.
+
+### Why this is a trust problem
+
+- It can look like the system is streaming authentic agent cognition when it is actually replaying a fixed sequence.
+- It can hide whether a subagent truly ran or whether a step was simulated.
+- It makes the UI appear more agentic than the runtime actually is.
+
+### What the conversation thread should become
+
+Each idea thread should combine:
+
+- user messages
+- orchestrator progress events
+- subagent messages
+- tool-call events
+- approval / interrupt events
+- final artifact revisions
+
+The UI should label the speaker as the actual agent role or human reviewer, not as a generic fake chat persona.
+
+### Open issue checklist from this audit
+
+- [ ] remove hardcoded persona bootstrap messages from the sidebar
+- [ ] remove synthetic agent replies from chat history persistence
+- [ ] replace scripted streaming steps with real runtime event streaming
+- [ ] add explicit UI separation for user / orchestrator / subagent / tool / approval events
+- [ ] show real agent thinking only when it originates from the runtime, not from a template
+- [ ] preserve a transcript of tool calls and delegate handoffs as first-class events
+- [ ] make paused / failed / retry states visible instead of smoothing them over
+
+### Solution directions recorded
+
+- use the upstream DeepAgents runtime as the execution source of truth
+- map runtime events directly into a typed event stream for the UI
+- keep comments and idea notes separate from agent transcripts
+- store approvals, handoffs, tool calls, and subagent delegations as distinct records
+- if an agentic step fails, show the failure and retry affordance instead of fabricating a conversational completion
+
+### Hardcoded / mock / partial-agentic inventory
+
+#### Must remove for a truthful agentic claim
+
+- hardcoded idea-generation templates
+- mock scoring fallbacks that fabricate scores
+- simulated manager/IP/counsel approvals
+- mock agent-task cards and fake progress statuses
+- workflow auto-advance when no real agent work happened
+
+#### Acceptable only as retry/error handling
+
+- LLM retries
+- explicit error states
+- explicit user-visible retry prompts
+- audit log entries describing failures
+
+#### Acceptable as static config or documentation
+
+- workflow state enum
+- scoring weights and thresholds
+- gate checklist definitions
+- agent role definitions
+- sample ideas and knowledge-base content when clearly marked as demo/reference data
+
+## Dependency findings
 
 - Repo root `requirements.txt` includes `deepagents==0.1.0`.
-- `backend/requirements.txt` did not previously include `deepagents`.
-- The current backend runtime dependencies are not aligned with the documented DeepAgents feature set.
+- `backend/requirements.txt` should be kept aligned with runtime needs if the app is expected to use DeepAgents directly.
+- The current backend runtime dependencies and the documented DeepAgents feature set are not yet fully aligned.
 
 ## Frontend Findings
 
@@ -99,7 +258,7 @@ The main future frontend change is to add views for:
 
 ## Immediate Risks
 
-- Confusing naming: files describe DeepAgents integration that is not really there yet.
+- Confusing naming: files describe DeepAgents integration that is not yet the source of truth everywhere.
 - Runtime responsibilities are too collapsed into a few large Python files.
 - Human review states are modeled as AI simulation.
 - No proper permissions layer exists for agent-controlled filesystem access.
@@ -108,11 +267,43 @@ The main future frontend change is to add views for:
 
 ## Recommendation
 
-Do not rewrite the product in one step.
+Do not silently promote the current app to a fully agentic claim.
 
 Recommended path:
 
-1. Cleanly separate transport, domain, storage, and agent runtime.
-2. Add an isolated DeepAgents runtime module.
-3. Keep the existing workflow behavior stable while wiring new pieces in phases.
-4. Replace simulated review stages with real HITL later in the plan.
+1. Keep the current app stable.
+2. Replace fabricated outputs with retry/error states and explicit logs.
+3. Adopt the upstream DeepAgents primitives for runtime, memory, skills, subagents, permissions, and HITL.
+4. Move review stages from simulated LLM outputs to actual human interrupts.
+5. Preserve an audit/history trail in the existing docs and milestone tracker so the decision path stays transparent.
+
+## Selected path after research
+
+The best fit for this repository is to **adapt the upstream DeepAgents package** rather than building a separate custom agent runtime.
+
+Why this path wins:
+
+- the package already provides `create_deep_agent`
+- the package already supports `MemoryMiddleware`, `SkillsMiddleware`, `SubAgentMiddleware`, `FilesystemMiddleware`, and `HumanInTheLoopMiddleware`
+- the package already treats HITL as a first-class interrupt concept
+- the package already supports middleware layering, checkpointer-based state, and skill/memory loading
+
+This means the repo should keep the current workflow data model, but stop pretending that hardcoded templates or heuristic fallbacks are equivalent to agentic reasoning.
+
+## How to document decisions over time
+
+Use the existing docs folder as the research history:
+
+- keep the current audit updated when findings change
+- keep the phased plan as the living implementation sequence
+- keep the milestone tracker as the state of truth for progress
+- record package/adaptation decisions in the milestone tracker rather than creating new duplicate history files
+
+## Implementation checklist anchors
+
+Use the existing docs as the single checklist system instead of adding duplicate planning files:
+
+- `docs/phased-plan.md` — implementation milestones and tasks
+- `docs/milestone-tracker.md` — completed work and pending work
+- `docs/target-architecture.md` — the chosen architecture and trust boundaries
+- `docs/feature-roadmap.md` — what is current, next, and later

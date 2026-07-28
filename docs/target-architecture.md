@@ -3,10 +3,11 @@
 ## Principles
 
 - Keep business workflow state in the application domain, not hidden inside prompts.
-- Use DeepAgents as the agent runtime, not as a replacement for all domain logic.
+- Use the upstream DeepAgents runtime as the agent layer, not as a replacement for all domain logic.
 - Keep current behavior stable while changing internals.
 - Prefer small files with one job.
-- Treat filesystem, memory, and review approvals as explicit architectural concerns.
+- Treat filesystem, memory, review approvals, and retry/error states as explicit architectural concerns.
+- Never silently fabricate a result when an agentic step fails.
 
 ## Recommended Folder Structure
 
@@ -175,6 +176,8 @@ Expected DeepAgents middleware stack:
 - MemoryMiddleware
 - HumanInTheLoopMiddleware
 
+This matches the upstream DeepAgents architecture: base scaffolding for filesystem, subagents, summarization, memory, and human approval, with caller middleware layered in between.
+
 ### Subagent model
 
 Keep a smaller set of real specialists:
@@ -191,6 +194,8 @@ Keep a smaller set of real specialists:
 - `review-packager`
 
 Avoid creating a one-to-one subagent per workflow state when the responsibilities are nearly identical.
+
+Prefer reusable specialists that can be invoked across phases. The current codebase should stop treating simulated state executors as if they were real agents.
 
 ### Skills model
 
@@ -224,6 +229,20 @@ Interrupts should replace simulated approvals for:
 - final counsel validation
 - final submission packaging
 - destructive archive or delete actions
+
+When a stage cannot be completed agentically, the correct behavior is to pause, log the failure, and show the user a retry/review action — not to write fabricated output and continue.
+
+## Trust and failure behavior
+
+The user interface should expose these states explicitly:
+
+- retry required
+- agent failed
+- human approval required
+- evidence insufficient
+- fallback prohibited
+
+Do not convert these into hidden heuristics or silent success paths.
 
 ## Frontend Design Target
 

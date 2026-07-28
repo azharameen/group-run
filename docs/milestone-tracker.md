@@ -12,32 +12,48 @@ Update this file whenever work is completed.
 - [x] M0: Phase 0 completed
 - [x] M1: FastAPI route split completed
 - [x] M1: Backend structural cleanup completed
-- [x] M2: Real DeepAgents runtime build completed
-- [x] M3: Skills and memory migration completed
-- [x] M4: Human-in-the-loop approvals completed
-- [x] M5: Frontend DeepAgents streaming integration completed
-- [x] M6: Artifact quality and traceability completed
-- [x] M7: Advanced capabilities completed
+- [ ] M2: Real DeepAgents runtime build completed
+- [ ] M3: Skills and memory migration completed
+- [ ] M4: Human-in-the-loop approvals completed
+- [ ] M5: Frontend DeepAgents streaming integration completed
+- [ ] M6: Artifact quality and traceability completed
+- [ ] M7: Advanced capabilities completed
 
 ## Completed Tasks
 
 ### 2026-07-28
 
-- [x] Integrated DeepAgents core runtime alignment (`backend/app/agent/runtime.py`, `backends.py`, `permissions.py`, `subagents.py`, `context.py`).
-- [x] Created project skills directory (`skills/discovery`, `skills/drafting`, `skills/review`, `skills/siemens_strategy`).
-- [x] Added memories structures (`memories/org/siemens_patent_guidelines.md`) and knowledge base taxonomy (`knowledge-base/prior_art_taxonomy.json`).
-- [x] Implemented Human-in-the-Loop (HITL) approval endpoints (`POST /api/workflow/{idea_id}/approve`, `POST /api/workflow/{idea_id}/reject`, `GET /api/workflow/interrupts`).
-- [x] Built frontend DeepAgents interactive UI suite:
-  - `InterruptInbox.tsx` (Interactive review gate approval/rejection card)
-  - `SubagentActivityCard.tsx` (Live active subagent status visualizer)
-  - `AgentTodoPanel.tsx` (Real-time agent task checklist visualizer)
-  - `ToolCallTimeline.tsx` (Interactive tool execution timeline with expand/collapse)
-  - `ArtifactDiffPanel.tsx` (Side-by-side artifact revision comparison view)
-- [x] Integrated DeepAgents Mesh tab cleanly into `frontend/src/pages/IdeaDetail.tsx`.
-- [x] Verified zero errors on frontend build (`npm run build` completed cleanly).
-- [x] Verified zero errors on backend tests (`pytest` 16/16 passed).
+- [x] Updated the docs to distinguish real agentic primitives from hardcoded, partial-agentic, and simulated paths.
+- [x] Added upstream DeepAgents research notes to the architecture docs.
+- [x] Reframed the roadmap around explicit retry/error states instead of silent fallback fabrication.
+- [x] Replaced overstated completion claims with a realistic milestone tracker.
+- [x] Documented the gap between workflow progress updates and a true live agent transcript.
+- [x] Added implementation checklist items for typed runtime events, transcript separation, and explicit speaker labeling.
+- [x] Added solution research checklist items for chat layout, transcript design, and patent/file adapter selection.
+- [x] Added an explicit execution order for the complete agentic implementation path.
+- [x] Captured phase-by-phase concrete solution paths in the phased plan.
+- [x] Mapped each major issue family to a concrete agentic solution mechanism.
+- [x] Removed sandboxing from the active roadmap and kept only safe validation notes.
+- [x] Identified the next implementation slice: typed runtime events plus transcript-driven UI.
+- [x] Implemented the first transcript/runtime slice: expanded event types, backend provenance metadata, and UI transcript compatibility.
+
+### Current reality
+
+- [ ] DeepAgents runtime is still not the single source of truth everywhere.
+- [ ] Silent fallback behaviors still need to be removed from runtime code.
+- [ ] Human approval interrupts still need to be made truly blocking where required.
+- [ ] Real prior-art retrieval still needs package/tool integration research before implementation.
+- [ ] Frontend error/retry trust signals still need to be finalized.
+- [ ] Conversation threads still mix real comments with hardcoded agent/task narration.
+- [ ] The live chat surface still does not show true agent thinking, tool calls, and delegate handoffs as first-class transcript events.
+- [ ] Patent/filing research source adapters still need to be selected and wired.
+- [ ] The UI still needs to distinguish real agent speakers from orchestration/status messages.
+- [ ] Agent roster and state transition ownership still need finalization.
+- [ ] The concrete code implementation for the ordered phases still needs to begin.
+- [ ] The fully agentic runtime still needs to replace scripted chat narration.
+- [ ] The live transcript UI still needs richer rendering for approval / retry / failed states.
 
 ## Validation Notes
 
 - `npm run build` in `frontend/` passed with 0 TypeScript/Vite compilation errors.
-- `pytest backend/tests/test_storage.py backend/tests/test_state_machine.py backend/tests/test_deepagents_integration.py` passed 16 out of 16 tests cleanly.
+- `pytest backend/tests` passed 24 out of 24 tests cleanly in the latest verified run.
