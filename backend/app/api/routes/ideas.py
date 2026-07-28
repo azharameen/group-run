@@ -22,6 +22,7 @@ from ...storage.yaml_io import (
     load_idea_registry,
     load_idea_yaml,
     load_knowledge_base,
+    load_transcript_events,
     save_comment,
 )
 
@@ -85,6 +86,7 @@ async def get_idea(idea_id: str) -> dict:
         "state": load_idea_yaml(idea_id, "state.yaml") or {},
         "scores": load_idea_yaml(idea_id, "scores.yaml") or {},
         "comments": load_comments(idea_id),
+        "transcript_events": load_transcript_events(idea_id),
     }
 
 

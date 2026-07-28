@@ -25,6 +25,7 @@ from ..storage.yaml_io import (
     save_idea_yaml,
     write_changelog_entry,
     write_handover,
+    save_transcript_event,
 )
 
 
@@ -382,6 +383,18 @@ class PatentWorkflowMachine:
             "idea_id": idea_id,
             "from": source,
             "to": dest,
+            "validation": self.last_validation_result,
+        })
+
+        save_transcript_event(idea_id, {
+            "type": "transition",
+            "idea_id": idea_id,
+            "from_state": source,
+            "to_state": dest,
+            "speaker": agent_for_state(WorkflowState(dest)),
+            "role": "workflow",
+            "content": f"Transitioned from {source} to {dest}",
+            "provenance": f"state:{source}->{dest}",
             "validation": self.last_validation_result,
         })
 

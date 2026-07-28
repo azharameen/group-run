@@ -179,6 +179,9 @@ export default function IdeaDetail({
 	const [interrupts, setInterrupts] = useState<InterruptItem[]>([]);
 	const transcriptEvents =
 		detail?.transcript_events || detail?.transcript || [];
+	const approvalTranscriptEvents = transcriptEvents.filter((evt: any) =>
+		["approval", "interrupt", "retry", "failed"].includes(evt?.type),
+	);
 
 	const loadData = async () => {
 		if (!ideaId) return;
@@ -693,6 +696,50 @@ export default function IdeaDetail({
 							interrupts={interrupts}
 							onActionComplete={loadData}
 						/>
+
+						{approvalTranscriptEvents.length > 0 && (
+							<Card>
+								<CardHeader className="p-4 pb-2">
+									<CardTitle className="text-sm font-semibold flex items-center gap-2">
+										<AlertTriangle className="w-4 h-4 text-amber-500" />
+										Transcript Approval & Interrupt Events
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="p-4 pt-1 space-y-2">
+									{approvalTranscriptEvents.map((evt: any, idx: number) => (
+										<div
+											key={evt.id || idx}
+											className="rounded-md border p-3 bg-muted/20 text-xs space-y-1"
+										>
+											<div className="flex items-center justify-between gap-2">
+												<div className="font-semibold text-foreground capitalize">
+													{String(evt.type || "event").replace(/_/g, " ")}
+												</div>
+												<Badge
+													variant={
+														evt.type === "failed" ? "destructive" : "outline"
+													}
+													className="text-[10px]"
+												>
+													{evt.speaker || evt.agent || "Runtime"}
+												</Badge>
+											</div>
+											<p className="text-muted-foreground">
+												{evt.content ||
+													evt.reason ||
+													evt.details ||
+													"Runtime approval event recorded."}
+											</p>
+											{evt.provenance && (
+												<p className="text-[10px] text-muted-foreground/80 font-mono">
+													{evt.provenance}
+												</p>
+											)}
+										</div>
+									))}
+								</CardContent>
+							</Card>
+						)}
 
 						<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 							<SubagentActivityCard subagents={[]} />

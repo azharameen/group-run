@@ -123,12 +123,14 @@ interface TurnMinimapProps {
 	activeTurnIndex?: number;
 	onTurnClick: (index: number) => void;
 	visible?: boolean;
+	messages?: { sender: string; text: string }[];
 }
 
 export const TurnMinimap: React.FC<TurnMinimapProps> = ({
 	totalTurns,
 	onTurnClick,
 	visible = false,
+	messages,
 }) => {
 	const [hoveredIdx, setHoveredIdx] = React.useState<number | null>(null);
 
@@ -179,8 +181,19 @@ export const TurnMinimap: React.FC<TurnMinimapProps> = ({
 									/>
 								</button>
 							</TooltipTrigger>
-							<TooltipContent side="left" className="text-xs">
-								Jump to turn {i + 1}
+							<TooltipContent side="left" className="text-xs max-w-[240px] p-2 bg-popover text-popover-foreground border shadow-md">
+								{messages?.[i] ? (
+									<div className="flex flex-col gap-0.5">
+										<span className="font-semibold text-[9px] text-muted-foreground uppercase tracking-wider">
+											{messages[i].sender}
+										</span>
+										<span className="line-clamp-2 text-xs text-foreground/90">
+											{messages[i].text}
+										</span>
+									</div>
+								) : (
+									`Jump to turn ${i + 1}`
+								)}
 							</TooltipContent>
 						</Tooltip>
 					);

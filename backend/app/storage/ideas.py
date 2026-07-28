@@ -83,6 +83,25 @@ def save_comment(idea_id: str, author: str, text: str) -> dict:
     return entry
 
 
+def load_transcript_events(idea_id: str) -> list[dict]:
+    path = os.path.join(idea_folder_path(idea_id), "transcript.yaml")
+    if not os.path.exists(path):
+        return []
+    data = read_yaml(path)
+    return data if isinstance(data, list) else []
+
+
+def save_transcript_event(idea_id: str, event: dict) -> dict:
+    events = load_transcript_events(idea_id)
+    if "timestamp" not in event:
+        event["timestamp"] = datetime.utcnow().isoformat()
+    if "id" not in event:
+        event["id"] = f"evt_{len(events) + 1}"
+    events.append(event)
+    write_yaml(os.path.join(idea_folder_path(idea_id), "transcript.yaml"), events)
+    return event
+
+
 def get_all_idea_files(idea_id: str) -> list[dict]:
     folder = idea_folder_path(idea_id)
     files: list[dict] = []
