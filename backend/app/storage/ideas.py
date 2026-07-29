@@ -54,6 +54,22 @@ def delete_idea_folder(idea_id: str) -> bool:
     return True
 
 
+def archive_idea_folder(idea_id: str) -> str | None:
+    folder = idea_folder_path(idea_id)
+    if not os.path.exists(folder):
+        return None
+
+    archive_root = os.path.join(WORKSPACE_DIR, "archive", "ideas")
+    archive_target = os.path.join(archive_root, idea_id)
+    os.makedirs(os.path.dirname(archive_target), exist_ok=True)
+
+    if os.path.exists(archive_target):
+        shutil.rmtree(archive_target)
+
+    shutil.copytree(folder, archive_target)
+    return archive_target
+
+
 def clear_idea_runtime_state(idea_id: str) -> None:
     idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
     idea_data["active_processing"] = False

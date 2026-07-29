@@ -9,6 +9,7 @@ from ...orchestrator.tools import (
     advance_to_next_state,
     advance_workflow,
     create_idea,
+    archive_idea,
     delete_idea,
     detect_duplicate_ideas,
     build_review_packet,
@@ -207,7 +208,36 @@ async def research_filings(query: str, limit: int = 5) -> dict:
 
 @router.delete("/{idea_id}")
 async def delete_idea_endpoint(idea_id: str) -> dict:
-    return delete_idea(idea_id)
+    from .approval import add_pending_interrupt
+
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    add_pending_interrupt(idea_id, "delete", "Delete requested; reviewer approval is required before removal.")
+    return {
+        "idea_id": idea_id,
+        "deleted": False,
+        "interrupt_pending": True,
+        "message": "Delete request submitted for approval",
+    }
+
+
+@router.post("/{idea_id}/archive")
+async def archive_idea_endpoint(idea_id: str) -> dict:
+    from .approval import add_pending_interrupt
+
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    add_pending_interrupt(idea_id, "archive", "Archive requested; reviewer approval is required before finalizing.")
+    return {
+        "idea_id": idea_id,
+        "archived": False,
+        "interrupt_pending": True,
+        "message": "Archive request submitted for approval",
+    }
 
 
 @router.post("/{idea_id}/pause")

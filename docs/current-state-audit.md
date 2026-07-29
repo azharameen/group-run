@@ -69,7 +69,7 @@ The repository does not yet have a real patent-search or patent-filing tool chai
 
 No repo-local MCP configuration for patent search / filing was found in the workspace during this audit.
 
-DeepAgents can host the tools, memory, skills, and HITL interruptions, but the patent-specific retrieval layer still needs to be chosen and integrated.
+DeepAgents now hosts the tools, memory, skills, and HITL interruptions, and the patent-specific retrieval adapters are integrated through the research path.
 
 Recommended tool categories to evaluate:
 
@@ -80,7 +80,7 @@ Recommended tool categories to evaluate:
 
 ## Main Finding
 
-The code uses the names `DeepAgents` and `SubAgent`, but the backend does not yet consistently use the upstream DeepAgents runtime as the source of truth.
+The backend now has a DeepAgents runtime entrypoint and transcript-driven event model, but the surrounding workflow still blends custom orchestration with runtime-shaped events.
 
 Instead, the repo contains a mix of:
 
@@ -262,7 +262,7 @@ The main future frontend change is to add views for:
 - Runtime responsibilities are too collapsed into a few large Python files.
 - Human review states are modeled as AI simulation.
 - No proper permissions layer exists for agent-controlled filesystem access.
-- No DeepAgents checkpointer or interrupt flow exists yet.
+- DeepAgents checkpointer-backed interrupt flows are now wired through the runtime entrypoint and approval path.
 - Frontend and backend streaming contracts are custom and shallow compared to DeepAgents event streaming.
 
 ## Recommendation

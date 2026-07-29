@@ -62,17 +62,26 @@ Update this file whenever work is completed.
 - [x] Patent/filing research source adapters are selected and wired into the research path.
 - [x] The UI distinguishes agent speakers from orchestration/status messages.
 - [ ] Agent roster and state transition ownership still need finalization.
-- [ ] The concrete code implementation for the ordered phases still needs to begin.
 - [x] The fully agentic runtime has replaced scripted chat narration in the transcript path.
 - [x] The live transcript UI renders richer approval / retry / failed states.
 - [x] The chat surface shows explicit cards/badges for interrupt, approval, retry, and failed events.
 - [x] The live transcript UI includes dedicated event cards for approval / interrupt workflows.
+- [ ] Multimodal ingestion for PDFs and images still needs implementation.
+- [ ] LangSmith observability still needs a dedicated integration.
+- [x] Delete/archive requests now route through approval interrupts before destructive action.
+- [x] Review analytics expose reviewer identity and pending-interrupt observability.
 
 ### HITL blocking slice
 
 - [x] Made HITL interrupts pause ideas until approval or rejection.
 - [x] Fixed approval handling to use the correct workflow-state field and resume ideas after decisions.
 - [x] Recorded interrupt/approval decisions in the transcript while preserving the pending interrupt queue.
+
+### Phase 7 hardening slice
+
+- [x] Added reviewer identity normalization and approval analytics.
+- [x] Recorded package/adaptation decision history in the living docs.
+- [x] Documented the DB-migration planning decision to keep YAML until migration is warranted.
 
 ## Validation Notes
 

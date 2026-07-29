@@ -2,6 +2,7 @@
 
 import sys
 import types
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -103,6 +104,84 @@ def test_hitl_approval_endpoints(client):
     r_data = reject_res.json()
     assert r_data["success"] is True
     assert r_data["decision"] == "REJECTED"
+
+
+def test_delete_request_requires_approval_and_deletes_on_confirm(client, patch_config):
+    idea_id = "test_idea_delete_001"
+    create_idea_folder(idea_id)
+    save_idea(idea_id, "idea.yaml", {
+        "idea_id": idea_id,
+        "title": "Delete Gate Idea",
+        "workflow_state": "IDEASCOPE_DRAFT",
+        "reviews": {}
+    })
+
+    res = client.delete(f"/api/ideas/{idea_id}")
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["interrupt_pending"] is True
+    interrupts = client.get(f"/api/workflow/interrupts?idea_id={idea_id}")
+    assert interrupts.status_code == 200
+    assert interrupts.json()["pending_interrupts"]
+
+    approve_res = client.post(f"/api/workflow/{idea_id}/approve", json={
+        "reviewer": "Manager",
+        "decision": "APPROVED",
+        "comments": "Approved for deletion.",
+    })
+    assert approve_res.status_code == 200
+    assert approve_res.json()["special_action"]["deleted"] is True
+
+    get_res = client.get(f"/api/ideas/{idea_id}")
+    assert get_res.status_code == 404
+
+
+def test_archive_request_requires_approval_and_preserves_snapshot(client, patch_config):
+    idea_id = "test_idea_archive_001"
+    create_idea_folder(idea_id)
+    save_idea(idea_id, "idea.yaml", {
+        "idea_id": idea_id,
+        "title": "Archive Gate Idea",
+        "workflow_state": "IDEASCOPE_DRAFT",
+        "reviews": {}
+    })
+
+    res = client.post(f"/api/ideas/{idea_id}/archive")
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["interrupt_pending"] is True
+
+    approve_res = client.post(f"/api/workflow/{idea_id}/approve", json={
+        "reviewer": "Manager",
+        "decision": "APPROVED",
+        "comments": "Archive approved.",
+    })
+    assert approve_res.status_code == 200
+    assert approve_res.json()["special_action"]["archived"] is True
+
+    archive_path = os.path.join(patch_config, "archive", "ideas", idea_id)
+    assert os.path.exists(archive_path)
+
+
+def test_review_analytics_reports_roles_and_pending_interrupts(client, patch_config):
+    idea_id = "test_idea_analytics_001"
+    create_idea_folder(idea_id)
+    save_idea(idea_id, "idea.yaml", {
+        "idea_id": idea_id,
+        "title": "Analytics Idea",
+        "workflow_state": "IDEASCOPE_DRAFT",
+        "reviews": {
+            "manager": {"status": "APPROVED", "comments": "ok"},
+        }
+    })
+
+    client.post(f"/api/ideas/{idea_id}/archive")
+
+    res = client.get("/api/workflow/analytics")
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["reviewer_counts"]["manager"] >= 1
+    assert payload["pending_interrupts"]["archive"] >= 1
 
 
 def test_agent_tasks_use_runtime_roles(client):

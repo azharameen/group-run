@@ -145,7 +145,7 @@ export async function scoreIdea(ideaId: string): Promise<ScoreResult> {
   return request(`/ideas/${ideaId}/score`, { method: 'POST' })
 }
 
-export async function deleteIdea(ideaId: string): Promise<{ idea_id: string; deleted: boolean }> {
+export async function deleteIdea(ideaId: string): Promise<{ idea_id: string; deleted: boolean; interrupt_pending?: boolean; message?: string }> {
   return request(`/ideas/${ideaId}`, { method: 'DELETE' })
 }
 

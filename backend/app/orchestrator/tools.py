@@ -20,6 +20,7 @@ from ..storage.yaml_io import (
     save_idea_yaml,
     load_idea_yaml,
     delete_idea_folder,
+    archive_idea_folder,
 )
 from ..storage.artifacts import save_artifact_revision, build_artifact_comparison
 from ..research.adapters import search_prior_art, search_filing_sources
@@ -435,6 +436,36 @@ def delete_idea(idea_id: str) -> dict:
         save_idea_registry(registry)
     _emit("idea.deleted", {"idea_id": idea_id})
     return {"idea_id": idea_id, "deleted": removed_folder or removed_registry}
+
+
+def archive_idea(idea_id: str) -> dict:
+    """Archive an idea snapshot while keeping its active workspace metadata intact."""
+    remove_idea_machine(idea_id)
+    archive_path = archive_idea_folder(idea_id)
+    if not archive_path:
+        return {"idea_id": idea_id, "archived": False}
+
+    data = load_idea_yaml(idea_id, "idea.yaml") or {}
+    data["archived"] = True
+    data["archived_at"] = datetime.utcnow().isoformat()
+    data["paused_processing"] = True
+    data["active_processing"] = False
+    data["active_agent"] = ""
+    data["active_state"] = ""
+    data["active_message"] = "Archived"
+    save_idea_yaml(idea_id, "idea.yaml", data)
+
+    registry = load_idea_registry()
+    for idea in registry.get("ideas", []):
+        if idea.get("idea_id") == idea_id:
+            idea["archived"] = True
+            idea["paused_processing"] = True
+            idea["updated_at"] = data["archived_at"]
+            break
+    save_idea_registry(registry)
+
+    _emit("idea.archived", {"idea_id": idea_id, "archive_path": archive_path})
+    return {"idea_id": idea_id, "archived": True, "archive_path": archive_path}
 
 
 # ═══════════════════════════════════════════════════════════

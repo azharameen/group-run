@@ -440,6 +440,7 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 					totalTurns={messages.length}
 					onTurnClick={scrollToTurnIndex}
 					visible={isSidebarHovered}
+					messages={messages}
 				/>
 
 				<div className="flex-1 p-3 overflow-hidden flex flex-col h-full">

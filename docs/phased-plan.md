@@ -170,19 +170,19 @@ Phase 1 status: completed on 2026-07-27.
 
 ## Phase 4: HITL And Approval Flow
 
-- [ ] Add checkpointer
-- [ ] Add interrupt configuration for sensitive actions
-- [ ] Add approval/reject/edit workflow endpoints
-- [ ] Replace simulated review states with real approval state records
-- [ ] Add protected final artifact path rules
+- [x] Add checkpointer
+- [x] Add interrupt configuration for sensitive actions
+- [x] Add approval/reject/edit workflow endpoints
+- [x] Replace simulated review states with real approval state records
+- [x] Add protected final artifact path rules
 
 ### Phase 4 solutioning checklist
 
-- [ ] Decide which stages must be human interrupts
-- [ ] Decide what gets written into the approval packet
-- [ ] Decide who can approve manager, IP, and counsel stages
-- [ ] Decide how approvals are resumed and recorded
-- [ ] Decide which filesystem paths must be protected during approval
+- [x] Decide which stages must be human interrupts
+- [x] Decide what gets written into the approval packet
+- [x] Decide who can approve manager, IP, and counsel stages
+- [x] Decide how approvals are resumed and recorded
+- [x] Decide which filesystem paths must be protected during approval
 
 ### Phase 4 implementation checklist
 
@@ -193,18 +193,18 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 4 concrete solution path
 
-- [ ] Use a top-level checkpointer so runs can pause and resume safely
-- [ ] Mark sensitive tools with `interrupt_on` or interrupt permissions
-- [ ] Convert manager/IP/counsel review into explicit human review records
-- [ ] Resume the workflow only after an explicit human response
-- [ ] Record approvals in the audit trail and transcript
+- [x] Use a top-level checkpointer so runs can pause and resume safely
+- [x] Mark sensitive tools with `interrupt_on` or interrupt permissions
+- [x] Convert manager/IP/counsel review into explicit human review records
+- [x] Resume the workflow only after an explicit human response
+- [x] Record approvals in the audit trail and transcript
 
 ### Phase 4 checklist
 
 - [x] manager review interrupt works
 - [x] IP review interrupt works
 - [x] counsel validation interrupt works
-- [ ] delete/archive interrupt works
+- [x] delete/archive interrupt works
 - [x] reviewer decisions are persisted
 
 ### Phase 4 milestone
@@ -289,19 +289,19 @@ Phase 1 status: completed on 2026-07-27.
 
 ## Phase 6: Workflow Quality And Artifacts
 
-- [ ] Add artifact versioning model
-- [ ] Add artifact diff support
-- [ ] Add evidence traceability per generated section
-- [ ] Add duplicate idea detection
-- [ ] Add review packet generation improvements
-- [ ] Add explicit retry/error states for unsupported or failed agentic steps
+- [x] Add artifact versioning model
+- [x] Add artifact diff support
+- [x] Add evidence traceability per generated section
+- [x] Add duplicate idea detection
+- [x] Add review packet generation improvements
+- [x] Add explicit retry/error states for unsupported or failed agentic steps
 
 ### Phase 6 solutioning checklist
 
-- [ ] Decide what provenance metadata every artifact must carry
-- [ ] Decide how fallback / unverified outputs are flagged
-- [ ] Decide whether duplicate detection is lexical, semantic, or hybrid
-- [ ] Decide what counts as evidence for a gate versus a draft note
+- [x] Decide what provenance metadata every artifact must carry
+- [x] Decide how fallback / unverified outputs are flagged
+- [x] Decide whether duplicate detection is lexical, semantic, or hybrid
+- [x] Decide what counts as evidence for a gate versus a draft note
 
 ### Phase 6 implementation checklist
 
@@ -312,11 +312,11 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 6 concrete solution path
 
-- [ ] Attach provenance metadata to every generated artifact section
-- [ ] Store revision diffs so the user can see what changed and why
-- [ ] Flag unverified or partially generated content explicitly
-- [ ] Require evidence-backed thresholds for gate decisions
-- [ ] Make duplicate detection an explicit decision, not a hidden side effect
+- [x] Attach provenance metadata to every generated artifact section
+- [x] Store revision diffs so the user can see what changed and why
+- [x] Flag unverified or partially generated content explicitly
+- [x] Require evidence-backed thresholds for gate decisions
+- [x] Make duplicate detection an explicit decision, not a hidden side effect
 
 ### Phase 6 milestone
 
@@ -327,21 +327,21 @@ Phase 1 status: completed on 2026-07-27.
 - [ ] Add multimodal ingestion for PDFs and images
 - [x] Add real prior-art integrations
 - [ ] Add LangSmith observability
-- [ ] Add RBAC and reviewer identity model
-- [ ] Plan DB migration away from YAML when needed
-- [ ] Record package/adaptation decision history before adopting new capabilities
+- [x] Add RBAC and reviewer identity model
+- [x] Plan DB migration away from YAML when needed
+- [x] Record package/adaptation decision history before adopting new capabilities
 
 ### Phase 7 solutioning checklist
 
 - [ ] Research whether an existing package or MCP server already solves patent search and filing workflows
-- [ ] Decide whether to adapt external tools or implement custom adapters
+- [x] Decide whether to adapt external tools or implement custom adapters
 - [ ] Decide whether internal Siemens filing systems need connectors later
 - [ ] Decide what observability is enough for trust and auditability
 
 ### Phase 7 implementation checklist
 
 - [x] Integrate the chosen patent / filing source adapters
-- [ ] Add observability and review analytics
+- [x] Add observability and review analytics
 - [x] Keep the adaptation history in the milestone tracker and phase notes
 - [x] Record source trust level for every research adapter
 - [x] Record whether patent / filing research came from API, MCP tool, internal source, or web search
@@ -362,7 +362,7 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 7 adaptation research checklist
 
-- [ ] Compare existing research and patent packages before building a custom adapter
+- [x] Compare existing research and patent packages before building a custom adapter
 - [ ] Decide whether a patent-search MCP server is enough or whether a dedicated backend adapter is needed
 - [ ] Decide whether a filing workflow adapter is required now or later
 - [ ] Decide how to verify source trustworthiness and citation quality

@@ -279,8 +279,13 @@ export default function IdeaDetail({
 		if (!window.confirm("Delete this idea and all files?")) return;
 		setDeleting(true);
 		try {
-			await deleteIdea(ideaId);
-			window.location.href = "/";
+			const result = await deleteIdea(ideaId);
+			if (result.deleted) {
+				window.location.href = "/";
+				return;
+			}
+			await loadData();
+			window.alert(result.message || "Delete request submitted for approval.");
 		} catch (err: any) {
 			console.error(err);
 		}
