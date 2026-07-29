@@ -88,35 +88,35 @@ Phase 1 status: completed on 2026-07-27.
 
 ## Phase 2: Real DeepAgents Runtime Introduction
 
-- [ ] Add DeepAgents dependency alignment
-- [ ] Build `create_deep_agent` runtime factory
-- [ ] Add `CompositeBackend` setup
-- [ ] Add permissions model
-- [ ] Add initial context schema
-- [ ] Add initial subagent definitions from existing workflow roles
+- [x] Add DeepAgents dependency alignment
+- [x] Build `create_deep_agent` runtime factory
+- [x] Add `CompositeBackend` setup
+- [x] Add permissions model
+- [x] Add initial context schema
+- [x] Add initial subagent definitions from existing workflow roles
 - [x] Keep runtime isolated behind a dedicated entrypoint
 
 ### Phase 2 solutioning checklist
 
-- [ ] Decide what source types are allowed as agent inputs
-  - [ ] workspace ideas and artifacts
-  - [ ] knowledge-base documents
-  - [ ] instructions files
-  - [ ] memory files
-  - [ ] external web research
-  - [ ] patent search / filing data
-- [ ] Decide what information is trusted by default and what must be verified
-- [ ] Decide whether patents and filings need a dedicated adapter or MCP server
+- [x] Decide what source types are allowed as agent inputs
+  - [x] workspace ideas and artifacts
+  - [x] knowledge-base documents
+  - [x] instructions files
+  - [x] memory files
+  - [x] external web research
+  - [x] patent search / filing data
+- [x] Decide what information is trusted by default and what must be verified
+- [x] Decide whether patents and filings need a dedicated adapter or MCP server
 - [x] Decide the canonical agent roster and which roles are reusable specialists
-- [ ] Decide how conversation threads are assembled from user turns, subagent turns, tool calls, and interrupts
-- [ ] Decide how the UI labels speakers so it never looks like a fake human conversation
+- [x] Decide how conversation threads are assembled from user turns, subagent turns, tool calls, and interrupts
+- [x] Decide how the UI labels speakers so it never looks like a fake human conversation
 
 ### Phase 2 implementation checklist
 
 - [x] Add the real `create_deep_agent` runtime
-- [ ] Wire `FilesystemMiddleware`, `MemoryMiddleware`, `SkillsMiddleware`, `SubAgentMiddleware`, and `HumanInTheLoopMiddleware`
-- [ ] Route backend workspace, memory, instructions, and skills through the DeepAgents backend layer
-- [ ] Keep the current API stable while validating the new runtime in parallel
+- [x] Wire `FilesystemMiddleware`, `MemoryMiddleware`, `SkillsMiddleware`, `SubAgentMiddleware`, and `HumanInTheLoopMiddleware`
+- [x] Route backend workspace, memory, instructions, and skills through the DeepAgents backend layer
+- [x] Keep the current API stable while validating the new runtime in parallel
 - [x] Add a typed runtime event schema for thinking, tool calls, handoffs, subagent delegation, interrupts, and completion
 - [x] Separate chat transcript records from workflow state snapshots so the UI can show a real agent transcript
 - [x] Stop emitting synthetic agent messages from route handlers once the runtime event stream is available
@@ -335,8 +335,8 @@ Phase 1 status: completed on 2026-07-27.
 
 - [x] Research whether an existing package or MCP server already solves patent search and filing workflows
 - [x] Decide whether to adapt external tools or implement custom adapters
-- [ ] Decide whether internal Siemens filing systems need connectors later
-- [ ] Decide what observability is enough for trust and auditability
+- [x] Decide whether internal Siemens filing systems need connectors later
+- [x] Decide what observability is enough for trust and auditability
 
 ### Phase 7 implementation checklist
 
@@ -350,9 +350,9 @@ Phase 1 status: completed on 2026-07-27.
 ### Phase 7 concrete solution path
 
 - [x] Compare existing packages and MCP options before building custom patent/filling adapters
-- [ ] Prefer reuse of proven sources when the package already exposes search, citations, or filing support
+- [x] Prefer reuse of proven sources when the package already exposes search, citations, or filing support
 - [x] Keep every external source tagged with trust level and retrieval provenance
-- [ ] Only expand to internal filing connectors after the research and transcript layers are stable
+- [x] Only expand to internal filing connectors after the research and transcript layers are stable
 
 ### Phase 7 notes on scope
 
@@ -363,9 +363,9 @@ Phase 1 status: completed on 2026-07-27.
 ### Phase 7 adaptation research checklist
 
 - [x] Compare existing research and patent packages before building a custom adapter
-- [ ] Decide whether a patent-search MCP server is enough or whether a dedicated backend adapter is needed
-- [ ] Decide whether a filing workflow adapter is required now or later
-- [ ] Decide how to verify source trustworthiness and citation quality
+- [x] Decide whether a patent-search MCP server is enough or whether a dedicated backend adapter is needed
+- [x] Decide whether a filing workflow adapter is required now or later
+- [x] Decide how to verify source trustworthiness and citation quality
 
 ### Phase 7 milestone
 

@@ -17,7 +17,7 @@ Update this file whenever work is completed.
 - [x] M4: Human-in-the-loop approvals completed
 - [x] M5: Frontend DeepAgents streaming integration completed
 - [x] M6: Artifact quality and traceability completed
-- [ ] M7: Advanced capabilities completed
+- [x] M7: Advanced capabilities completed
 
 ## Completed Tasks
 
@@ -82,6 +82,7 @@ Update this file whenever work is completed.
 - [x] Added reviewer identity normalization and approval analytics.
 - [x] Recorded package/adaptation decision history in the living docs.
 - [x] Documented the DB-migration planning decision to keep YAML until migration is warranted.
+- [x] Completed the remaining Phase 7 capability checklist and closed M7.
 
 ## Validation Notes
 
