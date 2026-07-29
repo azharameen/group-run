@@ -61,13 +61,13 @@ Update this file whenever work is completed.
 - [x] The live chat surface now shows typed runtime transcript events instead of a fake bootstrap conversation.
 - [x] Patent/filing research source adapters are selected and wired into the research path.
 - [x] The UI distinguishes agent speakers from orchestration/status messages.
-- [ ] Agent roster and state transition ownership still need finalization.
+- [x] Agent roster and state transition ownership finalized.
 - [x] The fully agentic runtime has replaced scripted chat narration in the transcript path.
 - [x] The live transcript UI renders richer approval / retry / failed states.
 - [x] The chat surface shows explicit cards/badges for interrupt, approval, retry, and failed events.
 - [x] The live transcript UI includes dedicated event cards for approval / interrupt workflows.
-- [ ] Multimodal ingestion for PDFs and images still needs implementation.
-- [ ] LangSmith observability still needs a dedicated integration.
+- [x] Multimodal ingestion for PDFs and images is implemented.
+- [x] LangSmith observability is configured through runtime env propagation.
 - [x] Delete/archive requests now route through approval interrupts before destructive action.
 - [x] Review analytics expose reviewer identity and pending-interrupt observability.
 

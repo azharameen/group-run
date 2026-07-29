@@ -107,7 +107,7 @@ Phase 1 status: completed on 2026-07-27.
   - [ ] patent search / filing data
 - [ ] Decide what information is trusted by default and what must be verified
 - [ ] Decide whether patents and filings need a dedicated adapter or MCP server
-- [ ] Decide the canonical agent roster and which roles are reusable specialists
+- [x] Decide the canonical agent roster and which roles are reusable specialists
 - [ ] Decide how conversation threads are assembled from user turns, subagent turns, tool calls, and interrupts
 - [ ] Decide how the UI labels speakers so it never looks like a fake human conversation
 
@@ -324,16 +324,16 @@ Phase 1 status: completed on 2026-07-27.
 
 ## Phase 7: Advanced Capabilities
 
-- [ ] Add multimodal ingestion for PDFs and images
+- [x] Add multimodal ingestion for PDFs and images
 - [x] Add real prior-art integrations
-- [ ] Add LangSmith observability
+- [x] Add LangSmith observability
 - [x] Add RBAC and reviewer identity model
 - [x] Plan DB migration away from YAML when needed
 - [x] Record package/adaptation decision history before adopting new capabilities
 
 ### Phase 7 solutioning checklist
 
-- [ ] Research whether an existing package or MCP server already solves patent search and filing workflows
+- [x] Research whether an existing package or MCP server already solves patent search and filing workflows
 - [x] Decide whether to adapt external tools or implement custom adapters
 - [ ] Decide whether internal Siemens filing systems need connectors later
 - [ ] Decide what observability is enough for trust and auditability
@@ -349,9 +349,9 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 7 concrete solution path
 
-- [ ] Compare existing packages and MCP options before building custom patent/filling adapters
+- [x] Compare existing packages and MCP options before building custom patent/filling adapters
 - [ ] Prefer reuse of proven sources when the package already exposes search, citations, or filing support
-- [ ] Keep every external source tagged with trust level and retrieval provenance
+- [x] Keep every external source tagged with trust level and retrieval provenance
 - [ ] Only expand to internal filing connectors after the research and transcript layers are stable
 
 ### Phase 7 notes on scope

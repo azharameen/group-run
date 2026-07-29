@@ -7,6 +7,7 @@ from fastapi import APIRouter
 
 from ...config import CONFIG_DIR, KNOWLEDGE_BASE_DIR, WORKSPACE_DIR
 from ...models.idea import WorkflowState
+from ...infrastructure.observability import get_observability_status
 from ...storage.yaml_io import read_yaml
 
 
@@ -108,3 +109,8 @@ async def get_siemens_domains() -> dict:
     if os.path.exists(path):
         return read_yaml(path)
     return {"error": "Tech domains file not found"}
+
+
+@router.get("/observability")
+async def get_observability() -> dict:
+    return get_observability_status()

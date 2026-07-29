@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..infrastructure.events.stream_bus import emit_sse
+from ..infrastructure.observability import configure_langsmith_tracing
 from ..orchestrator.tools import set_emit_sse_callback as tools_set_emit
 from ..orchestrator.workflow import set_emit_sse_callback as workflow_set_emit
 from ..scheduler import start_scheduler, stop_scheduler
@@ -22,6 +23,7 @@ from .routes.workflow import router as workflow_router
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    configure_langsmith_tracing()
     tools_set_emit(emit_sse)
     workflow_set_emit(emit_sse)
     state_set_emit(emit_sse)

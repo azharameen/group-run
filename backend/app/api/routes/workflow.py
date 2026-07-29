@@ -1,10 +1,10 @@
 """Workflow, pipeline, stats, and knowledge-base endpoints."""
 
 import asyncio
-
-from fastapi import APIRouter
+import base64
 from pydantic import BaseModel
 
+from fastapi import APIRouter
 from ...application.queries.workflow_status import build_stats, build_workflow_status
 from ...models.idea import PHASE_GROUPS
 from ...orchestrator.workflow import (
@@ -12,6 +12,7 @@ from ...orchestrator.workflow import (
     run_generation_cycle,
     seed_ideas,
 )
+from ...storage.knowledge_base import save_knowledge_base_upload
 from ...storage.yaml_io import load_knowledge_base
 
 
@@ -45,6 +46,13 @@ class StatsResponse(BaseModel):
     ideas_at_threshold: int = 0
 
 
+class KnowledgeBaseUploadRequest(BaseModel):
+    filename: str
+    mime_type: str = ""
+    content_base64: str
+    source: str = "raw"
+
+
 @router.post("/workflow/cycle")
 async def trigger_cycle() -> dict:
     return run_generation_cycle()
@@ -74,6 +82,27 @@ async def get_knowledge_base() -> dict:
             "raw": len([doc for doc in docs if doc["source"] == "raw"]),
             "processed": len([doc for doc in docs if doc["source"] == "processed"]),
         },
+    }
+
+
+@router.post("/knowledge-base/ingest")
+async def ingest_knowledge_base(req: KnowledgeBaseUploadRequest) -> dict:
+    try:
+        content = base64.b64decode(req.content_base64.encode("utf-8"))
+    except Exception as exc:
+        return {"success": False, "error": f"Invalid base64 content: {exc}"}
+    record = save_knowledge_base_upload(
+        req.filename,
+        content,
+        mime_type=req.mime_type,
+        source=req.source,
+    )
+    docs = load_knowledge_base()
+    return {
+        "success": True,
+        "record": record,
+        "documents": docs,
+        "count": len(docs),
     }
 
 

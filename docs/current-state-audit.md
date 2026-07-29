@@ -69,7 +69,7 @@ The repository does not yet have a real patent-search or patent-filing tool chai
 
 No repo-local MCP configuration for patent search / filing was found in the workspace during this audit.
 
-DeepAgents now hosts the tools, memory, skills, and HITL interruptions, and the patent-specific retrieval adapters are integrated through the research path.
+DeepAgents now hosts the tools, memory, skills, and HITL interruptions, the patent-specific retrieval adapters are integrated through the research path, and the knowledge base can ingest PDFs and images with extracted summaries.
 
 Recommended tool categories to evaluate:
 

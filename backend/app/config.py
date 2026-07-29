@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     openai_api_base: str = ""
     openai_model_name: str = ""
     deepagents_model: str = ""
+    langsmith_api_key: str = ""
+    langsmith_project: str = "ideator"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_enabled: bool = False
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000

@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef, type ChangeEvent } from 'react'
 import { Database, FileText, FolderOpen, Upload, ChevronDown, ChevronRight, File, Loader2, BookOpen, Search, Globe } from 'lucide-react'
-import { fetchIdeas, fetchKnowledgeBase, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE, fetchGateConfig } from '../api/client'
+import { fetchIdeas, fetchKnowledgeBase, ingestKnowledgeBaseDocument, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE, fetchGateConfig } from '../api/client'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -21,6 +21,8 @@ export default function KnowledgeBase() {
   const [expandedDoc, setExpandedDoc] = useState<KBDocument | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['knowledge']))
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set())
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -63,6 +65,40 @@ export default function KnowledgeBase() {
       else next.add(path)
       return next
     })
+  }
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const buffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let binary = ''
+      const chunkSize = 0x8000
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+      }
+      const content_base64 = btoa(binary)
+      const res = await ingestKnowledgeBaseDocument({
+        filename: file.name,
+        mime_type: file.type || 'application/octet-stream',
+        content_base64,
+        source: 'raw',
+      })
+      if (res.success) {
+        await loadData()
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setUploading(false)
+      event.target.value = ''
+    }
   }
 
   if (loading) {
@@ -125,11 +161,24 @@ export default function KnowledgeBase() {
           <Upload className="w-10 h-10 text-muted-foreground mx-auto" />
           <h3 className="font-semibold text-base">Upload Custom Knowledge Documents</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Place PDFs, Markdown, or text files in <code className="text-xs bg-muted px-1.5 py-0.5 rounded border font-mono">knowledge-base/raw/</code>
+            Upload PDFs or images directly, or place Markdown/text files in <code className="text-xs bg-muted px-1.5 py-0.5 rounded border font-mono">knowledge-base/raw/</code>
           </p>
           <p className="text-xs text-muted-foreground">
             The autonomous Knowledge Curator agent automatically extracts technical signals from newly added files.
           </p>
+          <div className="pt-2 flex items-center justify-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleUploadClick} disabled={uploading}>
+              {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+              Upload file
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
+              onChange={handleUpload}
+            />
+          </div>
         </CardContent>
       </Card>
 
