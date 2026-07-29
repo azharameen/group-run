@@ -3,7 +3,7 @@
 from fastapi.testclient import TestClient
 
 from app.api.app import create_app
-from app.agent.tools import draft_patent_section
+from app.agent.domain_tools import draft_patent_section
 from app.storage.yaml_io import create_idea_folder, load_transcript_events, save_transcript_event
 from app.storage.yaml_io import save_idea_yaml, load_idea_yaml
 

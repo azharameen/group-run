@@ -1,26 +1,26 @@
 """Human-in-the-Loop (HITL) approval and interrupt management endpoints."""
 
+from collections import Counter
+from datetime import datetime
 from typing import Any
 import os
-from collections import Counter
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ... import config as app_config
-from ...orchestrator.tools import get_machine, delete_idea, archive_idea
+from ...orchestrator.workflow_tools import get_machine, delete_idea, archive_idea
 from ...orchestrator.workflow import pause_idea, resume_idea
 from ...storage.yaml_io import (
     load_idea_yaml as load_idea,
     load_idea_registry,
+    load_pending_interrupts,
     save_idea_yaml as save_idea,
+    save_pending_interrupts,
     save_transcript_event,
 )
-from ...orchestrator.tools import build_review_packet
+from ...orchestrator.workflow_tools import build_review_packet
 
 router = APIRouter(prefix="/api/workflow", tags=["approvals"])
-
-# In-memory store for pending HITL interrupts
-_PENDING_INTERRUPTS: dict[str, list[dict[str, Any]]] = {}
 
 
 class ApprovalDecision(BaseModel):
@@ -39,13 +39,14 @@ class ApprovalDecision(BaseModel):
 async def list_interrupts(idea_id: str | None = None) -> dict[str, Any]:
     """Get all pending HITL interrupt items waiting for user feedback."""
     if idea_id:
-        items = _PENDING_INTERRUPTS.get(idea_id, [])
+        items = [item for item in load_pending_interrupts(idea_id) if item.get("status") == "PENDING"]
         return {"idea_id": idea_id, "pending_interrupts": items}
-    
+
     all_items = []
-    for i_id, items in _PENDING_INTERRUPTS.items():
-        for item in items:
-            all_items.append({"idea_id": i_id, **item})
+    for candidate in _known_idea_ids():
+        for item in load_pending_interrupts(candidate):
+            if item.get("status") == "PENDING":
+                all_items.append({"idea_id": candidate, **item})
     return {"pending_interrupts": all_items, "total_count": len(all_items)}
 
 
@@ -82,9 +83,10 @@ async def review_analytics() -> dict[str, Any]:
             reviewer_counts[reviewer_role] += 1
             decision_counts[str(review.get("status", "unknown")).lower()] += 1
 
-    for items in _PENDING_INTERRUPTS.values():
-        for item in items:
-            pending_counts[item.get("type", "unknown")] += 1
+    for candidate in _known_idea_ids():
+        for item in load_pending_interrupts(candidate):
+            if item.get("status") == "PENDING":
+                pending_counts[item.get("type", "unknown")] += 1
 
     return {
         "reviewed_ideas": reviewed_ideas,
@@ -97,15 +99,16 @@ async def review_analytics() -> dict[str, Any]:
 
 def add_pending_interrupt(idea_id: str, interrupt_type: str, details: str):
     """Utility helper to record a pending human approval interrupt."""
-    if idea_id not in _PENDING_INTERRUPTS:
-        _PENDING_INTERRUPTS[idea_id] = []
+    interrupts = load_pending_interrupts(idea_id)
     interrupt = {
-        "id": f"int_{len(_PENDING_INTERRUPTS[idea_id])+1}",
+        "id": f"int_{len(interrupts)+1}",
         "type": interrupt_type,
         "details": details,
         "status": "PENDING",
+        "created_at": datetime.utcnow().isoformat(),
     }
-    _PENDING_INTERRUPTS[idea_id].append(interrupt)
+    interrupts.append(interrupt)
+    save_pending_interrupts(idea_id, interrupts)
     pause_idea(idea_id)
     save_transcript_event(idea_id, {
         "type": "interrupt",
@@ -124,27 +127,28 @@ def _record_review(idea_data: dict[str, Any], reviewer: str, status: str, commen
     reviews[reviewer.lower()] = {
         "status": status,
         "comments": comments,
-        "timestamp": "now",
+        "timestamp": datetime.utcnow().isoformat(),
     }
     idea_data["reviews"] = reviews
 
 
 def _resolve_pending_interrupts(idea_id: str, final_status: str, reviewer: str, comments: str) -> None:
-    pending = _PENDING_INTERRUPTS.get(idea_id, [])
+    pending = load_pending_interrupts(idea_id)
     if not pending:
         return
     for interrupt in pending:
         if interrupt["status"] == "PENDING":
             interrupt["status"] = final_status
             interrupt["resolved_by"] = reviewer
-            interrupt["resolved_at"] = comments or "now"
-    _PENDING_INTERRUPTS[idea_id] = [item for item in pending if item["status"] == "PENDING"]
-    if not _PENDING_INTERRUPTS[idea_id]:
+            interrupt["resolved_at"] = datetime.utcnow().isoformat()
+            interrupt["resolution_comments"] = comments
+    save_pending_interrupts(idea_id, pending)
+    if not any(item["status"] == "PENDING" for item in pending):
         resume_idea(idea_id)
 
 
 def _apply_special_interrupt_actions(idea_id: str, decision: str) -> dict[str, Any] | None:
-    pending = _PENDING_INTERRUPTS.get(idea_id, [])
+    pending = load_pending_interrupts(idea_id)
     if decision.upper() != "APPROVED":
         return None
 
@@ -158,6 +162,21 @@ def _apply_special_interrupt_actions(idea_id: str, decision: str) -> dict[str, A
     if interrupt_type == "archive":
         return archive_idea(idea_id)
     return None
+
+def _known_idea_ids() -> list[str]:
+    idea_ids: list[str] = []
+    registry = load_idea_registry()
+    for idea in registry.get("ideas", []):
+        idea_id = idea.get("idea_id")
+        if idea_id:
+            idea_ids.append(idea_id)
+
+    ideas_root = os.path.join(app_config.WORKSPACE_DIR, "ideas")
+    if os.path.exists(ideas_root):
+        for idea_id in os.listdir(ideas_root):
+            if os.path.isdir(os.path.join(ideas_root, idea_id)):
+                idea_ids.append(idea_id)
+    return list(dict.fromkeys(idea_ids))
 
 
 def _advance_review_state(machine, current_state: str) -> None:

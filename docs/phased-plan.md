@@ -198,6 +198,7 @@ Phase 1 status: completed on 2026-07-27.
 - [x] Convert manager/IP/counsel review into explicit human review records
 - [x] Resume the workflow only after an explicit human response
 - [x] Record approvals in the audit trail and transcript
+- [x] Persist pending HITL interrupts durably instead of keeping them in process memory
 
 ### Phase 4 checklist
 
@@ -309,6 +310,8 @@ Phase 1 status: completed on 2026-07-27.
 - [x] Add artifact diff and revision comparison views
 - [x] Add duplicate idea detection with a clear decision outcome
 - [x] Add explicit error states when a stage cannot complete agentically
+- [x] Replace heuristic scoring fallback with actual LLM-backed scoring
+- [x] Replace hardcoded seed idea generation with runtime-driven generation
 
 ### Phase 6 concrete solution path
 
@@ -346,6 +349,7 @@ Phase 1 status: completed on 2026-07-27.
 - [x] Record source trust level for every research adapter
 - [x] Record whether patent / filing research came from API, MCP tool, internal source, or web search
 - [x] Store tool provenance in the artifact history and audit log
+- [x] Replace regex-based public patent scraping with a reliable patent data source or MCP server
 
 ### Phase 7 concrete solution path
 

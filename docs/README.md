@@ -17,7 +17,7 @@ This folder tracks the backend and frontend migration from the current custom wo
 - Target architecture documented
 - Initial DeepAgents backend scaffold added without changing runtime behavior
 - Frontend audit complete: shadcn/ui and Radix UI are already in place
-- DeepAgents package research completed: upstream runtime primitives exist, but the repo still has hardcoded and simulated paths that must be removed before any full agentic claim
+- DeepAgents package research completed: runtime primitives, transcript streaming, HITL blocking, scoring, and research adapters are now wired; a cleanup pass also renamed the generic backend modules and consolidated the dependency entrypoint
 
 ## Rules For Ongoing Work
 

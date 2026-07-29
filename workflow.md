@@ -155,11 +155,11 @@ ideator/
 │       │   └── criteria.py         # LLM-powered criterion evaluator
 │       ├── orchestrator/
 │       │   ├── workflow.py         # run_generation_cycle, run_full_pipeline
-│       │   ├── tools.py            # 8 custom tools (create, advance, score...)
+│       │   ├── workflow_tools.py    # 8 custom tools (create, advance, score...)
 │       │   └── subagents/
 │       │       └── definitions.py  # 11 SubAgentDef definitions
 │       └── storage/
-│           └── yaml_io.py          # Filesystem YAML/Markdown I/O
+│           └── idea_workspace.py    # Filesystem YAML/Markdown I/O
 ├── frontend/
 │   ├── Dockerfile
 │   ├── nginx.conf

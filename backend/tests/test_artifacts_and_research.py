@@ -1,9 +1,11 @@
 """Tests for artifact revisions, duplicate detection, and research adapters."""
 
+import json
 import os
 
-from app.agent.tools import draft_patent_section
-from app.orchestrator.tools import detect_duplicate_ideas, build_review_packet, get_prior_art_sources
+from app.agent.domain_tools import draft_patent_section
+from app.orchestrator.workflow_tools import detect_duplicate_ideas, build_review_packet, get_prior_art_sources
+from app.research.adapters import search_public_patents
 from app.storage.artifacts import load_artifact_revisions, build_artifact_comparison
 from app.storage.yaml_io import create_idea_folder, save_idea_yaml
 
@@ -63,4 +65,45 @@ def test_review_packet_writes_revision(patch_config):
 def test_prior_art_sources_use_local_taxonomy(patch_config):
     result = get_prior_art_sources("predictive maintenance edge ai", limit=3)
     assert result["count"] >= 1
-    assert any(src["trust"] in {"trusted-local", "public-web"} for src in result["sources"])
+    assert any(src["trust"] in {"trusted-local", "public-api"} for src in result["sources"])
+
+
+def test_public_patent_api_parses_structured_results(monkeypatch):
+    payload = {
+        "results": {
+            "cluster": [
+                {
+                    "result": [
+                        {
+                            "id": "patent/US1234567A/en",
+                            "patent": {
+                                "title": "A <b>wireless</b> sensor platform",
+                                "snippet": "A sensor platform for <b>wireless</b> monitoring.",
+                                "publication_number": "US1234567A",
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+
+    class DummyResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps(payload).encode("utf-8")
+
+    monkeypatch.setattr("app.research.adapters.urllib.request.urlopen", lambda *args, **kwargs: DummyResponse())
+
+    results = search_public_patents("wireless sensor", limit=1)
+    assert len(results) == 1
+    assert results[0].source_type == "public-patent-api"
+    assert results[0].trust == "public-api"
+    assert results[0].title == "A wireless sensor platform"
+    assert results[0].snippet == "A sensor platform for wireless monitoring."
+    assert results[0].url.endswith("/US1234567A/en")

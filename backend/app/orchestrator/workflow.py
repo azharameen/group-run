@@ -11,7 +11,7 @@ import yaml
 
 from ..config import CONFIG_DIR
 from ..storage.yaml_io import load_idea_registry, load_idea_yaml, save_idea_yaml
-from .tools import (
+from .workflow_tools import (
     get_machine,
     create_idea,
     advance_workflow,

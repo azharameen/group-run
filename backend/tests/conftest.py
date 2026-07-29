@@ -37,7 +37,7 @@ def patch_config(temp_workspace: str, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("app.config.WORKSPACE_DIR", temp_workspace)
     monkeypatch.setattr("app.storage.yaml_io.WORKSPACE_DIR", temp_workspace)
     monkeypatch.setattr("app.storage.registry.WORKSPACE_DIR", temp_workspace)
-    monkeypatch.setattr("app.storage.ideas.WORKSPACE_DIR", temp_workspace)
+    monkeypatch.setattr("app.storage.idea_workspace.WORKSPACE_DIR", temp_workspace)
     monkeypatch.setattr("app.storage.recovery.WORKSPACE_DIR", temp_workspace)
-    monkeypatch.setattr("app.orchestrator.tools.WORKSPACE_DIR", temp_workspace)
+    monkeypatch.setattr("app.orchestrator.workflow_tools.WORKSPACE_DIR", temp_workspace)
     return temp_workspace

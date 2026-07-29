@@ -88,6 +88,25 @@ def load_comments(idea_id: str) -> list[dict]:
     return data if isinstance(data, list) else []
 
 
+def _pending_interrupts_path(idea_id: str) -> str:
+    return os.path.join(idea_folder_path(idea_id), "interrupts.yaml")
+
+
+def load_pending_interrupts(idea_id: str) -> list[dict]:
+    path = _pending_interrupts_path(idea_id)
+    if not os.path.exists(path):
+        return []
+    data = read_yaml(path)
+    return data if isinstance(data, list) else []
+
+
+def save_pending_interrupts(idea_id: str, interrupts: list[dict]) -> list[dict]:
+    path = _pending_interrupts_path(idea_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    write_yaml(path, interrupts)
+    return interrupts
+
+
 def save_comment(idea_id: str, author: str, text: str) -> dict:
     comments = load_comments(idea_id)
     entry = {

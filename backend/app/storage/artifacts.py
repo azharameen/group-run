@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .base import read_yaml, write_yaml, write_markdown
-from .ideas import idea_folder_path, load_idea_yaml, save_idea_yaml
+from .idea_workspace import idea_folder_path, load_idea_yaml, save_idea_yaml
 
 
 def _artifact_dir(idea_id: str) -> Path:

@@ -31,6 +31,7 @@ backend/app/
     permissions.py
     subagents.py
     runtime.py
+    domain_tools.py
     skills/
       discovery/
       drafting/
@@ -60,7 +61,7 @@ backend/app/
     config/
       settings.py
     storage/
-      idea_repo.py
+      idea_workspace.py
       registry_repo.py
       artifact_repo.py
       comment_repo.py

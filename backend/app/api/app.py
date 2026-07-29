@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..infrastructure.events.stream_bus import emit_sse
 from ..infrastructure.observability import configure_langsmith_tracing
-from ..orchestrator.tools import set_emit_sse_callback as tools_set_emit
+from ..orchestrator.workflow_tools import set_emit_sse_callback as tools_set_emit
 from ..orchestrator.workflow import set_emit_sse_callback as workflow_set_emit
 from ..scheduler import start_scheduler, stop_scheduler
 from ..state.machine import set_emit_sse_callback as state_set_emit
@@ -36,7 +36,7 @@ async def lifespan(_app: FastAPI):
     for entry in registry.get("ideas", []):
         idea_id = entry["idea_id"]
         try:
-            from ..orchestrator.tools import get_machine
+            from ..orchestrator.workflow_tools import get_machine
 
             get_machine(idea_id)
         except Exception as exc:

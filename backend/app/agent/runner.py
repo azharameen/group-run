@@ -1,11 +1,11 @@
 """DeepAgents runner module that drives workflow execution through the DeepAgents graph."""
 
-import asyncio
+import json
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, Iterable
 
 from .runtime import get_deep_agent_runtime
-from .tools import (
+from .domain_tools import (
     draft_patent_section,
     evaluate_patentability,
     generate_invention_ideas,
@@ -13,6 +13,137 @@ from .tools import (
     record_approval_decision,
 )
 from ..storage.yaml_io import load_idea_yaml, save_idea_yaml
+from ..models.transcript import normalize_transcript_event
+
+
+def _stringify_runtime_output(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    try:
+        return json.dumps(value, indent=2, default=str)
+    except Exception:
+        return str(value)
+
+
+def _event_from_runtime_message(message: Any, idea_id: str, provenance: str) -> dict[str, Any]:
+    if isinstance(message, dict):
+        raw_event = str(message.get("type") or message.get("event_type") or message.get("event") or "thinking")
+        role = str(message.get("role") or message.get("speaker") or raw_event or "subagent")
+        data = message.get("data") if isinstance(message.get("data"), dict) else {}
+        content = (
+            message.get("content")
+            or message.get("text")
+            or message.get("output")
+            or message.get("message")
+            or data.get("content")
+            or data.get("text")
+            or data.get("output")
+            or ""
+        )
+        event_type = raw_event
+        if event_type.startswith("on_tool"):
+            event_type = "tool_call" if event_type.endswith("start") else "tool_result"
+        elif event_type.startswith("on_chat_model_stream"):
+            event_type = "token"
+        elif event_type.startswith("on_chain_end") or event_type.startswith("on_end"):
+            event_type = "completion"
+        event = {
+            "type": event_type,
+            "speaker": str(message.get("speaker") or message.get("agent") or role),
+            "role": str(message.get("role") or "subagent"),
+            "agent": str(message.get("agent") or message.get("speaker") or role),
+            "content": _stringify_runtime_output(content),
+            "tool": str(message.get("tool") or ""),
+            "params": message.get("params") or message.get("input") or {},
+            "output": message.get("output"),
+            "action": str(message.get("action") or ""),
+            "from_agent": str(message.get("from_agent") or ""),
+            "to_agent": str(message.get("to_agent") or ""),
+            "state": str(message.get("state") or ""),
+            "status": str(message.get("status") or ""),
+            "decision": str(message.get("decision") or ""),
+            "reason": str(message.get("reason") or ""),
+            "metadata": message.get("metadata") or {},
+            "provenance": str(message.get("provenance") or provenance),
+        }
+        if event_type == "messages" and isinstance(message.get("messages"), list):
+            return {
+                "type": "completion",
+                "speaker": event["speaker"],
+                "role": "orchestrator",
+                "content": _stringify_runtime_output(message.get("messages")),
+                "provenance": provenance,
+            }
+        return event
+
+    if isinstance(message, str):
+        return {
+            "type": "thinking",
+            "speaker": "workflow-orchestrator",
+            "role": "orchestrator",
+            "agent": "workflow-orchestrator",
+            "content": message,
+            "provenance": provenance,
+        }
+
+    return {
+        "type": "completion",
+        "speaker": "workflow-orchestrator",
+        "role": "orchestrator",
+        "agent": "workflow-orchestrator",
+        "content": _stringify_runtime_output(message),
+        "provenance": provenance,
+    }
+
+
+def _coerce_runtime_payload(payload: Any, idea_id: str, provenance: str) -> Iterable[dict[str, Any]]:
+    if payload is None:
+        return []
+    if isinstance(payload, dict):
+        if isinstance(payload.get("events"), list):
+            return [_event_from_runtime_message(item, idea_id, provenance) for item in payload["events"]]
+        if isinstance(payload.get("messages"), list):
+            return [_event_from_runtime_message(item, idea_id, provenance) for item in payload["messages"]]
+        if payload.get("tasks") and isinstance(payload.get("tasks"), list):
+            return [
+                {
+                    "type": "tasks_update",
+                    "speaker": payload.get("speaker") or "workflow-orchestrator",
+                    "role": payload.get("role") or "workflow",
+                    "tasks": payload.get("tasks"),
+                    "completed": payload.get("completed", 0),
+                    "total": payload.get("total", len(payload.get("tasks", []))),
+                    "provenance": payload.get("provenance") or provenance,
+                }
+            ]
+        if payload.get("type"):
+            return [_event_from_runtime_message(payload, idea_id, provenance)]
+        if payload.get("output") is not None or payload.get("result") is not None:
+            return [
+                {
+                    "type": "completion",
+                    "speaker": payload.get("speaker") or "workflow-orchestrator",
+                    "role": payload.get("role") or "orchestrator",
+                    "content": _stringify_runtime_output(payload.get("output", payload.get("result"))),
+                    "output": payload.get("output", payload.get("result")),
+                    "provenance": payload.get("provenance") or provenance,
+                }
+            ]
+        return [
+            {
+                "type": "completion",
+                "speaker": "workflow-orchestrator",
+                "role": "orchestrator",
+                "content": _stringify_runtime_output(payload),
+                "output": payload,
+                "provenance": provenance,
+            }
+        ]
+    if isinstance(payload, list):
+        return [_event_from_runtime_message(item, idea_id, provenance) for item in payload]
+    return [_event_from_runtime_message(payload, idea_id, provenance)]
 
 
 def execute_deep_agent_workflow(
@@ -23,7 +154,7 @@ def execute_deep_agent_workflow(
     user_feedback: str = "",
 ) -> Dict[str, Any]:
     """Execute a single workflow state using the DeepAgents runtime or agent tool executor."""
-    from ..orchestrator.tools import get_machine
+    from ..orchestrator.workflow_tools import get_machine
 
     print(f"[DeepAgents Runner] Executing state '{state_name}' for idea {idea_id} (feedback: '{user_feedback}')")
     runtime = get_deep_agent_runtime()
@@ -42,42 +173,40 @@ def execute_deep_agent_workflow(
     title = idea_data.get("title", idea_id)
     problem = idea_data.get("problem_statement", "")
     solution = idea_data.get("solution_concept", "")
+    runtime_context = {
+        "idea_id": idea_id,
+        "workflow_state": state_name,
+        "title": title,
+        "problem_statement": problem,
+        "solution_concept": solution,
+        "user_feedback": user_feedback,
+    }
 
     # Execute state domain logic using subagent tools
     section_key = state_name.replace(" ", "_").lower()
-    content_summary = (
-        f"# {title} - {state_name.replace('_', ' ').title()}\n\n"
-        f"**Idea ID:** {idea_id}\n"
-        f"**Workflow State:** {state_name}\n"
-        f"**Timestamp:** {datetime.utcnow().isoformat()}\n\n"
-        f"## Technical Context\n{problem}\n\n"
-        f"## Invention Details\n{solution}\n\n"
-        f"## Assessment & Findings\n"
-        f"Evaluated against Siemens IP standards and prior-art taxonomy.\n"
-        f"User Feedback: {user_feedback}\n"
-    )
-
-    # Draft section via tool
-    draft_patent_section(idea_id, section_key, content_summary)
-
-    # Evaluate patentability via scoring tool
-    score_res = evaluate_patentability(idea_id)
-
-    # If runtime is active, invoke graph invocation with context
+    runtime_output: Any = None
     try:
         input_payload = {
             "messages": [
                 {
                     "role": "user",
-                    "content": f"Execute state {state_name} for idea {idea_id}: {title}. Feedback: {user_feedback}",
+                    "content": json.dumps(runtime_context, indent=2),
                 }
             ],
-            "idea_id": idea_id,
-            "workflow_state": state_name,
+            **runtime_context,
         }
-        runtime.invoke(input_payload)
+        runtime_output = runtime.invoke(input_payload)
     except Exception as exc:
         print(f"[DeepAgents Runner] Graph invoke warning: {exc}")
+
+    content_summary = _stringify_runtime_output(runtime_output)
+    if not content_summary:
+        content_summary = json.dumps(runtime_context, indent=2)
+
+    draft_patent_section(idea_id, section_key, content_summary)
+
+    # Evaluate patentability via scoring tool
+    score_res = evaluate_patentability(idea_id)
 
     # Advance state machine state
     machine = get_machine(idea_id)
@@ -99,7 +228,7 @@ def execute_deep_agent_workflow(
         "idea_id": idea_id,
         "state": new_state,
         "completed": True,
-        "output": f"Analyzed feedback '{user_feedback}' for {title}. Invention disclosure updated.",
+        "output": _stringify_runtime_output(runtime_output) or f"Runtime completed for {title}.",
         "scores": score_res,
         "timestamp": datetime.utcnow().isoformat(),
     }
@@ -109,124 +238,82 @@ async def execute_deep_agent_workflow_streaming(
     idea_id: str,
     user_feedback: str,
 ) -> AsyncGenerator[Dict[str, Any], None]:
-    """
-    Stream step-by-step agent execution events for a chat message.
-
-    Yields dicts with: type, content (and additional fields per type):
-      - thinking:       {"type": "thinking", "content": "...", "agent": "..."}
-      - tool_call:      {"type": "tool_call", "tool": "...", "params": {...}, "agent": "..."}
-      - tool_result:    {"type": "tool_result", "tool": "...", "output": "...", "agent": "..."}
-      - subagent:       {"type": "subagent", "agent": "...", "action": "..."}
-      - handover:       {"type": "handover", "from_agent": "...", "to_agent": "..."}
-      - completion:     {"type": "completion", "content": "..."}
-      - tasks_update:   {"type": "tasks_update", "tasks": [...]}
-      - done:           {"type": "done"}
-    """
+    """Stream runtime-produced events for a chat message."""
     idea_data = load_idea_yaml(idea_id, "idea.yaml") or {} if idea_id else {}
     title = idea_data.get("title", idea_id or "Global Workspace")
     state = idea_data.get("workflow_state", "ideascope_draft")
 
-    # ── Agent roster ──────────────────────────────────────────────────────────
-    LEAD = "lead-engineer"
-    DATA = "prior-art-researcher"
-    IP = "ip-manager"
-    DISC = "discovery-agent"
-    ORCH = "workflow-orchestrator"
-
     provenance = f"idea:{idea_id or 'global'}|state:{state}"
-
-    # ── Phase 1: Orchestrator routes request ──────────────────────────────────
-    yield {"type": "thinking", "content": f"Route selected for idea '{title}'.", "agent": ORCH, "speaker": ORCH, "role": "orchestrator", "provenance": provenance}
-    await asyncio.sleep(0.35)
-
-    yield {"type": "handover", "from_agent": ORCH, "to_agent": DISC, "speaker": ORCH, "role": "orchestrator", "provenance": provenance}
-    await asyncio.sleep(0.25)
-
-    # ── Phase 2: Discovery Agent thinking ────────────────────────────────────
-    yield {"type": "thinking", "content": f"Feedback parsed: '{user_feedback}'.", "agent": DISC, "speaker": DISC, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.4)
-
-    yield {"type": "thinking", "content": "Policy and claim boundaries recorded.", "agent": DISC, "speaker": DISC, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.3)
-
-    # ── Phase 3: Tool call — Prior Art Taxonomy ───────────────────────────────
-    yield {"type": "tool_call", "tool": "query_prior_art_taxonomy", "params": {"query": user_feedback, "patent_class": "IND_AI"}, "agent": DATA, "speaker": DATA, "role": "tool", "provenance": provenance}
-    await asyncio.sleep(0.5)
-
-    taxonomy = query_prior_art_taxonomy("IND_AI")
-    yield {"type": "tool_result", "tool": "query_prior_art_taxonomy", "output": {"keywords": taxonomy.get("keywords", [])[:5], "category": taxonomy.get("name", "IND_AI")}, "agent": DATA, "speaker": DATA, "role": "tool", "provenance": provenance}
-    await asyncio.sleep(0.3)
-
-    # ── Phase 4: Subagent spawn ───────────────────────────────────────────────
-    yield {"type": "subagent", "agent": DATA, "action": "analyze prior-art taxonomy and novelty markers", "speaker": DATA, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.25)
-
-    yield {"type": "thinking", "content": "Prior-art references cross-referenced.", "agent": DATA, "speaker": DATA, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.4)
-
-    yield {"type": "thinking", "content": "Reference set captured for transcript.", "agent": DATA, "speaker": DATA, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.35)
-
-    # ── Phase 5: Handover to Lead Engineer ───────────────────────────────────
-    yield {"type": "handover", "from_agent": DATA, "to_agent": LEAD, "speaker": DATA, "role": "orchestrator", "provenance": provenance}
-    await asyncio.sleep(0.2)
-
-    # ── Phase 6: Lead Engineer — Patentability ────────────────────────────────
-    yield {"type": "thinking", "content": "Novelty and applicability evaluation recorded.", "agent": LEAD, "speaker": LEAD, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.4)
-
-    yield {"type": "tool_call", "tool": "evaluate_patentability", "params": {"idea_id": idea_id, "min_score": 70}, "agent": LEAD, "speaker": LEAD, "role": "tool", "provenance": provenance}
-    await asyncio.sleep(0.6)
-
-    score_res = evaluate_patentability(idea_id) if idea_id else {"composite": 78}
-    composite = score_res.get("composite", 78)
-    yield {"type": "tool_result", "tool": "evaluate_patentability", "output": {"composite": composite, "threshold": 70, "passed": composite >= 70}, "agent": LEAD, "speaker": LEAD, "role": "tool", "provenance": provenance}
-    await asyncio.sleep(0.3)
-
-    # ── Phase 7: IP Manager — Draft section ──────────────────────────────────
-    yield {"type": "subagent", "agent": IP, "action": "draft formal patent disclosure section", "speaker": IP, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.25)
-
-    yield {"type": "thinking", "content": "Disclosure packet draft event recorded.", "agent": IP, "speaker": IP, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.4)
-
-    if idea_id:
-        draft_patent_section(idea_id, "ideascope_draft", f"## Invention Disclosure\nFeedback: {user_feedback}\nComposite Score: {composite}/100\n")
-
-    yield {"type": "tool_call", "tool": "draft_patent_section", "params": {"idea_id": idea_id, "section": "ideascope_draft"}, "agent": IP, "speaker": IP, "role": "tool", "provenance": provenance}
-    await asyncio.sleep(0.5)
-    yield {"type": "tool_result", "tool": "draft_patent_section", "output": {"saved": bool(idea_id), "section": "ideascope_draft"}, "agent": IP, "speaker": IP, "role": "tool", "provenance": provenance}
-    await asyncio.sleep(0.3)
-
-    # ── Phase 8: Final handover to Lead for synthesis ─────────────────────────
-    yield {"type": "handover", "from_agent": IP, "to_agent": LEAD, "speaker": IP, "role": "orchestrator", "provenance": provenance}
-    await asyncio.sleep(0.2)
-
-    yield {"type": "thinking", "content": "Completion record assembled from runtime evidence.", "agent": LEAD, "speaker": LEAD, "role": "subagent", "provenance": provenance}
-    await asyncio.sleep(0.35)
-
-    yield {
-        "type": "completion",
-        "content": "Workflow pass complete.",
-        "agent": ORCH,
-        "speaker": ORCH,
-        "role": "orchestrator",
-        "status": "completed",
-        "provenance": provenance,
-        "output": {
-            "idea_id": idea_id,
-            "workflow_state": state,
-            "composite_score": composite,
-            "draft_written": bool(idea_id),
-        },
+    runtime = get_deep_agent_runtime()
+    input_payload = {
+        "messages": [
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "idea_id": idea_id,
+                        "title": title,
+                        "workflow_state": state,
+                        "user_feedback": user_feedback,
+                    },
+                    indent=2,
+                ),
+            }
+        ],
+        "idea_id": idea_id,
+        "workflow_state": state,
+        "user_feedback": user_feedback,
     }
 
-    # ── Phase 10: Emit updated task state ────────────────────────────────────
-    tasks = [
-        {"id": "t1", "title": f"Prior-art search for {title}", "agent": DATA, "status": "Completed", "thought": "Transcript contains tool call and tool result events."},
-        {"id": "t2", "title": f"Evaluate novelty and claim boundaries ({state})", "agent": LEAD, "status": "Completed", "thought": f"Composite score {composite}/100 recorded in transcript."},
-        {"id": "t3", "title": "Draft disclosure packet", "agent": IP, "status": "Completed" if composite >= 70 else "In Progress", "thought": "Disclosure packet write event recorded."},
-    ]
-    yield {"type": "tasks_update", "tasks": tasks, "completed": sum(1 for t in tasks if t["status"] == "Completed"), "total": len(tasks), "speaker": "workflow-orchestrator", "role": "tasks", "provenance": provenance}
+    emitted_done = False
 
-    yield {"type": "done"}
+    async def _emit_payload(payload: Any):
+        nonlocal emitted_done
+        for event in _coerce_runtime_payload(payload, idea_id, provenance):
+            normalized = normalize_transcript_event(idea_id, event)
+            if normalized.get("type") == "done":
+                emitted_done = True
+            yield normalized
+
+    try:
+        if hasattr(runtime, "astream_events"):
+            async for payload in runtime.astream_events(input_payload):
+                async for event in _emit_payload(payload):
+                    yield event
+        elif hasattr(runtime, "astream"):
+            async for payload in runtime.astream(input_payload):
+                async for event in _emit_payload(payload):
+                    yield event
+        elif hasattr(runtime, "stream"):
+            stream = runtime.stream(input_payload)
+            if hasattr(stream, "__aiter__"):
+                async for payload in stream:
+                    async for event in _emit_payload(payload):
+                        yield event
+            else:
+                for payload in stream:
+                    async for event in _emit_payload(payload):
+                        yield event
+        else:
+            result = runtime.invoke(input_payload)
+            async for event in _emit_payload(result):
+                yield event
+    except Exception as exc:
+        yield normalize_transcript_event(idea_id, {
+            "type": "failed",
+            "speaker": "workflow-orchestrator",
+            "role": "orchestrator",
+            "content": str(exc),
+            "reason": str(exc),
+            "provenance": provenance,
+        })
+        emitted_done = True
+
+    if not emitted_done:
+        yield normalize_transcript_event(idea_id, {
+            "type": "done",
+            "speaker": "workflow-orchestrator",
+            "role": "workflow",
+            "content": "Runtime stream complete.",
+            "provenance": provenance,
+        })

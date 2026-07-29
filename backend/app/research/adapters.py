@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import re
 import urllib.parse
@@ -70,33 +71,39 @@ def search_local_prior_art(query: str, limit: int = 5) -> list[ResearchSource]:
 
 
 def search_public_patents(query: str, limit: int = 5, timeout: int = 8) -> list[ResearchSource]:
-    url = "https://patents.google.com/?q=" + urllib.parse.quote(query)
+    url = (
+        "https://patents.google.com/xhr/query?url="
+        + urllib.parse.quote(f"q={query}")
+        + "&exp=&tags="
+    )
     try:
         with urllib.request.urlopen(url, timeout=timeout) as response:
-            html = response.read().decode("utf-8", errors="ignore")
+            payload = json.loads(response.read().decode("utf-8", errors="ignore"))
     except Exception:
         return []
 
-    matches = re.findall(r'<h3[^>]*class="[^"]*result-title[^"]*"[^>]*>(.*?)</h3>', html, flags=re.I | re.S)
-    snippets = re.findall(r'<span[^>]*class="[^"]*description[^"]*"[^>]*>(.*?)</span>', html, flags=re.I | re.S)
     results: list[ResearchSource] = []
-    for idx, title_html in enumerate(matches[:limit]):
-        title = re.sub(r"<[^>]+>", " ", title_html)
-        title = re.sub(r"\s+", " ", title).strip()
-        snippet = ""
-        if idx < len(snippets):
-            snippet = re.sub(r"<[^>]+>", " ", snippets[idx])
-            snippet = re.sub(r"\s+", " ", snippet).strip()
-        results.append(
-            ResearchSource(
-                source_type="public-patent-search",
-                trust="public-web",
-                title=title or "Patent result",
-                url=url,
-                snippet=snippet,
-                provenance=f"patents.google.com:{idx+1}",
+    clusters = payload.get("results", {}).get("cluster", [])
+    for cluster in clusters:
+        for item in cluster.get("result", []):
+            patent = item.get("patent") or {}
+            publication_number = str(patent.get("publication_number") or item.get("id") or "").strip()
+            title = re.sub(r"<[^>]+>", " ", str(patent.get("title") or ""))
+            snippet = re.sub(r"<[^>]+>", " ", str(patent.get("snippet") or ""))
+            title = re.sub(r"\s+", " ", html.unescape(title)).strip()
+            snippet = re.sub(r"\s+", " ", html.unescape(snippet)).strip()
+            results.append(
+                ResearchSource(
+                    source_type="public-patent-api",
+                    trust="public-api",
+                    title=title or "Patent result",
+                    url=f"https://patents.google.com/patent/{publication_number}/en" if publication_number else url,
+                    snippet=snippet,
+                    provenance=f"patents.google.com:{publication_number or item.get('id', 'result')}",
+                )
             )
-        )
+            if len(results) >= limit:
+                return results[:limit]
     return results
 
 

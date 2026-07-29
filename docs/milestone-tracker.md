@@ -50,6 +50,16 @@ Update this file whenever work is completed.
 - [x] Added provenance metadata to generated artifact sections.
 - [x] Extended the historical timeline to render runtime transcript events with role-aware badges.
 
+### 2026-07-29
+
+- [x] Replaced the remaining scripted runtime narration with runtime-driven transcript event coercion.
+- [x] Removed the last hardcoded idea-generation and heuristic scoring fallback paths.
+- [x] Made pending HITL interrupts durable on disk instead of in-memory.
+- [x] Replaced public patent scraping with a structured Google Patents XHR JSON adapter.
+- [x] Revalidated the backend and frontend after the final adapter change.
+- [x] Renamed generic backend modules to descriptive names (`tools.py` -> `domain_tools.py` / `workflow_tools.py`, `ideas.py` -> `idea_workspace.py`).
+- [x] Consolidated dependency maintenance so the repo root `requirements.txt` now wraps `backend/requirements.txt`.
+
 ### Current reality
 
 - [x] DeepAgents runtime is now the single source for the runtime entrypoint and event model.
@@ -70,6 +80,14 @@ Update this file whenever work is completed.
 - [x] LangSmith observability is configured through runtime env propagation.
 - [x] Delete/archive requests now route through approval interrupts before destructive action.
 - [x] Review analytics expose reviewer identity and pending-interrupt observability.
+- [x] The streamed transcript is runtime-driven in `backend/app/agent/runner.py`.
+- [x] Idea generation now uses runtime-driven prior-art and taxonomy inputs instead of hardcoded seed ideas.
+- [x] Scoring now uses the LLM-backed JSON scoring path end to end.
+- [x] Pending HITL interrupts are durable and survive restart.
+- [x] Public patent search now uses a structured JSON adapter instead of HTML scraping.
+- [x] Review timestamps now use durable real timestamps.
+- [x] Repository cleanup renamed the most confusing generic backend modules to descriptive names.
+- [x] Dependency entrypoint cleanup removed the duplicate root dependency list.
 
 ### HITL blocking slice
 
@@ -83,8 +101,9 @@ Update this file whenever work is completed.
 - [x] Recorded package/adaptation decision history in the living docs.
 - [x] Documented the DB-migration planning decision to keep YAML until migration is warranted.
 - [x] Completed the remaining Phase 7 capability checklist and closed M7.
+  - Optional internal filing connector work remains a future enhancement, not a blocker.
 
 ## Validation Notes
 
 - `npm run build` in `frontend/` passed with 0 TypeScript/Vite compilation errors.
-- `pytest backend/tests` passed 24 out of 24 tests cleanly in the latest verified run.
+- `pytest backend/tests` passed 43 out of 43 tests cleanly in the latest verified run.

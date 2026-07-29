@@ -6,7 +6,7 @@ keeping the current import surface stable.
 
 from ..config import KNOWLEDGE_BASE_DIR, WORKSPACE_DIR
 from .base import read_markdown, read_yaml, write_markdown, write_yaml
-from .ideas import (
+from .idea_workspace import (
     clear_idea_runtime_state,
     create_idea_folder,
     archive_idea_folder,
@@ -15,9 +15,11 @@ from .ideas import (
     idea_folder_path,
     load_comments,
     load_idea_yaml,
+    load_pending_interrupts,
     load_transcript_events,
     save_comment,
     save_idea_yaml,
+    save_pending_interrupts,
     save_transcript_event,
     write_changelog_entry,
     write_handover,

@@ -1,6 +1,8 @@
 """First-class domain tools for DeepAgents subagents and runtime graph nodes."""
 
 import json
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -18,27 +20,66 @@ def generate_invention_ideas(
 ) -> List[Dict[str, Any]]:
     """Generate structured invention ideas from user input or Siemens focus domains."""
     ideas: List[Dict[str, Any]] = []
-    base_topics = [
-        ("AI-Driven Vibration Anomaly Detection in Industrial Edge Devices", "Predictive Edge AI"),
-        ("Real-Time Co-Simulation for Digital Twin Cyber-Physical Security", "Digital Twin Systems"),
-        ("Decentralized Smart Grid Energy Distribution Optimization", "Smart Infrastructure"),
+    taxonomy = query_prior_art_taxonomy("IND_AI")
+    taxonomy_name = str(taxonomy.get("name") or idea_category or "Industrial AI")
+    taxonomy_keywords = [str(item).strip() for item in taxonomy.get("keywords", []) if str(item).strip()]
+    topic_terms = [term for term in re.split(r"[^a-zA-Z0-9]+", topic_name.strip()) if len(term) > 3]
+    user_terms = [
+        term
+        for term in re.split(r"[^a-zA-Z0-9]+", user_input.strip())
+        if len(term) > 3
     ]
+    signal_terms = user_terms or topic_terms or taxonomy_keywords or [taxonomy_name]
 
-    for i in range(min(max_ideas, 3)):
-        title, cat = base_topics[i % len(base_topics)]
-        if user_input.strip() and i == 0:
-            title = f"{user_input.strip()[:60]} System"
-        
-        ideas.append({
-            "title": title,
-            "idea_category": idea_category or cat,
-            "project_name": project_name,
-            "problem_statement": f"Existing state of the art in {cat} lacks real-time physical bounds verification.",
-            "solution_concept": f"A novel algorithm integrating physics-informed neural networks directly within Siemens industrial hardware.",
-            "inventive_step": "Combines sensor telemetry with deterministic physical constraints at the edge.",
-            "business_impact": "Reduces unscheduled plant downtime by up to 40%.",
-        })
-    return ideas
+    if user_input.strip():
+        prior_art = search_prior_art(user_input, limit=max_ideas)
+    else:
+        prior_art = search_prior_art(" ".join(signal_terms), limit=max_ideas)
+
+    for index in range(max_ideas):
+        focus_term = signal_terms[index % len(signal_terms)]
+        secondary_term = signal_terms[(index + 1) % len(signal_terms)]
+        title_prefix = focus_term.replace("_", " ").strip().title()
+        if user_input.strip() and index == 0:
+            title_prefix = " ".join(user_input.strip().split()[:8]).strip().title() or title_prefix
+
+        evidence: list[str] = []
+        if index < len(prior_art):
+            source = prior_art[index]
+            evidence.extend(
+                item for item in [source.title, source.snippet, source.provenance] if item
+            )
+        else:
+            evidence.extend(taxonomy_keywords[:2])
+
+        ideas.append(
+            {
+                "title": f"{title_prefix} {taxonomy_name} Concept {index + 1}",
+                "idea_category": idea_category or taxonomy_name,
+                "project_name": project_name,
+                "problem_statement": (
+                    f"Existing approaches in {taxonomy_name} do not fully address {focus_term.lower()} "
+                    f"when the workflow must also account for {secondary_term.lower()}."
+                ),
+                "solution_concept": (
+                    f"Use {focus_term.lower()} as the primary signal, combine it with {secondary_term.lower()}, "
+                    f"and align the system with the documented taxonomy for {taxonomy_name.lower()}."
+                ),
+                "inventive_step": (
+                    f"Derive a decision pipeline from {', '.join(taxonomy_keywords[:3]) or taxonomy_name} "
+                    f"and adapt it to {focus_term.lower()} operations."
+                ),
+                "business_impact": (
+                    f"Improves {taxonomy_name.lower()} outcomes by reducing manual analysis of {focus_term.lower()} "
+                    f"and making {secondary_term.lower()} workstreams easier to review."
+                ),
+                "source_evidence": evidence,
+                "siemens_domain": taxonomy_name,
+                "tags": [focus_term.lower(), secondary_term.lower(), taxonomy_name.lower()],
+            }
+        )
+
+    return ideas[:max_ideas]
 
 
 def query_prior_art_taxonomy(category_code: str = "IND_AI") -> Dict[str, Any]:
@@ -85,7 +126,7 @@ def draft_patent_section(
         idea_data[f"{section_name}_data"] = {
             "summary": content[:200] + "...",
             "path": str(file_path),
-            "updated_at": "now",
+            "updated_at": datetime.utcnow().isoformat(),
             "provenance": f"artifact:{idea_id}:{section_name}",
             "trust": "generated",
             "evidence_refs": idea_data.get("source_evidence", []),
@@ -99,7 +140,7 @@ def draft_patent_section(
 
 def evaluate_patentability(idea_id: str) -> Dict[str, Any]:
     """Run scoring engine for an idea to calculate criteria scores and composite rating."""
-    from ..orchestrator.tools import score_idea
+    from ..orchestrator.workflow_tools import score_idea
     return score_idea(idea_id)
 
 
@@ -115,7 +156,7 @@ def record_approval_decision(
     reviews[reviewer_role.lower()] = {
         "status": decision,
         "comments": comments,
-        "timestamp": "now",
+        "timestamp": datetime.utcnow().isoformat(),
         "provenance": f"approval:{idea_id}:{reviewer_role.lower()}",
         "trust": "trusted",
     }

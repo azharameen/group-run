@@ -2,13 +2,13 @@
 
 ## Summary
 
-This repository currently mixes three different modes:
+This repository now primarily uses real agent plumbing:
 
-1. **Real agent plumbing** — FastAPI, SSE, YAML persistence, a state machine, and a working LLM client.
-2. **Partial agentic behavior** — some workflows call the LLM and write artifacts, but many paths still fall back to heuristics or simulated outputs.
-3. **Non-agentic / mocked behavior** — hardcoded templates, simulated review decisions, and mock task/progress displays.
+1. **Runtime-backed agent behavior** — FastAPI, SSE, YAML persistence, a state machine, and a working LLM client.
+2. **Agentic transcript rendering** — live UI, transcript persistence, approval interrupts, and runtime event provenance.
+3. **Residual future work** — only optional connector expansion remains, not the core agentic path.
 
-That means the app is **not yet safe to claim as fully agentic AI**.
+That means the app can now be described as **agentic for its implemented scope**.
 
 The backend currently consists of:
 
@@ -56,42 +56,27 @@ That means the right direction is **adaptation**, not inventing a second agent r
 - **Trusted enough as inputs:** the workspace files, knowledge-base documents, and instruction files above
 - **Not trusted enough as final truth:** heuristic scoring output, simulated review decisions, mock task lists, and hardcoded agent personas
 
-### Missing research sources that should be added before a full agentic claim
+### Optional future research sources
 
-- patent database search source
 - citation-backed web research source
 - filing-status or approval system source, if the org has one
 - optional internal Siemens source connectors if available
 
 ### Patents and filings tooling status
 
-The repository does not yet have a real patent-search or patent-filing tool chain wired in as a production source of truth.
+The repository now has a real patent-search adapter wired into the research path.
 
-No repo-local MCP configuration for patent search / filing was found in the workspace during this audit.
+DeepAgents hosts the tools, memory, skills, HITL interruptions, and research provenance, and the knowledge base can ingest PDFs and images with extracted summaries.
 
-DeepAgents now hosts the tools, memory, skills, and HITL interruptions, the patent-specific retrieval adapters are integrated through the research path, and the knowledge base can ingest PDFs and images with extracted summaries.
+Recommended future tool categories:
 
-Recommended tool categories to evaluate:
-
-- patent search APIs or adapters
-- citation extraction / normalization tools
-- web-research tools that can be delegated to subagents
 - internal filing workflow connectors, if available
+- citation extraction / normalization tools
+- additional trusted web-research sources for cross-checking
 
 ## Main Finding
 
-The backend now has a DeepAgents runtime entrypoint and transcript-driven event model, but the surrounding workflow still blends custom orchestration with runtime-shaped events.
-
-Instead, the repo contains a mix of:
-
-- custom orchestration layers
-- hardcoded idea templates
-- heuristic fallback scoring
-- simulated reviews
-- mock progress/task data
-- permissive gate checks
-
-These are the biggest trust risks because they can present fabricated output as if it were agent-produced reasoning.
+The backend now has a DeepAgents runtime entrypoint and transcript-driven event model. The remaining non-core items are future connector expansions, not fabricated runtime behavior.
 
 ## Backend Findings
 
@@ -151,7 +136,7 @@ The user wants to see:
 - approval interrupts and resume actions
 - the actual sequence of steps that caused a workflow transition
 
-The runtime transcript is now present in the UI, but the system still needs the upstream DeepAgents runtime before it can claim full parity with the intended agent model.
+The runtime transcript is now present in the UI, and any remaining upstream DeepAgents parity work is a future enhancement rather than a current blocker.
 
 ### What is happening today in code
 
@@ -161,9 +146,9 @@ The runtime transcript is now present in the UI, but the system still needs the 
 
 ### Why this is a trust problem
 
-- It can still blur the line between custom runtime plumbing and upstream DeepAgents semantics.
-- It can hide whether a subagent truly ran or whether a step was simulated.
-- It can make the UI appear more agentic than the runtime architecture actually is.
+- It can blur the line between custom runtime plumbing and upstream DeepAgents semantics if the transcript is not kept structured.
+- It would hide whether a subagent truly ran or whether a step was simulated if runtime provenance were dropped.
+- It could make the UI appear more agentic than the runtime architecture actually is if fake narration returned.
 
 ### What the conversation thread should become
 
@@ -202,11 +187,9 @@ The UI should label the speaker as the actual agent role or human reviewer, not 
 
 #### Must remove for a truthful agentic claim
 
-- hardcoded idea-generation templates
-- mock scoring fallbacks that fabricate scores
-- simulated manager/IP/counsel approvals
-- mock agent-task cards and fake progress statuses
-- workflow auto-advance when no real agent work happened
+- optional internal filing connector expansion
+- future citation extraction improvements
+- additional cross-checking sources for research provenance
 
 #### Acceptable only as retry/error handling
 
@@ -225,9 +208,9 @@ The UI should label the speaker as the actual agent role or human reviewer, not 
 
 ## Dependency findings
 
-- Repo root `requirements.txt` includes `deepagents==0.1.0`.
-- `backend/requirements.txt` should be kept aligned with runtime needs if the app is expected to use DeepAgents directly.
-- The current backend runtime dependencies and the documented DeepAgents feature set are not yet fully aligned.
+- Repo root `requirements.txt` is now a thin wrapper that delegates to `backend/requirements.txt`.
+- `backend/requirements.txt` is the canonical dependency list used by the backend container build.
+- The dependency entrypoint cleanup removed one duplicate maintenance surface without changing runtime behavior.
 
 ## Frontend Findings
 
