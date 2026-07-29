@@ -3,17 +3,13 @@
 from pathlib import Path
 from ..config import INSTRUCTIONS_DIR, KNOWLEDGE_BASE_DIR, ROOT_DIR, WORKSPACE_DIR
 
-try:
-    from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
-    HAS_DEEPAGENTS = True
-except ImportError:
-    HAS_DEEPAGENTS = False
-
 
 def build_agent_backend():
     """Build the default DeepAgents backend layout for this project."""
-    if not HAS_DEEPAGENTS:
-        return None
+    try:
+        from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
+    except ImportError as exc:
+        raise RuntimeError("DeepAgents backend support requires the deepagents package.") from exc
 
     memories_dir = Path(ROOT_DIR) / "memories"
     skills_dir = Path(ROOT_DIR) / "skills"

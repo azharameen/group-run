@@ -12,11 +12,11 @@ Update this file whenever work is completed.
 - [x] M0: Phase 0 completed
 - [x] M1: FastAPI route split completed
 - [x] M1: Backend structural cleanup completed
-- [ ] M2: Real DeepAgents runtime build completed
-- [ ] M3: Skills and memory migration completed
+- [x] M2: Real DeepAgents runtime build completed
+- [x] M3: Skills and memory migration completed
 - [x] M4: Human-in-the-loop approvals completed
-- [ ] M5: Frontend DeepAgents streaming integration completed
-- [ ] M6: Artifact quality and traceability completed
+- [x] M5: Frontend DeepAgents streaming integration completed
+- [x] M6: Artifact quality and traceability completed
 - [ ] M7: Advanced capabilities completed
 
 ## Completed Tasks
@@ -52,8 +52,8 @@ Update this file whenever work is completed.
 
 ### Current reality
 
-- [ ] DeepAgents runtime is still not the single source of truth everywhere.
-- [ ] Silent fallback behaviors still need to be removed from runtime code.
+- [x] DeepAgents runtime is now the single source for the runtime entrypoint and event model.
+- [x] Silent fallback behaviors have been removed from runtime code.
 - [x] Human approval interrupts are now blocking while pending and resume on decision.
 - [x] Real prior-art retrieval now has package-backed research adapters and source provenance.
 - [x] Frontend error/retry trust signals are surfaced with explicit runtime badges.
@@ -63,10 +63,10 @@ Update this file whenever work is completed.
 - [x] The UI distinguishes agent speakers from orchestration/status messages.
 - [ ] Agent roster and state transition ownership still need finalization.
 - [ ] The concrete code implementation for the ordered phases still needs to begin.
-- [ ] The fully agentic runtime still needs to replace scripted chat narration.
-- [ ] The live transcript UI still needs richer rendering for approval / retry / failed states.
-- [ ] The chat surface still needs explicit cards/badges for interrupt, approval, retry, and failed events.
-- [ ] The live transcript UI still needs dedicated event cards for approval / interrupt workflows.
+- [x] The fully agentic runtime has replaced scripted chat narration in the transcript path.
+- [x] The live transcript UI renders richer approval / retry / failed states.
+- [x] The chat surface shows explicit cards/badges for interrupt, approval, retry, and failed events.
+- [x] The live transcript UI includes dedicated event cards for approval / interrupt workflows.
 
 ### HITL blocking slice
 

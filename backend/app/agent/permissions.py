@@ -1,16 +1,11 @@
 """Filesystem permissions for the DeepAgents runtime."""
 
-try:
-    from deepagents import FilesystemPermission
-    HAS_DEEPAGENTS = True
-except ImportError:
-    HAS_DEEPAGENTS = False
-
-
 def build_agent_permissions():
     """Return path-based rules for agent filesystem access."""
-    if not HAS_DEEPAGENTS:
-        return []
+    try:
+        from deepagents import FilesystemPermission
+    except ImportError as exc:
+        raise RuntimeError("DeepAgents filesystem permissions require the deepagents package.") from exc
 
     return [
         FilesystemPermission(

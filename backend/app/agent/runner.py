@@ -64,22 +64,20 @@ def execute_deep_agent_workflow(
     score_res = evaluate_patentability(idea_id)
 
     # If runtime is active, invoke graph invocation with context
-    if runtime is not None:
-        try:
-            input_payload = {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": f"Execute state {state_name} for idea {idea_id}: {title}. Feedback: {user_feedback}",
-                    }
-                ],
-                "idea_id": idea_id,
-                "workflow_state": state_name,
-            }
-            if hasattr(runtime, "invoke"):
-                runtime.invoke(input_payload)
-        except Exception as exc:
-            print(f"[DeepAgents Runner] Graph invoke warning: {exc}")
+    try:
+        input_payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"Execute state {state_name} for idea {idea_id}: {title}. Feedback: {user_feedback}",
+                }
+            ],
+            "idea_id": idea_id,
+            "workflow_state": state_name,
+        }
+        runtime.invoke(input_payload)
+    except Exception as exc:
+        print(f"[DeepAgents Runner] Graph invoke warning: {exc}")
 
     # Advance state machine state
     machine = get_machine(idea_id)

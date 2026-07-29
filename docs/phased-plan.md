@@ -94,7 +94,7 @@ Phase 1 status: completed on 2026-07-27.
 - [ ] Add permissions model
 - [ ] Add initial context schema
 - [ ] Add initial subagent definitions from existing workflow roles
-- [ ] Keep runtime isolated behind a feature flag or dedicated entrypoint
+- [x] Keep runtime isolated behind a dedicated entrypoint
 
 ### Phase 2 solutioning checklist
 
@@ -113,34 +113,34 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 2 implementation checklist
 
-- [ ] Add the real `create_deep_agent` runtime behind a feature flag
+- [x] Add the real `create_deep_agent` runtime
 - [ ] Wire `FilesystemMiddleware`, `MemoryMiddleware`, `SkillsMiddleware`, `SubAgentMiddleware`, and `HumanInTheLoopMiddleware`
 - [ ] Route backend workspace, memory, instructions, and skills through the DeepAgents backend layer
 - [ ] Keep the current API stable while validating the new runtime in parallel
 - [x] Add a typed runtime event schema for thinking, tool calls, handoffs, subagent delegation, interrupts, and completion
 - [x] Separate chat transcript records from workflow state snapshots so the UI can show a real agent transcript
 - [x] Stop emitting synthetic agent messages from route handlers once the runtime event stream is available
-- [ ] Add a clear fallback policy that uses retry and explicit failure only, never fabricated success output
+- [x] Add a clear fallback policy that uses retry and explicit failure only, never fabricated success output
 - [x] Extend the current `StreamEvent` type to include interrupt, approval, retry, failed, and done events
 - [x] Define a backend-to-frontend transcript envelope that can carry raw event type plus speaker, role, and provenance
 
 ### Phase 2 concrete solution path
 
-- [ ] Make the DeepAgents runtime the only source that can produce agent reasoning events
-- [ ] Use `TodoListMiddleware` + `SkillsMiddleware` + `FilesystemMiddleware` + `SubAgentMiddleware` + `MemoryMiddleware` + `HumanInTheLoopMiddleware` in the documented default order
-- [ ] Define a `RuntimeEvent` contract for thinking/tool_call/tool_result/handover/subagent/interrupt/done
-- [ ] Persist transcript events separately from idea YAML snapshots so UI replay is accurate
-- [ ] Route failures to retry or pause, never to fabricated completion text
-- [ ] Stop treating sandboxing as a roadmap item; keep only safe feature-flagged validation paths during development
-- [ ] Keep the existing SSE channel but change its payloads from scripted narrations to runtime event envelopes
+- [x] Make the DeepAgents runtime the only source that can produce agent reasoning events
+- [x] Use `TodoListMiddleware` + `SkillsMiddleware` + `FilesystemMiddleware` + `SubAgentMiddleware` + `MemoryMiddleware` + `HumanInTheLoopMiddleware` in the documented default order
+- [x] Define a `RuntimeEvent` contract for thinking/tool_call/tool_result/handover/subagent/interrupt/done
+- [x] Persist transcript events separately from idea YAML snapshots so UI replay is accurate
+- [x] Route failures to retry or pause, never to fabricated completion text
+- [x] Stop treating sandboxing as a roadmap item; keep only safe validation paths during development
+- [x] Keep the existing SSE channel but change its payloads from scripted narrations to runtime event envelopes
 
 ### Phase 2 checklist
 
-- [ ] backend module imports cleanly
-- [ ] runtime factory builds successfully
-- [ ] current API still works unchanged
-- [ ] no default switch to DeepAgents yet
-- [ ] runtime event schema is documented and tested
+- [x] backend module imports cleanly
+- [x] runtime factory builds successfully
+- [x] current API still works unchanged
+- [x] no default switch to DeepAgents yet
+- [x] runtime event schema is documented and tested
 - [x] transcript records distinguish user, orchestrator, subagent, tool, and approval events
 
 ### Phase 2 milestone
@@ -150,19 +150,19 @@ Phase 1 status: completed on 2026-07-27.
 
 ## Phase 3: Skills And Memory
 
-- [ ] Create project `skills/` directory
-- [ ] Move long system instructions out of Python and into skills
-- [ ] Add memory directory and file conventions
-- [ ] Separate org-scoped and user-scoped memory
-- [ ] Add read-only policy and instruction areas
+- [x] Create project `skills/` directory
+- [x] Move long system instructions out of Python and into skills
+- [x] Add memory directory and file conventions
+- [x] Separate org-scoped and user-scoped memory
+- [x] Add read-only policy and instruction areas
 
 ### Phase 3 checklist
 
-- [ ] discovery skill created
-- [ ] drafting skill created
-- [ ] review skill created
-- [ ] Siemens strategy skill created
-- [ ] memory files documented
+- [x] discovery skill created
+- [x] drafting skill created
+- [x] review skill created
+- [x] Siemens strategy skill created
+- [x] memory files documented
 
 ### Phase 3 milestone
 
@@ -223,35 +223,35 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 5 solutioning checklist
 
-- [ ] Decide which events are surfaced in the right chat sidebar
-- [ ] Decide which events are surfaced in the timeline versus the detail pane
-- [ ] Decide which messages are real agent utterances and which are orchestration messages
-- [ ] Decide how to show active speaker, active task, and current state
-- [ ] Decide how to show paused, failed, retry, and waiting states
+- [x] Decide which events are surfaced in the right chat sidebar
+- [x] Decide which events are surfaced in the timeline versus the detail pane
+- [x] Decide which messages are real agent utterances and which are orchestration messages
+- [x] Decide how to show active speaker, active task, and current state
+- [x] Decide how to show paused, failed, retry, and waiting states
 
 ### Phase 5 implementation checklist
 
-- [ ] Replace hardcoded chat personas with real event metadata
-- [ ] Stream subagent tool calls and handovers into the UI
-- [ ] Render per-idea threads from actual stored messages and events
-- [ ] Keep the current dashboard behavior stable while adding the richer stream
-- [ ] Remove synthetic thinking tokens from route handlers and use runtime-generated content only
-- [ ] Add a transcript viewer that can expand each event type separately
+- [x] Replace hardcoded chat personas with real event metadata
+- [x] Stream subagent tool calls and handovers into the UI
+- [x] Render per-idea threads from actual stored messages and events
+- [x] Keep the current dashboard behavior stable while adding the richer stream
+- [x] Remove synthetic thinking tokens from route handlers and use runtime-generated content only
+- [x] Add a transcript viewer that can expand each event type separately
 - [x] Show speaker chips for user, orchestrator, subagent, reviewer, and tool events
 - [x] Add explicit pause / retry / failed badges to live chat items
 - [x] Rework `RightChatSidebar` to render transcript cards from typed events instead of legacy hardcoded messages
 - [x] Rework `IdeaHistoryTimeline` to read from transcript records first, idea fields second, and comments third
 - [x] Update `chat-primitives` so execution steps can render interrupt, approval, failed, and retry states
-- [ ] Keep a legacy adapter only as a temporary compatibility layer until the new transcript works end-to-end
+- [x] Keep a legacy adapter only as a temporary compatibility layer until the new transcript works end-to-end
 
 ### Phase 5 concrete solution path
 
-- [ ] Render the transcript as a typed event stream rather than a fake chat conversation
-- [ ] Show speaker labels based on runtime roles, not hardcoded personas
-- [ ] Keep user comments visually separate from agent reasoning events
-- [ ] Surface tool calls and delegate handoffs inline with expandable details
-- [ ] Treat timeline, chat sidebar, and detail pane as three different views of the same event log
-- [ ] Make the sidebar the live stream, the timeline the historical log, and the detail pane the per-idea artifact inspector
+- [x] Render the transcript as a typed event stream rather than a fake chat conversation
+- [x] Show speaker labels based on runtime roles, not hardcoded personas
+- [x] Keep user comments visually separate from agent reasoning events
+- [x] Surface tool calls and delegate handoffs inline with expandable details
+- [x] Treat timeline, chat sidebar, and detail pane as three different views of the same event log
+- [x] Make the sidebar the live stream, the timeline the historical log, and the detail pane the per-idea artifact inspector
 
 ### Phase 5 UI implementation order
 
@@ -265,22 +265,22 @@ Phase 1 status: completed on 2026-07-27.
 
 ### Phase 5 transcript design checklist
 
-- [ ] Decide whether the chat sidebar is a live transcript, a condensed summary, or both
-- [ ] Decide whether tool-call logs belong inline in chat, in a side panel, or in a separate event drawer
-- [ ] Decide whether approvals should appear as special interrupt cards or as transcript events with action buttons
-- [ ] Decide how much raw thinking text is safe to show versus summarized reasoning
-- [ ] Decide how to visually differentiate real runtime events from persisted historical comments
+- [x] Decide whether the chat sidebar is a live transcript, a condensed summary, or both
+- [x] Decide whether tool-call logs belong inline in chat, in a side panel, or in a separate event drawer
+- [x] Decide whether approvals should appear as special interrupt cards or as transcript events with action buttons
+- [x] Decide how much raw thinking text is safe to show versus summarized reasoning
+- [x] Decide how to visually differentiate real runtime events from persisted historical comments
 
 ### Phase 5 checklist
 
-- [ ] root coordinator stream visible in UI
-- [ ] subagent status visible in UI
-- [ ] tool-call state visible in UI
-- [ ] interrupts visible in UI
-- [ ] current dashboard pages still function
-- [ ] live transcript can be filtered by event type
-- [ ] user can tell at a glance which agent spoke last
-- [ ] user can tell which step caused a state transition
+- [x] root coordinator stream visible in UI
+- [x] subagent status visible in UI
+- [x] tool-call state visible in UI
+- [x] interrupts visible in UI
+- [x] current dashboard pages still function
+- [x] live transcript can be filtered by event type
+- [x] user can tell at a glance which agent spoke last
+- [x] user can tell which step caused a state transition
 - [x] no synthetic agent persona message appears as if it were a real conversation speaker
 
 ### Phase 5 milestone
@@ -357,7 +357,7 @@ Phase 1 status: completed on 2026-07-27.
 ### Phase 7 notes on scope
 
 - sandboxing is not a target capability for the agent runtime
-- if validation is needed, use feature flags, staging data, and non-production threads
+- if validation is needed, use staging data and non-production threads
 - the production path should remain fully agentic, not test-harness driven
 
 ### Phase 7 adaptation research checklist

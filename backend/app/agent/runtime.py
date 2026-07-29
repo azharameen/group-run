@@ -16,16 +16,12 @@ def _load_system_prompt() -> str:
 
 
 def get_deep_agent_runtime():
-    """Return a compiled DeepAgents graph, or None if disabled or package uninstalled."""
-    if not settings.deepagents_enabled or not settings.deepagents_model:
-        return None
+    """Return a compiled DeepAgents graph."""
+    if not settings.deepagents_model:
+        raise RuntimeError("DeepAgents model configuration is required.")
 
-    try:
-        from deepagents import create_deep_agent
-        from langgraph.checkpoint.memory import InMemorySaver
-    except ImportError:
-        print("[DeepAgents] Runtime requested but deepagents/langgraph package not available in environment.")
-        return None
+    from deepagents import create_deep_agent
+    from langgraph.checkpoint.memory import InMemorySaver
 
     interrupt_on = {
         "write_file": True,
