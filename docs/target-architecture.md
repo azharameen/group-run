@@ -1,5 +1,17 @@
 # Target Architecture
 
+> **⚠️ ARCHIVED — 2026-07-31**
+>
+> This was the target architecture blueprint for Phases 0–7. The architecture has been implemented:
+> - Folder structure realized in `backend/app/`
+> - DeepAgents runtime factory, CompositeBackend, permissions model live
+> - Middleware stack, subagent model, skills/memory model implemented
+> - HITL model with durable interrupts live
+>
+> **Superseded by**: [`architecture.md`](./architecture.md) (current documented architecture).
+>
+> ---
+
 ## Principles
 
 - Keep business workflow state in the application domain, not hidden inside prompts.

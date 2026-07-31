@@ -26,6 +26,7 @@ class TranscriptEventType(str, Enum):
     tasks_update = "tasks_update"
     transition = "transition"
     user_message = "user_message"
+    message = "message"
 
 
 class TranscriptRole(str, Enum):
@@ -68,6 +69,8 @@ def _default_role(event_type: str, speaker: str, explicit_role: str | None) -> s
         return explicit_role
     if event_type == TranscriptEventType.user_message.value:
         return TranscriptRole.user.value
+    if event_type == TranscriptEventType.message.value:
+        return TranscriptRole.subagent.value if speaker else TranscriptRole.system.value
     if event_type in {
         TranscriptEventType.tool_call.value,
         TranscriptEventType.tool_result.value,

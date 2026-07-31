@@ -433,6 +433,7 @@ export type StreamEventType =
   | 'done'
   | 'transition'
   | 'user_message'
+  | 'message'
 
 export interface StreamEvent {
   type: StreamEventType
@@ -458,16 +459,11 @@ export interface StreamEvent {
 }
 
 export async function streamChat(
-  ideaId: string | null,
   text: string,
   onEvent: (event: StreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const url = ideaId
-    ? `${API_BASE}/ideas/${ideaId}/chat/stream`
-    : `${API_BASE}/chat/stream`
-
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, sender: 'user' }),

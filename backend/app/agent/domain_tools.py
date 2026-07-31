@@ -1,7 +1,6 @@
 """First-class domain tools for DeepAgents subagents and runtime graph nodes."""
 
 import json
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -18,68 +17,86 @@ def generate_invention_ideas(
     idea_category: str = "Industrial AI",
     project_name: str = "Siemens Patent Ideator",
 ) -> List[Dict[str, Any]]:
-    """Generate structured invention ideas from user input or Siemens focus domains."""
-    ideas: List[Dict[str, Any]] = []
-    taxonomy = query_prior_art_taxonomy("IND_AI")
-    taxonomy_name = str(taxonomy.get("name") or idea_category or "Industrial AI")
-    taxonomy_keywords = [str(item).strip() for item in taxonomy.get("keywords", []) if str(item).strip()]
-    topic_terms = [term for term in re.split(r"[^a-zA-Z0-9]+", topic_name.strip()) if len(term) > 3]
-    user_terms = [
-        term
-        for term in re.split(r"[^a-zA-Z0-9]+", user_input.strip())
-        if len(term) > 3
+    """Generate structured invention ideas using the DeepAgents research agent.
+
+    Delegates to the ``research-agent`` subagent which reads the knowledge base,
+    discovers signals, and produces structured invention ideas. Raises if the
+    runtime is unavailable — no silent fallback to template ideas.
+    """
+    from .runtime import get_deep_agent_runtime
+
+    runtime = get_deep_agent_runtime()
+
+    prompt_parts = [
+        "You are the Siemens Patent Ideator research agent. Your job is to:",
+        "1. Read the knowledge-base/ directory to find relevant technical documents",
+        "2. Extract signals, patterns, and invention opportunities",
+        "3. Produce up to {max_ideas} structured invention ideas",
+        "",
+        "Each idea must be a JSON object with these keys:",
+        "- title: A clear, descriptive title",
+        "- problem_statement: The technical problem being solved",
+        "- solution_concept: The core inventive concept",
+        "- inventive_step: What makes this novel",
+        "- business_impact: The business value for Siemens",
+        "- source_evidence: List of source document references",
+        "- siemens_domain: The Siemens strategic domain",
+        "- tags: List of relevant keywords",
+        "",
     ]
-    signal_terms = user_terms or topic_terms or taxonomy_keywords or [taxonomy_name]
-
     if user_input.strip():
-        prior_art = search_prior_art(user_input, limit=max_ideas)
-    else:
-        prior_art = search_prior_art(" ".join(signal_terms), limit=max_ideas)
+        prompt_parts.append(f"User direction: {user_input}")
+    if topic_name:
+        prompt_parts.append(f"Focus topic: {topic_name}")
 
-    for index in range(max_ideas):
-        focus_term = signal_terms[index % len(signal_terms)]
-        secondary_term = signal_terms[(index + 1) % len(signal_terms)]
-        title_prefix = focus_term.replace("_", " ").strip().title()
-        if user_input.strip() and index == 0:
-            title_prefix = " ".join(user_input.strip().split()[:8]).strip().title() or title_prefix
+    prompt_parts.append(
+        f"\nReturn a JSON array of exactly {max_ideas} idea objects. "
+        "Base your ideas on actual documents from the knowledge base, "
+        "not on generic templates."
+    )
 
-        evidence: list[str] = []
-        if index < len(prior_art):
-            source = prior_art[index]
-            evidence.extend(
-                item for item in [source.title, source.snippet, source.provenance] if item
-            )
-        else:
-            evidence.extend(taxonomy_keywords[:2])
+    input_payload = {
+        "messages": [{"role": "user", "content": "\n".join(prompt_parts)}],
+        "max_ideas": max_ideas,
+    }
 
-        ideas.append(
-            {
-                "title": f"{title_prefix} {taxonomy_name} Concept {index + 1}",
-                "idea_category": idea_category or taxonomy_name,
-                "project_name": project_name,
-                "problem_statement": (
-                    f"Existing approaches in {taxonomy_name} do not fully address {focus_term.lower()} "
-                    f"when the workflow must also account for {secondary_term.lower()}."
-                ),
-                "solution_concept": (
-                    f"Use {focus_term.lower()} as the primary signal, combine it with {secondary_term.lower()}, "
-                    f"and align the system with the documented taxonomy for {taxonomy_name.lower()}."
-                ),
-                "inventive_step": (
-                    f"Derive a decision pipeline from {', '.join(taxonomy_keywords[:3]) or taxonomy_name} "
-                    f"and adapt it to {focus_term.lower()} operations."
-                ),
-                "business_impact": (
-                    f"Improves {taxonomy_name.lower()} outcomes by reducing manual analysis of {focus_term.lower()} "
-                    f"and making {secondary_term.lower()} workstreams easier to review."
-                ),
-                "source_evidence": evidence,
-                "siemens_domain": taxonomy_name,
-                "tags": [focus_term.lower(), secondary_term.lower(), taxonomy_name.lower()],
-            }
-        )
+    output = runtime.invoke(input_payload)
+    ideas = _parse_ideas_from_output(output, max_ideas)
+    if not ideas:
+        raise RuntimeError(f"Agentic idea generation returned no parseable ideas (runtime output: {type(output).__name__})")
+    return ideas
 
-    return ideas[:max_ideas]
+
+def _parse_ideas_from_output(output: Any, max_ideas: int) -> List[Dict[str, Any]]:
+    """Parse structured ideas from the DeepAgents runtime output."""
+    if output is None:
+        return []
+
+    if isinstance(output, dict):
+        messages = output.get("messages", output.get("output", []))
+        if isinstance(messages, list):
+            for msg in messages:
+                if isinstance(msg, dict):
+                    content = msg.get("content", "")
+                    if isinstance(content, str) and content.strip().startswith("["):
+                        try:
+                            parsed = json.loads(content)
+                            if isinstance(parsed, list):
+                                return parsed[:max_ideas]
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+
+    if isinstance(output, str):
+        output = output.strip()
+        if output.startswith("["):
+            try:
+                parsed = json.loads(output)
+                if isinstance(parsed, list):
+                    return parsed[:max_ideas]
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    return []
 
 
 def query_prior_art_taxonomy(category_code: str = "IND_AI") -> Dict[str, Any]:
@@ -163,3 +180,34 @@ def record_approval_decision(
     idea_data["reviews"] = reviews
     save_idea_yaml(idea_id, "idea.yaml", idea_data)
     return {"idea_id": idea_id, "reviewer": reviewer_role, "decision": decision}
+
+
+def save_research_note(
+    note_id: str,
+    title: str,
+    content: str,
+    source_refs: list[str] | None = None,
+) -> Dict[str, Any]:
+    """Save a research note to the workspace for later reference by other agents.
+
+    Args:
+        note_id: Unique identifier for the note (e.g., 'signal-cluster-1').
+        title: Short title describing the note.
+        content: Full research note content.
+        source_refs: Optional list of source document references.
+    """
+    notes_dir = Path(WORKSPACE_DIR) / "research-notes"
+    notes_dir.mkdir(parents=True, exist_ok=True)
+    note = {
+        "note_id": note_id,
+        "title": title,
+        "content": content,
+        "source_refs": source_refs or [],
+        "created_at": datetime.utcnow().isoformat(),
+        "provenance": f"research:{note_id}",
+    }
+    note_path = notes_dir / f"{note_id}.json"
+    with open(note_path, "w", encoding="utf-8") as f:
+        json.dump(note, f, indent=2)
+    print(f"[Research] Saved note: {title} ({note_id})")
+    return note

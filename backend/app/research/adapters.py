@@ -123,7 +123,62 @@ def search_filing_sources(query: str, limit: int = 5) -> list[ResearchSource]:
     ]
 
 
+def search_processed_knowledge_base(query: str, limit: int = 5) -> list[ResearchSource]:
+    """Search processed knowledge-base documents for relevant signals."""
+    processed_dir = Path(KNOWLEDGE_BASE_DIR) / "processed"
+    if not processed_dir.exists():
+        return []
+
+    results: list[ResearchSource] = []
+    for entry in sorted(processed_dir.iterdir()):
+        if entry.is_dir():
+            for nested in entry.iterdir():
+                if nested.suffix in {".md", ".txt", ".yaml", ".json"}:
+                    try:
+                        text = nested.read_text(encoding="utf-8", errors="ignore")
+                    except Exception:
+                        continue
+                    score = _score_text(query, text)
+                    if score <= 0:
+                        continue
+                    snippet = text[:200].strip().replace("\n", " ")
+                    results.append(
+                        ResearchSource(
+                            source_type="processed-kb",
+                            trust="trusted-local",
+                            title=nested.name,
+                            url="",
+                            snippet=snippet,
+                            provenance=f"kb:processed:{nested.relative_to(KNOWLEDGE_BASE_DIR).as_posix()}",
+                        )
+                    )
+        elif entry.suffix in {".md", ".txt", ".yaml", ".json"}:
+            try:
+                text = entry.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            score = _score_text(query, text)
+            if score > 0:
+                snippet = text[:200].strip().replace("\n", " ")
+                results.append(
+                    ResearchSource(
+                        source_type="processed-kb",
+                        trust="trusted-local",
+                        title=entry.name,
+                        url="",
+                        snippet=snippet,
+                        provenance=f"kb:processed:{entry.relative_to(KNOWLEDGE_BASE_DIR).as_posix()}",
+                    )
+                )
+
+        if len(results) >= limit:
+            break
+
+    return results[:limit]
+
+
 def search_prior_art(query: str, limit: int = 5) -> list[ResearchSource]:
     local = search_local_prior_art(query, limit=limit)
     public = search_public_patents(query, limit=limit)
-    return (public + local)[:limit]
+    kb = search_processed_knowledge_base(query, limit=limit)
+    return (public + kb + local)[:limit]

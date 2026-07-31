@@ -2,7 +2,38 @@
 
 from ..models.idea import CriterionDetail, ScoreBreakdown
 from ..storage.yaml_io import load_idea_yaml
-from ..llm.subagent_executor import execute_llm_scoring
+from ..llm.client import call_llm_json
+from ..llm.execution_support import load_autonomous_context, render_context_summary, stringify_content
+from ..infrastructure.events.stream_bus import emit_sse
+
+
+def _build_scoring_prompt(idea_id: str) -> tuple[str, str]:
+    idea = load_idea_yaml(idea_id, "idea.yaml") or {}
+    context = load_autonomous_context()
+    system_prompt = (
+        "You are a senior Siemens patent analyst. Score invention ideas only from the provided evidence. "
+        "Return concise JSON with numeric scores from 0 to 100 and grounded reasoning."
+    )
+    idea_snapshot = {
+        "idea_id": idea_id,
+        "title": idea.get("title", ""),
+        "problem_statement": idea.get("problem_statement", ""),
+        "solution_concept": idea.get("solution_concept", ""),
+        "siemens_domain": idea.get("siemens_domain", ""),
+        "tags": idea.get("tags", []),
+        "source_evidence": idea.get("source_evidence", []),
+        "artifact_revisions": idea.get("artifact_revisions", {}),
+        "workflow_state": idea.get("workflow_state", ""),
+    }
+    user_prompt = (
+        "Score the idea across all seven criteria below.\n\n"
+        f"Idea:\n{stringify_content(idea_snapshot)}\n\n"
+        f"Supporting context:\n{render_context_summary(context, max_documents=8)}\n\n"
+        "Return JSON with keys: summary and criteria. The criteria object must contain "
+        "novelty, siemens_alignment, technical_feasibility, detectability, business_value, originality, "
+        "and completeness. Each criterion must include score, reasoning, and confidence."
+    )
+    return system_prompt, user_prompt
 
 
 class CriterionEvaluator:
@@ -19,7 +50,15 @@ class CriterionEvaluator:
 
     def evaluate_all_detailed(self) -> tuple[ScoreBreakdown, dict[str, CriterionDetail], str]:
         """Run scoring and preserve criterion reasoning plus the summary."""
-        result = execute_llm_scoring(self.idea_id)
+        system_prompt, user_prompt = _build_scoring_prompt(self.idea_id)
+        result = call_llm_json(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.1,
+            max_tokens=1800,
+        )
+        if not isinstance(result, dict):
+            raise ValueError("Scoring model must return a JSON object.")
 
         criteria = result.get("criteria", result) if isinstance(result, dict) else result
         breakdown = ScoreBreakdown(
@@ -49,6 +88,22 @@ class CriterionEvaluator:
             "completeness": self._get_detail(criteria, "completeness", breakdown.completeness),
         }
         summary = self._extract_summary(result, criteria)
+
+        # Emit scoring reasoning as SSE event so connected UI clients see it
+        reasoning_lines = []
+        for name, detail in detail_map.items():
+            reasoning_lines.append(f"{name.replace('_', ' ').title()}: {detail.score}/100 — {detail.reasoning}")
+        try:
+            emit_sse("agent.progress", {
+                "idea_id": self.idea_id,
+                "agent": "scoring-engine",
+                "message": f"Scored {self.idea_id}: {summary[:120]}",
+                "state": "scored",
+                "details": "\n".join(reasoning_lines),
+            })
+        except Exception:
+            pass
+
         return breakdown, detail_map, summary
 
     def _get_score(self, data: dict, key: str) -> float:

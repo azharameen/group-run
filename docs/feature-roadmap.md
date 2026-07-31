@@ -1,5 +1,19 @@
 # Feature Roadmap
 
+> **⚠️ ARCHIVED — 2026-07-31**
+>
+> This roadmap was the planning document for Phases 0–7. All features listed are now implemented:
+> - Agent runtime: DeepAgents with middleware, subagents, permissions
+> - Governance: HITL interrupts for manager/IP/counsel; approval endpoints
+> - Artifact quality: versioning, diffs, evidence traceability, duplicate detection
+> - Frontend: subagent cards, todo panel, tool-call inspection, approval inbox, diff views
+> - Research: Google Patents adapter, source provenance, multimodal ingestion
+> - Operations: LangSmith tracing, RBAC, review analytics
+>
+> **Superseded by**: [`features.md`](./features.md) (complete feature tree), [`tasks.md`](./tasks.md) (current status).
+>
+> ---
+
 ## Current Features
 
 - idea creation from manual signal text

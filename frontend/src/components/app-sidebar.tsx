@@ -2,7 +2,7 @@ import * as React from "react"
 import {
     BarChart3,
     Database,
-    Lightbulb,
+    Bot,
     Shield,
 } from "lucide-react"
 
@@ -51,15 +51,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="Patent Ideator">
+            <SidebarMenuButton size="lg" asChild tooltip="Companion">
               <a href="/">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
-                  <Lightbulb className="size-5" />
+                  <Bot className="size-5" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-semibold">Patent Ideator</span>
+                  <span className="truncate font-semibold">Companion</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    Siemens Patent Engine
+                    Siemens Companion Engine
                   </span>
                 </div>
               </a>

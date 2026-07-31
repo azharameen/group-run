@@ -14,8 +14,16 @@ scheduler: Optional[AsyncIOScheduler] = None
 
 
 def start_scheduler():
-    """Start the background scheduler for autonomous workflow cycles."""
+    """Start the background scheduler for autonomous workflow cycles.
+
+    Only starts when ``WORKFLOW_SCHEDULER_ENABLED=true`` is set.
+    The supervisor agent is the preferred scheduling mechanism;
+    APScheduler is retained as an opt-in fallback.
+    """
     global scheduler
+
+    if not settings.workflow_scheduler_enabled:
+        return
 
     if scheduler and scheduler.running:
         return

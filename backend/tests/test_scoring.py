@@ -47,7 +47,7 @@ def mock_llm_scoring(monkeypatch):
             "completeness": {"score": 70, "reasoning": "Sufficient supporting context.", "confidence": 0.8},
         },
     }
-    monkeypatch.setattr("app.scoring.criteria.execute_llm_scoring", lambda idea_id: payload)
+    monkeypatch.setattr("app.scoring.criteria.call_llm_json", lambda **kwargs: payload)
 
 
 class TestComputeComposite:
@@ -78,46 +78,16 @@ class TestComputeComposite:
 
 
 class TestCriterionEvaluator:
-    def test_llm_scoring_returns_valid_scores(self, seeded_idea, monkeypatch):
+    def test_llm_scoring_returns_valid_scores(self, seeded_idea):
         """LLM scoring should return a full criterion payload."""
-        monkeypatch.setattr(
-            "app.scoring.criteria.execute_llm_scoring",
-            lambda idea_id: {
-                "summary": "Evidence-backed scoring completed.",
-                "criteria": {
-                    "novelty": {"score": 82, "reasoning": "Distinct control loop.", "confidence": 0.91},
-                    "siemens_alignment": {"score": 78, "reasoning": "Aligned with industrial edge.", "confidence": 0.88},
-                    "technical_feasibility": {"score": 74, "reasoning": "Implementable with current stack.", "confidence": 0.84},
-                    "detectability": {"score": 68, "reasoning": "Observable through telemetry.", "confidence": 0.79},
-                    "business_value": {"score": 80, "reasoning": "Clear operational savings.", "confidence": 0.86},
-                    "originality": {"score": 76, "reasoning": "Combines known parts in a new way.", "confidence": 0.83},
-                    "completeness": {"score": 70, "reasoning": "Sufficient supporting context.", "confidence": 0.8},
-                },
-            },
-        )
         evaluator = CriterionEvaluator(seeded_idea)
         breakdown = evaluator.evaluate_all()
         assert isinstance(breakdown, ScoreBreakdown)
         assert 0 <= breakdown.novelty <= 100
         assert 0 <= breakdown.siemens_alignment <= 100
 
-    def test_detailed_llm_scoring(self, seeded_idea, monkeypatch):
+    def test_detailed_llm_scoring(self, seeded_idea):
         """LLM scoring should also produce criteria_detail and summary."""
-        monkeypatch.setattr(
-            "app.scoring.criteria.execute_llm_scoring",
-            lambda idea_id: {
-                "summary": "Evidence-backed scoring completed.",
-                "criteria": {
-                    "novelty": {"score": 82, "reasoning": "Distinct control loop.", "confidence": 0.91},
-                    "siemens_alignment": {"score": 78, "reasoning": "Aligned with industrial edge.", "confidence": 0.88},
-                    "technical_feasibility": {"score": 74, "reasoning": "Implementable with current stack.", "confidence": 0.84},
-                    "detectability": {"score": 68, "reasoning": "Observable through telemetry.", "confidence": 0.79},
-                    "business_value": {"score": 80, "reasoning": "Clear operational savings.", "confidence": 0.86},
-                    "originality": {"score": 76, "reasoning": "Combines known parts in a new way.", "confidence": 0.83},
-                    "completeness": {"score": 70, "reasoning": "Sufficient supporting context.", "confidence": 0.8},
-                },
-            },
-        )
         evaluator = CriterionEvaluator(seeded_idea)
         breakdown, details, summary = evaluator.evaluate_all_detailed()
         assert isinstance(breakdown, ScoreBreakdown)

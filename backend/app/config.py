@@ -20,9 +20,11 @@ class Settings(BaseSettings):
     backend_port: int = 8000
 
     workflow_interval_minutes: int = 15
+    workflow_scheduler_enabled: bool = False
     max_retries_per_state: int = 3
     composite_threshold: int = 70
     gate_threshold_percent: int = 50
+    mcp_servers: str = ""
 
     # Compute .env path relative to this file (backend/app/config.py -> repo root)
     model_config = SettingsConfigDict(
@@ -41,6 +43,19 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ── Propagate credentials to OS environment ──────────────────────────────
+# LangChain's init_chat_model (called internally by create_deep_agent and
+# other LangChain constructors) reads credentials from standard environment
+# variables (OPENAI_API_KEY, OPENAI_API_BASE), NOT from pydantic-settings.
+# We must propagate them here so any downstream code that creates a model
+# instance can authenticate.
+if settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
+    os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+if settings.openai_api_base and not os.environ.get("OPENAI_API_BASE"):
+    os.environ["OPENAI_API_BASE"] = settings.openai_api_base
+if settings.openai_model_name and not os.environ.get("OPENAI_MODEL_NAME"):
+    os.environ["OPENAI_MODEL_NAME"] = settings.openai_model_name
 
 # ROOT_DIR must point at the directory that directly contains workspace/,
 # config/, instructions/, and knowledge-base/.

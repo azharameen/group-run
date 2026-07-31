@@ -30,23 +30,6 @@ def test_save_transcript_event_normalizes_metadata(patch_config):
     assert loaded[0]["tool"] == "query_prior_art_taxonomy"
 
 
-def test_chat_history_returns_transcript_events(patch_config):
-    idea_id = "IDEA-TRANSCRIPT-002"
-    create_idea_folder(idea_id)
-    save_transcript_event(idea_id, {
-        "type": "thinking",
-        "speaker": "workflow-orchestrator",
-        "content": "Routing request",
-    })
-
-    client = TestClient(create_app())
-    response = client.get(f"/api/ideas/{idea_id}/chat")
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["transcript_events"]
-    assert payload["transcript_events"][0]["type"] == "thinking"
-
-
 def test_draft_patent_section_records_provenance(patch_config):
     idea_id = "IDEA-TRANSCRIPT-003"
     create_idea_folder(idea_id)

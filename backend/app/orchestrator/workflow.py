@@ -11,6 +11,7 @@ import yaml
 
 from ..config import CONFIG_DIR
 from ..storage.yaml_io import load_idea_registry, load_idea_yaml, save_idea_yaml
+from ..agent.runtime import get_deep_agent_runtime
 from .workflow_tools import (
     get_machine,
     create_idea,
@@ -309,9 +310,9 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3,
       5. Generate final submission-ready packet
       6. Return summary of all ideas and their statuses
     """
+    from ..agent.runner import execute_deep_agent_workflow
     from ..llm.subagent_executor import (
         execute_seed_ideas_from_input,
-        run_subagent,
     )
 
     start_ts = datetime.utcnow().isoformat()
@@ -389,18 +390,18 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3,
 
     ideas = created_ideas
 
-    # ── Step 2: Process each idea through ALL states ──
+    # ── Step 2: Process each idea through the supervisor agent ──
     for idea_entry in ideas[:max_ideas]:
         idea_id = idea_entry["idea_id"]
         title = idea_entry.get("title", idea_id)
         state_log = []
         pipeline_ok = True
 
-        _set_active_processing(idea_id, True, agent="full-pipeline", state="raw_signal_collected", message=f"Starting pipeline for {title}")
+        _set_active_processing(idea_id, True, agent="supervisor-agent", state="raw_signal_collected", message=f"Starting pipeline for {title}")
 
         _emit("agent.progress", {
             "idea_id": idea_id,
-            "agent": "full-pipeline",
+            "agent": "supervisor-agent",
             "message": f"Starting pipeline for: {title}",
         })
 
@@ -412,42 +413,43 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3,
             "status": "ok",
         })
 
-        # ── Step 2a: Run each executor in order ──
-        for state_name, func_name, archive_file in _STATE_EXECUTORS:
-            if is_idea_paused(idea_id):
-                state_log.append({
-                    "state": state_name,
-                    "action": "skipped",
-                    "status": "paused",
-                })
-                pipeline_ok = False
-                break
+        # ── Step 2a: Delegate to supervisor agent ──
+        # The supervisor agent (defined in subagents/definitions.py) coordinates
+        # the full pipeline: it assesses the idea's current state, delegates to
+        # specialist subagents (research, discovery, drafting, review, etc.) via
+        # the `task` tool, reviews their output, and advances the workflow.
+        # This replaces the previous procedural 13-state loop.
+        try:
+            _emit("agent.progress", {
+                "idea_id": idea_id,
+                "agent": "supervisor-agent",
+                "message": f"Delegating pipeline to supervisor agent for: {title}",
+            })
 
-            try:
-                _emit("agent.progress", {
-                    "idea_id": idea_id,
-                    "agent": "full-pipeline",
-                    "message": f"Executing state: {state_name}",
-                })
+            _set_active_processing(
+                idea_id,
+                True,
+                agent="supervisor-agent",
+                state="pipeline",
+                message="Supervisor agent coordinating pipeline",
+            )
 
-                _set_active_processing(
-                    idea_id,
-                    True,
-                    agent=state_name,
-                    state=state_name,
-                    message=f"Executing {state_name}",
-                )
+            # Invoke the supervisor agent via the DeepAgents runtime once.
+            # The agent graph's coordinator sees the supervisor subagent and
+            # uses the `task` tool to delegate work through all pipeline phases.
+            result = execute_deep_agent_workflow(idea_id, "pipeline_supervisor")
+            state_log.append({
+                "state": "pipeline",
+                "action": "supervisor_invoked",
+                "status": "ok",
+                "result_keys": list(result.keys()) if isinstance(result, dict) else [],
+            })
 
-                # Execute the LLM subagent for this state
-                result = run_subagent(state_name, idea_id)
-                state_log.append({
-                    "state": state_name,
-                    "action": "executed",
-                    "status": "ok",
-                    "result_keys": list(result.keys()) if isinstance(result, dict) else [],
-                })
-
-                # Advance the FSM to this state
+            # Advance through all pipeline states (supervisor did the work,
+            # FSM catches up)
+            for state_name, func_name, archive_file in _STATE_EXECUTORS:
+                if is_idea_paused(idea_id):
+                    break
                 adv = advance_workflow(idea_id, state_name)
                 if adv.get("success"):
                     _emit("idea.transition", {
@@ -455,8 +457,6 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3,
                         "from": adv.get("from_state", ""),
                         "to": state_name,
                     })
-
-                    # Score after transition
                     score_record = score_idea(idea_id, f"pipeline-{state_name}")
                     _emit("idea.scored", {
                         "idea_id": idea_id,
@@ -465,18 +465,27 @@ def run_full_pipeline(user_input: str, max_ideas: int = 3,
                         "breakdown": score_record.get("breakdown", {}),
                         "strength_rating": score_record.get("strength_rating", ""),
                     })
+                    state_log.append({
+                        "state": state_name,
+                        "action": "advanced",
+                        "status": "ok",
+                    })
                 else:
-                    # Gate blocked — log but continue
-                    state_log[-1]["gate_blocked"] = adv.get("error", "gate validation failed")
+                    state_log.append({
+                        "state": state_name,
+                        "action": "blocked",
+                        "status": "gate_blocked",
+                        "error": adv.get("error", "gate validation failed"),
+                    })
                     pipeline_ok = False
 
-            except Exception as exc:
-                state_log.append({
-                    "state": state_name,
-                    "action": "executed",
-                    "status": "error",
-                    "error": str(exc),
-                })
+        except Exception as exc:
+            state_log.append({
+                "state": "pipeline",
+                "action": "supervisor_invoked",
+                "status": "error",
+                "error": str(exc),
+            })
 
         # ── Step 2b: Final score and submission packet ──
         if is_idea_paused(idea_id):

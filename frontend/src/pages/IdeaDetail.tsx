@@ -19,7 +19,6 @@ import {
 	Users,
 	Scale,
 	Globe,
-	Layers,
 	MessageSquare,
 	Folder,
 	Trash2,
@@ -27,6 +26,7 @@ import {
 	Play,
 	SendHorizonal,
 	Bot,
+	MoreVertical,
 } from "lucide-react";
 import {
 	fetchIdeaDetail,
@@ -47,7 +47,6 @@ import {
 } from "../api/client";
 
 import ScoreRadar from "../components/ScoreRadar";
-import WorkflowTimeline from "../components/WorkflowTimeline";
 import SiemensGateStatus from "../components/SiemensGateStatus";
 import { IdeaHistoryTimeline } from "../components/IdeaHistoryTimeline";
 import { IdeaFilesystem } from "../components/IdeaFilesystem";
@@ -58,8 +57,6 @@ import { ToolCallTimeline } from "../components/deepagents/ToolCallTimeline";
 import { ArtifactDiffPanel } from "../components/deepagents/ArtifactDiffPanel";
 import { fetchPendingInterrupts } from "../api/deepagents";
 import { InterruptItem, type SubagentStatus } from "../types/deepagents";
-
-import { AgentHeaderStack } from "../components/agentic/AgentHeaderStack";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +69,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+	DropdownMenu,
+	DropdownMenuTrigger,
+	DropdownMenuContent,
+	DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 const STRENGTH_VARIANTS: Record<
 	string,
@@ -363,82 +366,94 @@ export default function IdeaDetail({
 
 	return (
 		<div className="space-y-6">
-			{/* Top Team Header Stack */}
-			<AgentHeaderStack
-				activeAgent={idea?.active_agent || "Discovery & Drafting Subagent Mesh"}
-			/>
-
 			{/* Header Info & Primary Actions */}
-			<div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 rounded-xl border bg-card text-card-foreground">
-				<div className="space-y-1.5 flex-1">
-					<div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-						<span className="font-mono text-primary font-semibold">
-							{ideaId}
-						</span>
-						<Separator orientation="vertical" className="h-3" />
-						<Badge variant="outline" className="capitalize text-[11px]">
-							{idea?.phase || stateData?.phase || "discovery"}
-						</Badge>
-						<Separator orientation="vertical" className="h-3" />
-						<span className="font-medium text-foreground capitalize">
-							{currentState.replace(/_/g, " ")}
-						</span>
-					</div>
-					<h1 className="text-xl font-bold tracking-tight text-foreground leading-snug">
+			<div className="relative p-6 rounded-xl border bg-card text-card-foreground shadow-sm">
+				<div className="flex flex-col gap-4">
+					{/* Title on top */}
+					<h1 className="text-2xl font-bold tracking-tight text-foreground leading-tight pr-10">
 						{idea?.title || ideaId}
 					</h1>
+
+					{/* Metadata details underneath */}
+					<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+						<div className="flex items-center gap-1.5">
+							<span className="font-semibold text-foreground">ID:</span>
+							<span className="font-mono text-primary font-medium">{ideaId}</span>
+						</div>
+						<Separator orientation="vertical" className="h-3" />
+						<div className="flex items-center gap-1.5">
+							<span className="font-semibold text-foreground">Phase:</span>
+							<Badge variant="outline" className="capitalize text-[11px] px-2 py-0">
+								{idea?.phase || stateData?.phase || "discovery"}
+							</Badge>
+						</div>
+						<Separator orientation="vertical" className="h-3" />
+						<div className="flex items-center gap-1.5">
+							<span className="font-semibold text-foreground">Status:</span>
+							<span className="font-medium text-foreground capitalize bg-muted/60 px-2 py-0.5 rounded">
+								{currentState.replace(/_/g, " ")}
+							</span>
+						</div>
+					</div>
 				</div>
 
-				<div className="flex items-center gap-2 shrink-0">
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={pausedProcessing ? handleResume : handlePause}
-						disabled={pausing || resuming}
-						className="gap-1.5 h-8 text-xs"
-					>
-						{pausedProcessing ? (
-							<Play className="w-3.5 h-3.5" />
-						) : (
-							<Pause className="w-3.5 h-3.5" />
-						)}
-						{pausedProcessing ? "Resume" : "Pause"}
-					</Button>
-					<Button
-						variant="destructive"
-						size="sm"
-						onClick={handleDelete}
-						disabled={deleting}
-						className="gap-1.5 h-8 text-xs"
-					>
-						<Trash2 className="w-3.5 h-3.5" />
-						Delete
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleScore}
-						disabled={scoring}
-						className="gap-1.5 h-8 text-xs"
-					>
-						<RefreshCw
-							className={`w-3.5 h-3.5 ${scoring ? "animate-spin" : ""}`}
-						/>
-						Re-Score
-					</Button>
-					<Button
-						size="sm"
-						onClick={() => handleAdvance()}
-						disabled={advancing}
-						className="gap-1.5 h-8 text-xs"
-					>
-						{advancing ? (
-							<Loader2 className="w-3.5 h-3.5 animate-spin" />
-						) : (
-							<Send className="w-3.5 h-3.5" />
-						)}
-						Advance Stage
-					</Button>
+				{/* 3 vertical ellipsis dropdown options on the top right corner */}
+				<div className="absolute top-4 right-4">
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+								<MoreVertical className="h-4 w-4" />
+								<span className="sr-only">More options</span>
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-48">
+							<DropdownMenuItem
+								onClick={pausedProcessing ? handleResume : handlePause}
+								disabled={pausing || resuming}
+								className="gap-2 cursor-pointer"
+							>
+								{pausedProcessing ? (
+									<>
+										<Play className="w-4 h-4 text-emerald-500" />
+										<span>Resume Processing</span>
+									</>
+								) : (
+									<>
+										<Pause className="w-4 h-4 text-amber-500" />
+										<span>Pause Processing</span>
+									</>
+								)}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={handleScore}
+								disabled={scoring}
+								className="gap-2 cursor-pointer"
+							>
+								<RefreshCw className={`w-4 h-4 text-blue-500 ${scoring ? "animate-spin" : ""}`} />
+								<span>Re-Score Idea</span>
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => handleAdvance()}
+								disabled={advancing}
+								className="gap-2 cursor-pointer"
+							>
+								{advancing ? (
+									<Loader2 className="w-4 h-4 animate-spin text-primary" />
+								) : (
+									<Send className="w-4 h-4 text-indigo-500" />
+								)}
+								<span>Advance Cycle</span>
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={handleDelete}
+								disabled={deleting}
+								className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+							>
+								<Trash2 className="w-4 h-4" />
+								<span>Delete Idea</span>
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</div>
 
@@ -467,13 +482,6 @@ export default function IdeaDetail({
 									{files.length}
 								</Badge>
 							)}
-						</TabsTrigger>
-						<TabsTrigger
-							value="workflow"
-							className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5"
-						>
-							<Layers className="w-3.5 h-3.5 text-indigo-500" />
-							Workflow State
 						</TabsTrigger>
 						<TabsTrigger
 							value="history"
@@ -661,14 +669,6 @@ export default function IdeaDetail({
 								</Card>
 							</div>
 						</div>
-					</TabsContent>
-
-					{/* ── 20 States Workflow Tab ── */}
-					<TabsContent value="workflow" className="pt-4">
-						<WorkflowTimeline
-							currentState={currentState}
-							history={stateData?.history || []}
-						/>
 					</TabsContent>
 
 					{/* ── Timeline Activity & Agent Conversations Tab ── */}

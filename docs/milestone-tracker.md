@@ -1,5 +1,13 @@
 # Milestone Tracker
 
+> **⚠️ ARCHIVED — 2026-07-31**
+>
+> This tracker served as a running log through Phases 0–7. All milestones are completed.
+>
+> **Superseded by**: [`tasks.md`](./tasks.md) (structured task hierarchy with status per item).
+>
+> ---
+
 Update this file whenever work is completed.
 
 ## Milestone Summary
@@ -59,6 +67,30 @@ Update this file whenever work is completed.
 - [x] Revalidated the backend and frontend after the final adapter change.
 - [x] Renamed generic backend modules to descriptive names (`tools.py` -> `domain_tools.py` / `workflow_tools.py`, `ideas.py` -> `idea_workspace.py`).
 - [x] Consolidated dependency maintenance so the repo root `requirements.txt` now wraps `backend/requirements.txt`.
+
+### 2026-07-30
+
+- [x] Phase 10 M10 (Streaming Adapter) implemented: v3 streaming protocol with structured subagent/message/tool_call projections
+- [x] Added `message` event type to transcript model — agent natural language output as first-class event
+- [x] Rewrote `execute_deep_agent_workflow_streaming` to use `astream_events(version="v3")`
+- [x] Queue-based concurrent consumption via `asyncio.Queue` + `asyncio.gather`
+- [x] Graceful v2 fallback if v3 streaming is unavailable
+- [x] Updated frontend `StreamEventType` with `message` type
+- [x] Updated chat UI to render agent messages as chat bubbles with agent name header (not badges)
+- [x] M11: Scoring moved into criteria.py — removed `execute_llm_scoring()` from `subagent_executor.py`
+- [x] M11: Scoring reasoning emitted as SSE `agent.progress` events
+- [x] M12: `langchain-mcp-adapters` installed, `MCP_SERVERS` env var config in runtime
+- [x] M13: `research-agent` subagent defined with KB-scan instructions + `save_research_note` tool
+- [x] M14: `supervisor-agent` subagent defined with full pipeline coordination instructions
+- [x] M14.2: Procedural 13-state loop in `run_full_pipeline()` replaced with single supervisor invocation
+- [x] M15: APScheduler disabled by default (`WORKFLOW_SCHEDULER_ENABLED=false`)
+- [x] M16: Consecutive same-agent messages grouped into single chat bubble in UI
+- [x] All 43 backend tests pass; frontend build succeeds
+- [x] M13.3: Template `generate_invention_ideas()` replaced with agentic research agent invocation
+- [x] M14.2: Procedural 13-state loop replaced with single supervisor `execute_deep_agent_workflow()` call
+- [x] M16.2: Search bar added to chat sidebar — live filtering across all transcript messages
+- [x] P9.3: Added `search_processed_knowledge_base()` research source — searches processed KB docs
+- [x] All deferred items completed — no remaining PENDING tasks
 
 ### Current reality
 

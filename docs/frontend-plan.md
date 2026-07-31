@@ -1,5 +1,16 @@
 # Frontend Plan
 
+> **⚠️ ARCHIVED — 2026-07-31**
+>
+> All frontend phases (A, B, C) are implemented:
+> - Phase A: SSE contract with typed wrapper, no regressions
+> - Phase B: DeepAgents event adapter, hook for stream state, new widgets
+> - Phase C: Interrupt approval flow, subagent/todo views, artifact diff/review packet views
+>
+> **Superseded by**: [`architecture.md`](./architecture.md) (current structure), [`ui-design.md`](./ui-design.md) (component design), [`features.md`](./features.md) (feature inventory).
+>
+> ---
+
 ## Current State
 
 The frontend already uses the correct UI foundation for the long-term plan:

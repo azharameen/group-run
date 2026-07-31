@@ -1,28 +1,51 @@
-# DeepAgents Migration Docs
+# Siemens Patent Ideator — Documentation
 
-This folder tracks the backend and frontend migration from the current custom workflow system to a real LangGraph + DeepAgents architecture.
+> **An autonomous, multi-agent patent idea generation and validation system powered by LangChain DeepAgents runtime, FastAPI backend, and shadcn/ui frontend.**
 
-## Docs Index
+## Documentation Index
 
-- `current-state-audit.md`: findings from the current repo audit
-- `target-architecture.md`: target backend and frontend architecture
-- `feature-roadmap.md`: current, next, and later product capabilities
-- `phased-plan.md`: phase-by-phase implementation plan with checklists
-- `milestone-tracker.md`: live progress tracker for completed and pending work
-- `frontend-plan.md`: frontend-specific migration notes for shadcn/radix and streaming
+| Document | Purpose |
+| ---------- | --------- |
+| [`architecture.md`](./architecture.md) | System architecture, component design, data flow, and deployment topology |
+| [`ui-design.md`](./ui-design.md) | Frontend architecture, component hierarchy, shadcn/ui usage, and design system |
+| [`prd.md`](./prd.md) | Product Requirements Document — goals, scope, user stories, acceptance criteria |
+| [`product-context.md`](./product-context.md) | Business context, problem statement, user personas, and strategic alignment |
+| [`features.md`](./features.md) | Complete feature tree with nested capabilities, linkages, and implementation status |
+| [`coding-guidelines.md`](./coding-guidelines.md) | Coding standards, best practices, and conventions for all layers |
+| [`code-review-guidelines.md`](./code-review-guidelines.md) | Code review checklist, what to reject, and review process |
+| [`architecture-decisions.md`](./architecture-decisions.md) | Architectural Decision Records (ADR) — context, decision, consequences |
+| [`tasks.md`](./tasks.md) | Deep hierarchical task planning (3–5 levels) with implementation tracking |
+
+## Quick Links
+
+| Resource | Location |
+| ---------- | ---------- |
+| Backend source | `backend/app/` |
+| Frontend source | `frontend/src/` |
+| Agent skills | `skills/` |
+| Agent instructions | `instructions/` |
+| Configuration | `config/` |
+| Knowledge base | `knowledge-base/` |
+| Workspace (ideas) | `workspace/` |
+| Tests | `backend/tests/` |
 
 ## Current Status
 
-- Backend audit complete
-- Target architecture documented
-- Initial DeepAgents backend scaffold added without changing runtime behavior
-- Frontend audit complete: shadcn/ui and Radix UI are already in place
-- DeepAgents package research completed: runtime primitives, transcript streaming, HITL blocking, scoring, and research adapters are now wired; a cleanup pass also renamed the generic backend modules and consolidated the dependency entrypoint
+- **Runtime**: DeepAgents `create_deep_agent` with middleware stack (Filesystem, Memory, Skills, SubAgent, HITL)
+- **Backend**: FastAPI with REST + SSE streaming, 18-state workflow machine, 7-criterion scoring engine
+- **Frontend**: React + Vite + TypeScript + shadcn/ui + Radix UI + Tailwind CSS
+- **Persistence**: YAML/Markdown filesystem (workspace/ideas/)
+- **Observability**: LangSmith tracing configured
+- **Tests**: 43 passing tests (pytest)
 
-## Rules For Ongoing Work
+## Agent Instructions for Documentation
 
-- Update `milestone-tracker.md` whenever a task or milestone is completed
-- Prefer non-breaking phases over big-bang rewrites
-- Keep backend and frontend contracts aligned before switching runtime behavior
-- Do not enable sandbox execution in the first migration phases
-- Never silently convert failed agentic output into fabricated success output
+When planning or implementing features:
+
+1. **Read `tasks.md` first** — understand the current task hierarchy and what's implemented vs pending
+2. **Read `features.md`** — understand feature linkages and dependencies
+3. **Read `architecture.md`** — understand system boundaries and contracts
+4. **Read `coding-guidelines.md`** — follow established conventions
+5. **Update `tasks.md`** — mark items as `[IMPLEMENTED]` or `[COMPLETED]` after verification
+6. **Update `features.md`** — update implementation status after feature completion
+7. **Never fabricate completion** — mark only genuinely verified work as implemented

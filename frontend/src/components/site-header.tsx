@@ -1,6 +1,5 @@
-import * as React from "react";
 import { useLocation, Link } from "react-router-dom";
-import { MessageSquare } from "lucide-react";
+import { BotMessageSquare } from "lucide-react";
 
 import {
 	Breadcrumb,
@@ -85,7 +84,7 @@ export function SiteHeader({
 						title="Toggle Agent Team Chat Sidebar"
 						className="h-8 w-8 rounded-lg"
 					>
-						<MessageSquare className="h-4 w-4" />
+						<BotMessageSquare className="h-4 w-4" />
 						<span className="sr-only">Toggle Agent Chat Sidebar</span>
 					</Button>
 				)}

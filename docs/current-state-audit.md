@@ -1,5 +1,18 @@
 # Current State Audit
 
+> **⚠️ ARCHIVED — 2026-07-31**
+>
+> This audit was the initial assessment that drove Phases 0–7. All findings have been resolved:
+> - Backend files split, routes modularized (Phase 1)
+> - DeepAgents runtime implemented with event streaming (Phase 2)
+> - Skills, memory, HITL, transcript model all implemented (Phases 3–5)
+> - Artifact quality, advanced capabilities completed (Phases 6–7)
+> - Frontend DeepAgents integration complete (Phase 5)
+>
+> **Superseded by**: [`tasks.md`](./tasks.md) (current status), [`architecture.md`](./architecture.md) (current design), [`features.md`](./features.md) (feature inventory).
+>
+> ---
+
 ## Summary
 
 This repository now primarily uses real agent plumbing:

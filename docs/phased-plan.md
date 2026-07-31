@@ -1,5 +1,13 @@
 # Phased Plan
 
+> **⚠️ ARCHIVED — 2026-07-31**
+>
+> This plan defined the execution order for Phases 0–7. All phases and checklists are completed. Phase 0–7 deliverables are live.
+>
+> **Superseded by**: [`tasks.md`](./tasks.md) (current task hierarchy), [`architecture.md`](./architecture.md) (current design).
+>
+> ---
+
 ## Recommended execution order
 
 1. **Phase 2** — establish the real DeepAgents runtime, event schema, and transcript model first.

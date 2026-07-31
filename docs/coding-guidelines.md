@@ -1,0 +1,278 @@
+# Coding Guidelines
+
+> **Last updated: 2026-07-29**
+
+## 1. General Principles
+
+### 1.1 Core Rules
+
+| Rule | Description |
+| ------ | ------------- |
+| **Single Responsibility** | Each file has one job. Route files < 150 lines, services < 200 lines, agent runtime < 200 lines. |
+| **Explicit Over Implicit** | No silent fallback to fabricated output. Every failure is an explicit error/retry state. |
+| **Provenance Everywhere** | Every artifact, event, and decision carries provenance metadata. |
+| **Test Coverage** | All new features must have tests. Run `pytest backend/tests` before committing. |
+| **No Sandbox Execution** | Shell execution and code runners are explicitly deferred. |
+
+### 1.2 File Size Targets
+
+| Layer | Max Lines |
+| ------- | ----------- |
+| Route files | 150 |
+| Services and repositories | 200 |
+| Agent runtime files | 200 |
+| Workflow/state definition files | 250 |
+| Prompt and instruction content | Move to skills/ directory |
+
+## 2. Backend Guidelines
+
+### 2.1 Python Style
+
+- Use Python 3.13+ features (type hints, `|` union syntax, `match` statements)
+- Use `pydantic` v2 for all data models
+- Use `pydantic-settings` for configuration
+- Use `typing` module for type annotations
+- Follow PEP 8 with 100-character line limit
+
+### 2.2 Import Order
+
+```python
+# 1. Standard library
+import os
+from datetime import datetime
+from pathlib import Path
+
+# 2. Third-party
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+# 3. Application
+from ..config import settings
+from ..storage.yaml_io import load_idea_yaml
+```
+
+### 2.3 Module Structure
+
+```
+module/
+├── __init__.py          # Re-exports
+├── main_logic.py        # Core logic
+├── helpers.py           # Helper functions
+└── types.py             # Type definitions
+```
+
+### 2.4 API Route Patterns
+
+```python
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/api", tags=["example"])
+
+class RequestModel(BaseModel):
+    field: str
+
+class ResponseModel(BaseModel):
+    success: bool
+    data: dict
+
+@router.post("/endpoint")
+async def handle_endpoint(req: RequestModel) -> ResponseModel:
+    try:
+        result = await do_work(req.field)
+        return ResponseModel(success=True, data=result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+### 2.5 Credential Management
+
+> **⚠️ Critical**: LangChain's `init_chat_model()` (called internally by `create_deep_agent`) reads credentials from standard OS environment variables (`OPENAI_API_KEY`, `OPENAI_API_BASE`), NOT from pydantic-settings. The `config.py` module automatically propagates credentials to `os.environ` at import time. If you add new credential fields, ensure they are propagated to `os.environ` in `config.py`.
+
+```python
+# config.py pattern for credential propagation
+if settings.some_api_key and not os.environ.get("SOME_API_KEY"):
+    os.environ["SOME_API_KEY"] = settings.some_api_key
+```
+
+### 2.6 Error Handling
+
+```python
+# Good: explicit error states
+try:
+    result = await agentic_step()
+except AgenticFailure as e:
+    return {"status": "failed", "reason": str(e), "retry_allowed": True}
+
+# Bad: silent fallback
+try:
+    result = await agentic_step()
+except Exception:
+    result = "Fabricated success"  # NEVER do this
+```
+
+### 2.7 Provenance Metadata
+
+Every generated artifact must carry:
+
+```python
+provenance = f"artifact:{idea_id}:{section_name}"
+trust = "generated"  # or "trusted", "verified-tool-call", "fallback"
+evidence_refs = [...]  # source evidence references
+```
+
+## 3. Frontend Guidelines
+
+### 3.1 TypeScript/React Style
+
+- Use TypeScript strict mode
+- Use functional components with hooks
+- Use `shadcn/ui` components from `@/components/ui/`
+- Use Radix UI primitives for complex interactions
+- Use Tailwind CSS for styling
+- Follow the existing component patterns
+
+### 3.2 Component Structure
+
+```typescript
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+interface Props {
+  ideaId: string
+  onUpdate?: () => void
+}
+
+export function MyComponent({ ideaId, onUpdate }: Props) {
+  const [loading, setLoading] = useState(false)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Component Title</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Content */}
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+### 3.3 API Client Usage
+
+```typescript
+// Use the centralized API client
+import { fetchIdeas, createIdea } from '@/api/client'
+
+// For streaming
+import { useDeepAgentStream } from '@/hooks/useDeepAgentStream'
+```
+
+### 3.4 SSE Streaming
+
+```typescript
+const { events, isConnected } = useDeepAgentStream(ideaId, {
+  onEvent: (event) => {
+    // Handle runtime events
+  },
+  onError: (error) => {
+    // Handle errors
+  },
+})
+```
+
+## 4. Testing Guidelines
+
+### 4.1 Test Structure
+
+```python
+"""Tests for the module."""
+
+import pytest
+
+class TestFeature:
+    def test_happy_path(self):
+        """Should succeed when conditions are met."""
+        ...
+
+    def test_error_case(self):
+        """Should fail gracefully when conditions are not met."""
+        ...
+```
+
+### 4.2 Test Coverage Requirements
+
+- All API endpoints must have integration tests
+- All state machine transitions must have unit tests
+- All scoring criteria must have validation tests
+- All HITL flows must have end-to-end tests
+
+### 4.3 Running Tests
+
+```bash
+# Run all tests
+pytest backend/tests
+
+# Run specific test file
+pytest backend/tests/test_scoring.py -v
+
+# Run with coverage
+pytest backend/tests --cov=backend/app
+```
+
+## 5. Cross-Reference Rules
+
+When adding or modifying code, update these documents as needed:
+
+| Document | When to Update |
+| ---------- | ---------------- |
+| [`architecture.md`](./architecture.md) | New components, changed data flow, new environment variables |
+| [`features.md`](./features.md) | Feature added, removed, or status changed |
+| [`architecture-decisions.md`](./architecture-decisions.md) | New architectural decision or reversal of existing ADR |
+| [`tasks.md`](./tasks.md) | Task started, completed, or status changed |
+| [`code-review-guidelines.md`](./code-review-guidelines.md) | New review patterns or reject criteria |
+
+## 6. Documentation Guidelines
+
+### 6.1 Docstrings
+
+```python
+def function_name(param1: str, param2: int) -> bool:
+    """Short description of what the function does.
+
+    Args:
+        param1: Description of param1.
+        param2: Description of param2.
+
+    Returns:
+        Description of return value.
+    """
+```
+
+### 6.2 Inline Comments
+
+- Use comments to explain WHY, not WHAT
+- Keep comments up to date with code changes
+- Use TODO comments for planned work: `# TODO: implement retry logic`
+
+## 7. Git Workflow
+
+### 7.1 Commit Messages
+
+```
+type(scope): description
+
+- type: feat, fix, refactor, test, docs, chore
+- scope: backend, frontend, agent, config, docs
+- description: imperative, lowercase, no period
+```
+
+### 7.2 Branch Naming
+
+```
+feat/description
+fix/description
+refactor/description
+docs/description
+```

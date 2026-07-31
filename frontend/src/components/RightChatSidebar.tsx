@@ -1,21 +1,37 @@
 import * as React from "react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import {
+	Sidebar,
 	SidebarContent,
 	SidebarHeader,
 	SidebarFooter,
 	SidebarMenu,
 	SidebarMenuItem,
 	SidebarMenuButton,
+	useSidebar,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+	Collapsible,
+	CollapsibleTrigger,
+	CollapsibleContent,
+} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageScroller, Message, Bubble, Marker, MessageActions, LiveTrace, TurnMinimap, type TraceStep } from "@/components/ui/chat-primitives";
+import {
+	MessageScroller,
+	Message,
+	Bubble,
+	Marker,
+	MessageActions,
+	LiveTrace,
+	TurnMinimap,
+	type TraceStep,
+} from "@/components/ui/chat-primitives";
 import { connectSSE, streamChat, type StreamEvent } from "@/api/client";
 import {
-	MessageSquare,
+	BotMessageSquare,
 	Send,
 	Plus,
 	Mic,
@@ -26,16 +42,7 @@ import {
 	Clock,
 	Cpu,
 	ListTodo,
-	Brain,
-	GitBranch,
-	ArrowRight,
-	ShieldCheck,
-	AlertTriangle,
-	RotateCw,
-	Wrench,
-	Terminal,
-	Bot,
-	User,
+	Search,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -71,6 +78,27 @@ interface TaskItem {
 	thought?: string;
 }
 
+function groupMessages(msgs: ChatMessage[]): ChatMessage[] {
+	const grouped: ChatMessage[] = [];
+	for (const msg of msgs) {
+		const last = grouped[grouped.length - 1];
+		if (
+			msg.eventType === "message" &&
+			last &&
+			last.eventType === "message" &&
+			last.sender === msg.sender
+		) {
+			last.text += "\n" + msg.text;
+			if (msg.liveTrace) {
+				last.liveTrace = [...(last.liveTrace || []), ...msg.liveTrace];
+			}
+		} else {
+			grouped.push({ ...msg });
+		}
+	}
+	return grouped;
+}
+
 const EVENT_LABELS: Record<string, string> = {
 	thinking: "Thinking",
 	tool_call: "Tool Call",
@@ -84,6 +112,7 @@ const EVENT_LABELS: Record<string, string> = {
 	completion: "Completion",
 	user_message: "User",
 	transition: "Orchestrator",
+	message: "Message",
 };
 
 const eventToMessage = (evt: StreamEvent): ChatMessage => {
@@ -111,7 +140,9 @@ const eventToMessage = (evt: StreamEvent): ChatMessage => {
 		provenance: evt.provenance,
 		liveTrace: [
 			{
-				type: (evt.type === "done" ? "approval" : evt.type) as TraceStep["type"],
+				type: (evt.type === "done"
+					? "approval"
+					: evt.type) as TraceStep["type"],
 				agent: evt.agent || evt.speaker,
 				content: evt.content,
 				tool: evt.tool,
@@ -164,6 +195,8 @@ const messageBadgeVariant = (type?: string) => {
 			return "outline";
 		case "failed":
 			return "destructive";
+		case "message":
+			return "default";
 		case "completion":
 			return "default";
 		default:
@@ -173,7 +206,10 @@ const messageBadgeVariant = (type?: string) => {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
+export function RightChatSidebar({
+	onClose,
+	...props
+}: React.ComponentProps<typeof Sidebar> & { onClose?: () => void }) {
 	const location = useLocation();
 	const [input, setInput] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
@@ -181,6 +217,7 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 	const [showTasks, setShowTasks] = useState(false);
 	const [tasks, setTasks] = useState<TaskItem[]>([]);
 	const [taskStats, setTaskStats] = useState({ completed: 0, total: 0 });
+	const [searchQuery, setSearchQuery] = useState("");
 	const abortRef = useRef<AbortController | null>(null);
 	const messageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 	const [isSidebarHovered, setIsSidebarHovered] = useState(false);
@@ -188,7 +225,19 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 	const match = location.pathname.match(/\/ideas\/([^/]+)/);
 	const currentIdeaId = match ? match[1] : null;
 
-	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [rawMessages, setRawMessages] = useState<ChatMessage[]>([]);
+	const groupedMessages = useMemo(() => groupMessages(rawMessages), [rawMessages]);
+	const messages = useMemo(
+		() =>
+			searchQuery.trim()
+				? groupedMessages.filter(
+						(m) =>
+							m.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+							m.sender?.toLowerCase().includes(searchQuery.toLowerCase()),
+					)
+				: groupedMessages,
+		[groupedMessages, searchQuery],
+	);
 
 	// ── Fetch initial tasks (one-time bootstrap only) ─────────────────────────
 	useEffect(() => {
@@ -207,7 +256,7 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 	useEffect(() => {
 		const es = connectSSE((event, data) => {
 			if (event === "agent.progress" && data) {
-				setMessages((prev) => [
+				setRawMessages((prev) => [
 					...prev,
 					eventToMessage({
 						type: "transition",
@@ -223,30 +272,10 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 		return () => es.close();
 	}, []);
 
-	// ── Fetch chat history on idea change ────────────────────────────────────
+	// ── Clear messages on navigation ────────────────────────────────────────
 	useEffect(() => {
-		if (currentIdeaId) {
-			fetch(`/api/ideas/${currentIdeaId}/chat`)
-				.then((res) => (res.ok ? res.json() : null))
-				.then((data) => {
-					if (data?.transcript_events?.length > 0) {
-						setMessages(data.transcript_events.map(eventToMessage));
-					} else if (data?.messages?.length > 0) {
-						setMessages(data.messages.map((msg: any) => ({
-							id: msg.id,
-							sender: msg.sender,
-							speaker: msg.speaker,
-							role: msg.role,
-							text: msg.text,
-							timestamp: msg.timestamp,
-							eventType: msg.event_type,
-							provenance: msg.provenance,
-						})));
-					}
-				})
-				.catch((err) => console.error(err));
-		}
-	}, [currentIdeaId]);
+		setRawMessages([]);
+	}, [location.pathname]);
 
 	// ── Stop streaming ────────────────────────────────────────────────────────
 	const handleStopGeneration = () => {
@@ -256,7 +285,7 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 	};
 
 	const toggleTrace = (id: string) => {
-		setMessages((prev) =>
+		setRawMessages((prev) =>
 			prev.map((msg) =>
 				msg.id === id ? { ...msg, isTraceOpen: !msg.isTraceOpen } : msg,
 			),
@@ -282,7 +311,7 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 					minute: "2-digit",
 				}),
 			};
-			setMessages((prev) => [...prev, userMsg]);
+			setRawMessages((prev) => [...prev, userMsg]);
 			setIsGenerating(true);
 
 			// 3) Open AbortController for stop support
@@ -291,7 +320,6 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 
 			try {
 				await streamChat(
-					currentIdeaId,
 					textToSend,
 					(evt: StreamEvent) => {
 						if (evt.type === "tasks_update" && evt.tasks) {
@@ -308,7 +336,7 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 							return;
 						}
 
-						setMessages((prev) => [...prev, eventToMessage(evt)]);
+						setRawMessages((prev) => [...prev, eventToMessage(evt)]);
 					},
 					ctrl.signal,
 				);
@@ -347,20 +375,17 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 	};
 
 	// ── Render ────────────────────────────────────────────────────────────────
-	return (
-		<aside
-			className="sticky top-0 h-svh w-80 shrink-0 border-l bg-sidebar text-sidebar-foreground flex flex-col z-20"
-			onMouseEnter={() => setIsSidebarHovered(true)}
-			onMouseLeave={() => setIsSidebarHovered(false)}
-			{...props}
-		>
+	const { isMobile } = useSidebar();
+
+	const sidebarContent = (
+		<div className="flex flex-col h-full w-full bg-sidebar text-sidebar-foreground">
 			{/* Header — matches left AppSidebar exactly */}
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton size="lg" tooltip="Agent Team Chat">
 							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
-								<MessageSquare className="size-5" />
+								<BotMessageSquare className="size-5" />
 							</div>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-semibold">Agent Team Chat</span>
@@ -431,9 +456,35 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 				)}
 			</div>
 
+			{/* Search bar */}
+			<div className="px-3 py-1.5 border-b">
+				<div className="relative">
+					<Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+					<input
+						type="text"
+						placeholder="Search transcript..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						className="w-full h-8 pl-7 pr-2 rounded border bg-background text-xs outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+					/>
+					{searchQuery && (
+						<button
+							onClick={() => setSearchQuery("")}
+							className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+						>
+							&times;
+						</button>
+					)}
+				</div>
+				{searchQuery && (
+					<div className="text-[10px] text-muted-foreground mt-1">
+						{messages.length} result{messages.length !== 1 ? "s" : ""}
+					</div>
+				)}
+			</div>
+
 			{/* SidebarContent is flex-col — we place ONE flex-row child inside so
           TurnMinimap and messages sit side-by-side without fighting flex direction */}
-			{/* SidebarContent — TurnMinimap is fixed so it floats outside the sidebar boundary */}
 			<SidebarContent className="overflow-hidden p-0">
 				{/* Fixed floating minimap strip — only visible when sidebar is hovered */}
 				<TurnMinimap
@@ -455,35 +506,64 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 							const hasTrace = Boolean(msg.liveTrace?.length);
 
 							return (
-								<div key={msg.id} ref={(el) => { messageRefs.current[idx] = el; }}>
-									<Message variant={isUser ? "user" : "agent"} avatarText={isUser ? "YOU" : "AI"}>
+								<div
+									key={msg.id}
+									ref={(el) => {
+										messageRefs.current[idx] = el;
+									}}
+								>
+									<Message
+										variant={isUser ? "user" : "agent"}
+										avatarText={isUser ? "YOU" : msg.eventType === "message" ? msg.sender?.substring(0, 2).toUpperCase() || "AI" : "AI"}
+									>
 										<Marker sender={msg.sender} timestamp={msg.timestamp} />
-										<div className="flex items-center gap-2">
-											<Badge
-												variant={messageBadgeVariant(msg.eventType) as any}
-												className="text-[10px] uppercase font-mono"
-											>
-												{label}
-											</Badge>
-											{msg.provenance && (
-												<span className="text-[10px] font-mono text-muted-foreground truncate">
-													{msg.provenance}
+										{msg.eventType === "message" ? (
+											<div className="flex items-center gap-1.5 mb-0.5">
+												<span className="text-xs font-semibold text-primary truncate">
+													{msg.sender || "Agent"}
 												</span>
-											)}
-										</div>
-
-										{hasTrace && msg.isTraceOpen && (
-											<LiveTrace steps={msg.liveTrace || []} isStreaming={msg.isStreaming} />
+												<span className="text-[10px] font-mono text-muted-foreground/60">
+													{msg.timestamp}
+												</span>
+											</div>
+										) : (
+											<div className="flex items-center gap-2">
+												<Badge
+													variant={messageBadgeVariant(msg.eventType) as any}
+													className="text-[10px] uppercase font-mono"
+												>
+													{label}
+												</Badge>
+												{msg.provenance && (
+													<span className="text-[10px] font-mono text-muted-foreground truncate">
+														{msg.provenance}
+													</span>
+												)}
+											</div>
 										)}
 
-										<Bubble variant={isUser ? "user" : "agent"} isStreaming={msg.isStreaming}>
+										{hasTrace && msg.isTraceOpen && (
+											<LiveTrace
+												steps={msg.liveTrace || []}
+												isStreaming={msg.isStreaming}
+											/>
+										)}
+
+										<Bubble
+											variant={isUser ? "user" : "agent"}
+											isStreaming={msg.isStreaming}
+										>
 											{msg.text || (msg.isStreaming ? "" : "...")}
 										</Bubble>
 
 										{msg.eventType === "tool_call" && msg.params && (
 											<Collapsible>
 												<CollapsibleTrigger asChild>
-													<Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]">
+													<Button
+														variant="ghost"
+														size="sm"
+														className="h-7 px-2 text-[11px]"
+													>
 														Tool arguments
 													</Button>
 												</CollapsibleTrigger>
@@ -495,7 +575,11 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 											</Collapsible>
 										)}
 
-										{(msg.output || msg.from_agent || msg.to_agent || msg.decision || msg.reason) && (
+										{(msg.output ||
+											msg.from_agent ||
+											msg.to_agent ||
+											msg.decision ||
+											msg.reason) && (
 											<div className="text-[11px] text-muted-foreground space-y-1">
 												{msg.from_agent && msg.to_agent && (
 													<div>
@@ -507,7 +591,11 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 												{msg.output !== undefined && (
 													<Collapsible>
 														<CollapsibleTrigger asChild>
-															<Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]">
+															<Button
+																variant="ghost"
+																size="sm"
+																className="h-7 px-2 text-[11px]"
+															>
 																Result
 															</Button>
 														</CollapsibleTrigger>
@@ -527,8 +615,12 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 											text={msg.text}
 											variant={isUser ? "user" : "agent"}
 											hasTrace={hasTrace}
-											onRegenerate={!isUser ? () => executeSend(msg.text) : undefined}
-											onToggleTrace={hasTrace ? () => toggleTrace(msg.id) : undefined}
+											onRegenerate={
+												!isUser ? () => executeSend(msg.text) : undefined
+											}
+											onToggleTrace={
+												hasTrace ? () => toggleTrace(msg.id) : undefined
+											}
 										/>
 									</Message>
 								</div>
@@ -616,6 +708,41 @@ export function RightChatSidebar({ ...props }: React.ComponentProps<"aside">) {
 					</div>
 				</div>
 			</SidebarFooter>
-		</aside>
+		</div>
+	);
+
+	if (isMobile) {
+		return (
+			<Sheet
+				open={true}
+				onOpenChange={(open) => {
+					if (!open) {
+						handleStopGeneration();
+						onClose?.();
+					}
+				}}
+				{...props}
+			>
+				<SheetContent
+					side="right"
+					className="w-[18rem] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden z-50"
+				>
+					{sidebarContent}
+				</SheetContent>
+			</Sheet>
+		);
+	}
+
+	return (
+		<Sidebar
+			side="right"
+			collapsible="none"
+			className="sticky top-0 hidden h-svh border-l lg:flex w-80"
+			onMouseEnter={() => setIsSidebarHovered(true)}
+			onMouseLeave={() => setIsSidebarHovered(false)}
+			{...props}
+		>
+			{sidebarContent}
+		</Sidebar>
 	);
 }
