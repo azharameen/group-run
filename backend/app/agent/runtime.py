@@ -57,13 +57,14 @@ def get_deep_agent_runtime():
     time (see config.py) so LangChain's init_chat_model — called internally
     by create_deep_agent — can find OPENAI_API_KEY and OPENAI_API_BASE.
 
+    Uses SqliteSaver as the checkpointer for persistent thread state.
     Optional MCP server tools are loaded when ``MCP_SERVERS`` env var is set.
     """
     if not settings.deepagents_model:
         raise RuntimeError("DeepAgents model configuration is required.")
 
     from deepagents import create_deep_agent
-    from langgraph.checkpoint.memory import InMemorySaver
+    from ..services.thread_manager import get_checkpointer
 
     interrupt_on = {
         "write_file": True,
@@ -82,7 +83,7 @@ def get_deep_agent_runtime():
         subagents=build_agent_subagents(),
         context_schema=DeepAgentContext,
         interrupt_on=interrupt_on,
-        checkpointer=InMemorySaver(),
-        name="siemens-patent-ideator",
+        checkpointer=get_checkpointer(),
+        name="ideator-agent",
         tools=all_tools,
     )

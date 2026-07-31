@@ -1,157 +1,152 @@
 # Architecture
 
-> **Last updated: 2026-07-29**
+> **Last updated: 2026-08-04**
+> 
+> **⚠️ MAJOR PIVOT**: This document supersedes the previous Siemens Patent Ideator architecture. The system is now the **Agentic Organization Platform** — a general-purpose, multi-agent organizational framework. See [Architecture Decisions](./architecture-decisions.md) for pivot rationale.
 
 ## 1. System Overview
 
-The Siemens Patent Ideator is a multi-agent autonomous patent pipeline built on the LangChain DeepAgents runtime. It discovers patentable ideas from a knowledge base, processes them through 18 sequential workflow states with 11 specialized AI agents, scores them across 7 weighted criteria, validates against gate checklists, and produces submission-ready patent packets.
+The **Agentic Organization Platform** is a general-purpose multi-agent orchestration system built on LangGraph + DeepAgents. It models an autonomous software company where:
+
+- Users interact with a **Supervisor Agent** via a right-sidebar chat
+- **@mentions** route messages to specific agents or teams
+- **Threads** are native LangGraph checkpoints (persisted, resumable, streaming)
+- **Teams of AI agents** work on work items in parallel
+- **Work Items** (ideas, tasks, projects, documents) map 1:1 or 1:N to threads
+- **True event streaming** — UI binds to `astream_events()` output
+
+> **Origin**: This platform evolved from the Siemens Patent Ideator (an 18-state FSM patent pipeline). The FSM, patent-specific subagents, scoring engine, and YAML-based storage are being phased out in favor of a general-purpose, graph-based orchestration layer.
 
 ### 1.1 Architecture Principles
 
 | Principle | Description |
 | ----------- | ------------- |
-| **Bounded runtime** | DeepAgents handles planning, delegation, research, drafting, and HITL. Domain layer owns business rules, gate policies, and source-of-truth artifacts. |
-| **Single responsibility** | Small files with one job. Route files < 150 lines, services < 200 lines, agent runtime < 200 lines. |
-| **Explicit trust** | Every artifact carries provenance metadata. No silent fallback to fabricated output. |
-| **Stable contracts** | Keep current behavior stable while changing internals. Backend and frontend contracts align before runtime switches. |
-| **No sandbox execution** | Shell execution and code runners are explicitly deferred. |
+| **LangGraph-native orchestration** | Threads, checkpoints, and streaming use native LangGraph primitives — not custom APIs. `SQLiteSaver`/`PostgresSaver` for persistence, `astream_events()` for streaming. |
+| **Supervisor + teams hierarchy** | A supervisor agent routes user intents to the correct team/agent. @mentions provide direct routing. Teams are DeepAgents sub-graphs. |
+| **Thread = source of truth** | Every conversation is a LangGraph thread with checkpoint metadata (`updated_at`, `title`, `status`, `work_item_id`). Thread list is sorted by `updated_at`. |
+| **True streaming** | Events are pushed to the frontend as they arrive from `astream_events()`. No collect-then-deliver pattern. |
+| **Domain-agnostic core** | The platform core (threads, teams, @mentions, work items) has no domain-specific logic. Domains are configured via YAML team/agent definitions. |
+| **Decoupled work items** | Work items are domain objects (persisted separately) that link to threads. Multiple threads can map to one work item. |
 
 ### 1.2 High-Level Architecture
 
 ```mermaid
 graph TB
-    subgraph Frontend["Frontend (React + Vite + shadcn/ui)"]
-        Dashboard["Dashboard"]
-        IdeaDetail["Idea Detail"]
-        KB["Knowledge Base"]
-        SiemensCtrl["Siemens Controls"]
-        ChatSidebar["Right Chat Sidebar"]
+    subgraph Frontend["Frontend (React + shadcn/ui)"]
+        ThreadList["Thread List (Left Pane)"]
+        ChatView["Chat View (Right Pane)"]
+        WorkItemDetail["Work Item Detail (Main Area)"]
+        StreamHandler["Stream Event Handler"]
     end
 
     subgraph API["Backend (FastAPI)"]
-        REST["REST Endpoints"]
-        SSE["SSE Event Bus"]
-        Scheduler["APScheduler"]
+        ThreadAPI["Thread Manager API"]
+        WorkItemAPI["Work Item API"]
+        AgentTeamAPI["Agent/Team Manager"]
+        SSE["SSE Streaming"]
     end
 
-    subgraph Runtime["DeepAgents Runtime"]
-        DA["create_deep_agent"]
-        MW["Middleware Stack"]
-        SubAgents["SubAgent Definitions"]
-        Permissions["Filesystem Permissions"]
+    subgraph Graph["LangGraph + DeepAgents Runtime"]
+        Supervisor["Supervisor Agent (graph node)"]
+        TeamAlpha["Team Alpha (subgraph)"]
+        TeamBeta["Team Beta (subgraph)"]
+        Checkpointer["Checkpointer (SQLiteSaver)"]
+        Middleware["Middleware Stack"]
     end
 
     subgraph Domain["Domain Layer"]
-        FSM["State Machine (transitions lib)"]
-        Scoring["Scoring Engine (7 criteria)"]
-        Gates["Gate Validator"]
-        Tools["Domain Tools"]
+        WorkItems["Work Items (SQLite)"]
+        Config["Team Config (YAML)"]
+        Teams["Team/Agent Registry"]
+        Memories["Long-term Memories"]
     end
 
     subgraph LLM["LLM Layer"]
-        LC["LangChain ChatOpenAI"]
+        LC["LangChain Chat Models"]
     end
 
-    subgraph Storage["Filesystem Storage"]
-        WS["workspace/ideas/"]
-        KBStore["knowledge-base/"]
-        Config["config/"]
-        Instructions["instructions/"]
-        Skills["skills/"]
-        Memories["memories/"]
-    end
-
-    Frontend -->|HTTP/REST| REST
+    Frontend -->|HTTP/REST| API
     Frontend -->|SSE Stream| SSE
-    REST --> Domain
-    Scheduler -->|trigger cycle| FSM
-    Domain --> Runtime
-    Runtime -->|prompt| LLM
-    Domain -->|read/write| WS
-    Runtime -->|read| KBStore
-    Runtime -->|read| Config
-    Runtime -->|read| Instructions
-    Runtime -->|read/write| Skills
-    Runtime -->|read/write| Memories
+    API --> ThreadAPI
+    ThreadAPI --> Graph
+    Graph --> Supervisor
+    Supervisor --> TeamAlpha
+    Supervisor --> TeamBeta
+    Graph -->|persist| Checkpointer
+    API --> Domain
+    Domain --> WorkItems
+    Domain --> Config
+    Domain --> Teams
+    Graph -->|prompt| LLM
+    Graph --> Memories
 ```
 
 ## 2. Backend Architecture
 
-### 2.1 Directory Structure
+### 2.1 Directory Structure (Target)
 
 ```
 backend/app/
 ├── main.py                          # FastAPI entry point → create_app()
 ├── config.py                        # Settings, directory paths (Pydantic Settings)
-├── scheduler.py                     # APScheduler autonomous cycles
 │
 ├── api/
 │   ├── app.py                       # FastAPI app factory
 │   ├── deps.py                      # Dependency injection
 │   └── routes/
 │       ├── health.py                # Health check endpoint
-│       ├── ideas.py                 # Idea CRUD endpoints
-│       ├── workflow.py              # Workflow advancement endpoints
-│       ├── config.py                # Configuration endpoints
-│       ├── comments.py              # Comment endpoints
-│       ├── streaming.py             # SSE streaming endpoint
-│       └── chat.py                  # Chat + transcript endpoints
+│       ├── threads.py               # Thread CRUD + streaming endpoints
+│       ├── work_items.py            # Work item endpoints
+│       ├── teams.py                 # Agent/team configuration endpoints
+│       └── chat.py                  # Chat + @mention endpoints
+│
+├── thread/                          # (NEW) Thread system
+│   ├── manager.py                   # ThreadManager service
+│   ├── saver.py                     # Checkpointer configuration
+│   └── models.py                    # Thread metadata models
 │
 ├── agent/
 │   ├── __init__.py
 │   ├── runtime.py                   # get_deep_agent_runtime() factory
-│   ├── backends.py                  # CompositeBackend configuration
-│   ├── permissions.py               # FilesystemPermission rules
-│   ├── context.py                   # DeepAgentContext (Pydantic)
-│   ├── subagents.py                 # SubAgent definitions from workflow roles
-│   ├── runner.py                    # execute_deep_agent_workflow()
-│   └── domain_tools.py              # First-class domain tools
+│   ├── supervisor.py                # (NEW) Supervisor agent wiring
+│   ├── teams.py                     # (NEW) Team definitions from YAML config
+│   ├── router.py                    # (NEW) @mention routing logic
+│   └── backends.py                  # CompositeBackend configuration
 │
-├── models/
-│   ├── idea.py                      # WorkflowState enum, IdeaRecord, ScoreBreakdown
-│   ├── transcript.py                # TranscriptEvent, TranscriptEventType, TranscriptRole
-│   └── siemens.py                   # Siemens-specific models
+├── work_items/                      # (NEW) Work item domain
+│   ├── models.py                    # WorkItem, WorkItemStatus, Artifact models
+│   ├── service.py                   # Work item CRUD + thread linking
+│   └── repository.py                # SQLite persistence
 │
-├── state/
-│   ├── machine.py                   # PatentWorkflowMachine (transitions FSM)
-│   ├── definitions.py               # TRANSITIONS, agent_for_state, gate_name_for_transition
-│   └── gates.py                     # check_evidence() logic
+├── models/                          # (DEPRECATED) Siemens-specific models
+│   ├── idea.py                      # Will be replaced by WorkItem
+│   ├── transcript.py                # Will be replaced by LangGraph events
+│   └── siemens.py                   # Siemens-specific (removed in Phase 4)
 │
-├── scoring/
-│   ├── engine.py                    # ScoringEngine, compute_composite()
-│   └── criteria.py                  # CriterionEvaluator
+├── state/                           # (DEPRECATED) transitions FSM
+│   ├── machine.py                   # To be removed in Phase 4
+│   ├── definitions.py               # To be removed in Phase 4
+│   └── gates.py                     # To be removed in Phase 4
 │
-├── orchestrator/
-│   ├── workflow.py                  # run_generation_cycle, run_full_pipeline
-│   ├── workflow_tools.py            # create_idea, advance_workflow, score_idea, etc.
-│   └── subagents/
-│       └── definitions.py           # ALL_SUBAGENTS list
+├── scoring/                         # (DEPRECATED) Patent scoring
+│   ├── engine.py                    # To be removed in Phase 4
+│   └── criteria.py                  # To be removed in Phase 4
+│
+├── orchestrator/                    # (DEPRECATED) Pipeline orchestrator
+│   └── workflow.py                  # To be removed in Phase 4
 │
 ├── llm/
-│   ├── client.py                    # ChatOpenAI wrapper, call_llm(), call_llm_json()
-│   ├── subagent_executor.py         # execute_autonomous_idea_generation, run_subagent
-│   └── execution_support.py         # Context loading, prompt building helpers
+│   ├── client.py                    # ChatOpenAI wrapper
+│   └── subagent_executor.py         # Will be replaced by DeepAgents native
 │
-├── storage/
-│   ├── yaml_io.py                   # Compatibility shim (re-exports)
-│   ├── base.py                      # read_yaml, write_yaml, read_markdown, write_markdown
-│   ├── idea_workspace.py            # Idea folder CRUD, transcript events, interrupts
-│   ├── registry.py                  # Idea registry (ideas.yaml)
-│   ├── knowledge_base.py            # KB document loading
-│   ├── artifacts.py                 # Artifact revision tracking, diff building
-│   └── recovery.py                  # Filesystem recovery
-│
-├── research/
-│   └── adapters.py                  # search_prior_art, search_filing_sources
+├── storage/                         # (DEPRECATED) YAML storage
+│   └── ...                          # To be replaced by SQLite
 │
 ├── infrastructure/
-│   ├── observability.py             # LangSmith tracing configuration
-│   └── events/
-│       └── stream_bus.py            # SSE event bus
+│   └── events/                      # Will be replaced by LangGraph events
 │
 └── application/
-    └── queries/
-        └── get_idea.py              # Idea query helpers
+    └── queries/                     # Will be replaced by work item queries
 ```
 
 ### 2.2 DeepAgents Runtime Configuration
@@ -161,7 +156,7 @@ backend/app/
 ```python
 def get_deep_agent_runtime():
     from deepagents import create_deep_agent
-    from langgraph.checkpoint.memory import InMemorySaver
+    from langgraph.checkpoint.sqlite import SqliteSaver
 
     return create_deep_agent(
         model=settings.deepagents_model,
@@ -170,276 +165,237 @@ def get_deep_agent_runtime():
         permissions=build_agent_permissions(),
         subagents=build_agent_subagents(),
         context_schema=DeepAgentContext,
-        interrupt_on={
-            "write_file": True,
-            "edit_file": True,
-            "delete": True,
-        },
-        checkpointer=InMemorySaver(),
-        name="siemens-patent-ideator",
+        interrupt_on={...},
+        checkpointer=SqliteSaver.from_conn_string("checkpoints.db"),
+        name="agentic-organization",
     )
 ```
 
-#### Backend Configuration (`agent/backends.py`)
+> **Note:** `InMemorySaver` was replaced with `SqliteSaver` in Phase 1 to persist threads across restarts. The async `AsyncSqliteSaver` was tried but reverted due to `RuntimeError: no running event loop` — the sync `SqliteSaver` is used instead.
+
+#### Thread Checkpointer Configuration
 
 ```python
-CompositeBackend(
-    default=StateBackend(),
-    routes={
-        "/workspace/": FilesystemBackend(root_dir=WORKSPACE_DIR, virtual_mode=True),
-        "/kb/": FilesystemBackend(root_dir=KNOWLEDGE_BASE_DIR, virtual_mode=True),
-        "/instructions/": FilesystemBackend(root_dir=INSTRUCTIONS_DIR, virtual_mode=True),
-        "/memories/": FilesystemBackend(root_dir=MEMORIES_DIR, virtual_mode=True),
-        "/skills/": FilesystemBackend(root_dir=SKILLS_DIR, virtual_mode=True),
-    },
-)
+# thread/saver.py
+import sqlite3
+from langgraph.checkpoint.sqlite import SqliteSaver
+
+conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
+conn.row_factory = sqlite3.Row
+checkpointer = SqliteSaver(conn)
 ```
 
-#### Permissions Model (`agent/permissions.py`)
+### 2.3 LangGraph Thread Model
 
-| Path | Read | Write | Interrupt | Deny |
-| ------ | ------ | ------- | ----------- | ------ |
-| `/workspace/**` | ✅ | ✅ | — | — |
-| `/workspace/submissions/**` | ✅ | — | ✅ | — |
-| `/workspace/final/**` | ✅ | — | ✅ | — |
-| `/memories/**` | ✅ | ✅ | — | — |
-| `/kb/**` | ✅ | — | — | ✅ |
-| `/instructions/**` | ✅ | — | — | ✅ |
-| `/skills/**` | ✅ | — | — | ✅ |
-| `/**` (external) | — | — | — | ✅ |
-
-#### Middleware Stack
-
-Expected DeepAgents middleware order:
-
-1. **TodoListMiddleware** — Task planning and progress tracking
-2. **SkillsMiddleware** — Skill file loading
-3. **FilesystemMiddleware** — With permissions applied
-4. **SubAgentMiddleware** — Subagent delegation
-5. **SummarizationMiddleware** — Context window management
-6. **PatchToolCallsMiddleware** — Tool call patching
-7. **Custom Audit Middleware** — Event auditing
-8. **MemoryMiddleware** — Long-term memory
-9. **HumanInTheLoopMiddleware** — Approval interrupts
-
-### 2.3 State Machine
-
-#### 18 Workflow States (6 Phases)
-
-| # | State | Phase | Agent |
-| --- | ------- | ------- | ------- |
-| 1 | `raw_signal_collected` | Discovery | knowledge-curator |
-| 2 | `idea_discovery` | Discovery | idea-discoverer |
-| 3 | `idea_clarification` | Discovery | problem-framer |
-| 4 | `novelty_hypothesis` | Research | novelty-analyst |
-| 5 | `prior_art_review` | Research | prior-art-researcher |
-| 6 | `detectability_review` | Research | detectability-analyst |
-| 7 | `business_value_review` | Analysis | business-value-analyst |
-| 8 | `siemens_innovation_alignment` | Analysis | siemens-alignment |
-| 9 | `ideascope_draft` | Drafting | patent-drafter |
-| 10 | `siemens_internal_filing_check` | Drafting | checklist-validator |
-| 11 | `manager_or_enabler_review` | Review | reviewer-summarizer |
-| 12 | `ip_review` | Review | reviewer-summarizer |
-| 13 | `siemens_ip_counsel_validation` | Review | checklist-validator |
-| 14 | `ready_for_submission` | Done | reviewer-summarizer |
-| 15 | `submitted` | Done | knowledge-curator |
-| 16 | `feedback_received` | Done | knowledge-curator |
-| 17 | `revision_in_progress` | Done | patent-drafter |
-| 18 | `accepted_or_closed` | Done | knowledge-curator |
-
-#### State Transition Diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> raw_signal_collected
-    raw_signal_collected --> idea_discovery
-    idea_discovery --> idea_clarification
-    idea_clarification --> novelty_hypothesis
-    novelty_hypothesis --> prior_art_review
-    prior_art_review --> detectability_review
-    detectability_review --> business_value_review
-    business_value_review --> siemens_innovation_alignment
-    siemens_innovation_alignment --> ideascope_draft
-    ideascope_draft --> siemens_internal_filing_check
-    siemens_internal_filing_check --> manager_or_enabler_review
-    manager_or_enabler_review --> ip_review
-    ip_review --> siemens_ip_counsel_validation
-    siemens_ip_counsel_validation --> ready_for_submission
-    ready_for_submission --> submitted
-    submitted --> feedback_received
-    feedback_received --> revision_in_progress
-    revision_in_progress --> accepted_or_closed
-    accepted_or_closed --> [*]
-```
-
-### 2.4 Scoring Engine
-
-#### 7 Weighted Criteria
-
-| Criterion | Weight | Description |
-| ----------- | -------- | ------------- |
-| novelty | 25% | How novel vs. existing prior art |
-| siemens_alignment | 15% | Siemens strategic alignment |
-| technical_feasibility | 15% | Technical achievability |
-| detectability | 10% | Infringement detectability |
-| business_value | 15% | Siemens-specific business value |
-| originality | 10% | Non-obviousness |
-| completeness | 10% | Documentation completeness |
-
-#### Composite Score Formula
+The system uses native LangGraph threads as the core conversation primitive:
 
 ```
-composite = Σ(score × weight) for all 7 criteria
+Thread (LangGraph checkpoint)
+├── thread_id: UUID
+├── checkpoint metadata:
+│   ├── title: str
+│   ├── updated_at: datetime (indexed, for sorted listing)
+│   ├── created_at: datetime
+│   ├── status: active | paused | completed | archived
+│   ├── work_item_id: UUID | null
+│   └── tags: list[str]
+├── messages: list[ChatMessage]
+└── checkpoints: list[Checkpoint]
 ```
 
-#### Strength Ratings
+#### Thread API
 
-| Composite | Rating | Action |
-| ----------- | -------- | -------- |
-| ≥ 85 | Very Strong | Fast-track Siemens filing |
-| ≥ 70 | Strong | Auto-promote to drafting |
-| ≥ 50 | Moderate | Route for improvement pass |
-| ≥ 30 | Weak | Hold for significant improvement |
-| < 30 | Reject | Archive with learning |
+| Endpoint | Purpose | LangGraph Primitive |
+|----------|---------|-------------------|
+| `GET /api/threads` | List threads, sorted by `updated_at` DESC | Checkpoint metadata query |
+| `POST /api/threads` | Create new thread | `graph.create_checkpoint()` |
+| `GET /api/threads/{id}` | Get thread messages | `graph.get_state()` |
+| `POST /api/threads/{id}/stream` | Send message + stream response | `graph.astream_events()` |
+| `PUT /api/threads/{id}` | Update thread metadata | Checkpoint metadata update |
+| `DELETE /api/threads/{id}` | Delete thread | Checkpoint removal |
 
-### 2.5 Gate Checklists
+### 2.4 Supervisor Agent + @Mentions
 
-Each transition has a gate checklist defined in `config/checklist-config.yaml`. The `_check_evidence()` method validates field presence in `idea.yaml` against checklist requirements. Key gates:
+```
+┌─────────────────────────────────────────────┐
+│              Supervisor Agent                 │
+│  - Routes user intent to correct team/agent   │
+│  - Parses @mentions → direct delegation       │
+│  - No @mention → LLM decides routing          │
+└─────────────────────────────────────────────┘
+         │                    │
+         ▼                    ▼
+┌─────────────────┐  ┌─────────────────┐
+│   Team Alpha    │  │   Team Beta     │
+│  ┌───────────┐  │  │  ┌───────────┐  │
+│  │ Lead Agent│  │  │  │ Lead Agent│  │
+│  │ ┌───────┐ │  │  │  │ ┌───────┐ │  │
+│  │ │Special-│ │  │  │  │ │Special-│ │  │
+│  │ │ist     │ │  │  │  │ │ist     │ │  │
+│  │ └───────┘ │  │  │  │ └───────┘ │  │
+│  └───────────┘  │  │  └───────────┘  │
+└─────────────────┘  └─────────────────┘
+```
 
-| Gate | Items | Key Checks |
-| ------ | ------- | ------------ |
-| discovery → clarification | 3 | Signal coherent, ≥2 sources, problem identifiable |
-| prior_art → detectability | 3 | ≥10 prior art refs, gap analysis, differentiating features |
-| drafting → filing_check | 7 | All fields complete, co-inventors, ≥3 prior art, no leak |
-| filing_check → manager | 4 | IdeaScope complete, checklist passes, composite ≥70 |
+**@mention protocol:**
+- `@supervisor` → routes to supervisor agent
+- `@team-alpha` → routes to team lead
+- `@agent-name` → routes to specific agent (if unique)
+- `@team-alpha/researcher` → routes to specific agent in specific team
 
-### 2.6 Transcript Event Model
+**Implementation:**
+- @mention parsing: regex on client side (autocomplete, highlighting) + server-side routing
+- Supervisor is a DeepAgents sub-agent with `delegate_to_team()` and `delegate_to_agent()` tools
+- Teams are defined in YAML config files
 
-Typed event system defined in `models/transcript.py`:
+### 2.5 Thread ↔ Work Item Mapping
+
+```
+Work Item (persistent domain object)
+├── work_item_id: UUID
+├── type: task | project | document | idea | ...
+├── threads: list[thread_id]  # one-to-many mapping
+├── status: open | in_progress | review | done | archived
+├── artifacts: list[Artifact]
+├── owner: agent_id | team_id | user
+├── assignee: agent_id | team_id | null
+├── metadata: dict
+└── created_at / updated_at
+```
+
+- One work item can have multiple threads (user can switch context within a work item)
+- Threads are persisted in LangGraph checkpointer (SQLiteSaver)
+- Work items are persisted in domain SQLite tables
+- Thread list joined with work item data for display
+
+### 2.6 True Streaming Protocol
+
+**Target:** Bind directly to DeepAgents' native event streaming:
 
 ```python
-class TranscriptEventType(str, Enum):
-    thinking = "thinking"
-    tool_call = "tool_call"
-    tool_result = "tool_result"
-    subagent = "subagent"
-    handover = "handover"
-    interrupt = "interrupt"
-    approval = "approval"
-    retry = "retry"
-    failed = "failed"
-    completion = "completion"
-    done = "done"
-    token = "token"
-    tasks_update = "tasks_update"
-    transition = "transition"
-    user_message = "user_message"
-
-class TranscriptRole(str, Enum):
-    user = "user"
-    orchestrator = "orchestrator"
-    subagent = "subagent"
-    reviewer = "reviewer"
-    tool = "tool"
-    workflow = "workflow"
-    system = "system"
+# Backend: FastAPI SSE endpoint using astream_events
+async def stream_chat(thread_id: str, message: str):
+    graph = get_deep_agent_runtime()
+    
+    async for event in graph.astream_events(
+        {"messages": [HumanMessage(content=message)]},
+        config={"configurable": {"thread_id": thread_id}},
+        version="v2",
+    ):
+        # Map LangGraph event types to frontend event types
+        yield {
+            "event": map_event_type(event["event"]),
+            "data": extract_event_data(event),
+        }
 ```
 
-### 2.7 API Endpoints
+**Frontend:** Native EventSource consumption — no buffering:
+
+```typescript
+const eventSource = new EventSource(`/api/threads/${threadId}/stream`);
+eventSource.onmessage = (event) => {
+    renderEvent(JSON.parse(event.data));
+};
+```
+
+### 2.7 API Endpoints (Target State)
 
 | Method | Endpoint | Purpose |
-| -------- | ---------- | --------- |
+|--------|----------|---------|
+| GET | `/api/threads` | List threads (sorted by updated_at) |
+| POST | `/api/threads` | Create thread |
+| GET | `/api/threads/{id}` | Get thread messages |
+| POST | `/api/threads/{id}/stream` | Send message + SSE stream |
+| PUT | `/api/threads/{id}` | Update thread metadata |
+| DELETE | `/api/threads/{id}` | Delete thread |
+| GET | `/api/work-items` | List work items |
+| POST | `/api/work-items` | Create work item |
+| GET | `/api/work-items/{id}` | Get work item detail |
+| PUT | `/api/work-items/{id}` | Update work item |
+| DELETE | `/api/work-items/{id}` | Delete work item |
+| GET | `/api/teams` | List teams/agents |
+| POST | `/api/teams/{name}/config` | Update team config |
 | GET | `/api/health` | Health check |
-| GET | `/api/sse` | SSE stream |
-| GET | `/api/ideas` | List ideas |
-| GET | `/api/ideas/{id}` | Get idea detail |
-| POST | `/api/ideas` | Create idea |
-| POST | `/api/ideas/{id}/advance` | Advance workflow |
-| POST | `/api/ideas/{id}/score` | Score idea |
-| POST | `/api/ideas/{id}/validate-gate` | Run gate checklist |
-| POST | `/api/ideas/{id}/chat` | Post chat message |
-| POST | `/api/ideas/{id}/chat/stream` | Stream chat |
-| GET | `/api/agent-tasks` | Get agent tasks |
-| GET | `/api/workflow/interrupts` | List pending interrupts |
-| POST | `/api/workflow/{id}/approve` | Approve interrupt |
-| POST | `/api/workflow/{id}/reject` | Reject interrupt |
-| GET | `/api/workflow/analytics` | Review analytics |
-| POST | `/api/workflow/cycle` | Trigger generation cycle |
-| POST | `/api/workflow/seed` | Seed autonomous ideas |
-| GET | `/api/stats` | System statistics |
 
 ## 3. Frontend Architecture
 
-### 3.1 Directory Structure
+### 3.1 Directory Structure (Target)
 
 ```
 frontend/src/
 ├── main.tsx                         # Entry point
-├── App.tsx                          # Router, sidebar layout
+├── App.tsx                          # Router, layout
 ├── index.css                        # Tailwind + shadcn/ui styles
 │
 ├── api/
 │   ├── client.ts                    # REST API client
-│   └── deepagents.ts                # DeepAgents-specific API
+│   ├── threads.ts                   # Thread API client
+│   └── work_items.ts                # Work item API client
 │
 ├── components/
-│   ├── ui/                          # shadcn/ui components (button, card, dialog, etc.)
-│   ├── app-sidebar.tsx              # Left navigation sidebar
-│   ├── site-header.tsx              # Top header bar
-│   ├── RightChatSidebar.tsx         # Live transcript sidebar
-│   ├── IdeaHistoryTimeline.tsx      # Historical timeline
-│   ├── deepagents/
-│   │   ├── AgentTodoPanel.tsx       # Agent task/progress panel
-│   │   ├── SubagentActivityCard.tsx # Subagent activity display
-│   │   ├── ToolCallTimeline.tsx     # Tool call inspection
-│   │   ├── InterruptInbox.tsx       # Approval interrupt inbox
-│   │   └── ArtifactDiffPanel.tsx    # Artifact diff viewer
-│   ├── ideas/
-│   │   ├── IdeaCard.tsx             # Idea summary card
-│   │   ├── ScoreRadar.tsx           # Score radar chart
-│   │   └── WorkflowTimeline.tsx     # Workflow state timeline
-│   └── workflow/
-│       └── ...
+│   ├── ui/                          # shadcn/ui components
+│   ├── threads/
+│   │   ├── ThreadList.tsx           # Left pane thread list (sorted, searchable)
+│   │   ├── ThreadItem.tsx           # Single thread item
+│   │   └── ThreadCreateButton.tsx   # New thread button
+│   ├── chat/
+│   │   ├── ChatView.tsx             # Main chat view with message list
+│   │   ├── ChatInput.tsx            # Message input with @mention support
+│   │   ├── MessageBubble.tsx        # Individual message bubble
+│   │   ├── MentionAutocomplete.tsx  # @mention autocomplete dropdown
+│   │   └── StreamEventHandler.tsx   # Binds to SSE events
+│   ├── work-items/
+│   │   ├── WorkItemDetail.tsx       # Work item detail view
+│   │   └── WorkItemCard.tsx         # Work item summary card
+│   ├── teams/
+│   │   └── TeamStatus.tsx           # Team/agent status indicators
+│   └── deepagents/                  # (Existing, will be migrated)
+│       ├── AgentTodoPanel.tsx
+│       ├── SubagentActivityCard.tsx
+│       ├── ToolCallTimeline.tsx
+│       └── InterruptInbox.tsx
 │
 ├── hooks/
-│   ├── useDeepAgentStream.ts        # SSE stream hook
-│   └── useInterrupts.ts             # Interrupt polling hook
+│   ├── useThreads.ts               # Thread CRUD + list management
+│   ├── useThreadStream.ts          # SSE streaming hook
+│   └── useMentions.ts              # @mention parsing hook
 │
 ├── lib/
-│   └── utils.ts                     # Utility functions
+│   └── utils.ts
 │
 ├── pages/
-│   ├── Dashboard.tsx                # Main dashboard
-│   ├── IdeaDetail.tsx               # Full idea detail view
-│   ├── KnowledgeBase.tsx            # KB browser
-│   └── SiemensControls.tsx          # Siemens-specific controls
+│   ├── Dashboard.tsx                # (REDESIGN) Thread-centric dashboard
+│   ├── WorkItemPage.tsx             # (NEW) Work item detail page
+│   └── Settings.tsx                 # (NEW) Team/agent configuration
 │
 └── types/
-    └── deepagents.ts                # DeepAgents type definitions
+    ├── thread.ts                    # Thread types
+    ├── work-item.ts                 # Work item types
+    └── agent.ts                     # Agent/team types
 ```
 
-### 3.2 Component Hierarchy
+### 3.2 Component Hierarchy (Target)
 
 ```
 App
 ├── SidebarProvider
 │   ├── AppSidebar (left nav)
+│   │   ├── ThreadList
+│   │   │   ├── ThreadCreateButton
+│   │   │   └── ThreadItem[] (sorted by updated_at DESC, active highlighted)
+│   │   └── TeamStatus
 │   ├── SidebarInset
 │   │   ├── SiteHeader
 │   │   └── main (Routes)
-│   │       ├── Dashboard
-│   │       │   ├── IdeaCard[]
-│   │       │   └── StatsPanel
-│   │       ├── IdeaDetail
-│   │       │   ├── IdeaInfo
-│   │       │   ├── WorkflowTimeline
-│   │       │   ├── ScoreRadar
-│   │       │   ├── IdeaHistoryTimeline
-│   │       │   ├── ArtifactDiffPanel
-│   │       │   └── DeepAgents components
-│   │       ├── KnowledgeBase
-│   │       └── SiemensControls
-│   └── RightChatSidebar
+│   │       ├── Dashboard → ThreadList + ChatView (split pane)
+│   │       │   ├── ThreadList (left)
+│   │       │   └── ChatView (right)
+│   │       │       ├── MessageBubble[]
+│   │       │       ├── ChatInput (with @mention autocomplete)
+│   │       │       └── StreamEventHandler (binds to SSE)
+│   │       └── WorkItemPage
+│   │           └── WorkItemDetail
+│   └── RightChatSidebar (for deepagents integration)
 │       ├── AgentTodoPanel
 │       ├── SubagentActivityCard[]
 │       ├── ToolCallTimeline
@@ -454,113 +410,229 @@ sequenceDiagram
     participant API as API Client
     participant SSE as SSE Stream
     participant BE as Backend
-    participant RT as DeepAgents Runtime
-    participant FS as Filesystem
+    participant G as LangGraph Runtime
+    participant DB as SQLite (Checkpoints)
 
-    UI->>API: REST call (CRUD, advance, score)
-    API->>BE: HTTP request
-    BE->>RT: invoke runtime
-    RT->>FS: read/write workspace
-    RT-->>BE: runtime events
-    BE-->>API: JSON response
-    API-->>UI: Update state
+    Note over UI,BE: Thread list (sorted by updated_at)
+    UI->>API: GET /api/threads
+    API->>BE: query thread metadata
+    BE->>DB: SELECT * FROM checkpoints ORDER BY updated_at DESC
+    DB-->>BE: thread list
+    BE-->>API: JSON threads
+    API-->>UI: Render sorted thread list
 
-    Note over UI,BE: Real-time streaming path
-    UI->>SSE: Subscribe to /api/sse
-    BE->>SSE: Push events (transition, score, interrupt)
-    SSE-->>UI: Live event stream
-    UI->>UI: Update components reactively
+    Note over UI,BE: Send message + stream response
+    UI->>API: POST /api/threads/{id}/stream (message)
+    API->>BE: stream_chat(thread_id, message)
+    BE->>G: graph.astream_events()
+    loop For each event
+        G-->>BE: on_chain_start, on_chat_model_stream, on_tool_start, ...
+        BE-->>SSE: push SSE event
+        SSE-->>UI: renderEvent(event)
+    end
+    G-->>BE: completion
+    BE-->>SSE: done event
+    SSE-->>UI: stream complete
 ```
 
 ## 4. Data Model
 
-### 4.1 Per-Idea File Structure
+### 4.1 Thread + Work Item Persistence
 
 ```
-workspace/ideas/IDEA-XXXX/
-├── idea.yaml              # Main record (title, state, fields, evidence, reviews)
-├── state.yaml             # State machine history, current state, phase
-├── scores.yaml            # Score history array + latest snapshot
-├── transcript.yaml        # Typed transcript events
-├── ideascope-draft.md     # Human-readable IdeaScope document
-├── submission-summary.md  # Final submission packet
-├── handovers/             # Per-transition handover packets
-│   ├── idea_discovery-to-idea_clarification.md
-│   └── ...
-└── revisions/
-    └── changelog.md       # Chronological transition log
+checkpoints.db (LangGraph SQLiteSaver)
+├── checkpoints table
+│   ├── thread_id
+│   ├── checkpoint_ns
+│   ├── checkpoint_id
+│   ├── parent_checkpoint_id
+│   ├── type
+│   └── checkpoint (JSON blob)
+├── checkpoint_blobs table
+├── checkpoint_writes table
+└── writes table
+
+app.db (Domain SQLite database)
+├── work_items
+│   ├── id (UUID, PK)
+│   ├── type (task | project | document | idea)
+│   ├── title
+│   ├── description
+│   ├── status (open | in_progress | review | done | archived)
+│   ├── owner_type (agent | team | user)
+│   ├── owner_id
+│   ├── assignee_type (agent | team | null)
+│   ├── assignee_id
+│   └── created_at / updated_at
+│
+├── thread_metadata (mirrors checkpoints metadata for fast querying)
+│   ├── thread_id (UUID, PK)
+│   ├── title
+│   ├── created_at
+│   ├── updated_at (INDEXED)
+│   ├── status
+│   ├── work_item_id (FK → work_items, nullable)
+│   └── tags (JSON)
+│
+├── teams
+│   ├── id (UUID, PK)
+│   ├── name
+│   ├── description
+│   ├── config (JSON — agent definitions, tools, permissions)
+│   └── enabled
+│
+├── agents
+│   ├── id (UUID, PK)
+│   ├── team_id (FK → teams)
+│   ├── name
+│   ├── role (team_lead | specialist)
+│   ├── description
+│   └── config (JSON — model, tools, permissions)
+│
+└── artifacts
+    ├── id (UUID, PK)
+    ├── work_item_id (FK → work_items)
+    ├── name
+    ├── type (document | image | code | data)
+    ├── content
+    ├── version
+    ├── provenance (JSON)
+    └── created_at
 ```
 
 ### 4.2 Key Models
 
-**IdeaRecord** (`models/idea.py`):
+**ThreadMetadata** (`api/models/thread.py`):
 
-- `idea_id`, `title`, `current_state` (WorkflowState), `phase`
-- `signal_text`, `problem_statement`, `solution_concept`
-- `siemens_domain`, `siemens_business_unit`
-- `state_history[]`, `scores[]`, `latest_composite`
-- `source_evidence[]`, `tags[]`
-- `created_at`, `updated_at`, `priority`, `paused_processing`
+```python
+class ThreadMetadata(BaseModel):
+    thread_id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    status: ThreadStatus = ThreadStatus.ACTIVE
+    work_item_id: Optional[str] = None
+    tags: list[str] = []
+    last_message_preview: Optional[str] = None
+```
 
-**TranscriptEvent** (`models/transcript.py`):
+**WorkItem** (`work_items/models.py`):
 
-- `id`, `idea_id`, `type` (TranscriptEventType), `timestamp`
-- `speaker`, `role` (TranscriptRole), `agent`
-- `content`, `tool`, `params`, `output`
-- `from_agent`, `to_agent`, `interrupt_id`
-- `decision`, `reason`, `provenance`, `trust`
+```python
+class WorkItem(BaseModel):
+    id: str
+    type: WorkItemType
+    title: str
+    description: str
+    status: WorkItemStatus = WorkItemStatus.OPEN
+    owner_type: OwnerType
+    owner_id: str
+    assignee_type: Optional[OwnerType] = None
+    assignee_id: Optional[str] = None
+    thread_ids: list[str] = []
+    created_at: datetime
+    updated_at: datetime
+```
 
-## 5. Deployment
+**TeamConfig** (YAML config file, `config/teams/`):
 
-### 5.1 Docker Services
+```yaml
+name: team-alpha
+description: "Frontend development team"
+agents:
+  - name: lead
+    role: team_lead
+    description: "Coordinator for frontend tasks"
+    tools: [delegate, code_review]
+  - name: researcher
+    role: specialist
+    description: "UX research and design systems"
+    tools: [web_search, design_lookup]
+  - name: developer
+    role: specialist
+    description: "React/TypeScript implementation"
+    tools: [write_file, edit_file, npm]
+```
 
-| Service | Port | Image | Volumes |
-|---------|------|-------|---------|
-| backend | 8000 | Custom (FastAPI) | config (ro), instructions (ro), workspace (rw), knowledge-base (rw) |
-| frontend | 3000 | Custom (Nginx + Vite) | Build-time only |
+## 5. Team/Agent Configuration (YAML)
 
-### 5.2 Environment Variables
+Teams are defined in `config/teams/*.yaml` files, loaded at startup:
+
+```yaml
+# config/teams/default.yaml
+teams:
+  - name: research
+    description: "Research and analysis team"
+    agents:
+      - name: lead
+        role: team_lead
+        description: "Coordinates research tasks"
+        tools: [delegate, summarize]
+      - name: analyst
+        role: specialist
+        description: "Deep analysis and reporting"
+        tools: [web_search, data_analysis]
+
+  - name: engineering
+    description: "Software development team"
+    agents:
+      - name: lead
+        role: team_lead
+        description: "Coordinates engineering tasks"
+        tools: [delegate, code_review]
+      - name: architect
+        role: specialist
+        description: "System architecture design"
+        tools: [design, document]
+      - name: developer
+        role: specialist
+        description: "Implementation"
+        tools: [write_file, edit_file, test]
+```
+
+## 6. Deprecated Modules (From Siemens Patent Ideator)
+
+The following modules are being phased out:
+
+| Module | Replacement | Target Phase |
+|--------|-------------|-------------|
+| `state/machine.py` (transitions FSM) | DeepAgents graph orchestration | Phase 4 |
+| `state/definitions.py` | Agent/team routing config | Phase 4 |
+| `state/gates.py` | Work item validation rules | Phase 4 |
+| `scoring/engine.py` | Domain-specific scoring (if needed) | Phase 4 |
+| `scoring/criteria.py` | Domain-specific criteria | Phase 4 |
+| `storage/*` (YAML) | SQLite + work item repository | Phase 4 |
+| `models/idea.py` | `work_items/models.py` | Phase 4 |
+| `models/siemens.py` | Remove | Phase 4 |
+| `orchestrator/workflow.py` | Thread-based agent orchestration | Phase 4 |
+| `research/adapters.py` | Plugin-based research tools | Phase 4 |
+| `scheduler.py` | Optional (revisit if needed) | Phase 4 |
+| `infrastructure/events/stream_bus.py` | LangGraph astream_events | Phase 4 |
+
+## 7. Deployment
+
+### 7.1 Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| backend | 8000 | FastAPI with LangGraph runtime |
+| frontend | 3000 | React + Vite (Nginx) |
+
+### 7.2 Environment Variables
 
 | Variable | Default | Purpose |
-| ---------- | --------- | --------- |
+|----------|---------|---------|
 | `OPENAI_API_KEY` | — | OpenAI-compatible API key |
 | `OPENAI_API_BASE` | `https://api.openai.com/v1` | LLM API base URL |
 | `OPENAI_MODEL_NAME` | `gpt-4o` | LLM model name |
-| `DEEPAGENTS_MODEL` | `openai:{model}` | DeepAgents model spec (auto-derived) |
-| `LANGSMITH_API_KEY` | — | LangSmith tracing key |
-| `LANGSMITH_PROJECT` | `ideator` | LangSmith project name |
-| `APP_ROOT_DIR` | Auto-detected | Root directory (pinned in Docker) |
+| `DEEPAGENTS_MODEL` | `openai:{model}` | DeepAgents model spec |
 
-> **⚠️ Credential Propagation**: The `.env` file is read by `pydantic-settings` into the `Settings` object. However, LangChain's `init_chat_model()` (called internally by `create_deep_agent`) reads credentials from standard OS environment variables (`OPENAI_API_KEY`, `OPENAI_API_BASE`), NOT from pydantic-settings. The `config.py` module automatically propagates credentials to `os.environ` at import time so the DeepAgents runtime can authenticate. If you set credentials at runtime, ensure they are set as OS environment variables before importing any LangChain or DeepAgents modules.
+## 8. Related Documents
 
-## 6. Trust and Failure Model
-
-### 6.1 Trust Levels
-
-| Trust Level | Description | Source |
-| ------------- | ------------- | -------- |
-| `trusted` | Human-verified or system-confirmed | User input, approval decisions, tool results |
-| `verified-tool-call` | Tool call was dispatched and returned | Runtime tool execution |
-| `generated` | LLM-generated content, not yet verified | Agent reasoning, drafts |
-| `fallback` | Used when primary path failed | Heuristic fallback, retry output |
-
-### 6.2 Failure States
-
-The UI exposes these states explicitly:
-
-- **retry required** — A step failed but can be retried
-- **agent failed** — An agentic step failed permanently
-- **human approval required** — Workflow paused for human decision
-- **evidence insufficient** — Gate check failed due to missing evidence
-- **fallback prohibited** — No fallback path exists for this step
-
-## 7. Related Documents
-
-- [UI Design](./ui-design.md) — Frontend component design and design system
+- [Product Context](./product-context.md) — Business context and vision
 - [PRD](./prd.md) — Product requirements and user stories
-- [Product Context](./product-context.md) — Business context and personas
 - [Features](./features.md) — Complete feature tree
-- [Coding Guidelines](./coding-guidelines.md) — Development standards
-- [Code Review Guidelines](./code-review-guidelines.md) — Code review checklist and process
-- [Architecture Decisions](./architecture-decisions.md) — ADR log
 - [Tasks](./tasks.md) — Implementation task hierarchy
+- [UI Design](./ui-design.md) — Frontend component design
+- [Coding Guidelines](./coding-guidelines.md) — Development standards
+- [Architecture Decisions](./architecture-decisions.md) — ADR log

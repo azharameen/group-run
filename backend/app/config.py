@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     gate_threshold_percent: int = 50
     mcp_servers: str = ""
 
+    storage_dir: str = ""
+
     # Compute .env path relative to this file (backend/app/config.py -> repo root)
     model_config = SettingsConfigDict(
         env_prefix="",
@@ -79,3 +81,4 @@ WORKSPACE_DIR = os.path.join(ROOT_DIR, "workspace")
 CONFIG_DIR = os.path.join(ROOT_DIR, "config")
 INSTRUCTIONS_DIR = os.path.join(ROOT_DIR, "instructions")
 KNOWLEDGE_BASE_DIR = os.path.join(ROOT_DIR, "knowledge-base")
+STORAGE_DIR = settings.storage_dir or os.path.join(ROOT_DIR, "storage")

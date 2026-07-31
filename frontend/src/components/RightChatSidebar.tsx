@@ -29,7 +29,18 @@ import {
 	TurnMinimap,
 	type TraceStep,
 } from "@/components/ui/chat-primitives";
-import { connectSSE, streamChat, type StreamEvent } from "@/api/client";
+import {
+	connectSSE,
+	streamThreadMessage,
+	listThreads,
+	createThread,
+	getThread,
+	getThreadMessages,
+	updateThread,
+	type StreamEvent,
+	type ThreadMetadata,
+	type ThreadMessage,
+} from "@/api/client";
 import {
 	BotMessageSquare,
 	Send,
@@ -225,6 +236,29 @@ export function RightChatSidebar({
 	const match = location.pathname.match(/\/ideas\/([^/]+)/);
 	const currentIdeaId = match ? match[1] : null;
 
+	// ── Thread state ────────────────────────────────────────────────────────
+	const [threads, setThreads] = useState<ThreadMetadata[]>([]);
+	const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+	const [showThreadList, setShowThreadList] = useState(false);
+
+	// Sorted threads (most recent first)
+	const sortedThreads = useMemo(
+		() => [...threads].sort(
+			(a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+		),
+		[threads],
+	);
+
+	// Load threads on mount
+	useEffect(() => {
+		listThreads().then(setThreads).catch(() => {});
+	}, []);
+
+	const activeThread = useMemo(
+		() => threads.find((t) => t.thread_id === activeThreadId) ?? null,
+		[threads, activeThreadId],
+	);
+
 	const [rawMessages, setRawMessages] = useState<ChatMessage[]>([]);
 	const groupedMessages = useMemo(() => groupMessages(rawMessages), [rawMessages]);
 	const messages = useMemo(
@@ -298,7 +332,19 @@ export function RightChatSidebar({
 		if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
 	};
 
-	// ── Real streaming send ───────────────────────────────────────────────────
+	// ── Ensure a thread exists, creating one if needed ──────────────────────
+	const ensureThread = useCallback(async (): Promise<string> => {
+		if (activeThreadId) return activeThreadId;
+		const thread = await createThread({
+			title: "New Chat",
+			work_item_id: currentIdeaId ?? null,
+		});
+		setThreads((prev) => [...prev, thread]);
+		setActiveThreadId(thread.thread_id);
+		return thread.thread_id;
+	}, [activeThreadId, currentIdeaId]);
+
+	// ── Real streaming send (thread-based) ────────────────────────────────────
 	const executeSend = useCallback(
 		async (textToSend: string) => {
 			// 1) Append user message
@@ -314,13 +360,24 @@ export function RightChatSidebar({
 			setRawMessages((prev) => [...prev, userMsg]);
 			setIsGenerating(true);
 
+			// 2) Ensure we have a thread
+			let tid: string;
+			try {
+				tid = await ensureThread();
+			} catch {
+				setIsGenerating(false);
+				return;
+			}
+
 			// 3) Open AbortController for stop support
 			const ctrl = new AbortController();
 			abortRef.current = ctrl;
 
 			try {
-				await streamChat(
+				await streamThreadMessage(
+					tid,
 					textToSend,
+					currentIdeaId ?? undefined,
 					(evt: StreamEvent) => {
 						if (evt.type === "tasks_update" && evt.tasks) {
 							setTasks(evt.tasks as TaskItem[]);
@@ -333,6 +390,8 @@ export function RightChatSidebar({
 
 						if (evt.type === "done") {
 							setIsGenerating(false);
+							// Refresh thread list to get updated timestamps
+							listThreads().then(setThreads).catch(() => {});
 							return;
 						}
 
@@ -359,7 +418,7 @@ export function RightChatSidebar({
 				});
 			}
 		},
-		[currentIdeaId],
+		[currentIdeaId, ensureThread],
 	);
 
 	const handleSendOrQueue = () => {
@@ -383,22 +442,92 @@ export function RightChatSidebar({
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton size="lg" tooltip="Agent Team Chat">
-							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
-								<BotMessageSquare className="size-5" />
-							</div>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate font-semibold">Agent Team Chat</span>
-								<span className="truncate text-xs text-muted-foreground">
-									{currentIdeaId
-										? `Idea: ${currentIdeaId}`
-										: "Global Workspace"}
-								</span>
-							</div>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-				</SidebarMenu>
-			</SidebarHeader>
+							<SidebarMenuButton
+								size="lg"
+								tooltip="Agent Team Chat"
+								onClick={() => setShowThreadList(!showThreadList)}
+							>
+								<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
+									<BotMessageSquare className="size-5" />
+								</div>
+								<div className="grid flex-1 text-left text-sm leading-tight">
+									<span className="truncate font-semibold">
+										{activeThread ? activeThread.title : "Agent Team Chat"}
+									</span>
+									<span className="truncate text-xs text-muted-foreground">
+										{activeThread
+											? `${sortedThreads.length} thread${sortedThreads.length !== 1 ? "s" : ""}`
+											: currentIdeaId
+												? `Idea: ${currentIdeaId}`
+												: "Global Workspace"}
+									</span>
+								</div>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					</SidebarMenu>
+
+					{/* Thread list dropdown */}
+					{showThreadList && (
+						<div className="border-t bg-sidebar-accent/50 max-h-48 overflow-y-auto">
+							{sortedThreads.length === 0 ? (
+								<div className="px-3 py-4 text-xs text-center text-muted-foreground">
+									No threads yet. Send a message to start one.
+								</div>
+							) : (
+								sortedThreads.map((t) => (
+									<button
+										key={t.thread_id}
+										onClick={async () => {
+											setActiveThreadId(t.thread_id);
+											setRawMessages([]);
+											setShowThreadList(false);
+											setSearchQuery("");
+											// Load thread messages from checkpoint
+											try {
+												const { messages: msgs } = await getThreadMessages(t.thread_id);
+												const chatMessages = msgs
+													.filter((m) => m.type === "human" || m.type === "ai")
+													.map((m) => ({
+														id: m.id,
+														sender:
+															m.type === "human"
+																? "You"
+																: m.name || "Assistant",
+														text: m.content,
+														timestamp: m.timestamp
+															? new Date(m.timestamp).toLocaleTimeString([], {
+																	hour: "2-digit",
+																	minute: "2-digit",
+																})
+															: new Date().toLocaleTimeString([], {
+																	hour: "2-digit",
+																	minute: "2-digit",
+																}),
+														eventType:
+															m.type === "human"
+																? "user_message"
+																: "message",
+													}));
+												setRawMessages(chatMessages);
+											} catch {}
+										}}
+										className={`w-full text-left px-3 py-2 text-xs border-b last:border-b-0 hover:bg-sidebar-accent transition-colors ${
+											t.thread_id === activeThreadId
+												? "bg-sidebar-accent font-semibold"
+												: ""
+										}`}
+									>
+										<div className="truncate">{t.title}</div>
+										<div className="text-[10px] text-muted-foreground mt-0.5">
+											{new Date(t.updated_at).toLocaleString()}
+											{t.work_item_id ? ` · ${t.work_item_id}` : ""}
+										</div>
+									</button>
+								))
+							)}
+						</div>
+					)}
+				</SidebarHeader>
 
 			{/* Agent Plan & Tasks — SSE-driven (tasks updated from stream events) */}
 			<div className="px-3 py-1.5 border-b bg-muted/20">
@@ -668,11 +797,21 @@ export function RightChatSidebar({
 									variant="ghost"
 									size="icon"
 									className="h-6 w-6"
-									title="Add attachment"
-								>
-									<Plus className="w-3.5 h-3.5" />
-								</Button>
-							</div>
+														title="New thread"
+														onClick={async () => {
+															try {
+																const thread = await createThread({ title: "New Chat" });
+																setThreads((prev) => [...prev, thread]);
+																setActiveThreadId(thread.thread_id);
+																setRawMessages([]);
+																// Refresh thread list
+																listThreads().then(setThreads).catch(() => {});
+															} catch {}
+														}}
+													>
+														<Plus className="w-3.5 h-3.5" />
+													</Button>
+												</div>
 
 							{/* Dynamic: Stop / Send / Mic */}
 							{isGenerating ? (

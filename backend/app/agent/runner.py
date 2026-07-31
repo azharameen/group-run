@@ -4,7 +4,7 @@ import asyncio
 import json
 import warnings
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, Optional
 
 from .runtime import get_deep_agent_runtime
 from .domain_tools import (
@@ -340,12 +340,16 @@ def execute_deep_agent_workflow(
 async def execute_deep_agent_workflow_streaming(
     idea_id: str,
     user_feedback: str,
+    thread_id: Optional[str] = None,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """Stream runtime-produced events through DeepAgents.
 
     Every message — global chat or idea-scoped — goes through the DeepAgents
     graph. The coordinator routes to the appropriate subagent: patent-assistant
     for general conversation, or workflow specialists for pipeline execution.
+
+    When thread_id is provided, the graph invocation is bound to that LangGraph
+    thread checkpoint, enabling resume, history, and checkpoint metadata queries.
     """
     provenance = f"idea:{idea_id or 'global'}"
 
@@ -356,6 +360,12 @@ async def execute_deep_agent_workflow_streaming(
 
     provenance = f"idea:{idea_id}|state:{state}"
     runtime = get_deep_agent_runtime()
+
+    # Build graph config with thread_id (bound to checkpointer)
+    configurable: Dict[str, Any] = {"idea_id": idea_id, "workflow_state": state}
+    if thread_id:
+        configurable["thread_id"] = thread_id
+
     input_payload = {
         "messages": [
             {
@@ -381,14 +391,18 @@ async def execute_deep_agent_workflow_streaming(
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="The v3 streaming protocol on Pregel is experimental")
-            stream = await runtime.astream_events(input_payload, version="v3")
+            stream = await runtime.astream_events(
+                input_payload,
+                version="v3",
+                config={"configurable": configurable},
+            )
         async for event in _consume_v3_stream(stream, idea_id, provenance):
             if event.get("type") == "done":
                 emitted_done = True
             yield event
     except TypeError:
         async for event in _consume_v2_stream(
-            runtime.astream_events(input_payload),
+            runtime.astream_events(input_payload, config={"configurable": configurable}),
             idea_id,
             provenance,
         ):
@@ -397,7 +411,7 @@ async def execute_deep_agent_workflow_streaming(
             yield event
     except AttributeError:
         async for event in _consume_v2_stream(
-            runtime.astream_events(input_payload),
+            runtime.astream_events(input_payload, config={"configurable": configurable}),
             idea_id,
             provenance,
         ):

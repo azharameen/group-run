@@ -503,3 +503,153 @@ export async function streamChat(
     }
   }
 }
+
+// ── Thread API ─────────────────────────────────────────────────────────────
+
+export interface ThreadMetadata {
+  thread_id: string
+  title: string
+  created_at: string
+  updated_at: string
+  status: string
+  work_item_id: string | null
+  tags: string[]
+  agent_names: string[]
+}
+
+export interface CreateThreadRequest {
+  title?: string
+  work_item_id?: string | null
+  tags?: string[]
+  agent_names?: string[]
+}
+
+export interface UpdateThreadRequest {
+  title?: string
+  status?: string
+  work_item_id?: string | null
+  tags?: string[]
+  agent_names?: string[]
+}
+
+export async function listThreads(
+  signal?: AbortSignal,
+): Promise<ThreadMetadata[]> {
+  const res = await fetch(`${API_BASE}/threads`, { signal })
+  if (!res.ok) throw new Error(`listThreads ${res.status}`)
+  const data = await res.json()
+  return (data.threads ?? []) as ThreadMetadata[]
+}
+
+export async function createThread(
+  req: CreateThreadRequest,
+  signal?: AbortSignal,
+): Promise<ThreadMetadata> {
+  const res = await fetch(`${API_BASE}/threads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+    signal,
+  })
+  if (!res.ok) throw new Error(`createThread ${res.status}`)
+  const data = await res.json()
+  return data.thread as ThreadMetadata
+}
+
+export async function getThread(
+  threadId: string,
+  signal?: AbortSignal,
+): Promise<ThreadMetadata> {
+  const res = await fetch(`${API_BASE}/threads/${threadId}`, { signal })
+  if (!res.ok) throw new Error(`getThread ${res.status}`)
+  const data = await res.json()
+  return data.thread as ThreadMetadata
+}
+
+export async function updateThread(
+  threadId: string,
+  req: UpdateThreadRequest,
+  signal?: AbortSignal,
+): Promise<ThreadMetadata> {
+  const res = await fetch(`${API_BASE}/threads/${threadId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+    signal,
+  })
+  if (!res.ok) throw new Error(`updateThread ${res.status}`)
+  const data = await res.json()
+  return data.thread as ThreadMetadata
+}
+
+/**
+ * Stream a message into a thread. Reads SSE events and calls onEvent for each.
+ * Uses ReadableStream (fetch) since typical EventSource doesn't support POST.
+ */
+export async function streamThreadMessage(
+  threadId: string,
+  text: string,
+  ideaId?: string,
+  onEvent?: (event: StreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/threads/${threadId}/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, idea_id: ideaId ?? null }),
+    signal,
+  })
+
+  if (!res.ok) throw new Error(`streamThreadMessage ${res.status}`)
+
+  const reader = res.body?.getReader()
+  if (!reader) return
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.startsWith('data: ')) {
+        const raw = trimmed.slice(6)
+        if (!raw) continue
+        try {
+          onEvent?.(JSON.parse(raw) as StreamEvent)
+        } catch {
+          // ignore malformed
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Fetch all messages (checkpoint state) for a thread.
+ * Returns the raw state — the caller renders it into the message model.
+ */
+export interface ThreadMessage {
+  id: string
+  type: string
+  content: string
+  role?: string
+  name?: string
+  timestamp?: string
+  additional_kwargs?: Record<string, unknown>
+}
+
+export async function getThreadMessages(
+  threadId: string,
+  signal?: AbortSignal,
+): Promise<{ messages: ThreadMessage[]; count: number }> {
+  const res = await fetch(`${API_BASE}/threads/${threadId}/messages`, { signal })
+  if (!res.ok) throw new Error(`getThreadMessages ${res.status}`)
+  return res.json()
+}

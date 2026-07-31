@@ -69,4 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(config_router)
     app.include_router(approval_router)
     app.include_router(chat_router)
+    from .routes.threads import router as threads_router
+
+    app.include_router(threads_router)
     return app
