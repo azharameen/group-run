@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { RightChatSidebar } from "@/components/RightChatSidebar";
 import { SiteHeader } from "@/components/site-header";

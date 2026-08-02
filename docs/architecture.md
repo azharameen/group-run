@@ -1,7 +1,7 @@
 # Architecture
 
 > **Last updated: 2026-08-04**
-> 
+>
 > **⚠️ MAJOR PIVOT**: This document supersedes the previous Siemens Patent Ideator architecture. The system is now the **Agentic Organization Platform** — a general-purpose, multi-agent organizational framework. See [Architecture Decisions](./architecture-decisions.md) for pivot rationale.
 
 ## 1. System Overview
@@ -22,7 +22,7 @@ The **Agentic Organization Platform** is a general-purpose multi-agent orchestra
 | Principle | Description |
 | ----------- | ------------- |
 | **LangGraph-native orchestration** | Threads, checkpoints, and streaming use native LangGraph primitives — not custom APIs. `SQLiteSaver`/`PostgresSaver` for persistence, `astream_events()` for streaming. |
-| **Supervisor + teams hierarchy** | A supervisor agent routes user intents to the correct team/agent. @mentions provide direct routing. Teams are DeepAgents sub-graphs. |
+| **Supervisor + teams hierarchy** | A supervisor agent routes user intents to the correct team/agent. Direct @mention routing is deferred for this iteration. Teams are DeepAgents sub-graphs. |
 | **Thread = source of truth** | Every conversation is a LangGraph thread with checkpoint metadata (`updated_at`, `title`, `status`, `work_item_id`). Thread list is sorted by `updated_at`. |
 | **True streaming** | Events are pushed to the frontend as they arrive from `astream_events()`. No collect-then-deliver pattern. |
 | **Domain-agnostic core** | The platform core (threads, teams, @mentions, work items) has no domain-specific logic. Domains are configured via YAML team/agent definitions. |
@@ -206,7 +206,7 @@ Thread (LangGraph checkpoint)
 #### Thread API
 
 | Endpoint | Purpose | LangGraph Primitive |
-|----------|---------|-------------------|
+| ---------- | --------- | ------------------- |
 | `GET /api/threads` | List threads, sorted by `updated_at` DESC | Checkpoint metadata query |
 | `POST /api/threads` | Create new thread | `graph.create_checkpoint()` |
 | `GET /api/threads/{id}` | Get thread messages | `graph.get_state()` |
@@ -214,7 +214,7 @@ Thread (LangGraph checkpoint)
 | `PUT /api/threads/{id}` | Update thread metadata | Checkpoint metadata update |
 | `DELETE /api/threads/{id}` | Delete thread | Checkpoint removal |
 
-### 2.4 Supervisor Agent + @Mentions
+### 2.4 Supervisor Agent + Routing
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -237,16 +237,12 @@ Thread (LangGraph checkpoint)
 └─────────────────┘  └─────────────────┘
 ```
 
-**@mention protocol:**
-- `@supervisor` → routes to supervisor agent
-- `@team-alpha` → routes to team lead
-- `@agent-name` → routes to specific agent (if unique)
-- `@team-alpha/researcher` → routes to specific agent in specific team
+**Routing model:**
 
-**Implementation:**
-- @mention parsing: regex on client side (autocomplete, highlighting) + server-side routing
 - Supervisor is a DeepAgents sub-agent with `delegate_to_team()` and `delegate_to_agent()` tools
-- Teams are defined in YAML config files
+- Team definitions are loaded from configuration rather than hard-coded into the workflow layer
+- Message routing is server-authoritative so the UI can stay thin and event-driven
+- @mention parsing is intentionally deferred until the domain model and team registry are stable
 
 ### 2.5 Thread ↔ Work Item Mapping
 
@@ -301,7 +297,7 @@ eventSource.onmessage = (event) => {
 ### 2.7 API Endpoints (Target State)
 
 | Method | Endpoint | Purpose |
-|--------|----------|---------|
+| -------- | ---------- | --------- |
 | GET | `/api/threads` | List threads (sorted by updated_at) |
 | POST | `/api/threads` | Create thread |
 | GET | `/api/threads/{id}` | Get thread messages |
@@ -595,7 +591,7 @@ teams:
 The following modules are being phased out:
 
 | Module | Replacement | Target Phase |
-|--------|-------------|-------------|
+| -------- | ------------- | ------------- |
 | `state/machine.py` (transitions FSM) | DeepAgents graph orchestration | Phase 4 |
 | `state/definitions.py` | Agent/team routing config | Phase 4 |
 | `state/gates.py` | Work item validation rules | Phase 4 |
@@ -621,7 +617,7 @@ The following modules are being phased out:
 ### 7.2 Environment Variables
 
 | Variable | Default | Purpose |
-|----------|---------|---------|
+| ---------- | --------- | --------- |
 | `OPENAI_API_KEY` | — | OpenAI-compatible API key |
 | `OPENAI_API_BASE` | `https://api.openai.com/v1` | LLM API base URL |
 | `OPENAI_MODEL_NAME` | `gpt-4o` | LLM model name |

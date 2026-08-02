@@ -19,7 +19,7 @@
 
 - ✅ `get_deep_agent_runtime()` — Creates compiled DeepAgents graph
   - ✅ `create_deep_agent` with model, system prompt, backend, permissions, subagents
-  - ✅ `InMemorySaver` checkpointer for state persistence
+  - ✅ `SqliteSaver` checkpointer for state persistence
   - ✅ `interrupt_on` configuration for write/edit/delete operations
   - ✅ System prompt loaded from `instructions/global-agent-instructions.md`
 
@@ -81,6 +81,24 @@
 - ✅ `.env` file loading via `pydantic-settings`
 - ✅ Credential propagation to `os.environ` for LangChain compatibility
 - ✅ `deepagents_model` auto-derivation from `openai_model_name`
+
+---
+
+## 2. Thread System
+
+- ✅ Thread metadata persistence in SQLite
+  - ✅ `thread_manager.py` creates, updates, deletes, and lists threads
+  - ✅ `updated_at` sort order for active thread navigation
+  - ✅ `idea_id`, `tags`, and `agent_names` metadata fields
+- ✅ LangGraph checkpoint-backed message history
+  - ✅ `GET /api/threads/{id}/messages` reads from the saver state
+  - ✅ `POST /api/threads/{id}/stream` streams events immediately as they arrive
+  - ✅ Thread touch/update on every send for active sorting
+- ✅ Frontend thread experience
+  - ✅ Right sidebar thread list
+  - ✅ New thread creation on first message
+  - ✅ Thread switching reloads persisted history
+  - ✅ Streaming UI renders event-bound updates
 
 ---
 
@@ -250,6 +268,16 @@
 - ✅ Idea files (`GET /api/ideas/{id}/files`)
 - ✅ Artifact revisions (`GET /api/ideas/{id}/revisions`)
 - ✅ Artifact diff (`GET /api/ideas/{id}/artifacts/{name}/diff`)
+
+---
+
+## 7. Agentic Organization Platform
+
+- ✅ Thread persistence is the source of truth for conversations
+- ✅ Active thread sorting uses `updated_at DESC`
+- ✅ Threads can be associated with an `idea_id` for idea-scoped conversations
+- ❌ @mention routing is intentionally deferred for this iteration
+- ❌ Siemens-specific workflow generalization is pending the idea/thread cleanup
 
 ### 6.2 Route Organization
 

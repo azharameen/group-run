@@ -2,13 +2,13 @@
 
 Each chat conversation is a LangGraph thread (checkpoint). This service
 provides CRUD operations over threads, storing metadata (title, updated_at,
-work_item_id, status) alongside checkpoints so they are queryable.
+idea_id, status) alongside checkpoints so they are queryable.
 """
 
 import sqlite3
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -54,11 +54,17 @@ def _init_metadata_table(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'active',
-            work_item_id TEXT,
+            idea_id TEXT,
             tags TEXT DEFAULT '[]',
             agent_names TEXT DEFAULT '[]'
         )
     """)
+    try:
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(thread_metadata)").fetchall()]
+        if "work_item_id" in columns and "idea_id" not in columns:
+            conn.execute("ALTER TABLE thread_metadata RENAME COLUMN work_item_id TO idea_id")
+    except sqlite3.OperationalError:
+        pass
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_thread_metadata_updated
         ON thread_metadata(updated_at DESC)
@@ -75,17 +81,17 @@ def _get_conn() -> sqlite3.Connection:
 
 def create_thread(
     title: str = "New Chat",
-    work_item_id: Optional[str] = None,
+    idea_id: Optional[str] = None,
     tags: Optional[list[str]] = None,
     agent_names: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     """Create a new thread and return its metadata."""
     thread_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     conn = _get_conn()
     conn.execute(
         """
-        INSERT INTO thread_metadata (thread_id, title, created_at, updated_at, status, work_item_id, tags, agent_names)
+        INSERT INTO thread_metadata (thread_id, title, created_at, updated_at, status, idea_id, tags, agent_names)
         VALUES (?, ?, ?, ?, 'active', ?, ?, ?)
         """,
         (
@@ -93,7 +99,7 @@ def create_thread(
             title,
             now,
             now,
-            work_item_id,
+            idea_id,
             json.dumps(tags or []),
             json.dumps(agent_names or []),
         ),
@@ -135,18 +141,18 @@ def update_thread(
     thread_id: str,
     **fields: Any,
 ) -> Optional[dict[str, Any]]:
-    """Update thread metadata fields (title, status, work_item_id, tags, agent_names, updated_at).
+    """Update thread metadata fields (title, status, idea_id, tags, agent_names, updated_at).
 
     If 'updated_at' is not provided, it is auto-set to now.
     Returns updated thread or None if not found.
     """
-    allowed = {"title", "status", "work_item_id", "tags", "agent_names", "updated_at"}
+    allowed = {"title", "status", "idea_id", "tags", "agent_names", "updated_at"}
     to_set = {k: v for k, v in fields.items() if k in allowed}
     if not to_set:
         return get_thread(thread_id)
 
     # Auto-set updated_at
-    to_set.setdefault("updated_at", datetime.utcnow().isoformat())
+    to_set.setdefault("updated_at", datetime.now(timezone.utc).isoformat())
 
     # Serialize list fields
     for list_field in ("tags", "agent_names"):
@@ -215,7 +221,7 @@ def touch_thread(thread_id: str) -> None:
     conn = _get_conn()
     conn.execute(
         "UPDATE thread_metadata SET updated_at = ? WHERE thread_id = ?",
-        (datetime.utcnow().isoformat(), thread_id),
+        (datetime.now(timezone.utc).isoformat(), thread_id),
     )
     conn.commit()
 

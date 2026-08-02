@@ -49,7 +49,7 @@ async def lifespan(_app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Siemens Patent Idea Generator",
+        title="Agentic Organization Platform",
         version="1.0.0",
         lifespan=lifespan,
     )

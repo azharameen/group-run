@@ -25,13 +25,16 @@ from ...services.thread_manager import (
 
 router = APIRouter(prefix="/api/threads", tags=["threads"])
 
+THREAD_NOT_FOUND = "Thread not found"
+NO_FIELDS_TO_UPDATE = "No fields to update"
+
 
 # ── Schemas ────────────────────────────────────────────────────────────────
 
 
 class CreateThreadRequest(BaseModel):
     title: str = "New Chat"
-    work_item_id: Optional[str] = None
+    idea_id: Optional[str] = None
     tags: list[str] = []
     agent_names: list[str] = []
 
@@ -39,7 +42,7 @@ class CreateThreadRequest(BaseModel):
 class UpdateThreadRequest(BaseModel):
     title: Optional[str] = None
     status: Optional[str] = None
-    work_item_id: Optional[str] = None
+    idea_id: Optional[str] = None
     tags: Optional[list[str]] = None
     agent_names: Optional[list[str]] = None
 
@@ -69,23 +72,26 @@ async def api_create_thread(req: CreateThreadRequest) -> dict[str, Any]:
     """Create a new thread."""
     thread = create_thread(
         title=req.title,
-        work_item_id=req.work_item_id,
+        idea_id=req.idea_id,
         tags=req.tags,
         agent_names=req.agent_names,
     )
     return {"thread": thread}
 
 
-@router.get("/{thread_id}")
+@router.get("/{thread_id}", responses={404: {"description": THREAD_NOT_FOUND}})
 async def api_get_thread(thread_id: str) -> dict[str, Any]:
     """Get thread metadata."""
     thread = get_thread(thread_id)
     if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
+        raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
     return {"thread": thread}
 
 
-@router.put("/{thread_id}")
+@router.put(
+    "/{thread_id}",
+    responses={400: {"description": NO_FIELDS_TO_UPDATE}, 404: {"description": THREAD_NOT_FOUND}},
+)
 async def api_update_thread(
     thread_id: str,
     req: UpdateThreadRequest,
@@ -93,10 +99,10 @@ async def api_update_thread(
     """Update thread metadata."""
     updates = {k: v for k, v in req.model_dump(exclude_none=True).items() if v is not None}
     if not updates:
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
     thread = update_thread(thread_id, **updates)
     if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
+        raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
     return {"thread": thread}
 
 
@@ -107,17 +113,23 @@ async def api_delete_thread(thread_id: str) -> dict[str, bool]:
     return {"deleted": deleted}
 
 
-@router.get("/{thread_id}/messages")
+@router.get(
+    "/{thread_id}/messages",
+    responses={404: {"description": THREAD_NOT_FOUND}},
+)
 async def api_get_thread_messages(thread_id: str) -> dict[str, Any]:
     """Retrieve messages from a thread's latest checkpoint state."""
     thread = get_thread(thread_id)
     if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
+        raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
     messages = get_thread_messages(thread_id)
     return {"messages": messages, "count": len(messages)}
 
 
-@router.post("/{thread_id}/stream")
+@router.post(
+    "/{thread_id}/stream",
+    responses={404: {"description": THREAD_NOT_FOUND}},
+)
 async def api_stream_message(
     thread_id: str,
     req: SendMessageRequest,
@@ -128,7 +140,7 @@ async def api_stream_message(
     """
     thread = get_thread(thread_id)
     if not thread:
-        raise HTTPException(status_code=404, detail="Thread not found")
+        raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
 
     # Touch updated_at
     touch_thread(thread_id)

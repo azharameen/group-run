@@ -28,87 +28,285 @@ def _stringify_runtime_output(value: Any) -> str:
         return str(value)
 
 
+def _is_text_chunk(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+    chunk_type = str(value.get("type") or "").lower()
+    if chunk_type == "reasoning":
+        return False
+    if chunk_type == "text":
+        return True
+    return any(
+        isinstance(value.get(key), str) and value.get(key).strip()
+        for key in ("text", "content", "output", "message")
+    )
+
+
+def _extract_text_from_dict(value: dict[str, Any]) -> str:
+    chunk_type = str(value.get("type") or "").lower()
+    if chunk_type == "reasoning":
+        return ""
+
+    for key in ("text", "content", "output", "message"):
+        text = value.get(key)
+        if isinstance(text, str) and text.strip():
+            return text.strip()
+        if isinstance(text, list) and text:
+            joined = "".join(_extract_text_from_chunk(item) for item in text)
+            if joined.strip():
+                return joined.strip()
+
+    if chunk_type == "text":
+        nested = value.get("data") or value.get("chunk")
+        if nested is not None:
+            extracted = _extract_text_from_chunk(nested)
+            if extracted:
+                return extracted
+
+    return ""
+
+
+def _extract_text_from_chunk(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        extracted = _extract_text_from_dict(value)
+        if extracted:
+            return extracted
+    if isinstance(value, list):
+        parts = [
+            _extract_text_from_chunk(item)
+            for item in value
+            if not isinstance(item, dict) or _is_text_chunk(item)
+        ]
+        joined = "".join(part for part in parts if part)
+        if joined.strip():
+            return joined.strip()
+    if hasattr(value, "text"):
+        return _extract_text_from_chunk(getattr(value, "text"))
+    if hasattr(value, "content"):
+        return _extract_text_from_chunk(getattr(value, "content"))
+    return _stringify_runtime_output(value)
+
+
 async def _try_await_text(value: Any) -> str:
     if hasattr(value, 'text'):
         t = value.text
         if asyncio.iscoroutine(t):
             t = await t
-        return _stringify_runtime_output(t)
+        if isinstance(t, list):
+            extracted = "".join(
+                _extract_text_from_chunk(item)
+                for item in t
+                if not isinstance(item, dict) or _is_text_chunk(item)
+            )
+            if extracted.strip():
+                return extracted.strip()
+        return _extract_text_from_chunk(t)
     if asyncio.iscoroutine(value):
         value = await value
-    return _stringify_runtime_output(value)
+    return _extract_text_from_chunk(value)
 
 
-async def _try_consume_messages(
+async def _iter_projection(projection: Any):
+    """Yield items from a projection whether it is async or sync iterable."""
+    if projection is None:
+        return
+    if hasattr(projection, "__aiter__"):
+        async for item in projection:
+            yield item
+    elif hasattr(projection, "__iter__"):
+        for item in projection:
+            yield item
+
+
+async def _iter_text_deltas(message: Any):
+    """Yield text deltas from a ChatModelStream's .text projection.
+
+    The projection is an iterable of deltas per the DeepAgents docs. We
+    defensively handle a plain string, a coroutine, or a list of chunk
+    frames (e.g. reasoning/text dicts) as well.
+    """
+    text = getattr(message, "text", None)
+    if text is None:
+        return
+    if asyncio.iscoroutine(text):
+        text = await text
+    if isinstance(text, str):
+        if text.strip():
+            yield text
+        return
+    async for delta in _iter_projection(text):
+        if isinstance(delta, str):
+            if delta:
+                yield delta
+        elif isinstance(delta, dict) and not _is_text_chunk(delta):
+            # Skip reasoning-only frames (e.g. {"type": "reasoning", ...}).
+            continue
+        else:
+            extracted = _extract_text_from_chunk(delta)
+            if extracted:
+                yield extracted
+
+
+async def _iter_reasoning_deltas(message: Any):
+    """Yield reasoning deltas from a ChatModelStream's .reasoning projection."""
+    reasoning = getattr(message, "reasoning", None)
+    if reasoning is None:
+        return
+    if asyncio.iscoroutine(reasoning):
+        reasoning = await reasoning
+    if isinstance(reasoning, str):
+        if reasoning.strip():
+            yield reasoning
+        return
+    async for delta in _iter_projection(reasoning):
+        if isinstance(delta, str):
+            if delta:
+                yield delta
+        else:
+            extracted = _extract_text_from_chunk(delta)
+            if extracted:
+                yield extracted
+
+
+async def _consume_messages(
     stream: Any,
     agent_name: str,
-    idea_id: str,
-    provenance: str,
     queue: asyncio.Queue,
 ) -> None:
+    """Consume a message projection, emitting reasoning and token deltas."""
+    msgs = getattr(stream, "messages", None)
+    if msgs is None:
+        return
     try:
-        msgs = getattr(stream, "messages", None)
-        if msgs is None:
-            return
-        if not hasattr(msgs, "__aiter__"):
-            return
-        async for msg in msgs:
-            text = await _try_await_text(msg)
-            if text.strip():
-                await queue.put(("message", agent_name, text))
+        async for msg in _iter_projection(msgs):
+            async for delta in _iter_reasoning_deltas(msg):
+                await queue.put(("reasoning", agent_name, delta))
+            async for delta in _iter_text_deltas(msg):
+                await queue.put(("token", agent_name, delta))
     except (AttributeError, TypeError, StopAsyncIteration):
         pass
     except Exception:
         pass
 
 
-async def _try_consume_subagents(
+async def _consume_tool_calls(
     stream: Any,
-    idea_id: str,
-    provenance: str,
+    agent_name: str,
     queue: asyncio.Queue,
 ) -> None:
+    """Consume the tool-call lifecycle projection (start, deltas, result)."""
+    calls = getattr(stream, "tool_calls", None)
+    if calls is None:
+        return
     try:
-        subs = getattr(stream, "subagents", None)
-        if subs is None:
-            return
-        if not hasattr(subs, "__aiter__"):
-            return
-        async for sub in subs:
-            name = getattr(sub, "name", "subagent")
-            await queue.put(("subagent", name, None))
+        async for call in _iter_projection(calls):
+            tool_name = getattr(call, "tool_name", "") or getattr(call, "name", "")
+            call_input = getattr(call, "input", {})
+            completed = bool(getattr(call, "completed", False))
+            error = getattr(call, "error", None)
+            output = getattr(call, "output", None)
 
-            # Consume subagent messages
-            await _try_consume_messages(sub, name, idea_id, provenance, queue)
+            await queue.put(("tool_call", agent_name, {
+                "tool": tool_name,
+                "params": call_input,
+            }))
 
-            # Consume subagent tool calls
             try:
-                calls = getattr(sub, "tool_calls", None)
-                if calls is not None:
-                    if hasattr(calls, "__aiter__"):
-                        async for call in calls:
-                            await queue.put(("tool_call", name, {
-                                "tool": getattr(call, "tool_name", ""),
-                                "params": getattr(call, "input", {}),
-                                "output": getattr(call, "output", None),
-                            }))
-                    elif hasattr(calls, "__iter__"):
-                        for call in calls:
-                            await queue.put(("tool_call", name, {
-                                "tool": getattr(call, "tool_name", ""),
-                                "params": getattr(call, "input", {}),
-                                "output": getattr(call, "output", None),
-                            }))
+                deltas = getattr(call, "output_deltas", None)
+                async for delta in _iter_projection(deltas):
+                    if delta:
+                        await queue.put(("tool_delta", agent_name, {
+                            "tool": tool_name,
+                            "delta": str(delta),
+                        }))
             except (AttributeError, TypeError, StopAsyncIteration):
                 pass
             except Exception:
                 pass
+
+            if completed or error is not None:
+                await queue.put(("tool_result", agent_name, {
+                    "tool": tool_name,
+                    "output": output,
+                    "error": error,
+                }))
+    except (AttributeError, TypeError, StopAsyncIteration):
+        pass
+    except Exception:
+        pass
+
+
+async def _consume_subagents(
+    stream: Any,
+    queue: asyncio.Queue,
+) -> None:
+    """Consume subagent projections, recursing into nested streams."""
+    subs = getattr(stream, "subagents", None)
+    if subs is None:
+        return
+    try:
+        async for sub in _iter_projection(subs):
+            name = getattr(sub, "name", "subagent")
+            status = getattr(sub, "status", "started")
+            await queue.put(("subagent", name, {"status": status}))
+
+            await _consume_messages(sub, name, queue)
+            await _consume_tool_calls(sub, name, queue)
+            await _consume_subagents(sub, queue)
 
             await queue.put(("subagent_complete", name, None))
     except (AttributeError, TypeError, StopAsyncIteration):
         pass
     except Exception:
         pass
+
+
+async def _extract_final_message_text(output: Any) -> str:
+    """Extract the last assistant message text from a final state dict."""
+    if output is None:
+        return ""
+    if isinstance(output, str):
+        return output.strip()
+    if isinstance(output, dict):
+        messages = output.get("messages")
+        if isinstance(messages, list) and messages:
+            for msg in reversed(messages):
+                if isinstance(msg, dict):
+                    role = msg.get("role") or msg.get("type") or ""
+                    if role in ("assistant", "ai"):
+                        content = msg.get("content")
+                        if isinstance(content, str) and content.strip():
+                            return content.strip()
+                        if isinstance(content, list):
+                            parts = []
+                            for block in content:
+                                if isinstance(block, dict):
+                                    if block.get("type") == "text" and block.get("text"):
+                                        parts.append(block["text"])
+                                    elif block.get("text"):
+                                        parts.append(block["text"])
+                            joined = "".join(parts).strip()
+                            if joined:
+                                return joined
+                elif hasattr(msg, "content"):
+                    content = getattr(msg, "content")
+                    if isinstance(content, str) and content.strip():
+                        return content.strip()
+        for key in ("output", "content", "text"):
+            value = output.get(key)
+            if value:
+                extracted = await _extract_final_message_text(value)
+                if extracted:
+                    return extracted
+    if hasattr(output, "content"):
+        return await _extract_final_message_text(getattr(output, "content"))
+    if hasattr(output, "text"):
+        return await _extract_final_message_text(getattr(output, "text"))
+    return ""
 
 
 async def _consume_v3_stream(
@@ -118,16 +316,23 @@ async def _consume_v3_stream(
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """Consume a v3 AsyncGraphRunStream and emit structured transcript events.
 
-    Uses asyncio.gather to consume coordinator messages and subagent
-    projections concurrently, routing everything through a shared queue
-    for arrival-order emission.
+    Consumes the message, tool-call, and subagent projections concurrently
+    (per the DeepAgents docs' async pattern) and routes everything through a
+    shared queue for arrival-order emission. Text and reasoning are emitted
+    as token-level deltas so the frontend can render incrementally.
+
+    When the projections yield no content (e.g. a model that does not emit
+    content-block deltas), falls back to the run's final state via the async
+    ``output()`` method and emits the last assistant message.
     """
     queue: asyncio.Queue = asyncio.Queue(maxsize=500)
+    emitted_content = False
 
     async def _pump():
         await asyncio.gather(
-            _try_consume_messages(stream, "coordinator", idea_id, provenance, queue),
-            _try_consume_subagents(stream, idea_id, provenance, queue),
+            _consume_messages(stream, "coordinator", queue),
+            _consume_tool_calls(stream, "coordinator", queue),
+            _consume_subagents(stream, queue),
         )
         await queue.put((None, None, None))
 
@@ -138,7 +343,25 @@ async def _consume_v3_stream(
             event_type, agent, data = await queue.get()
             if event_type is None:
                 break
-            if event_type == "message":
+            if event_type == "token":
+                emitted_content = True
+                yield normalize_transcript_event(idea_id, {
+                    "type": "token",
+                    "speaker": agent,
+                    "agent": agent,
+                    "content": data,
+                    "provenance": f"{provenance}|stream:v3",
+                })
+            elif event_type == "reasoning":
+                yield normalize_transcript_event(idea_id, {
+                    "type": "reasoning",
+                    "speaker": agent,
+                    "agent": agent,
+                    "content": data,
+                    "provenance": f"{provenance}|stream:v3",
+                })
+            elif event_type == "message":
+                emitted_content = True
                 yield normalize_transcript_event(idea_id, {
                     "type": "message",
                     "speaker": agent,
@@ -152,18 +375,7 @@ async def _consume_v3_stream(
                     "speaker": agent,
                     "agent": agent,
                     "content": f"Subagent {agent} started",
-                    "status": "started",
-                    "provenance": f"{provenance}|stream:v3",
-                })
-            elif event_type == "tool_call":
-                yield normalize_transcript_event(idea_id, {
-                    "type": "tool_call",
-                    "speaker": agent,
-                    "agent": agent,
-                    "tool": data.get("tool", ""),
-                    "params": data.get("params", {}),
-                    "output": data.get("output"),
-                    "content": f"Tool: {data.get('tool', '')}",
+                    "status": data.get("status", "started"),
                     "provenance": f"{provenance}|stream:v3",
                 })
             elif event_type == "subagent_complete":
@@ -175,12 +387,89 @@ async def _consume_v3_stream(
                     "status": "completed",
                     "provenance": f"{provenance}|stream:v3",
                 })
+            elif event_type == "tool_call":
+                yield normalize_transcript_event(idea_id, {
+                    "type": "tool_call",
+                    "speaker": agent,
+                    "agent": agent,
+                    "tool": data.get("tool", ""),
+                    "params": data.get("params", {}),
+                    "content": f"Tool: {data.get('tool', '')}",
+                    "provenance": f"{provenance}|stream:v3",
+                })
+            elif event_type == "tool_delta":
+                yield normalize_transcript_event(idea_id, {
+                    "type": "tool_result",
+                    "speaker": agent,
+                    "agent": agent,
+                    "tool": data.get("tool", ""),
+                    "content": data.get("delta", ""),
+                    "provenance": f"{provenance}|stream:v3",
+                })
+            elif event_type == "tool_result":
+                yield normalize_transcript_event(idea_id, {
+                    "type": "tool_result",
+                    "speaker": agent,
+                    "agent": agent,
+                    "tool": data.get("tool", ""),
+                    "output": data.get("output"),
+                    "content": str(data.get("error") or data.get("output") or ""),
+                    "provenance": f"{provenance}|stream:v3",
+                })
+
+        # Fall back to the final state when no content deltas arrived.
+        if not emitted_content:
+            try:
+                output_fn = getattr(stream, "output", None)
+                final_output = await output_fn() if callable(output_fn) else None
+                fallback_text = await _extract_final_message_text(final_output)
+                if fallback_text:
+                    yield normalize_transcript_event(idea_id, {
+                        "type": "message",
+                        "speaker": "assistant",
+                        "agent": "assistant",
+                        "content": fallback_text,
+                        "provenance": f"{provenance}|stream:v3:output",
+                    })
+            except Exception:
+                pass
+
+        # Detect a human-in-the-loop interrupt in the final state.
+        try:
+            interrupts_fn = getattr(stream, "interrupts", None)
+            interrupts = await interrupts_fn() if callable(interrupts_fn) else None
+            if interrupts:
+                for intr in interrupts:
+                    interrupt_id = (
+                        getattr(intr, "interrupt_id", "")
+                        if not isinstance(intr, dict)
+                        else intr.get("interrupt_id", "")
+                    )
+                    value = (
+                        getattr(intr, "value", None)
+                        if not isinstance(intr, dict)
+                        else intr.get("value", None)
+                    )
+                    yield normalize_transcript_event(idea_id, {
+                        "type": "interrupt",
+                        "speaker": "workflow-orchestrator",
+                        "agent": "workflow-orchestrator",
+                        "interrupt_id": str(interrupt_id),
+                        "content": str(value or "Action requires approval"),
+                        "provenance": f"{provenance}|stream:v3",
+                    })
+        except Exception:
+            pass
     finally:
         pump_task.cancel()
         try:
             await pump_task
         except asyncio.CancelledError:
-            pass
+            raise
+
+
+def _looks_like_v3_stream(stream: Any) -> bool:
+    return any(hasattr(stream, attr) for attr in ("messages", "subagents", "output"))
 
 
 async def _consume_v2_stream(
@@ -203,7 +492,7 @@ async def _consume_v2_stream(
                 event_type = "tool_call" if raw_type.endswith("start") else "tool_result"
             elif raw_type.startswith("on_chat_model_stream"):
                 event_type = "token"
-            elif raw_type.startswith("on_chain_end") or raw_type.startswith("on_end"):
+            elif raw_type.startswith(("on_chain_end", "on_end")):
                 event_type = "completion"
 
             content = ""
@@ -387,37 +676,53 @@ async def execute_deep_agent_workflow_streaming(
     }
 
     emitted_done = False
+    stream = None
 
     try:
+        # Primary path: async v3 event streaming (per DeepAgents docs). Using
+        # astream_events keeps the uvicorn event loop free so deltas flow live.
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="The v3 streaming protocol on Pregel is experimental")
+            warnings.filterwarnings(
+                "ignore",
+                message="The v3 streaming protocol on Pregel is experimental",
+            )
             stream = await runtime.astream_events(
                 input_payload,
                 version="v3",
                 config={"configurable": configurable},
             )
-        async for event in _consume_v3_stream(stream, idea_id, provenance):
-            if event.get("type") == "done":
-                emitted_done = True
-            yield event
-    except TypeError:
-        async for event in _consume_v2_stream(
-            runtime.astream_events(input_payload, config={"configurable": configurable}),
-            idea_id,
-            provenance,
-        ):
-            if event.get("type") == "done":
-                emitted_done = True
-            yield event
-    except AttributeError:
-        async for event in _consume_v2_stream(
-            runtime.astream_events(input_payload, config={"configurable": configurable}),
-            idea_id,
-            provenance,
-        ):
-            if event.get("type") == "done":
-                emitted_done = True
-            yield event
+
+        if _looks_like_v3_stream(stream):
+            async for event in _consume_v3_stream(stream, idea_id, provenance):
+                if event.get("type") == "done":
+                    emitted_done = True
+                yield event
+        else:
+            async for event in _consume_v2_stream(stream, idea_id, provenance):
+                if event.get("type") == "done":
+                    emitted_done = True
+                yield event
+    except (TypeError, AttributeError):
+        # Last-resort fallback: raw v2 dict-event iterator.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="The v3 streaming protocol on Pregel is experimental",
+            )
+            raw_stream = await runtime.astream_events(
+                input_payload,
+                config={"configurable": configurable},
+            )
+        if _looks_like_v3_stream(raw_stream):
+            async for event in _consume_v3_stream(raw_stream, idea_id, provenance):
+                if event.get("type") == "done":
+                    emitted_done = True
+                yield event
+        else:
+            async for event in _consume_v2_stream(raw_stream, idea_id, provenance):
+                if event.get("type") == "done":
+                    emitted_done = True
+                yield event
     except Exception as exc:
         yield normalize_transcript_event(idea_id, {
             "type": "failed",

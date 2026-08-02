@@ -34,12 +34,9 @@ import {
 	streamThreadMessage,
 	listThreads,
 	createThread,
-	getThread,
 	getThreadMessages,
-	updateThread,
 	type StreamEvent,
 	type ThreadMetadata,
-	type ThreadMessage,
 } from "@/api/client";
 import {
 	BotMessageSquare,
@@ -131,7 +128,60 @@ const eventToMessage = (evt: StreamEvent): ChatMessage => {
 		hour: "2-digit",
 		minute: "2-digit",
 	});
+	const extractVisibleText = (value: unknown): string => {
+		if (typeof value !== "string") return "";
+		const trimmed = value.trim();
+		if (!trimmed) return "";
+		if (!trimmed.startsWith("[") && !trimmed.startsWith("{")) return value;
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (Array.isArray(parsed)) {
+				return parsed
+					.map((item) =>
+						typeof item?.text === "string"
+							? item.text
+							: typeof item?.content === "string"
+								? item.content
+								: "",
+					)
+					.filter(Boolean)
+					.join("");
+			}
+			if (parsed && typeof parsed === "object") {
+				return typeof parsed.text === "string"
+					? parsed.text
+					: typeof parsed.content === "string"
+						? parsed.content
+						: typeof parsed.output === "string"
+							? parsed.output
+							: value;
+			}
+		} catch {
+			return value;
+		}
+		return value;
+	};
+	const unwrapText = (value?: string) => {
+		if (!value) return "";
+		const trimmed = value.trim();
+		if (!trimmed.startsWith("[")) return value;
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (Array.isArray(parsed)) {
+				const candidate = parsed
+					.map((item) => item?.text || item?.content || "")
+					.filter(Boolean)
+					.join("");
+				return candidate || value;
+			}
+		} catch {
+			return value;
+		}
+		return value;
+	};
 	const text =
+		extractVisibleText(evt.text) ||
+		unwrapText(evt.text) ||
 		evt.content ||
 		evt.reason ||
 		(typeof evt.output === "string"
@@ -139,23 +189,29 @@ const eventToMessage = (evt: StreamEvent): ChatMessage => {
 			: evt.output
 				? JSON.stringify(evt.output, null, 2)
 				: "");
+	const isReasoning = evt.type === "reasoning";
 	return {
-		id: `${evt.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+		id:
+			evt.id ||
+			`${evt.type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
 		sender: evt.speaker || evt.agent || EVENT_LABELS[evt.type] || "Runtime",
 		speaker: evt.speaker || evt.agent,
 		role: evt.role,
 		text,
 		timestamp,
-		isStreaming: evt.type !== "done" && evt.type !== "completion",
-		eventType: evt.type,
+		isStreaming:
+			evt.type !== "done" && evt.type !== "completion" && evt.type !== "text",
+		eventType: isReasoning ? "thinking" : evt.type,
 		provenance: evt.provenance,
 		liveTrace: [
 			{
 				type: (evt.type === "done"
 					? "approval"
-					: evt.type) as TraceStep["type"],
+					: isReasoning
+						? "thinking"
+						: evt.type) as TraceStep["type"],
 				agent: evt.agent || evt.speaker,
-				content: evt.content,
+				content: evt.content || evt.text,
 				tool: evt.tool,
 				params: evt.params,
 				output: evt.output,
@@ -174,6 +230,8 @@ const eventToMessage = (evt: StreamEvent): ChatMessage => {
 			action: evt.action,
 			from_agent: evt.from_agent,
 			to_agent: evt.to_agent,
+			index: evt.index,
+			extras: evt.extras,
 		},
 		params: evt.params,
 		output: evt.output,
@@ -232,6 +290,8 @@ export function RightChatSidebar({
 	const abortRef = useRef<AbortController | null>(null);
 	const messageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 	const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+	// Tracks the id of the assistant message currently accumulating token deltas.
+	const streamMsgIdRef = useRef<string | null>(null);
 
 	const match = location.pathname.match(/\/ideas\/([^/]+)/);
 	const currentIdeaId = match ? match[1] : null;
@@ -243,15 +303,19 @@ export function RightChatSidebar({
 
 	// Sorted threads (most recent first)
 	const sortedThreads = useMemo(
-		() => [...threads].sort(
-			(a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-		),
+		() =>
+			[...threads].sort(
+				(a, b) =>
+					new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+			),
 		[threads],
 	);
 
 	// Load threads on mount
 	useEffect(() => {
-		listThreads().then(setThreads).catch(() => {});
+		listThreads()
+			.then(setThreads)
+			.catch(() => {});
 	}, []);
 
 	const activeThread = useMemo(
@@ -260,7 +324,10 @@ export function RightChatSidebar({
 	);
 
 	const [rawMessages, setRawMessages] = useState<ChatMessage[]>([]);
-	const groupedMessages = useMemo(() => groupMessages(rawMessages), [rawMessages]);
+	const groupedMessages = useMemo(
+		() => groupMessages(rawMessages),
+		[rawMessages],
+	);
 	const messages = useMemo(
 		() =>
 			searchQuery.trim()
@@ -306,11 +373,6 @@ export function RightChatSidebar({
 		return () => es.close();
 	}, []);
 
-	// ── Clear messages on navigation ────────────────────────────────────────
-	useEffect(() => {
-		setRawMessages([]);
-	}, [location.pathname]);
-
 	// ── Stop streaming ────────────────────────────────────────────────────────
 	const handleStopGeneration = () => {
 		abortRef.current?.abort();
@@ -337,7 +399,7 @@ export function RightChatSidebar({
 		if (activeThreadId) return activeThreadId;
 		const thread = await createThread({
 			title: "New Chat",
-			work_item_id: currentIdeaId ?? null,
+			idea_id: currentIdeaId ?? null,
 		});
 		setThreads((prev) => [...prev, thread]);
 		setActiveThreadId(thread.thread_id);
@@ -389,9 +451,37 @@ export function RightChatSidebar({
 						}
 
 						if (evt.type === "done") {
+							streamMsgIdRef.current = null;
 							setIsGenerating(false);
 							// Refresh thread list to get updated timestamps
-							listThreads().then(setThreads).catch(() => {});
+							listThreads()
+								.then(setThreads)
+								.catch(() => {});
+							return;
+						}
+
+						// Token/reasoning deltas accumulate into the last assistant
+						// message instead of creating a new bubble per delta.
+						if (evt.type === "token" || evt.type === "reasoning") {
+							const delta = evt.content || evt.text || "";
+							if (!delta) return;
+							const msgId = streamMsgIdRef.current;
+							if (msgId) {
+								setRawMessages((prev) =>
+									prev.map((m) =>
+										m.id === msgId
+											? { ...m, text: m.text + delta, isStreaming: true }
+											: m,
+									),
+								);
+							} else {
+								const newMsg = eventToMessage({
+									...evt,
+									type: evt.type === "reasoning" ? "reasoning" : "message",
+								});
+								streamMsgIdRef.current = newMsg.id;
+								setRawMessages((prev) => [...prev, newMsg]);
+							}
 							return;
 						}
 
@@ -442,92 +532,90 @@ export function RightChatSidebar({
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-							<SidebarMenuButton
-								size="lg"
-								tooltip="Agent Team Chat"
-								onClick={() => setShowThreadList(!showThreadList)}
-							>
-								<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
-									<BotMessageSquare className="size-5" />
-								</div>
-								<div className="grid flex-1 text-left text-sm leading-tight">
-									<span className="truncate font-semibold">
-										{activeThread ? activeThread.title : "Agent Team Chat"}
-									</span>
-									<span className="truncate text-xs text-muted-foreground">
-										{activeThread
-											? `${sortedThreads.length} thread${sortedThreads.length !== 1 ? "s" : ""}`
-											: currentIdeaId
-												? `Idea: ${currentIdeaId}`
-												: "Global Workspace"}
-									</span>
-								</div>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					</SidebarMenu>
+						<SidebarMenuButton
+							size="lg"
+							tooltip="Agent Team Chat"
+							onClick={() => setShowThreadList(!showThreadList)}
+						>
+							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
+								<BotMessageSquare className="size-5" />
+							</div>
+							<div className="grid flex-1 text-left text-sm leading-tight">
+								<span className="truncate font-semibold">
+									{activeThread ? activeThread.title : "Agent Team Chat"}
+								</span>
+								<span className="truncate text-xs text-muted-foreground">
+									{activeThread
+										? `${sortedThreads.length} thread${sortedThreads.length !== 1 ? "s" : ""}`
+										: currentIdeaId
+											? `Idea: ${currentIdeaId}`
+											: "Global Workspace"}
+								</span>
+							</div>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+				</SidebarMenu>
 
-					{/* Thread list dropdown */}
-					{showThreadList && (
-						<div className="border-t bg-sidebar-accent/50 max-h-48 overflow-y-auto">
-							{sortedThreads.length === 0 ? (
-								<div className="px-3 py-4 text-xs text-center text-muted-foreground">
-									No threads yet. Send a message to start one.
-								</div>
-							) : (
-								sortedThreads.map((t) => (
-									<button
-										key={t.thread_id}
-										onClick={async () => {
-											setActiveThreadId(t.thread_id);
-											setRawMessages([]);
-											setShowThreadList(false);
-											setSearchQuery("");
-											// Load thread messages from checkpoint
-											try {
-												const { messages: msgs } = await getThreadMessages(t.thread_id);
-												const chatMessages = msgs
-													.filter((m) => m.type === "human" || m.type === "ai")
-													.map((m) => ({
-														id: m.id,
-														sender:
-															m.type === "human"
-																? "You"
-																: m.name || "Assistant",
-														text: m.content,
-														timestamp: m.timestamp
-															? new Date(m.timestamp).toLocaleTimeString([], {
-																	hour: "2-digit",
-																	minute: "2-digit",
-																})
-															: new Date().toLocaleTimeString([], {
-																	hour: "2-digit",
-																	minute: "2-digit",
-																}),
-														eventType:
-															m.type === "human"
-																? "user_message"
-																: "message",
-													}));
-												setRawMessages(chatMessages);
-											} catch {}
-										}}
-										className={`w-full text-left px-3 py-2 text-xs border-b last:border-b-0 hover:bg-sidebar-accent transition-colors ${
-											t.thread_id === activeThreadId
-												? "bg-sidebar-accent font-semibold"
-												: ""
-										}`}
-									>
-										<div className="truncate">{t.title}</div>
-										<div className="text-[10px] text-muted-foreground mt-0.5">
-											{new Date(t.updated_at).toLocaleString()}
-											{t.work_item_id ? ` · ${t.work_item_id}` : ""}
-										</div>
-									</button>
-								))
-							)}
-						</div>
-					)}
-				</SidebarHeader>
+				{/* Thread list dropdown */}
+				{showThreadList && (
+					<div className="border-t bg-sidebar-accent/50 max-h-48 overflow-y-auto">
+						{sortedThreads.length === 0 ? (
+							<div className="px-3 py-4 text-xs text-center text-muted-foreground">
+								No threads yet. Send a message to start one.
+							</div>
+						) : (
+							sortedThreads.map((t) => (
+								<button
+									key={t.thread_id}
+									onClick={async () => {
+										setActiveThreadId(t.thread_id);
+										setRawMessages([]);
+										setShowThreadList(false);
+										setSearchQuery("");
+										// Load thread messages from checkpoint
+										try {
+											const { messages: msgs } = await getThreadMessages(
+												t.thread_id,
+											);
+											const chatMessages = msgs
+												.filter((m) => m.type === "human" || m.type === "ai")
+												.map((m) => ({
+													id: m.id,
+													sender:
+														m.type === "human" ? "You" : m.name || "Assistant",
+													text: m.content,
+													timestamp: m.timestamp
+														? new Date(m.timestamp).toLocaleTimeString([], {
+																hour: "2-digit",
+																minute: "2-digit",
+															})
+														: new Date().toLocaleTimeString([], {
+																hour: "2-digit",
+																minute: "2-digit",
+															}),
+													eventType:
+														m.type === "human" ? "user_message" : "message",
+												}));
+											setRawMessages(chatMessages);
+										} catch {}
+									}}
+									className={`w-full text-left px-3 py-2 text-xs border-b last:border-b-0 hover:bg-sidebar-accent transition-colors ${
+										t.thread_id === activeThreadId
+											? "bg-sidebar-accent font-semibold"
+											: ""
+									}`}
+								>
+									<div className="truncate">{t.title}</div>
+									<div className="text-[10px] text-muted-foreground mt-0.5">
+										{new Date(t.updated_at).toLocaleString()}
+										{t.idea_id ? ` · ${t.idea_id}` : ""}
+									</div>
+								</button>
+							))
+						)}
+					</div>
+				)}
+			</SidebarHeader>
 
 			{/* Agent Plan & Tasks — SSE-driven (tasks updated from stream events) */}
 			<div className="px-3 py-1.5 border-b bg-muted/20">
@@ -643,7 +731,13 @@ export function RightChatSidebar({
 								>
 									<Message
 										variant={isUser ? "user" : "agent"}
-										avatarText={isUser ? "YOU" : msg.eventType === "message" ? msg.sender?.substring(0, 2).toUpperCase() || "AI" : "AI"}
+										avatarText={
+											isUser
+												? "YOU"
+												: msg.eventType === "message"
+													? msg.sender?.substring(0, 2).toUpperCase() || "AI"
+													: "AI"
+										}
 									>
 										<Marker sender={msg.sender} timestamp={msg.timestamp} />
 										{msg.eventType === "message" ? (
@@ -797,21 +891,23 @@ export function RightChatSidebar({
 									variant="ghost"
 									size="icon"
 									className="h-6 w-6"
-														title="New thread"
-														onClick={async () => {
-															try {
-																const thread = await createThread({ title: "New Chat" });
-																setThreads((prev) => [...prev, thread]);
-																setActiveThreadId(thread.thread_id);
-																setRawMessages([]);
-																// Refresh thread list
-																listThreads().then(setThreads).catch(() => {});
-															} catch {}
-														}}
-													>
-														<Plus className="w-3.5 h-3.5" />
-													</Button>
-												</div>
+									title="New thread"
+									onClick={async () => {
+										try {
+											const thread = await createThread({ title: "New Chat" });
+											setThreads((prev) => [...prev, thread]);
+											setActiveThreadId(thread.thread_id);
+											setRawMessages([]);
+											// Refresh thread list
+											listThreads()
+												.then(setThreads)
+												.catch(() => {});
+										} catch {}
+									}}
+								>
+									<Plus className="w-3.5 h-3.5" />
+								</Button>
+							</div>
 
 							{/* Dynamic: Stop / Send / Mic */}
 							{isGenerating ? (

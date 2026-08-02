@@ -1,8 +1,27 @@
 # Tasks
 
-> **Last updated: 2026-07-29**
+> **Last updated: 2026-07-31**
 >
 > **Legend**: `[IMPLEMENTED]` = code exists and is verified | `[COMPLETED]` = reviewed and confirmed done | `[IN PROGRESS]` = actively being worked on | `[PENDING]` = not yet started | `[DEFERRED]` = explicitly postponed
+
+## Current platform focus
+
+The thread-system foundation is already in place. The next implementation slice is the general **Agentic Organization Platform**.
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Thread persistence | [COMPLETED] | LangGraph checkpoint-backed threads are already implemented |
+| Thread list + streaming | [COMPLETED] | Sorted list and SSE event streaming are in place |
+| Idea-scoped threads | [IN PROGRESS] | Thread metadata now tracks `idea_id` instead of a separate work-item object |
+| Supervisor + team routing | [PENDING] | Generalized routing will replace Siemens pipeline assumptions |
+| Siemens-specific FSM | [DEFERRED] | Kept as legacy behavior until the new core stabilizes |
+| @mention routing | [DEFERRED] | Explicitly out of scope for this iteration |
+
+### Implementation guardrails
+
+- Preserve the existing thread/checkpointer behavior while adding new domain objects.
+- Prefer additive changes over rewrites until idea-scoped thread routing is proven.
+- Keep the core platform domain-agnostic; Siemens-specific logic must remain isolated.
 
 ---
 

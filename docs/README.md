@@ -1,6 +1,6 @@
-# Siemens Patent Ideator — Documentation
+# Agentic Organization Platform — Documentation
 
-> **An autonomous, multi-agent patent idea generation and validation system powered by LangChain DeepAgents runtime, FastAPI backend, and shadcn/ui frontend.**
+> **A general-purpose, multi-agent organization platform powered by LangGraph + DeepAgents, FastAPI, and shadcn/ui.**
 
 ## Documentation Index
 
@@ -32,9 +32,9 @@
 ## Current Status
 
 - **Runtime**: DeepAgents `create_deep_agent` with middleware stack (Filesystem, Memory, Skills, SubAgent, HITL)
-- **Backend**: FastAPI with REST + SSE streaming, 18-state workflow machine, 7-criterion scoring engine
+- **Backend**: FastAPI with REST + SSE streaming, persisted LangGraph threads, Siemens workflow legacy still present
 - **Frontend**: React + Vite + TypeScript + shadcn/ui + Radix UI + Tailwind CSS
-- **Persistence**: YAML/Markdown filesystem (workspace/ideas/)
+- **Persistence**: LangGraph SQLite checkpointer for threads plus idea-linked thread metadata
 - **Observability**: LangSmith tracing configured
 - **Tests**: 43 passing tests (pytest)
 

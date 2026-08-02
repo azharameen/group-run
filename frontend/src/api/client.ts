@@ -418,6 +418,8 @@ export function connectSSE(
 // ── Per-request Streaming Chat ─────────────────────────────────────────────────
 
 export type StreamEventType =
+  | 'reasoning'
+  | 'text'
   | 'thinking'
   | 'tool_call'
   | 'tool_result'
@@ -437,7 +439,10 @@ export type StreamEventType =
 
 export interface StreamEvent {
   type: StreamEventType
+  id?: string
+  index?: string
   content?: string
+  text?: string
   agent?: string
   speaker?: string
   role?: string
@@ -453,6 +458,7 @@ export interface StreamEvent {
   provenance?: string
   state?: string
   status?: string
+  extras?: Record<string, any>
   tasks?: any[]
   completed?: number
   total?: number
@@ -512,14 +518,14 @@ export interface ThreadMetadata {
   created_at: string
   updated_at: string
   status: string
-  work_item_id: string | null
+  idea_id: string | null
   tags: string[]
   agent_names: string[]
 }
 
 export interface CreateThreadRequest {
   title?: string
-  work_item_id?: string | null
+  idea_id?: string | null
   tags?: string[]
   agent_names?: string[]
 }
@@ -527,7 +533,7 @@ export interface CreateThreadRequest {
 export interface UpdateThreadRequest {
   title?: string
   status?: string
-  work_item_id?: string | null
+  idea_id?: string | null
   tags?: string[]
   agent_names?: string[]
 }
