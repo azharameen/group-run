@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { MarkdownViewer } from '@/components/MarkdownViewer'
 import type { IdeaFile } from '@/api/client'
 import { File, Folder, Search, FileText, Code, Clock, Copy, Check } from 'lucide-react'
@@ -137,15 +138,22 @@ export function IdeaFilesystem({ files, ideaId }: Props) {
                       {new Date(selectedFile.modified_at).toLocaleString()}
                     </span>
                     <span>{formatBytes(selectedFile.size_bytes)}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleCopy(selectedFile.content)}
-                      className="h-7 w-7 p-0"
-                      title="Copy file contents"
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
-                    </Button>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopy(selectedFile.content)}
+                          className="h-7 w-7 p-0"
+                        >
+                          {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="text-xs">
+                        {copied ? "Copied!" : "Copy file contents"}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
 

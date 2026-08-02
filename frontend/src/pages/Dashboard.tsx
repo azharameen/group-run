@@ -2,12 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   Search,
   Sparkles,
-  BarChart3,
   Loader2,
-  TrendingUp,
-  Lightbulb,
-  Shield,
   Play,
+  Lightbulb,
 } from 'lucide-react'
 import {
   fetchIdeas,
@@ -26,47 +23,15 @@ import {
 } from '../api/client'
 import IdeaCard from '../components/IdeaCard'
 import IdeasInProgress from '../components/IdeasInProgress'
+import { DashboardStatsCards } from '@/components/dashboard/DashboardStatsCards'
+import { GenerateIdeaModal } from '@/components/dashboard/GenerateIdeaModal'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-
-const PHASE_COLORS: Record<string, string> = {
-  discovery: 'bg-amber-500',
-  research: 'bg-blue-500',
-  analysis: 'bg-emerald-500',
-  drafting: 'bg-orange-500',
-  review: 'bg-purple-500',
-  submission: 'bg-emerald-600',
-  revision: 'bg-amber-600',
-  archive: 'bg-slate-500',
-}
-
-const IDEA_CATEGORIES = [
-  { value: 'Product Enhancement / Feature', label: 'Product Enhancement / Feature' },
-  { value: 'New Product Idea', label: 'New Product Idea' },
-  { value: 'Existing Project', label: 'Existing Project' },
-  { value: 'Others', label: 'Others' },
-]
 
 export default function Dashboard() {
   const [ideas, setIdeas] = useState<IdeaListItem[]>([])
@@ -170,20 +135,15 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-4 w-24 mb-2" />
+              <CardContent className="p-5">
+                <Skeleton className="h-3.5 w-24 mb-2.5" />
                 <Skeleton className="h-8 w-16" />
               </CardContent>
             </Card>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-48 rounded-xl" />
           ))}
         </div>
       </div>
@@ -191,67 +151,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Lightbulb className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-medium">Total Ideas</span>
-            </div>
-            <p className="text-3xl font-bold tracking-tight">{stats?.total_ideas || 0}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <TrendingUp className="w-4 h-4 text-blue-500" />
-              <span className="text-xs font-medium">Avg Composite Score</span>
-            </div>
-            <p className="text-3xl font-bold tracking-tight">{stats?.average_score || 0}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Shield className="w-4 h-4 text-emerald-500" />
-              <span className="text-xs font-medium">Above Gate Threshold</span>
-            </div>
-            <p className="text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-              {stats?.ideas_above_threshold || 0}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <BarChart3 className="w-4 h-4 text-primary" />
-              <span className="text-xs font-medium">Phase Breakdown</span>
-            </div>
-            <div className="flex gap-1.5 mt-3">
-              {Object.entries(workflowConfig?.phases || { discovery: { label: 'Discovery', color: 'amber' } }).map(([key, p]) => {
-                const count = stats?.by_phase?.[key] || 0
-                const total = stats?.total_ideas || 1
-                return (
-                  <div
-                    key={key}
-                    className="group relative flex-1 h-3 rounded-full overflow-hidden bg-muted"
-                  >
-                    <div
-                      className={`h-full rounded-full ${PHASE_COLORS[key] || 'bg-slate-500'} transition-all`}
-                      style={{ width: `${(count / total) * 100}%` }}
-                    />
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
+      <DashboardStatsCards stats={stats} workflowConfig={workflowConfig} />
 
       <IdeasInProgress />
 
@@ -270,7 +171,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-wrap gap-1">
-            {(Object.entries(workflowConfig?.phases || { discovery: { label: 'Discovery', color: 'amber' } }) ).map(([key, p]) => (
+            {Object.entries(workflowConfig?.phases || { discovery: { label: 'Discovery', color: 'amber' } }).map(([key, p]) => (
               <Badge
                 key={key}
                 variant={phaseFilter === key ? "default" : "outline"}
@@ -303,112 +204,35 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      {/* Generate Idea Dialog */}
-      <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Generate New Idea</DialogTitle>
-            <DialogDescription>
-              Select a topic, category, and optionally describe what you want. The agent will generate ideas through the full pipeline.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {/* Topic */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Technology Topic</label>
-              <Select value={selectedTopic} onValueChange={setSelectedTopic}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Any</SelectItem>
-                  {topics.map((t) => (
-                    <SelectItem key={t.TopicId} value={String(t.TopicId)}>
-                      {t.TopicName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Idea Category */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Idea Category</label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {IDEA_CATEGORIES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Project (only when Existing Project) */}
-            {selectedCategory === 'Existing Project' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Select Project</label>
-                <Select value={selectedProject} onValueChange={setSelectedProject}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a project..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64">
-                    {projects
-                      .filter((p) => p.ProjectName.trim())
-                      .map((p) => (
-                        <SelectItem key={p.ProjectID} value={String(p.ProjectID)}>
-                          {p.ProjectName}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Prompt */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Your Prompt (optional)</label>
-              <Textarea
-                value={promptText}
-                onChange={(e) => setPromptText(e.target.value)}
-                placeholder="Describe what kind of idea you're looking for... Leave empty for autonomous generation based on the topic above."
-                className="h-24 resize-none"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowGenerateModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleGenerate} disabled={generating} className="gap-2">
-              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {generating ? 'Generating...' : 'Generate'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <GenerateIdeaModal
+        open={showGenerateModal}
+        onOpenChange={setShowGenerateModal}
+        topics={topics}
+        projects={projects}
+        selectedTopic={selectedTopic}
+        onSelectTopic={setSelectedTopic}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+        selectedProject={selectedProject}
+        onSelectProject={setSelectedProject}
+        promptText={promptText}
+        onPromptTextChange={setPromptText}
+        generating={generating}
+        onGenerate={handleGenerate}
+      />
 
       {/* Ideas Grid */}
       {filteredIdeas.length === 0 ? (
         <Card className="p-12 text-center">
-          <CardContent className="space-y-4">
-            <Sparkles className="w-12 h-12 text-muted-foreground mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold">No ideas found</h3>
-              <p className="text-sm text-muted-foreground">
-                Click Generate Idea to start the multi-agent pipeline.
-              </p>
-            </div>
-            <div className="flex justify-center pt-2">
-              <Button onClick={openGenerateDialog}>Generate Idea</Button>
-            </div>
-          </CardContent>
+          <Lightbulb className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+          <p className="font-semibold text-lg">No ideas found</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
+            {phaseFilter ? `No ideas in phase "${phaseFilter}".` : 'Get started by creating or generating your first idea.'}
+          </p>
+          <Button onClick={openGenerateDialog} className="gap-2">
+            <Sparkles className="w-4 h-4" />
+            Generate First Idea
+          </Button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

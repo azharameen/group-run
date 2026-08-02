@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Code, Eye, Copy, Check } from 'lucide-react'
 
 interface Props {
@@ -111,15 +112,21 @@ export function MarkdownViewer({
               Code
             </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopy}
-            title="Copy content"
-            className="h-7 w-7 p-0"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                className="h-7 w-7 p-0"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="text-xs">
+              {copied ? "Copied!" : "Copy content"}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
       <ScrollArea className="max-h-[500px] p-4">

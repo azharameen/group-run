@@ -93,7 +93,7 @@ export const MessageScroller = React.forwardRef<
 			<div
 				ref={scrollRef}
 				onScroll={handleScroll}
-				className={cn("flex-1 overflow-y-auto pr-2 space-y-3.5", className)}
+				className={cn("flex-1 overflow-y-auto px-4 py-4 space-y-4 font-sans", className)}
 				{...props}
 			>
 				{children}
@@ -129,7 +129,6 @@ interface TurnMinimapProps {
 export const TurnMinimap: React.FC<TurnMinimapProps> = ({
 	totalTurns,
 	onTurnClick,
-	visible = false,
 	messages,
 }) => {
 	const [hoveredIdx, setHoveredIdx] = React.useState<number | null>(null);
@@ -139,17 +138,9 @@ export const TurnMinimap: React.FC<TurnMinimapProps> = ({
 	return (
 		<div
 			className={cn(
-				"fixed right-80 top-1/2 -translate-y-1/2 w-6 z-40",
-				"bg-sidebar border-l border-border/60",
-				"shadow-[-4px_0_10px_rgba(0,0,0,0.1)]",
-				"rounded-l-xl",
-				"flex flex-col items-center justify-center gap-[3px] py-3 select-none",
-				"transition-all duration-200 ease-out",
-				visible
-					? "opacity-100 translate-x-0"
-					: "opacity-0 translate-x-2 pointer-events-none",
+				"absolute right-3.5 top-1/2 -translate-y-1/2 w-4 z-40 pointer-events-auto",
+				"flex flex-col items-center justify-center gap-[4px] py-1 select-none",
 			)}
-			onMouseEnter={() => {}}
 			onMouseLeave={() => setHoveredIdx(null)}
 		>
 			<TooltipProvider delayDuration={200}>

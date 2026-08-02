@@ -22,12 +22,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  OPENAI_MODELS,
+  LLM_PROVIDERS,
+  DEFAULT_PROVIDER_CONFIGS,
+  DEFAULT_ACCOUNT_PROFILE,
+} from "@/constants/settings"
 
 // -------------------------------------------------------------
 // 1. Account Settings
 // -------------------------------------------------------------
 export function AccountSettings() {
-  const [username, setUsername] = React.useState("Azhar Ameen")
+  const [username, setUsername] = React.useState(DEFAULT_ACCOUNT_PROFILE.username)
   const [isEditing, setIsEditing] = React.useState(false)
   const [tempUsername, setTempUsername] = React.useState(username)
 
@@ -47,8 +53,8 @@ export function AccountSettings() {
         <div className="flex items-center justify-between py-5">
           <span className="text-sm font-medium text-muted-foreground">Avatar</span>
           <Avatar className="h-12 w-12 border-2 border-border/80 shadow-sm cursor-pointer hover:opacity-90 transition-opacity">
-            <AvatarImage src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=150&h=150&q=80" alt="Avatar" />
-            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold">AA</AvatarFallback>
+            <AvatarImage src={DEFAULT_ACCOUNT_PROFILE.avatarUrl} alt="Avatar" />
+            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold">{DEFAULT_ACCOUNT_PROFILE.avatarFallback}</AvatarFallback>
           </Avatar>
         </div>
 
@@ -94,7 +100,7 @@ export function AccountSettings() {
         {/* Email Section */}
         <div className="flex items-center justify-between py-5">
           <span className="text-sm font-medium text-muted-foreground">Email</span>
-          <span className="text-sm text-foreground">azharameen52@gmail.com</span>
+          <span className="text-sm text-foreground">{DEFAULT_ACCOUNT_PROFILE.email}</span>
         </div>
 
         {/* Sign Out Section */}
@@ -238,11 +244,11 @@ export function ProviderSettings() {
   // State for OpenAI inputs
   const [showOpenAIKey, setShowOpenAIKey] = React.useState(false)
   const [openaiKey, setOpenaiKey] = React.useState("")
-  const [openaiModel, setOpenaiModel] = React.useState("gpt-4o")
+  const [openaiModel, setOpenaiModel] = React.useState(OPENAI_MODELS[0].value)
 
   // State for Ollama inputs
-  const [ollamaUrl, setOllamaUrl] = React.useState("http://localhost:11434")
-  const [ollamaModel, setOllamaModel] = React.useState("llama3")
+  const [ollamaUrl, setOllamaUrl] = React.useState(DEFAULT_PROVIDER_CONFIGS.ollama.baseUrl)
+  const [ollamaModel, setOllamaModel] = React.useState(DEFAULT_PROVIDER_CONFIGS.ollama.defaultModel)
   const [ollamaStatus, setOllamaStatus] = React.useState<"idle" | "testing" | "success" | "error">("idle")
 
   // State for Custom Endpoint inputs
@@ -269,36 +275,19 @@ export function ProviderSettings() {
 
       {/* Provider Selector Tabs */}
       <div className="flex rounded-lg border border-border/80 p-1 bg-muted/30">
-        <button
-          onClick={() => setActiveProvider("openai")}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
-            activeProvider === "openai"
-              ? "bg-background text-foreground shadow-sm font-semibold"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          OpenAI
-        </button>
-        <button
-          onClick={() => setActiveProvider("ollama")}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
-            activeProvider === "ollama"
-              ? "bg-background text-foreground shadow-sm font-semibold"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Ollama (Local)
-        </button>
-        <button
-          onClick={() => setActiveProvider("custom")}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
-            activeProvider === "custom"
-              ? "bg-background text-foreground shadow-sm font-semibold"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Custom Endpoint
-        </button>
+        {LLM_PROVIDERS.map((provider) => (
+          <button
+            key={provider.value}
+            onClick={() => setActiveProvider(provider.value)}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+              activeProvider === provider.value
+                ? "bg-background text-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {provider.label}
+          </button>
+        ))}
       </div>
 
       {/* Config Form Cards */}
@@ -338,10 +327,9 @@ export function ProviderSettings() {
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="gpt-4o">gpt-4o (Recommended)</SelectItem>
-                    <SelectItem value="gpt-4-turbo">gpt-4-turbo</SelectItem>
-                    <SelectItem value="o1-mini">o1-mini</SelectItem>
-                    <SelectItem value="gpt-3.5-turbo">gpt-3.5-turbo</SelectItem>
+                    {OPENAI_MODELS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

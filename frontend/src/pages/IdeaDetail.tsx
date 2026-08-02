@@ -97,69 +97,9 @@ const CRITERION_LABELS: Record<string, string> = {
 	completeness: "Completeness",
 };
 
-function ResearchSection({
-	title,
-	icon: Icon,
-	data,
-}: {
-	title: string;
-	icon: any;
-	data: any;
-}) {
-	if (!data) return null;
-	const [open, setOpen] = useState(false);
+import { ResearchSection } from "../components/idea-detail/ResearchSection";
+import { IdeaActionsHeader } from "../components/idea-detail/IdeaActionsHeader";
 
-	const renderValue = (value: any): string => {
-		if (typeof value === "string") return value;
-		if (Array.isArray(value))
-			return value.map((v) => renderValue(v)).join(", ");
-		if (typeof value === "object" && value !== null)
-			return JSON.stringify(value, null, 2);
-		return String(value);
-	};
-
-	return (
-		<Card>
-			<Collapsible open={open} onOpenChange={setOpen}>
-				<CollapsibleTrigger asChild>
-					<CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-4">
-						<div className="flex items-center justify-between">
-							<CardTitle className="flex items-center gap-2 text-sm">
-								<Icon className="w-4 h-4 text-primary" />
-								{title}
-							</CardTitle>
-							{open ? (
-								<ChevronDown className="w-4 h-4 text-muted-foreground" />
-							) : (
-								<ChevronRight className="w-4 h-4 text-muted-foreground" />
-							)}
-						</div>
-					</CardHeader>
-				</CollapsibleTrigger>
-				<CollapsibleContent>
-					<CardContent className="p-4 pt-0">
-						{typeof data === "object" && !Array.isArray(data) ? (
-							<div className="space-y-2 text-xs">
-								{Object.entries(data).map(([key, value]) => (
-									<div key={key}>
-										<span className="font-medium text-muted-foreground capitalize">
-											{key.replace(/_/g, " ")}:
-										</span>{" "}
-										<span className="text-foreground">
-											{renderValue(value)}
-										</span>
-									</div>
-								))}
-							</div>
-						) : (
-							<p className="text-xs text-foreground">{renderValue(data)}</p>
-						)}
-					</CardContent>
-				</CollapsibleContent>
-			</Collapsible>
-		</Card>
-	);
-}
 
 export default function IdeaDetail({
 	onIdeaLoaded,
@@ -334,7 +274,7 @@ export default function IdeaDetail({
 
 	if (loading) {
 		return (
-			<div className="flex items-center justify-center h-64">
+			<div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto flex items-center justify-center min-h-[300px]">
 				<Loader2 className="w-8 h-8 animate-spin text-primary" />
 			</div>
 		);
@@ -365,97 +305,25 @@ export default function IdeaDetail({
 	const pausedProcessing = Boolean(idea?.paused_processing);
 
 	return (
-		<div className="space-y-6">
-			{/* Header Info & Primary Actions */}
-			<div className="relative p-6 rounded-xl border bg-card text-card-foreground shadow-sm">
-				<div className="flex flex-col gap-4">
-					{/* Title on top */}
-					<h1 className="text-2xl font-bold tracking-tight text-foreground leading-tight pr-10">
-						{idea?.title || ideaId}
-					</h1>
+		<div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
+			<IdeaActionsHeader
+				ideaId={ideaId}
+				title={idea?.title}
+				phase={idea?.phase || stateData?.phase}
+				currentState={currentState}
+				pausedProcessing={pausedProcessing}
+				scoring={scoring}
+				advancing={advancing}
+				pausing={pausing}
+				resuming={resuming}
+				deleting={deleting}
+				onScore={handleScore}
+				onAdvance={handleAdvance}
+				onPause={handlePause}
+				onResume={handleResume}
+				onDelete={handleDelete}
+			/>
 
-					{/* Metadata details underneath */}
-					<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-						<div className="flex items-center gap-1.5">
-							<span className="font-semibold text-foreground">ID:</span>
-							<span className="font-mono text-primary font-medium">{ideaId}</span>
-						</div>
-						<Separator orientation="vertical" className="h-3" />
-						<div className="flex items-center gap-1.5">
-							<span className="font-semibold text-foreground">Phase:</span>
-							<Badge variant="outline" className="capitalize text-[11px] px-2 py-0">
-								{idea?.phase || stateData?.phase || "discovery"}
-							</Badge>
-						</div>
-						<Separator orientation="vertical" className="h-3" />
-						<div className="flex items-center gap-1.5">
-							<span className="font-semibold text-foreground">Status:</span>
-							<span className="font-medium text-foreground capitalize bg-muted/60 px-2 py-0.5 rounded">
-								{currentState.replace(/_/g, " ")}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				{/* 3 vertical ellipsis dropdown options on the top right corner */}
-				<div className="absolute top-4 right-4">
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-								<MoreVertical className="h-4 w-4" />
-								<span className="sr-only">More options</span>
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuItem
-								onClick={pausedProcessing ? handleResume : handlePause}
-								disabled={pausing || resuming}
-								className="gap-2 cursor-pointer"
-							>
-								{pausedProcessing ? (
-									<>
-										<Play className="w-4 h-4 text-emerald-500" />
-										<span>Resume Processing</span>
-									</>
-								) : (
-									<>
-										<Pause className="w-4 h-4 text-amber-500" />
-										<span>Pause Processing</span>
-									</>
-								)}
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={handleScore}
-								disabled={scoring}
-								className="gap-2 cursor-pointer"
-							>
-								<RefreshCw className={`w-4 h-4 text-blue-500 ${scoring ? "animate-spin" : ""}`} />
-								<span>Re-Score Idea</span>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={() => handleAdvance()}
-								disabled={advancing}
-								className="gap-2 cursor-pointer"
-							>
-								{advancing ? (
-									<Loader2 className="w-4 h-4 animate-spin text-primary" />
-								) : (
-									<Send className="w-4 h-4 text-indigo-500" />
-								)}
-								<span>Advance Cycle</span>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={handleDelete}
-								disabled={deleting}
-								className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-							>
-								<Trash2 className="w-4 h-4" />
-								<span>Delete Idea</span>
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
-			</div>
 
 			{/* Main Workspace Layout (Chat is persistently hosted in the Right Chat Sidebar) */}
 			<div className="w-full space-y-4">

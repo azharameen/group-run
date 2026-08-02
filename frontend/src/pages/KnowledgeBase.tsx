@@ -1,18 +1,9 @@
-import { useEffect, useState, useCallback, useRef, type ChangeEvent } from 'react'
-import { Database, FileText, FolderOpen, Upload, ChevronDown, ChevronRight, File, Loader2, BookOpen, Search, Globe } from 'lucide-react'
-import { fetchIdeas, fetchKnowledgeBase, ingestKnowledgeBaseDocument, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE, fetchGateConfig } from '../api/client'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { useEffect, useState, useCallback } from 'react'
+import { Database, FileText, FolderOpen, Loader2 } from 'lucide-react'
+import { fetchIdeas, fetchKnowledgeBase, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE } from '../api/client'
+import { Card, CardContent } from '@/components/ui/card'
+import { DocumentUploadCard } from '@/components/knowledge-base/DocumentUploadCard'
+import { DocumentViewerCard } from '@/components/knowledge-base/DocumentViewerCard'
 
 export default function KnowledgeBase() {
   const [ideas, setIdeas] = useState<IdeaListItem[]>([])
@@ -22,7 +13,6 @@ export default function KnowledgeBase() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['knowledge']))
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set())
   const [uploading, setUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -67,53 +57,16 @@ export default function KnowledgeBase() {
     })
   }
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    try {
-      const buffer = await file.arrayBuffer()
-      const bytes = new Uint8Array(buffer)
-      let binary = ''
-      const chunkSize = 0x8000
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
-      }
-      const content_base64 = btoa(binary)
-      const res = await ingestKnowledgeBaseDocument({
-        filename: file.name,
-        mime_type: file.type || 'application/octet-stream',
-        content_base64,
-        source: 'raw',
-      })
-      if (res.success) {
-        await loadData()
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setUploading(false)
-      event.target.value = ''
-    }
-  }
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto flex items-center justify-center min-h-[300px]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
 
-  const rawDocs = (kbData?.documents ?? []).filter(d => d.source === 'raw')
-  const processedDocs = (kbData?.documents ?? []).filter(d => d.source === 'processed')
-
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Knowledge Base</h1>
         <p className="text-sm text-muted-foreground mt-1">Multi-modal knowledge repositories and patent sources powering signal extraction</p>
@@ -155,134 +108,21 @@ export default function KnowledgeBase() {
         </Card>
       </div>
 
-      {/* Upload Drop Zone */}
-      <Card className="border-2 border-dashed bg-muted/20 hover:border-primary/50 transition-colors">
-        <CardContent className="p-8 text-center space-y-2">
-          <Upload className="w-10 h-10 text-muted-foreground mx-auto" />
-          <h3 className="font-semibold text-base">Upload Custom Knowledge Documents</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Upload PDFs or images directly, or place Markdown/text files in <code className="text-xs bg-muted px-1.5 py-0.5 rounded border font-mono">knowledge-base/raw/</code>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            The autonomous Knowledge Curator agent automatically extracts technical signals from newly added files.
-          </p>
-          <div className="pt-2 flex items-center justify-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleUploadClick} disabled={uploading}>
-              {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-              Upload file
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
-              onChange={handleUpload}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <DocumentUploadCard
+        uploading={uploading}
+        setUploading={setUploading}
+        onSuccess={loadData}
+      />
 
-      {/* Knowledge Base Documents (local) */}
-      {kbData && kbData.documents.length > 0 && (
-        <Card className="overflow-hidden">
-          <button
-            onClick={() => toggleCategory('knowledge')}
-            className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/40 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-semibold">Local Knowledge Documents</h3>
-              <Badge variant="secondary" className="text-xs">{kbData.documents.length}</Badge>
-            </div>
-            {expandedCategories.has('knowledge') ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-          </button>
-          {expandedCategories.has('knowledge') && <Separator />}
-          {expandedCategories.has('knowledge') && (
-            <div className="divide-y">
-              {kbData.documents.map((doc, i) => (
-                <div key={i}>
-                  <button
-                    onClick={() => toggleDocExpand(doc.path)}
-                    className="w-full flex items-center justify-between p-3.5 px-4 text-left hover:bg-muted/20 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <File className="w-4 h-4 shrink-0 text-muted-foreground" />
-                      <span className="text-xs font-mono text-foreground truncate">{doc.path}</span>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{doc.source}</Badge>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpandedDoc(doc)
-                        }}
-                      >
-                        View Content
-                      </Button>
-                      {expandedDocs.has(doc.path) ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-                    </div>
-                  </button>
-                  {expandedDocs.has(doc.path) && (
-                    <div className="px-4 pb-3 pt-1 pl-10">
-                      <pre className="text-xs text-muted-foreground bg-muted p-3 rounded-md overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">
-                        {typeof doc.content === 'string' ? doc.content : JSON.stringify(doc.content, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* External Sources */}
-      <Card className="overflow-hidden">
-        <CardHeader className="p-4 border-b bg-muted/20">
-          <CardTitle className="text-sm font-semibold">External Patent & Knowledge Sources</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <p className="text-xs text-muted-foreground mb-3">
-            Knowledge agents search external sources during the prior art and research phases.
-            Results appear in each idea's Research Data tab once processed.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {['Google Patents', 'Espacenet (EPO)', 'USPTO', 'WIPO PATENTSCOPE', 'DPMA', 'GitHub', 'Wikipedia', 'Hugging Face'].map((name) => (
-              <Badge key={name} variant="secondary" className="text-xs gap-1">
-                <Globe className="w-3 h-3" />
-                {name}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Document Viewer Dialog */}
-      <Dialog open={!!expandedDoc} onOpenChange={(open) => !open && setExpandedDoc(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 font-mono text-sm">
-              <File className="w-4 h-4 text-primary" />
-              {expandedDoc?.path ?? ''}
-            </DialogTitle>
-            <DialogDescription>
-              Source: {expandedDoc?.source} &middot; {expandedDoc?.filename}
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            <pre className="text-xs text-foreground bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap font-mono">
-              {expandedDoc
-                ? typeof expandedDoc.content === 'string'
-                  ? expandedDoc.content
-                  : JSON.stringify(expandedDoc.content, null, 2)
-                : ''}
-            </pre>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+      <DocumentViewerCard
+        kbData={kbData}
+        expandedCategories={expandedCategories}
+        toggleCategory={toggleCategory}
+        expandedDocs={expandedDocs}
+        toggleDocExpand={toggleDocExpand}
+        expandedDoc={expandedDoc}
+        setExpandedDoc={setExpandedDoc}
+      />
     </div>
   )
 }

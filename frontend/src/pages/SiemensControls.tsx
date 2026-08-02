@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { fetchGateConfig, fetchCriteriaConfig, type GateConfig } from '../api/client'
+import { GATE_DISPLAY_NAMES } from '@/constants/gates'
 
 function GateCard({ name, items }: { name: string; items: Array<{ id: string; description: string }> }) {
   return (
@@ -28,20 +29,6 @@ function GateCard({ name, items }: { name: string; items: Array<{ id: string; de
   )
 }
 
-const GATE_DISPLAY_NAMES: Record<string, string> = {
-  idea_discovery_to_idea_clarification: 'Signal Clarity Gate',
-  idea_clarification_to_novelty_hypothesis: 'Problem Framing Gate',
-  novelty_hypothesis_to_prior_art_review: 'Novelty Hypothesis Gate',
-  prior_art_review_to_detectability_review: 'Prior Art Review Gate',
-  detectability_review_to_business_value_review: 'Detectability Gate',
-  business_value_review_to_siemens_innovation_alignment: 'Business Value Gate',
-  siemens_innovation_alignment: 'Siemens Strategic Alignment Gate',
-  ideascope_draft_to_siemens_internal_filing_check: 'IdeaScope Preparation Gate',
-  siemens_internal_filing_check: 'Internal Filing Readiness Gate',
-  manager_or_enabler_review: 'Manager / Enabler Gate',
-  ip_review: 'IP Attorney Review Gate',
-  siemens_ip_counsel_validation: 'IP Counsel Validation Gate',
-}
 
 export default function SiemensControls() {
   const [gateConfig, setGateConfig] = useState<GateConfig | null>(null)
@@ -62,7 +49,7 @@ export default function SiemensControls() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto flex items-center justify-center min-h-[300px]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
@@ -75,7 +62,7 @@ export default function SiemensControls() {
   const strengthRatings = criteriaConfig?.strength_ratings || {}
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Shield className="w-6 h-6" />

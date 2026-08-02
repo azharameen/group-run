@@ -31,7 +31,7 @@ export const AgentTodoPanel: React.FC<AgentTodoPanelProps> = ({ todos }) => {
             className="flex items-center justify-between p-2.5 rounded border border-zinc-800/60 bg-zinc-900/40"
           >
             <div className="flex items-center gap-3">
-              <Checkbox checked={todo.status === 'completed'} readOnly className="border-cyan-500/40" />
+              <Checkbox checked={todo.status === 'completed'} disabled className="border-cyan-500/40 opacity-100" />
               <span className={`text-sm ${
                 todo.status === 'completed' ? 'line-through text-zinc-500' :
                 todo.status === 'in_progress' ? 'text-cyan-200 font-medium' :
