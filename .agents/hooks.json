@@ -1,0 +1,11 @@
+{
+  "bmad-loop": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "uv run --no-project python D:\\Projects\\POC\\ideator\\.bmad-loop\\bmad_loop_hook.py Stop",
+        "timeout": 60
+      }
+    ]
+  }
+}

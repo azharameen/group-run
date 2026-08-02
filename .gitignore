@@ -73,3 +73,6 @@ knowledge-base/learning-memory/
 
 # shadcn
 frontend/public/
+.bmad-loop/runs/
+.bmad-loop/cache/
+.bmad-loop/policy.toml

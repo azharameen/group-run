@@ -1,0 +1,138 @@
+# generated: 2026-08-02
+# last_updated: 2026-08-02
+# project: Companion
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
+
+generated: 2026-08-02
+last_updated: 2026-08-02
+project: Companion
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # EP-0: Dead Code Cleanup (Technical Prerequisite)
+  epic-0: backlog
+  0-1-delete-backend-dead-code: backlog
+  0-2-delete-frontend-dead-code: backlog
+  0-3-delete-dead-tests-clean-conftest: backlog
+  0-4-verify-no-dangling-imports: backlog
+  0-5-add-forbidden-import-check: backlog
+  epic-0-retrospective: optional
+
+  # EP-1: Agentic Chat
+  epic-1: backlog
+  1-1-create-teams-yaml-and-mcp-json: backlog
+  1-2-update-config-py: backlog
+  1-3-rewrite-api-app-py: backlog
+  1-4-create-langgraph-supervisor-graph: backlog
+  1-5-wire-deepagents-runtime-into-supervisor: backlog
+  1-6-rewrite-api-routes-chat-py: backlog
+  1-7-rewrite-sse-event-bus: backlog
+  1-8-backend-tests-supervisor-chat-sse-test-db-isolation: backlog
+  1-9-update-use-chat-stream: backlog
+  1-10-update-app-tsx-routing-and-app-sidebar: backlog
+  1-11-frontend-tests-chat-ui-streaming-hook: backlog
+  epic-1-retrospective: optional
+
+  # EP-2: Conversation Threads
+  epic-2: backlog
+  2-1-clean-up-api-routes-threads-py: backlog
+  2-2-thread-switching-with-checkpoint-restoration: backlog
+  2-3-backend-tests-thread-crud-checkpoint-restoration: backlog
+  2-4-update-use-thread-manager: backlog
+  2-5-thread-list-sidebar-with-create-switch-delete: backlog
+  2-6-frontend-tests-thread-management-ui: backlog
+  epic-2-retrospective: optional
+
+  # EP-3: Ideas Management
+  epic-3: backlog
+  3-1-rewrite-api-routes-ideas-py: backlog
+  3-2-update-models-idea-py: backlog
+  3-3-validate-workspace-filesystem-management: backlog
+  3-4-backend-tests-ideas-crud-workspace-files: backlog
+  3-5-update-pages-idea-detail-tsx: backlog
+  3-6-ideas-list-page-with-create-view-update-delete: backlog
+  3-7-frontend-tests-ideas-ui: backlog
+  epic-3-retrospective: optional
+
+  # EP-4: HITL Approvals
+  epic-4: backlog
+  4-1-create-interrupt-management-service: backlog
+  4-2-create-sse-bridge-for-interrupt-events: backlog
+  4-3-create-interrupt-api-endpoints: backlog
+  4-4-backend-tests-interrupt-lifecycle: backlog
+  4-5-create-hitl-approval-ui-component: backlog
+  4-6-wire-approval-ui-into-chat-stream: backlog
+  4-7-frontend-tests-approval-ui: backlog
+  epic-4-retrospective: optional
+
+  # EP-5: MCP & Team Config
+  epic-5: backlog
+  5-1-create-mcp-server-management-api: backlog
+  5-2-create-config-reload-endpoint: backlog
+  5-3-update-mcp-tool-loading: backlog
+  5-4-create-team-subgraph-factory: backlog
+  5-5-backend-tests-mcp-config-reload-team-loading: backlog
+  5-6-mcp-server-management-ui: backlog
+  5-7-team-agent-configuration-ui: backlog
+  5-8-frontend-tests-mcp-and-team-ui: backlog
+  epic-5-retrospective: optional
+
+  # EP-6: Knowledge & Memory
+  epic-6: backlog
+  6-1-knowledge-base-api: backlog
+  6-2-wire-memory-backend-into-deepagents-runtime: backlog
+  6-3-wire-skills-loading-into-deepagents-runtime: backlog
+  6-4-backend-tests-kb-api-memory-persistence: backlog
+  6-5-update-pages-knowledge-base-tsx: backlog
+  6-6-frontend-tests-kb-browser: backlog
+  epic-6-retrospective: optional
+
+  # EP-7: Production Readiness
+  epic-7: backlog
+  7-1-set-up-ci-pipeline: backlog
+  7-2-validate-and-update-dockerfiles: backlog
+  7-3-set-up-playwright-for-e2e-testing: backlog
+  7-4-sqlite-concurrency-tests: backlog
+  7-5-write-e2e-tests-for-critical-flows: backlog
+  7-6-performance-validation: backlog
+  7-7-update-project-documentation: backlog
+  epic-7-retrospective: optional
