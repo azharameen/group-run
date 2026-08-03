@@ -4,7 +4,7 @@ baseline_commit: 7d20618e4b61519e5e22ab6a633b5cc22baca8bf
 
 # Story 0.1: Delete Backend Dead Code
 
-Status: review
+Status: done
 
 ## Story
 

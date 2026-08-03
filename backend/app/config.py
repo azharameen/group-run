@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     mcp_servers: str = ""
 
+    langgraph_strict_msgpack: str = ""
+
     storage_dir: str = ""
 
     # Compute .env path relative to this file (backend/app/config.py -> repo root)
@@ -31,6 +33,15 @@ class Settings(BaseSettings):
         env_file=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env")),
         env_file_encoding="utf-8",
     )
+
+    @model_validator(mode="after")
+    def validate_strict_msgpack(self) -> "Settings":
+        if self.langgraph_strict_msgpack.lower() != "true":
+            raise ValueError(
+                "LANGGRAPH_STRICT_MSGPACK must be set to 'true' — "
+                "required for LangGraph checkpoint serialization safety"
+            )
+        return self
 
     @model_validator(mode="after")
     def derive_defaults(self) -> "Settings":
@@ -77,3 +88,11 @@ CONFIG_DIR = os.path.join(ROOT_DIR, "config")
 INSTRUCTIONS_DIR = os.path.join(ROOT_DIR, "instructions")
 KNOWLEDGE_BASE_DIR = os.path.join(ROOT_DIR, "knowledge-base")
 STORAGE_DIR = settings.storage_dir or os.path.join(ROOT_DIR, "storage")
+
+# ── Config file paths ────────────────────────────────────────────────────
+TEAMS_CONFIG_PATH = os.path.join(CONFIG_DIR, "teams.yaml")
+MCP_CONFIG_PATH = os.path.join(CONFIG_DIR, "mcp.json")
+
+# ── Schema versions (must match config file schema_version fields) ────────
+TEAMS_SCHEMA_VERSION = "1.0"
+MCP_SCHEMA_VERSION = "1.0"

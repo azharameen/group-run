@@ -15,3 +15,9 @@
 - subgraph.nodes string references lack referential integrity — loader must validate every node exists in the agents list
 - Empty teams/servers degrade silently — loader must treat empty collections as a configuration error (fail fast)
 - Open-ended options dict has no schema validation — loader must define and validate expected option keys per transport type
+
+## Deferred from: code review of 1-2-update-config-py and 1-3-rewrite-api-app-py (2026-08-03)
+
+- Import-time config crash on missing LANGGRAPH_STRICT_MSGPACK (`backend/app/config.py:37-44`) — AD-11 fail-fast design decision; already tracked in EP-0 deferred entry, confirmed intentional for EP-1
+- SQLite connection never closed in lifespan teardown (`backend/app/services/thread_manager.py`) — `get_checkpointer()` creates a persistent sqlite3.Connection that is never closed; file handles and locks persist across reloads, especially problematic on Windows
+- Shared SQLite connection concurrency risk (`backend/app/services/thread_manager.py:41`) — `check_same_thread=False` with a single global connection is not safely concurrent under load; EP-7 story 7-4 (sqlite-concurrency-tests) planned to address
