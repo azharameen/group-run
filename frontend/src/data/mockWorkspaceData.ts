@@ -140,7 +140,7 @@ end
 		modified_at: new Date().toISOString(),
 		content: `# Companion Wiki
 
-Welcome to the Siemens Companion Engine Wiki. This is the centralized knowledge repository for platform developers.
+Welcome to the Companion Companion Engine Wiki. This is the centralized knowledge repository for platform developers.
 `,
 	},
 ];
@@ -183,7 +183,7 @@ export const DEFAULT_TASK_ITEMS: AgentTaskItem[] = [
 	{
 		id: "task_5",
 		title: "Security & Authorization Audit",
-		agent: "Siemens Security",
+		agent: "Companion Security",
 		status: "Needs Review",
 		thought: "Awaiting approval on token authorization schema.",
 		priority: "High",
@@ -197,7 +197,7 @@ export const TASK_AGENTS: TaskAgent[] = [
 	{ id: "agent_alex", label: "Alex (Engineer)" },
 	{ id: "agent_david", label: "David (Data Analyst)" },
 	{ id: "agent_emma", label: "Emma (Product Manager)" },
-	{ id: "agent_security", label: "Siemens Security" },
+	{ id: "agent_security", label: "Companion Security" },
 ];
 
 // ─── System Performance Metrics ───────────────────────────────────────────────

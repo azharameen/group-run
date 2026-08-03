@@ -170,7 +170,7 @@ export function CommandCenterWorkspacePane() {
 			);
 		} else if (cmd.toLowerCase() === "npm run dev") {
 			newLines.push(
-				"Running Siemens Companion Dashboard...",
+				"Running Companion Companion Dashboard...",
 				"  Local:   http://localhost:5173/",
 				"  Network: http://192.168.1.52:5173/",
 				"vite v5.2.11 ready in 280ms",
@@ -556,7 +556,7 @@ export function CommandCenterWorkspacePane() {
 										<div>
 											<CardTitle className="text-sm font-semibold flex items-center gap-2">
 												<BotMessageSquare className="w-4 h-4 text-primary" />
-												Siemens Agentic Platform
+												Companion Agentic Platform
 											</CardTitle>
 											<p className="text-[10px] text-muted-foreground mt-0.5">
 												Local sandbox prototype server workspace
@@ -1085,7 +1085,7 @@ export function CommandCenterWorkspacePane() {
 											Agent Orchestrator Pipeline
 										</span>
 										<p className="text-[11px] text-muted-foreground">
-											Tasks are executed autonomously by domain specialist agents in the Siemens multi-agent pipeline.
+											Tasks are executed autonomously by domain specialist agents in the Companion multi-agent pipeline.
 										</p>
 									</div>
 								</ScrollArea>

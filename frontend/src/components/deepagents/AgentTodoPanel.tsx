@@ -13,7 +13,6 @@ export const AgentTodoPanel: React.FC<AgentTodoPanelProps> = ({ todos }) => {
     { id: '1', task: 'Extract core inventive concept & parameters', status: 'completed', assigned_agent: 'Discovery' },
     { id: '2', task: 'Query prior-art taxonomy database', status: 'completed', assigned_agent: 'Discovery' },
     { id: '3', task: 'Synthesize patent claims structure', status: 'in_progress', assigned_agent: 'Drafting' },
-    { id: '4', task: 'Verify Siemens IP guideline compliance', status: 'pending', assigned_agent: 'IP Counsel' },
   ];
 
   return (
