@@ -115,15 +115,6 @@ export function SiteHeader({
 									</BreadcrumbItem>
 								</>
 							)}
-
-							{path === "/siemens-controls" && (
-								<>
-									<BreadcrumbSeparator />
-									<BreadcrumbItem>
-										<BreadcrumbPage>Siemens Controls</BreadcrumbPage>
-									</BreadcrumbItem>
-								</>
-							)}
 						</BreadcrumbList>
 					</Breadcrumb>
 				)}

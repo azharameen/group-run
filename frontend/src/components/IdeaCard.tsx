@@ -16,48 +16,8 @@ const PHASE_VARIANTS: Record<
 	done: "outline",
 };
 
-const STRENGTH_BADGE_STYLE: Record<string, string> = {
-	"Very Strong":
-		"bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300",
-	Strong:
-		"bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300",
-	Moderate:
-		"bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300",
-	Weak: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300",
-	Reject:
-		"bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300",
-};
-
-function ScoreBadge({ score }: { score: number }) {
-	let colorClass = "bg-slate-100 text-slate-700 border-slate-200";
-	if (score >= 85)
-		colorClass =
-			"bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-200";
-	else if (score >= 70)
-		colorClass =
-			"bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/60 dark:text-blue-200";
-	else if (score >= 50)
-		colorClass =
-			"bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/60 dark:text-amber-200";
-	else if (score >= 30)
-		colorClass =
-			"bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/60 dark:text-orange-200";
-	else
-		colorClass =
-			"bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/60 dark:text-rose-200";
-
-	return (
-		<div
-			className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold border shadow-xs ${colorClass}`}
-		>
-			Score: {score}
-		</div>
-	);
-}
-
 export default function IdeaCard({ idea }: { idea: IdeaListItem }) {
 	const colorKey = idea.phase?.toLowerCase() || "discovery";
-	const ratingStyle = STRENGTH_BADGE_STYLE[idea.strength_rating] || "";
 
 	return (
 		<Link to={`/ideas/${idea.idea_id}`} className="block group">
@@ -100,7 +60,6 @@ export default function IdeaCard({ idea }: { idea: IdeaListItem }) {
 								{idea.title}
 							</CardTitle>
 						</div>
-						<ScoreBadge score={idea.composite_score} />
 					</div>
 				</CardHeader>
 				<CardContent className="p-5 pt-2 space-y-4">
@@ -112,16 +71,6 @@ export default function IdeaCard({ idea }: { idea: IdeaListItem }) {
 						<span className="text-muted-foreground capitalize">
 							{idea.state?.replace(/_/g, " ")}
 						</span>
-						{ratingStyle && (
-							<>
-								<span className="text-muted-foreground">•</span>
-								<span
-									className={`px-2 py-0.5 rounded text-[11px] font-medium border ${ratingStyle}`}
-								>
-									{idea.strength_rating}
-								</span>
-							</>
-						)}
 					</div>
 
 					<div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">

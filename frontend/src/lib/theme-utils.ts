@@ -22,7 +22,6 @@ export const STRENGTH_VARIANTS: Record<
 
 export const CRITERION_LABELS: Record<string, string> = {
   novelty: "Novelty",
-  siemens_alignment: "Siemens Alignment",
   technical_feasibility: "Technical Feasibility",
   detectability: "Detectability",
   business_value: "Business Value",

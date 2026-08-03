@@ -12,7 +12,6 @@ const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const IdeaDetail = lazy(() => import("./pages/IdeaDetail"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
-const SiemensControls = lazy(() => import("./pages/SiemensControls"));
 
 function AppContent() {
 	const {
@@ -73,7 +72,6 @@ function AppContent() {
 								}
 							/>
 							<Route path="/knowledge-base" element={<KnowledgeBase />} />
-							<Route path="/siemens-controls" element={<SiemensControls />} />
 							<Route path="*" element={<Navigate to="/" replace />} />
 						</Routes>
 					</Suspense>

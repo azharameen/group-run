@@ -51,7 +51,7 @@ development_status:
   # EP-0: Dead Code Cleanup (Technical Prerequisite)
   epic-0: in-progress
   0-1-delete-backend-dead-code: review
-  0-2-delete-frontend-dead-code: backlog
+  0-2-delete-frontend-dead-code: review
   0-3-delete-dead-tests-clean-conftest: backlog
   0-4-verify-no-dangling-imports: backlog
   0-5-add-forbidden-import-check: backlog

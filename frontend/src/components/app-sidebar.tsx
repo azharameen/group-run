@@ -18,9 +18,9 @@ import { type ThreadMetadata } from "@/api/client";
 
 const data = {
 	user: {
-		name: "Siemens Engineer",
-		email: "innovation@siemens.com",
-		avatar: "/avatars/siemens.jpg",
+		name: "Engineer",
+		email: "engineer@companion.ai",
+		avatar: "/avatars/user.jpg",
 	},
 	navMain: [
 		{
@@ -37,11 +37,6 @@ const data = {
 			title: "Knowledge Base",
 			url: "/knowledge-base",
 			icon: Database,
-		},
-		{
-			title: "Siemens Controls",
-			url: "/siemens-controls",
-			icon: Shield,
 		},
 	],
 };
@@ -71,7 +66,7 @@ export function AppSidebar({
 								<div className="hidden group-data-[state=expanded]:grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-semibold">Companion</span>
 									<span className="truncate text-xs text-muted-foreground">
-										Siemens Companion Engine
+										Companion Engine
 									</span>
 								</div>
 							</a>

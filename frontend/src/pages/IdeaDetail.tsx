@@ -46,9 +46,6 @@ import {
 	type GateConfig,
 } from "../api/client";
 
-import ScoreRadar from "../components/ScoreRadar";
-import SiemensGateStatus from "../components/SiemensGateStatus";
-import { IdeaHistoryTimeline } from "../components/IdeaHistoryTimeline";
 import { IdeaFilesystem } from "../components/IdeaFilesystem";
 import { InterruptInbox } from "../components/deepagents/InterruptInbox";
 import { SubagentActivityCard } from "../components/deepagents/SubagentActivityCard";
@@ -89,7 +86,6 @@ const STRENGTH_VARIANTS: Record<
 
 const CRITERION_LABELS: Record<string, string> = {
 	novelty: "Novelty",
-	siemens_alignment: "Siemens Alignment",
 	technical_feasibility: "Technical Feasibility",
 	detectability: "Detectability",
 	business_value: "Business Value",
@@ -118,8 +114,6 @@ export default function IdeaDetail({
 	const [commentText, setCommentText] = useState("");
 	const [savingComment, setSavingComment] = useState(false);
 	const [error, setError] = useState("");
-	const [gateConfig, setGateConfig] = useState<GateConfig | null>(null);
-	const [compositeThreshold, setCompositeThreshold] = useState(70);
 	const [interrupts, setInterrupts] = useState<InterruptItem[]>([]);
 	const [revisions, setRevisions] = useState<any[]>([]);
 	const transcriptEvents =
@@ -167,18 +161,6 @@ export default function IdeaDetail({
 		}
 		setLoading(false);
 	};
-
-	useEffect(() => {
-		fetchGateConfig()
-			.then(setGateConfig)
-			.catch(() => {});
-		fetchCriteriaConfig()
-			.then((cfg) => {
-				if (cfg?.thresholds?.composite_threshold)
-					setCompositeThreshold(cfg.thresholds.composite_threshold);
-			})
-			.catch(() => {});
-	}, []);
 
 	useEffect(() => {
 		loadData();
@@ -296,11 +278,6 @@ export default function IdeaDetail({
 
 	const idea = detail.idea;
 	const stateData = detail.state;
-	const scoresData = detail.scores;
-	const latestScores = scoresData?.latest || {};
-	const breakdown = latestScores?.breakdown || {};
-	const composite = latestScores?.composite || 0;
-	const strengthRating = latestScores?.strength_rating || "";
 	const currentState = idea?.current_state || stateData?.current_state || "";
 	const pausedProcessing = Boolean(idea?.paused_processing);
 
@@ -427,9 +404,6 @@ export default function IdeaDetail({
 									</Card>
 								)}
 
-								{/* Score Radar */}
-								<ScoreRadar breakdown={breakdown} size={280} />
-
 								{/* Source Evidence */}
 								{idea?.source_evidence && idea.source_evidence.length > 0 && (
 									<Card>
@@ -460,40 +434,6 @@ export default function IdeaDetail({
 
 							{/* Right Column */}
 							<div className="space-y-5">
-								<SiemensGateStatus
-									gates={(() => {
-										const rawGates = gateConfig?.gates || {};
-										const entries = Object.entries(rawGates);
-										if (entries.length === 0) {
-											return [
-												{
-													name: "Composite Threshold",
-													status: (composite >= compositeThreshold
-														? "pass"
-														: currentState !== "raw_signal_collected"
-															? "fail"
-															: "pending") as "pass" | "fail" | "pending",
-													detail: `${composite}/${compositeThreshold}`,
-												},
-											];
-										}
-										return entries.slice(0, 4).map(([key, gate]) => {
-											const items = gate.items || [];
-											const passed = composite >= 50;
-											return {
-												name: key
-													.replace(/_/g, " ")
-													.replace(/\b\w/g, (c) => c.toUpperCase()),
-												status: (passed ? "pass" : "pending") as
-													| "pass"
-													| "fail"
-													| "pending",
-												detail: `${items.length} items`,
-											};
-										});
-									})()}
-								/>
-
 								<Card>
 									<CardHeader className="p-4 pb-2">
 										<CardTitle className="text-sm font-semibold">
@@ -541,14 +481,9 @@ export default function IdeaDetail({
 
 					{/* ── Timeline Activity & Agent Conversations Tab ── */}
 					<TabsContent value="history" className="pt-4">
-						<IdeaHistoryTimeline
-							detail={
-								detail
-									? { ...detail, transcript_events: transcriptEvents }
-									: detail
-							}
-							files={files}
-						/>
+						<div className="flex flex-col items-center justify-center py-12 text-muted-foreground italic text-sm">
+							Activity timeline will be updated in the next sprint.
+						</div>
 					</TabsContent>
 
 					<TabsContent value="comments" className="space-y-4 pt-4">
@@ -709,11 +644,6 @@ export default function IdeaDetail({
 								title="Business Value"
 								icon={Zap}
 								data={idea?.business_value}
-							/>
-							<ResearchSection
-								title="Siemens Alignment"
-								icon={Globe}
-								data={idea?.siemens_alignment}
 							/>
 							<ResearchSection
 								title="Ideascope Draft"
