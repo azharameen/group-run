@@ -9,7 +9,6 @@ from typing import Any, AsyncGenerator, Dict, Optional
 from .runtime import get_deep_agent_runtime
 from .domain_tools import (
     draft_patent_section,
-    evaluate_patentability,
     query_prior_art_taxonomy,
     record_approval_decision,
 )
@@ -545,9 +544,13 @@ def execute_deep_agent_workflow(
     archive_filename: str = "",
     user_feedback: str = "",
 ) -> Dict[str, Any]:
-    """Execute a single workflow state using the DeepAgents runtime or agent tool executor."""
-    from ..orchestrator.workflow_tools import get_machine
+    """Execute a workflow step using the DeepAgents runtime.
 
+    NOTE: This function is legacy Siemens FSM-era code. The state machine
+    advancement and scoring calls have been removed. The function now only
+    invokes the DeepAgents graph and drafts patent sections.
+    TODO: Replace with LangGraph-based workflow execution.
+    """
     print(f"[DeepAgents Runner] Executing state '{state_name}' for idea {idea_id} (feedback: '{user_feedback}')")
     runtime = get_deep_agent_runtime()
 
@@ -597,31 +600,18 @@ def execute_deep_agent_workflow(
 
     draft_patent_section(idea_id, section_key, content_summary)
 
-    # Evaluate patentability via scoring tool
-    score_res = evaluate_patentability(idea_id)
-
-    # Advance state machine state
-    machine = get_machine(idea_id)
-    new_state = state_name
-    try:
-        if hasattr(machine, "advance"):
-            machine.advance()
-            new_state = machine.state.value if hasattr(machine.state, "value") else str(machine.state)
-    except Exception:
-        pass
-
     # Save state metadata
     updated = load_idea_yaml(idea_id, "idea.yaml") or {}
-    updated["workflow_state"] = new_state
+    updated["workflow_state"] = state_name
     updated["updated_at"] = datetime.utcnow().isoformat()
     save_idea_yaml(idea_id, "idea.yaml", updated)
 
     return {
         "idea_id": idea_id,
-        "state": new_state,
+        "state": state_name,
         "completed": True,
         "output": _stringify_runtime_output(runtime_output) or f"Runtime completed for {title}.",
-        "scores": score_res,
+        "scores": {},
         "timestamp": datetime.utcnow().isoformat(),
     }
 

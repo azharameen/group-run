@@ -155,12 +155,6 @@ def draft_patent_section(
         return False
 
 
-def evaluate_patentability(idea_id: str) -> Dict[str, Any]:
-    """Run scoring engine for an idea to calculate criteria scores and composite rating."""
-    from ..orchestrator.workflow_tools import score_idea
-    return score_idea(idea_id)
-
-
 def record_approval_decision(
     idea_id: str,
     reviewer_role: str,

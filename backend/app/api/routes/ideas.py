@@ -1,40 +1,55 @@
-"""Idea CRUD and idea-scoped workflow endpoints."""
+"""Idea CRUD endpoints — pure filesystem-backed operations."""
 
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from ...orchestrator.workflow_tools import (
-    add_evidence,
-    advance_to_next_state,
-    advance_workflow,
-    create_idea,
-    archive_idea,
-    delete_idea,
-    detect_duplicate_ideas,
-    build_review_packet,
-    score_idea,
-    set_idea_paused,
-    update_idea_field,
-    validate_gate,
-    get_prior_art_sources,
-    get_filing_sources,
-)
-from ...orchestrator.workflow import pause_idea, resume_idea
 from ...storage.yaml_io import (
+    archive_idea_folder,
+    delete_idea_folder,
     get_all_idea_files,
     load_comments,
-    load_idea_registry,
     load_idea_yaml,
-    load_knowledge_base,
+    load_pending_interrupts,
     load_transcript_events,
+    remove_from_registry,
     save_comment,
+    save_idea_yaml,
+    save_pending_interrupts,
 )
+from ...storage.idea_workspace import create_idea_folder, idea_folder_path
+from ...storage.registry import load_idea_registry, save_idea_registry
 from ...storage.artifacts import load_artifact_revisions, build_artifact_comparison
 
 
 router = APIRouter(prefix="/api/ideas", tags=["ideas"])
 
+
+def _generate_idea_id() -> str:
+    """Generate the next idea ID from the registry."""
+    registry = load_idea_registry()
+    next_id = registry.get("next_id", 1)
+    idea_id = f"IDEA-{next_id:04d}"
+    registry["next_id"] = next_id + 1
+    save_idea_registry(registry)
+    return idea_id
+
+
+def _register_idea(idea_id: str, title: str, signal_text: str):
+    """Add an idea entry to the registry."""
+    registry = load_idea_registry()
+    registry["ideas"].append(
+        {
+            "idea_id": idea_id,
+            "title": title or "Untitled",
+            "signal_text": signal_text,
+            "created_at": "",
+        }
+    )
+    save_idea_registry(registry)
+
+
+# ── List / Get ────────────────────────────────────────────────────────────
 
 @router.get("")
 async def list_ideas(
@@ -49,30 +64,23 @@ async def list_ideas(
     for entry in ideas_list:
         idea_id = entry["idea_id"]
         idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
-        scores = load_idea_yaml(idea_id, "scores.yaml") or {}
-        latest_score = scores.get("latest", {})
-        composite = latest_score.get("composite", 0)
 
         if phase and idea_data.get("phase") != phase:
             continue
         if state and idea_data.get("current_state") != state:
             continue
-        if min_score is not None and (composite or 0) < min_score:
-            continue
+        if min_score is not None:
+            scores = load_idea_yaml(idea_id, "scores.yaml") or {}
+            composite = scores.get("latest", {}).get("composite", 0)
+            if (composite or 0) < min_score:
+                continue
 
         result.append(
             {
                 "idea_id": idea_id,
                 "title": idea_data.get("title", entry.get("title", "")),
                 "phase": idea_data.get("phase", "discovery"),
-                "state": idea_data.get("current_state", "raw_signal_collected"),
-                "composite_score": composite,
-                "strength_rating": latest_score.get("strength_rating", ""),
-                "running_agent": idea_data.get("running_agent", ""),
-                "active_processing": idea_data.get("active_processing", False),
-                "paused_processing": idea_data.get("paused_processing", False),
-                "active_agent": idea_data.get("active_agent", ""),
-                "active_state": idea_data.get("active_state", ""),
+                "state": idea_data.get("current_state", ""),
                 "created_at": idea_data.get("created_at", ""),
                 "updated_at": idea_data.get("updated_at", ""),
             }
@@ -102,71 +110,83 @@ async def get_idea_files(idea_id: str) -> dict:
     return {"idea_id": idea_id, "files": files, "count": len(files)}
 
 
+# ── Create ────────────────────────────────────────────────────────────────
+
 @router.post("")
 async def create_new_idea(payload: dict) -> dict:
+    from datetime import datetime
+
     signal_text = payload.get("signal_text", "")
     title = payload.get("title", "")
-    duplicate_assessment = detect_duplicate_ideas(signal_text, title)
 
     if not signal_text:
-        kb_docs = load_knowledge_base()
-        if kb_docs:
-            contexts: list[str] = []
-            for doc in kb_docs[:3]:
-                content = doc.get("content", "")
-                if isinstance(content, str) and len(content) > 50:
-                    contexts.append(content[:200])
-            if contexts:
-                signal_text = "Autonomous discovery from KB: " + " | ".join(contexts)
-            else:
-                signal_text = "Autonomous discovery (knowledge base)"
-        else:
-            signal_text = "Autonomous discovery (no KB documents found)"
+        signal_text = "Autonomous discovery"
 
-    idea_id = create_idea(signal_text, title)
-    if duplicate_assessment["is_duplicate"]:
-        from ...storage.yaml_io import load_idea_yaml, save_idea_yaml
-        data = load_idea_yaml(idea_id, "idea.yaml") or {}
-        data["duplicate_assessment"] = duplicate_assessment
-        data["duplicate_status"] = "review_required"
-        save_idea_yaml(idea_id, "idea.yaml", data)
-    score_result = score_idea(idea_id, "api-create")
+    idea_id = _generate_idea_id()
+    create_idea_folder(idea_id)
+
+    idea_data = {
+        "idea_id": idea_id,
+        "title": title or "Untitled",
+        "signal_text": signal_text,
+        "phase": "discovery",
+        "current_state": "",
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    save_idea_yaml(idea_id, "idea.yaml", idea_data)
+    _register_idea(idea_id, title, signal_text)
+
     return {
         "idea_id": idea_id,
-        "score": score_result,
-        "duplicate_assessment": duplicate_assessment,
-        "duplicate_status": "review_required" if duplicate_assessment["is_duplicate"] else "clear",
-        "message": f"Idea {idea_id} created and scored",
+        "message": f"Idea {idea_id} created",
     }
 
 
-@router.post("/{idea_id}/advance")
-async def advance_idea(idea_id: str, payload: Optional[dict] = None) -> dict:
-    target = payload.get("target_state") if payload else None
-    if target:
-        return advance_workflow(idea_id, target)
-    return advance_to_next_state(idea_id)
-
-
-@router.post("/{idea_id}/score")
-async def score_idea_endpoint(idea_id: str) -> dict:
-    return score_idea(idea_id, "api-manual")
-
-
-@router.post("/{idea_id}/validate-gate")
-async def validate_gate_endpoint(idea_id: str, payload: dict) -> dict:
-    return validate_gate(idea_id, payload.get("gate_name", ""))
-
+# ── Update ────────────────────────────────────────────────────────────────
 
 @router.post("/{idea_id}/update")
 async def update_idea(idea_id: str, payload: dict) -> dict:
-    return update_idea_field(idea_id, payload.get("field", ""), payload.get("value", ""))
+    from datetime import datetime
+
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    field = payload.get("field", "")
+    value = payload.get("value")
+    if field:
+        idea_data[field] = value
+    idea_data["updated_at"] = datetime.utcnow().isoformat()
+    save_idea_yaml(idea_id, "idea.yaml", idea_data)
+
+    return {"idea_id": idea_id, "field": field, "updated": True}
 
 
 @router.post("/{idea_id}/evidence")
 async def add_evidence_endpoint(idea_id: str, payload: dict) -> dict:
-    return add_evidence(idea_id, payload.get("source", ""), payload.get("content", ""))
+    from datetime import datetime
 
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    evidence = idea_data.get("evidence", [])
+    evidence.append(
+        {
+            "source": payload.get("source", ""),
+            "content": payload.get("content", ""),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    )
+    idea_data["evidence"] = evidence
+    idea_data["updated_at"] = datetime.utcnow().isoformat()
+    save_idea_yaml(idea_id, "idea.yaml", idea_data)
+
+    return {"idea_id": idea_id, "evidence_count": len(evidence)}
+
+
+# ── Revisions / Artifacts ────────────────────────────────────────────────
 
 @router.get("/{idea_id}/revisions")
 async def get_idea_revisions(idea_id: str) -> dict:
@@ -187,73 +207,118 @@ async def get_artifact_diff(idea_id: str, artifact_name: str) -> dict:
     return build_artifact_comparison(idea_id, artifact_name)
 
 
-@router.post("/{idea_id}/review-packet")
-async def create_review_packet(idea_id: str, payload: dict | None = None) -> dict:
+# ── Interrupts (HITL pending actions) ────────────────────────────────────
+
+@router.get("/{idea_id}/interrupts")
+async def get_pending_interrupts(idea_id: str) -> dict:
     idea_data = load_idea_yaml(idea_id, "idea.yaml")
     if not idea_data:
         raise HTTPException(status_code=404, detail="Idea not found")
-    reviewer_role = (payload or {}).get("reviewer_role", "reviewer")
-    return build_review_packet(idea_id, reviewer_role)
+    return {
+        "idea_id": idea_id,
+        "interrupts": load_pending_interrupts(idea_id),
+    }
 
 
-@router.get("/research/prior-art")
-async def research_prior_art(query: str, limit: int = 5) -> dict:
-    return get_prior_art_sources(query, limit=limit)
+@router.post("/{idea_id}/interrupts")
+async def add_pending_interrupt(idea_id: str, payload: dict) -> dict:
+    from datetime import datetime
+
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    interrupts = load_pending_interrupts(idea_id)
+    interrupts.append(
+        {
+            "action": payload.get("action", ""),
+            "description": payload.get("description", ""),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    )
+    save_pending_interrupts(idea_id, interrupts)
+
+    return {
+        "idea_id": idea_id,
+        "interrupts": interrupts,
+    }
 
 
-@router.get("/research/filings")
-async def research_filings(query: str, limit: int = 5) -> dict:
-    return get_filing_sources(query, limit=limit)
-
+# ── Delete / Archive ─────────────────────────────────────────────────────
 
 @router.delete("/{idea_id}")
 async def delete_idea_endpoint(idea_id: str) -> dict:
-    from .approval import add_pending_interrupt
-
     idea_data = load_idea_yaml(idea_id, "idea.yaml")
     if not idea_data:
         raise HTTPException(status_code=404, detail="Idea not found")
 
-    add_pending_interrupt(idea_id, "delete", "Delete requested; reviewer approval is required before removal.")
+    delete_idea_folder(idea_id)
+    remove_from_registry(idea_id)
+
     return {
         "idea_id": idea_id,
-        "deleted": False,
-        "interrupt_pending": True,
-        "message": "Delete request submitted for approval",
+        "deleted": True,
+        "message": f"Idea {idea_id} deleted",
     }
 
 
 @router.post("/{idea_id}/archive")
 async def archive_idea_endpoint(idea_id: str) -> dict:
-    from .approval import add_pending_interrupt
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    archive_path = archive_idea_folder(idea_id)
+    remove_from_registry(idea_id)
+
+    return {
+        "idea_id": idea_id,
+        "archived": True,
+        "archive_path": archive_path or "",
+        "message": f"Idea {idea_id} archived",
+    }
+
+
+# ── Pause / Resume ───────────────────────────────────────────────────────
+
+@router.post("/{idea_id}/pause")
+async def pause_idea_endpoint(idea_id: str) -> dict:
+    from datetime import datetime
 
     idea_data = load_idea_yaml(idea_id, "idea.yaml")
     if not idea_data:
         raise HTTPException(status_code=404, detail="Idea not found")
 
-    add_pending_interrupt(idea_id, "archive", "Archive requested; reviewer approval is required before finalizing.")
-    return {
-        "idea_id": idea_id,
-        "archived": False,
-        "interrupt_pending": True,
-        "message": "Archive request submitted for approval",
-    }
+    idea_data["paused_processing"] = True
+    idea_data["updated_at"] = datetime.utcnow().isoformat()
+    save_idea_yaml(idea_id, "idea.yaml", idea_data)
 
-
-@router.post("/{idea_id}/pause")
-async def pause_idea_endpoint(idea_id: str) -> dict:
-    pause_idea(idea_id)
-    return set_idea_paused(idea_id, True)
+    return {"idea_id": idea_id, "paused": True}
 
 
 @router.post("/{idea_id}/resume")
 async def resume_idea_endpoint(idea_id: str) -> dict:
-    resume_idea(idea_id)
-    return set_idea_paused(idea_id, False)
+    from datetime import datetime
 
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    idea_data["paused_processing"] = False
+    idea_data["updated_at"] = datetime.utcnow().isoformat()
+    save_idea_yaml(idea_id, "idea.yaml", idea_data)
+
+    return {"idea_id": idea_id, "paused": False}
+
+
+# ── Comments ─────────────────────────────────────────────────────────────
 
 @router.post("/{idea_id}/comment")
 async def add_comment_endpoint(idea_id: str, payload: dict) -> dict:
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    if not idea_data:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
     author = str(payload.get("author", "User")).strip() or "User"
     text = str(payload.get("text", "")).strip()
     if not text:

@@ -19,11 +19,6 @@ class Settings(BaseSettings):
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
 
-    workflow_interval_minutes: int = 15
-    workflow_scheduler_enabled: bool = False
-    max_retries_per_state: int = 3
-    composite_threshold: int = 70
-    gate_threshold_percent: int = 50
     mcp_servers: str = ""
 
     storage_dir: str = ""

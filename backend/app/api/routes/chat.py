@@ -6,8 +6,6 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ...agent.runner import execute_deep_agent_workflow_streaming
-from ...orchestrator.workflow import get_active_idea
 from ...storage.yaml_io import load_idea_yaml
 
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -21,7 +19,7 @@ class StreamChatMessage(BaseModel):
 @router.get("/agent-tasks")
 async def get_agent_tasks(idea_id: Optional[str] = None) -> dict[str, Any]:
     """Retrieve real dynamic subagent tasks and planning checklist."""
-    active = idea_id or get_active_idea() or "IDEA-0006"
+    active = idea_id or "IDEA-0006"
     idea_data = load_idea_yaml(active, "idea.yaml") or {}
     state = idea_data.get("workflow_state", "ideascope_draft")
 
