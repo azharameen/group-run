@@ -18,7 +18,6 @@ import {
 	ClipboardCheck,
 	Users,
 	Scale,
-	Globe,
 	MessageSquare,
 	Folder,
 	Trash2,
@@ -38,12 +37,9 @@ import {
 	pauseIdea,
 	resumeIdea,
 	addIdeaComment,
-	fetchGateConfig,
-	fetchCriteriaConfig,
 	connectSSE,
 	type IdeaDetail as IdeaDetailType,
 	type IdeaFile,
-	type GateConfig,
 } from "../api/client";
 
 import { IdeaFilesystem } from "../components/IdeaFilesystem";

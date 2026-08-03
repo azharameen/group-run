@@ -123,7 +123,7 @@ export function CommandCenterWorkspacePane() {
 		"",
 		"C:\\workspace\\Companion> $ mkdir -p /workspace/research",
 		"C:\\workspace\\Companion> $ cd /workspace/research",
-		"C:\\workspace\\research> $ git clone https://github.com/siemens-companion-org/template.git .",
+		"C:\\workspace\\research> $ git clone https://github.com/companion-org/template.git .",
 		"Cloning into '.'...",
 		"remote: Enumerating objects: 120, done.",
 		"remote: Counting objects: 100% (120/120), done.",
@@ -170,7 +170,7 @@ export function CommandCenterWorkspacePane() {
 			);
 		} else if (cmd.toLowerCase() === "npm run dev") {
 			newLines.push(
-				"Running Companion Companion Dashboard...",
+				"Running Companion Dashboard...",
 				"  Local:   http://localhost:5173/",
 				"  Network: http://192.168.1.52:5173/",
 				"vite v5.2.11 ready in 280ms",
@@ -191,7 +191,7 @@ export function CommandCenterWorkspacePane() {
 	};
 
 	// Browser state
-	const [browserUrl, setBrowserUrl] = useState("https://siemens-companion-dev.local/");
+	const [browserUrl, setBrowserUrl] = useState("https://companion-dev.local/");
 
 	// Agent Tasks Table state
 	const [workspaceTasks, setWorkspaceTasks] = useState<AgentTaskItem[]>(DEFAULT_TASK_ITEMS);

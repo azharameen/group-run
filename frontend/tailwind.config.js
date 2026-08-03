@@ -55,12 +55,6 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
-        siemens: {
-          green: '#009999',
-          teal: '#00A3A3',
-          dark: '#003333',
-          light: '#E6F5F5',
-        },
         phase: {
           discovery: '#F59E0B',
           research: '#3B82F6',

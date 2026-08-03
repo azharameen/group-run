@@ -140,7 +140,7 @@ end
 		modified_at: new Date().toISOString(),
 		content: `# Companion Wiki
 
-Welcome to the Companion Companion Engine Wiki. This is the centralized knowledge repository for platform developers.
+Welcome to the Companion Engine Wiki. This is the centralized knowledge repository for platform developers.
 `,
 	},
 ];
