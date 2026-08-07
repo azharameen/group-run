@@ -58,7 +58,7 @@ development_status:
   epic-0-retrospective: done
 
   # EP-1: Agentic Chat
-  epic-1: in-progress
+  epic-1: done
   1-1-create-teams-yaml-and-mcp-json: done
   1-2-update-config-py: done
   1-3-rewrite-api-app-py: done
@@ -70,7 +70,7 @@ development_status:
   1-9-update-use-chat-stream: done
   1-10-update-app-tsx-routing-and-app-sidebar: done
   1-11-frontend-tests-chat-ui-streaming-hook: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # EP-2: Conversation Threads
   epic-2: in-progress
@@ -142,20 +142,40 @@ action_items:
   - epic: 0
     action: "Run code review per story, not batched at epic end"
     owner: "Ameen"
-    status: open
+    status: done
   - epic: 0
     action: "Document dead code removal review checklist for story specs"
     owner: "Amelia"
-    status: open
+    status: in-progress
   - epic: 0
     action: "Address agent/subagents.py TODO (empty list)"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 0
     action: "Investigate 6 pre-existing test failures (HITL/KB 404s) - decide skip vs fix"
     owner: "Dana/Amelia"
     status: open
   - epic: 0
     action: "Verify forbidden import script runs as pre-commit or CI step"
+    owner: "Amelia"
+    status: open
+  - epic: 1
+    action: "Track deferred technical debt in central registry"
+    owner: "Amelia"
+    status: open
+  - epic: 1
+    action: "Address pre-existing test failures before Epic 3"
+    owner: "Dana/Amelia"
+    status: open
+  - epic: 1
+    action: "Review ST-1.9 deferred items before Epic 3"
+    owner: "Amelia"
+    status: open
+  - epic: 1
+    action: "Add timeout to ainvoke() in supervisor graph"
+    owner: "Amelia"
+    status: open
+  - epic: 1
+    action: "Review asyncio.run() in MCP tools"
     owner: "Amelia"
     status: open
