@@ -1,0 +1,19 @@
+# Enforcement: Retro action item gate
+# Prevents dev work from starting if prior epic action items are open.
+# Place: _bmad/custom/bmad-dev-auto.toml (team override, git-commit this)
+
+[workflow]
+
+activation_steps_prepend = [
+  """Run: `python {project-root}/_bmad/scripts/check_action_items.py --sprint-status {project-root}/_bmad-output/implementation-artifacts/sprint-status.yaml` and parse the output.
+
+If output is "clear", continue activation normally.
+
+If output starts with "blockers:N":
+  1. Present the blocker list to the user with this header:
+     "⚠️ N action items from prior epics are still open:"
+  2. List each blocker with its epic, action, and owner
+  3. Ask: "Proceed with dev work despite these open items? (yes/no)"
+  4. If user says "no" or "wait", HALT immediately - do not continue
+  5. If user says "yes", log "User acknowledged N open action items" and continue activation"""
+]

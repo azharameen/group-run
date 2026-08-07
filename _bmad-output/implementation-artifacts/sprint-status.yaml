@@ -162,7 +162,7 @@ action_items:
   - epic: 1
     action: "Track deferred technical debt in central registry"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 1
     action: "Address pre-existing test failures before Epic 3"
     owner: "Dana/Amelia"
@@ -174,11 +174,11 @@ action_items:
   - epic: 1
     action: "Add timeout to ainvoke() in supervisor graph"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 1
     action: "Review asyncio.run() in MCP tools"
     owner: "Amelia"
-    status: open
+    status: in-progress
   - epic: 2
     action: "Review deferred-work.md at retro start"
     owner: "Amelia"
