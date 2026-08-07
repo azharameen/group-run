@@ -41,11 +41,6 @@ def write_changelog_entry(idea_id: str, entry: str):
         handle.write(f"\n## {timestamp}\n{entry}\n---\n")
 
 
-def write_handover(idea_id: str, from_state: str, to_state: str, content: str):
-    filename = f"{from_state}-to-{to_state}.md"
-    write_markdown(os.path.join(idea_folder_path(idea_id), "handovers", filename), content)
-
-
 def delete_idea_folder(idea_id: str) -> bool:
     folder = idea_folder_path(idea_id)
     if not os.path.exists(folder):
@@ -68,16 +63,6 @@ def archive_idea_folder(idea_id: str) -> str | None:
 
     shutil.copytree(folder, archive_target)
     return archive_target
-
-
-def clear_idea_runtime_state(idea_id: str) -> None:
-    idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
-    idea_data["active_processing"] = False
-    idea_data["active_agent"] = ""
-    idea_data["active_state"] = ""
-    idea_data["active_message"] = ""
-    idea_data["updated_at"] = datetime.utcnow().isoformat()
-    save_idea_yaml(idea_id, "idea.yaml", idea_data)
 
 
 def load_comments(idea_id: str) -> list[dict]:
