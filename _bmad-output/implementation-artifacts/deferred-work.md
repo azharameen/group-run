@@ -60,3 +60,9 @@
 - No test validates `config={"configurable": {"thread_id": ...}}` forwarding to supervisor (`threads.py:128`) — ainvoke receives config but no test asserts it was passed correctly; requires mock ainvoke that captures and verifies config argument
 - No test validates error classification codes from supervisor (`supervisor.py:65-90`) — `_error_code()` and `_user_friendly_error()` classify errors into agent_timeout, agent_rate_limited, agent_auth_failed; none of the error handling tests verify these codes propagate through the stream
 - `aiosqlite` DeprecationWarning "There is no current event loop" (`aiosqlite/core.py:127`) — `AsyncSqliteSaver` created outside async context during synchronous graph compilation; will break when `get_event_loop()` is deprecated; requires creating async checkpointer within an async context
+
+## Deferred from: code review of 2-4-update-use-thread-manager (2026-08-11)
+
+- `ensureThread` returns stale thread ID if active thread was deleted elsewhere — `activeThreadIdRef.current` is checked but the thread may no longer exist in the server's thread list; requires deciding whether to validate against current thread list before returning
+- Concurrent mutations from multiple components cause `refreshThreads` races — multiple simultaneous `updateThread`/`deleteThread` calls trigger parallel `listThreads` fetches with no deduplication; older responses can overwrite newer state; needs in-flight request deduplication
+- `refreshThreads` swallows fetch errors after mutations — errors logged to console but not surfaced to user via toast; user sees mutation succeed but UI doesn't update; needs error notification for mutation-after refresh failures
