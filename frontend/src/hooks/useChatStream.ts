@@ -10,7 +10,7 @@ import {
 import type { ChatMessage, TaskItem } from "@/types/chat";
 import { eventToMessage, groupMessages } from "@/lib/chat-utils";
 
-interface UseChatStreamOptions {
+export interface UseChatStreamOptions {
 	activeThreadId: string | null;
 	ensureThread: () => Promise<string>;
 	onThreadsUpdate: (threads: ThreadMetadata[]) => void;
@@ -32,6 +32,7 @@ export function useChatStream({
 	const abortRef = useRef<AbortController | null>(null);
 	const streamMsgIdRef = useRef<string | null>(null);
 	const queueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const fetchCounterRef = useRef(0);
 
 	// Clean up pending timeouts and abort controllers on unmount
 	useEffect(() => {
@@ -93,29 +94,29 @@ export function useChatStream({
 		return () => es.close();
 	}, []);
 
-	// Sync message loading when activeThreadId updates
+	// Sync message loading when activeThreadId updates (with stale fetch guard)
 	useEffect(() => {
 		if (activeThreadId) {
 			setRawMessages([]);
+			const counter = ++fetchCounterRef.current;
 			getThreadMessages(activeThreadId)
 				.then(({ messages: msgs }) => {
-					const chatMessages = msgs
-						.filter((m) => m.type === "human" || m.type === "ai")
-						.map((m) => ({
-							id: m.id,
-							sender: m.type === "human" ? "You" : m.name || "Assistant",
-							text: m.content,
-							timestamp: m.timestamp
-								? new Date(m.timestamp).toLocaleTimeString([], {
-										hour: "2-digit",
-										minute: "2-digit",
-									})
-								: new Date().toLocaleTimeString([], {
-										hour: "2-digit",
-										minute: "2-digit",
-									}),
-							eventType: m.type === "human" ? "user_message" : "message",
-						}));
+					if (counter !== fetchCounterRef.current) return;
+					const chatMessages = msgs.map((m) => ({
+						id: m.id,
+						sender: m.type === "human" ? "You" : m.name || "Assistant",
+						text: m.content,
+						timestamp: m.timestamp
+							? new Date(m.timestamp).toLocaleTimeString([], {
+									hour: "2-digit",
+									minute: "2-digit",
+								})
+							: new Date().toLocaleTimeString([], {
+									hour: "2-digit",
+									minute: "2-digit",
+								}),
+						eventType: m.type === "human" ? "user_message" : "message",
+					}));
 					setRawMessages(chatMessages);
 				})
 				.catch((err) => console.error("Error fetching thread messages:", err));
@@ -128,6 +129,7 @@ export function useChatStream({
 		abortRef.current?.abort();
 		abortRef.current = null;
 		setIsGenerating(false);
+		setMessageQueue([]);
 	}, []);
 
 	const toggleTrace = useCallback((id: string) => {
@@ -170,7 +172,7 @@ export function useChatStream({
 					undefined,
 					(evt: StreamEvent) => {
 						if (evt.type === "tasks_update" && evt.tasks) {
-							setTasks(evt.tasks as TaskItem[]);
+							setTasks(evt.tasks as unknown as TaskItem[]);
 							setTaskStats({
 								completed: evt.completed || 0,
 								total: evt.total || 0,
@@ -187,35 +189,59 @@ export function useChatStream({
 							return;
 						}
 
-						if (evt.type === "token" || evt.type === "reasoning") {
-							const delta = evt.content || evt.text || "";
-							if (!delta) return;
-							const msgId = streamMsgIdRef.current;
-							if (msgId) {
-								setRawMessages((prev) =>
-									prev.map((m) =>
-										m.id === msgId
-											? { ...m, text: m.text + delta, isStreaming: true }
-											: m,
-									),
-								);
-							} else {
-								const newMsg = eventToMessage({
-									...evt,
-									type: evt.type === "reasoning" ? "reasoning" : "message",
-								});
-								streamMsgIdRef.current = newMsg.id;
-								setRawMessages((prev) => [...prev, newMsg]);
+						if (evt.type === "state_update") {
+								const response = evt.response ?? "";
+								const text = typeof response === "string" ? response : JSON.stringify(response);
+								if (!text) return;
+								const msgId = streamMsgIdRef.current;
+								if (msgId) {
+									setRawMessages((prev) =>
+										prev.map((m) =>
+											m.id === msgId
+												? { ...m, text: m.text + text, isStreaming: true }
+												: m,
+										),
+									);
+								} else {
+									const newMsg = eventToMessage({
+										...evt,
+										text: text,
+									});
+									streamMsgIdRef.current = newMsg.id;
+									setRawMessages((prev) => [...prev, newMsg]);
+								}
+								return;
 							}
-							return;
-						}
+
+						if (evt.type === "error") {
+								const errorData = (evt.error || {}) as Record<string, unknown>;
+								const errorText = typeof errorData?.message === "string" ? errorData.message : evt.message || "An error occurred";
+								const errorMsg: ChatMessage = {
+									id: `error_${Date.now()}`,
+									sender: "System",
+									text: errorText,
+									timestamp: new Date().toLocaleTimeString([], {
+										hour: "2-digit",
+										minute: "2-digit",
+									}),
+									eventType: "error",
+									details: {
+										code: typeof errorData?.code === "string" ? errorData.code : evt.code,
+										retryable: typeof errorData?.retryable === "boolean" ? errorData.retryable : (evt.retryable ?? false),
+									},
+								};
+								setRawMessages((prev) => [...prev, errorMsg]);
+								streamMsgIdRef.current = null;
+								setIsGenerating(false);
+								return;
+							}
 
 						setRawMessages((prev) => [...prev, eventToMessage(evt)]);
 					},
 					ctrl.signal,
 				);
-			} catch (err: any) {
-				if (err?.name !== "AbortError") {
+			} catch (err) {
+				if (err instanceof Error && err.name !== "AbortError") {
 					console.error("[Chat Stream Error]", err);
 				}
 			} finally {

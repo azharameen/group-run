@@ -1,67 +1,94 @@
-"""Global chat endpoint with transcript-backed streaming."""
+"""Chat endpoint — streams supervisor graph state via SSE."""
 
 import json
-from typing import Any, AsyncGenerator, Optional
-from fastapi import APIRouter, Request
+import logging
+from typing import AsyncGenerator
+from uuid import uuid4
+
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
-from ...storage.yaml_io import load_idea_yaml
+from ...orchestrator.supervisor import get_supervisor_graph
 
 router = APIRouter(prefix="/api", tags=["chat"])
+logger = logging.getLogger(__name__)
 
 
-class StreamChatMessage(BaseModel):
+class StreamChatRequest(BaseModel):
     text: str
-    sender: str = "user"
 
 
-@router.get("/agent-tasks")
-async def get_agent_tasks(idea_id: Optional[str] = None) -> dict[str, Any]:
-    """Retrieve real dynamic subagent tasks and planning checklist."""
-    active = idea_id or "IDEA-0006"
-    idea_data = load_idea_yaml(active, "idea.yaml") or {}
-    state = idea_data.get("workflow_state", "ideascope_draft")
-
-    tasks = [
-        {
-            "id": "t1",
-            "title": f"Taxonomy & Prior-Art Search for {idea_data.get('title', active)}",
-            "agent": "prior-art-researcher",
-            "status": "Completed" if state != "ideascope_draft" else "In Progress",
-        },
-        {
-            "id": "t2",
-            "title": f"Evaluate Novelty & Claim Boundaries ({state})",
-            "agent": "workflow-orchestrator",
-            "status": "In Progress" if state == "ideascope_draft" else "Completed",
-        },
-        {
-            "id": "t3",
-            "title": "Draft Invention Disclosure & Siemens Gate Packet",
-            "agent": "ip-manager",
-            "status": "To Do",
-        },
-    ]
-
-    completed_count = sum(1 for t in tasks if t["status"] == "Completed")
-    return {
-        "idea_id": active,
-        "tasks": tasks,
-        "completed": completed_count,
-        "total": len(tasks),
-        "completion_pct": int((completed_count / len(tasks)) * 100),
-    }
+def _error_shape(error) -> dict:
+    """Normalize supervisor error into {code, message, retryable}."""
+    if isinstance(error, dict):
+        error.setdefault("code", "agent_failure")
+        error.setdefault("message", str(error))
+        error.setdefault("retryable", False)
+        return error
+    return {"code": "agent_failure", "message": str(error), "retryable": False}
 
 
 async def _chat_stream_generator(text: str) -> AsyncGenerator[str, None]:
-    """Convert streaming events into SSE-formatted data lines."""
-    async for event in execute_deep_agent_workflow_streaming("", text):
-        yield f"data: {json.dumps(event)}\n\n"
+    """Invoke the supervisor graph via astream v2 and emit SSE events."""
+    thread_id = str(uuid4())
+    emitted_done = False
+
+    try:
+        supervisor = get_supervisor_graph()
+        async for state in supervisor.astream(
+            input={"messages": [HumanMessage(content=text)]},
+            config={"configurable": {"thread_id": thread_id}},
+            stream_mode="values",
+            version="v2",
+        ):
+            response = state.get("response")
+            error = state.get("error")
+
+            if error:
+                event = {
+                    "type": "error",
+                    "error": _error_shape(error),
+                    "routing_key": state.get("routing_key", "general"),
+                }
+            else:
+                # Skip meaningless intermediate state (no response, no error)
+                if not response and not error:
+                    continue
+                event = {
+                    "type": "state_update",
+                    "response": response or "",
+                    "error": None,
+                    "routing_key": state.get("routing_key", "general"),
+                }
+
+            yield f"data: {json.dumps(event)}\n\n"
+
+            if response or error:
+                emitted_done = True
+                break
+
+    except Exception as exc:
+        logger.error("Chat stream failed: %s", exc)
+        error_event = {
+            "type": "error",
+            "error": {
+                "code": "streaming_failure",
+                "message": "An error occurred while processing your request. Please try again.",
+                "retryable": True,
+            },
+            "routing_key": "general",
+        }
+        yield f"data: {json.dumps(error_event)}\n\n"
+
+    finally:
+        if not emitted_done:
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
 
 @router.post("/chat/stream")
-async def stream_chat(req: StreamChatMessage) -> StreamingResponse:
+async def stream_chat(req: StreamChatRequest) -> StreamingResponse:
     """Stream agent reasoning and response for a user message."""
     return StreamingResponse(
         _chat_stream_generator(req.text),

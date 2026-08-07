@@ -1,5 +1,6 @@
 ---
 baseline_commit: 13e4b9566b4b94426038c37f143603d51db05d26
+final_revision: c21361076ca4fac07ac2d6533a23a652fab87f0b
 review_loop_iteration: 0
 followup_review_recommended: false
 status: done
@@ -316,3 +317,18 @@ Based on analysis of existing 14 tests, these gaps remain:
 - No test validates `config={"configurable": {"thread_id": ...}}` forwarding to supervisor (medium)
 - No test validates error classification codes from supervisor (medium)
 - `aiosqlite` DeprecationWarning about event loop creation outside async context (low)
+
+## Auto Run Result
+
+**Summary:** Extended `test_threads.py` with 15 new tests covering checkpoint restoration, thread isolation, error handling, and service layer operations. All 29 tests pass (14 pre-existing + 15 new).
+
+**Files Changed:**
+- `backend/tests/test_threads.py` — +672 lines, 15 new tests across 5 categories
+- `_bmad-output/implementation-artifacts/2-3-backend-tests-thread-crud-checkpoint-restoration.md` — story spec created
+- `_bmad-output/implementation-artifacts/deferred-work.md` — 3 items deferred
+
+**Review Findings:** 4 patches applied (singleton cleanup, missing assertions, race condition), 3 items deferred, 12 rejected as non-issues.
+
+**Follow-up Review:** Not recommended — patches were localized test fixes with no API/security/data impact.
+
+**Verification:** `pytest backend/tests/test_threads.py -v` — 29 passed in 29.73s.

@@ -6,6 +6,7 @@ export type StreamEventType =
   | 'thinking'
   | 'tool_call'
   | 'tool_result'
+  | 'tool_use'
   | 'subagent'
   | 'handover'
   | 'interrupt'
@@ -15,10 +16,27 @@ export type StreamEventType =
   | 'completion'
   | 'token'
   | 'tasks_update'
+  | 'state_update'
+  | 'agent_run'
+  | 'agent_start'
+  | 'agent_stop'
+  | 'error'
   | 'done'
   | 'transition'
   | 'user_message'
   | 'message';
+
+export interface StateUpdateResponse {
+  text?: string;
+  agent?: string;
+  [key: string]: unknown;
+}
+
+export interface TaskItemShape {
+  id: string;
+  status: string;
+  [key: string]: unknown;
+}
 
 export interface StreamEvent {
   type: StreamEventType;
@@ -30,8 +48,8 @@ export interface StreamEvent {
   speaker?: string;
   role?: string;
   tool?: string;
-  params?: Record<string, any>;
-  output?: any;
+  params?: Record<string, unknown>;
+  output?: unknown;
   action?: string;
   from_agent?: string;
   to_agent?: string;
@@ -41,10 +59,23 @@ export interface StreamEvent {
   provenance?: string;
   state?: string;
   status?: string;
-  extras?: Record<string, any>;
-  tasks?: any[];
+  extras?: Record<string, unknown>;
+  tasks?: TaskItemShape[];
   completed?: number;
   total?: number;
+  // state_update event fields
+  response?: StateUpdateResponse;
+  // error event fields (flat shape for compatibility)
+  code?: string;
+  message?: string;
+  retryable?: boolean;
+  // error event nested shape (from chat.py)
+  error?: {
+    code: string;
+    message: string;
+    retryable: boolean;
+  };
+  routing_key?: string;
 }
 
 export interface ThreadMetadata {
@@ -91,7 +122,7 @@ export function connectSSE(
 
   const knownEvents = [
     'idea.created', 'idea.transition', 'idea.scored',
-    'agent.progress', 'gate.passed', 'gate.failed',
+    'agent.progress',
   ];
 
   knownEvents.forEach((eventName) => {

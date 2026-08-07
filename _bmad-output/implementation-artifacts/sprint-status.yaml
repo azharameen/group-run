@@ -86,9 +86,9 @@ development_status:
   # EP-3: Ideas Management
   epic-3: in-progress
   3-1-rewrite-api-routes-ideas-py: done
-  3-2-update-models-idea-py: backlog
-  3-3-validate-workspace-filesystem-management: backlog
-  3-4-backend-tests-ideas-crud-workspace-files: backlog
+  3-2-update-models-idea-py: done
+  3-3-validate-workspace-filesystem-management: done
+  3-4-backend-tests-ideas-crud-workspace-files: done
   3-5-update-pages-idea-detail-tsx: backlog
   3-6-ideas-list-page-with-create-view-update-delete: backlog
   3-7-frontend-tests-ideas-ui: backlog

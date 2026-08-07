@@ -145,13 +145,6 @@ export async function addIdeaComment(ideaId: string, text: string, author = 'Use
   });
 }
 
-export async function validateGate(ideaId: string, gateName: string): Promise<any> {
-  return request(`/ideas/${ideaId}/validate-gate`, {
-    method: 'POST',
-    body: JSON.stringify({ gate_name: gateName }),
-  });
-}
-
 export async function updateIdea(ideaId: string, field: string, value: any): Promise<any> {
   return request(`/ideas/${ideaId}/update`, {
     method: 'POST',

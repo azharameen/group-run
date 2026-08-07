@@ -1,11 +1,12 @@
 ---
-status: in-progress
+status: done
 baseline_revision: ccad54c04e5363a4f615196916124562f6c35f12
+commit: 440eb81
 ---
 
 # Story 2.6: Frontend Tests — Thread Management UI
 
-Status: in-progress
+Status: done
 
 ## Story
 

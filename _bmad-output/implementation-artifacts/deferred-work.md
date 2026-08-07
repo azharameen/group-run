@@ -28,6 +28,24 @@
 - Silent UI inconsistency in pre-existing `confirmRename` and `confirmDelete` (`nav-threads.tsx:90-92,113-114`) — same listThreads-failure pattern as create but in pre-existing code
 - Hardcoded "New Chat" title with no idea context (`nav-threads.tsx:126`) — every thread gets indistinguishable title until renamed; requires product decision for idea-aware defaults
 - Blocking `asyncio.run()` at module import can hang startup (`runtime.py:63`) — pre-existing pattern, diff adds MCP timeout but doesn't fix blocking behavior
+
+## Deferred from: code review of 3-3-validate-workspace-filesystem-management (2026-08-07)
+
+- source_spec: `spec-3-3-validate-workspace-filesystem-management.md`
+  summary: External code importing removed functions will fail with ImportError
+  evidence: `write_handover` and `clear_idea_runtime_state` are removed from `idea_workspace.py` and `yaml_io.py`; any consumer importing these will get ImportError
+
+- source_spec: `spec-3-3-validate-workspace-filesystem-management.md`
+  summary: String-based dispatch may reference removed function names
+  evidence: Function names could appear in dynamic `getattr()`, config, tests, or scripts; repo-wide text search recommended
+
+- source_spec: `spec-3-3-validate-workspace-filesystem-management.md`
+  summary: Existing `idea.yaml` files retain stale FSM runtime fields
+  evidence: `clear_idea_runtime_state()` removal means no path to reset `active_processing`, `active_agent`, `active_state`, `active_message` fields
+
+- source_spec: `spec-3-3-validate-workspace-filesystem-management.md`
+  summary: Existing `handovers/*.md` files become dead data
+  evidence: `write_handover()` removal doesn't delete existing handover artifact files
 - `agent_timeout_sec` config defined but never consumed (`config.py:28`) — forward planning for story 2.7 AC 1-2, not wired to any streaming call yet
 
 ## Deferred from: code review of 1-5-wire-deepagents-runtime-into-supervisor (2026-08-05)
@@ -66,3 +84,40 @@
 - `ensureThread` returns stale thread ID if active thread was deleted elsewhere — `activeThreadIdRef.current` is checked but the thread may no longer exist in the server's thread list; requires deciding whether to validate against current thread list before returning
 - Concurrent mutations from multiple components cause `refreshThreads` races — multiple simultaneous `updateThread`/`deleteThread` calls trigger parallel `listThreads` fetches with no deduplication; older responses can overwrite newer state; needs in-flight request deduplication
 - `refreshThreads` swallows fetch errors after mutations — errors logged to console but not surfaced to user via toast; user sees mutation succeed but UI doesn't update; needs error notification for mutation-after refresh failures
+
+## Deferred from: code review of spec-3-1-rewrite-api-routes-ideas-py.md (2026-08-07)
+
+- Race condition on idea ID generation allows duplicate IDs under concurrent requests — `load_idea_registry() → read next_id → increment → save_idea_registry()` is not atomic; no file lock or mutex protects the counter
+- Empty registry file causes `load_idea_registry` to return None, crashing list_ideas and create_idea — `yaml.safe_load("")` returns None; no None guard when file exists but is empty
+- `archive_idea_folder` copies but does not delete source folder, leaving duplicate data in workspace — `shutil.copytree` followed by return; no `shutil.rmtree(folder)` follows
+- Partial failure in delete_idea leaves inconsistent state if folder deletes but registry removal fails — idea becomes zombie-listed in registry with no filesystem data
+
+## Deferred from: code review of 3-2-update-models-idea-py.md (2026-08-07)
+
+- `Idea` and `IdeaRegistry` Pydantic models defined but never instantiated — all CRUD code in `routes/ideas.py`, `storage/registry.py`, `storage/yaml_io.py` works with raw `dict` objects; models provide zero runtime validation benefit
+- `write_handover` in `idea_workspace.py:44` — orphaned dead code that generates filenames like `"{from_state}-to-{to_state}.md"`; designed for `WorkflowState` transitions no longer in codebase
+- `clear_idea_runtime_state` in `idea_workspace.py:73` — orphaned function that writes fields (`active_processing`, `active_agent`, etc.) to `idea.yaml` with no code reading them back; zero callers
+- `datetime.utcnow()` deprecated in Python 3.12+ — `Idea.created_at` and `Idea.updated_at` use naive UTC timestamps; migrate to `datetime.now(timezone.utc)`
+
+## Deferred from: code review of 3-4-backend-tests-ideas-crud-workspace-files (2026-08-07)
+
+- source_spec: `spec-3-4-backend-tests-ideas-crud-workspace-files.md`
+  summary: CRUD tests assert only status codes, not payload content
+  evidence: test_create_with_title, test_delete_existing, test_archive_existing assert 200 but don't verify response body fields (idea_id, message, archive_path)
+
+- source_spec: `spec-3-4-backend-tests-ideas-crud-workspace-files.md`
+  summary: Missing idea_id format validation on POST/DELETE/archive/comment paths
+  evidence: Only GET paths test malformed idea_id via parametrize; POST /ideas/{idea_id}/update, DELETE /ideas/{idea_id}, POST /ideas/{idea_id}/archive, POST /ideas/{idea_id}/comment are untested for invalid IDs
+
+- source_spec: `spec-3-4-backend-tests-ideas-crud-workspace-files.md`
+  summary: No post-CRUD registry/YAML consistency checks
+  evidence: test_create_with_title doesn't verify idea appears in registry or idea.yaml; test_delete_existing doesn't verify idea removed from registry
+
+- source_spec: `spec-3-4-backend-tests-ideas-crud-workspace-files.md`
+  summary: Binary file test only checks content is truthy
+  evidence: test_workspace_files_binary_files asserts `blob['content']` is truthy but doesn't verify encoding safety or that binary files produce the expected fallback string
+
+- source_spec: `spec-3-4-backend-tests-ideas-crud-workspace-files.md`
+  summary: test_list_with_data checks only count, not idea contents
+  evidence: test_list_with_data asserts `count == 1` but doesn't verify idea_id, title, or timestamps in the returned list
+

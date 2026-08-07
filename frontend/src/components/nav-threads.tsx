@@ -4,6 +4,7 @@ import {
 	MessageSquare,
 	MoreHorizontal,
 	Pencil,
+	Plus,
 	Trash2,
 	Search,
 } from "lucide-react";
@@ -44,12 +45,14 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+	createThread,
 	updateThread,
 	deleteThread,
 	listThreads,
 	type ThreadMetadata,
 } from "@/api/client";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 export function NavThreads({
 	threads = [],
@@ -74,6 +77,9 @@ export function NavThreads({
 	// Delete Modal state
 	const [deleteTarget, setDeleteTarget] = useState<ThreadMetadata | null>(null);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+	const [isCreating, setIsCreating] = useState(false);
+
+	const { toast } = useToast();
 
 	const openRenameDialog = (t: ThreadMetadata) => {
 		setRenameTarget(t);
@@ -117,6 +123,27 @@ export function NavThreads({
 		}
 	};
 
+	const createNewThread = async () => {
+		setIsCreating(true);
+		try {
+			const thread = await createThread({ title: "New Chat", idea_id: null });
+			if (onSelectThread) onSelectThread(thread.thread_id);
+			try {
+				const allThreads = await listThreads();
+				if (onThreadsUpdate) onThreadsUpdate(allThreads);
+			} catch (refreshErr) {
+				// List refresh failed — optimistic update keeps UI consistent.
+				console.error("Failed to refresh thread list after create", refreshErr);
+				toast({ variant: "destructive", title: "Refresh failed", description: "Thread created, but list refresh failed. The thread may not appear until you refresh the page." });
+			}
+		} catch (err) {
+			console.error("Failed to create thread", err);
+			toast({ variant: "destructive", title: "Failed to create thread", description: "Please try again." });
+		} finally {
+			setIsCreating(false);
+		}
+	};
+
 	// On Desktop Rail Mode (collapsed & not mobile), hide threads group completely
 	if (isRail) {
 		return null;
@@ -133,6 +160,22 @@ export function NavThreads({
 					<SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 						Threads
 					</SidebarGroupLabel>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								variant="ghost"
+								size="sm"
+								disabled={isCreating}
+								onClick={createNewThread}
+								className="h-6 w-6 p-0 hover:bg-sidebar-accent"
+							>
+								<Plus className="h-3.5 w-3.5" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="bottom" className="text-xs">
+							{isCreating ? "Creating..." : "New Thread"}
+						</TooltipContent>
+					</Tooltip>
 				</div>
 
 				<div className="px-2 py-1 mb-1 shrink-0">

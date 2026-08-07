@@ -25,6 +25,9 @@ class Settings(BaseSettings):
 
     storage_dir: str = ""
 
+    # Agent timeout and retry configuration (AC: 1-2)
+    agent_timeout_sec: int = 120
+
     # Compute .env path relative to this file (backend/app/config.py -> repo root)
     model_config = SettingsConfigDict(
         env_prefix="",

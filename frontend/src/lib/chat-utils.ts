@@ -1,5 +1,5 @@
 import type { TraceStep } from "@/components/ui/chat-primitives";
-import type { StreamEvent } from "@/api/client";
+import type { StreamEvent, StateUpdateResponse } from "@/api/client";
 import type { ChatMessage } from "@/types/chat";
 
 export const EVENT_LABELS: Record<string, string> = {
@@ -16,6 +16,8 @@ export const EVENT_LABELS: Record<string, string> = {
 	user_message: "User",
 	transition: "Orchestrator",
 	message: "Message",
+	state_update: "Agent",
+	error: "System Error",
 };
 
 export const messageBadgeVariant = (type?: string): "secondary" | "outline" | "destructive" | "default" => {
@@ -103,7 +105,55 @@ export const eventToMessage = (evt: StreamEvent): ChatMessage => {
 		}
 		return value;
 	};
+	const extractResponseText = (response: StateUpdateResponse): string => {
+		if (typeof response === "string") return response;
+		if (response && typeof response === "object") {
+			if (typeof response.text === "string") return response.text;
+			if (typeof response.content === "string") return response.content;
+			if (typeof response.output === "string") return response.output;
+		}
+		return JSON.stringify(response);
+	};
+
+	const formatToolUse = (evt: StreamEvent): string => {
+		const tool = evt.tool || evt.params?.tool || "unknown_tool";
+		const input = evt.params?.input || evt.params || {};
+		const description = evt.params?.description || `Using tool: ${tool}`;
+		return `${description}\n\`${tool}\``;
+	};
+
+	const formatToolResult = (evt: StreamEvent): string => {
+		const tool = evt.tool || "unknown_tool";
+		const output = evt.output ?? "";
+		const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+		return `Tool \`${tool}\` completed:\n${text.substring(0, 500)}${text.length > 500 ? "..." : ""}`;
+	};
+
+	const formatAgentRun = (evt: StreamEvent): string => {
+		const agent = evt.agent || evt.speaker || "agent";
+		const defaultAction =
+			evt.type === "agent_stop" ? "stopped" : evt.type === "agent_start" ? "starting" : "running";
+		const action = evt.action || evt.params?.action || defaultAction;
+		const description = evt.params?.description || evt.text || "";
+		return `Agent \`${agent}\` is ${action}${description ? ": " + description : ""}`;
+	};
+
 	const text =
+		(evt.type === "state_update" && evt.response != null
+			? extractResponseText(evt.response)
+			: undefined) ||
+		(evt.type === "error"
+			? (evt.error?.message || evt.message || `Error: ${evt.error?.code || evt.code || "unknown"}`)
+			: undefined) ||
+		(evt.type === "agent_run" || evt.type === "agent_start" || evt.type === "agent_stop"
+			? formatAgentRun(evt)
+			: undefined) ||
+		(evt.type === "tool_use"
+			? formatToolUse(evt)
+			: undefined) ||
+		(evt.type === "tool_result"
+			? formatToolResult(evt)
+			: undefined) ||
 		extractVisibleText(evt.text) ||
 		unwrapText(evt.text) ||
 		evt.content ||

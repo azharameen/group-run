@@ -1,6 +1,8 @@
 ---
-status: in-review
+status: done
 baseline_revision: b6f651937600c77137873b669efc769cee917f04
+final_revision: ccad54c04e5363a4f615196916124562f6c35f12
+followup_review_recommended: false
 ---
 
 # Story 2.4: Update `useThreadManager.ts` for New Thread API

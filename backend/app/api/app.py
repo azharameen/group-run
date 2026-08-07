@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..infrastructure.observability import configure_langsmith_tracing
-from ..services.thread_manager import get_checkpointer
+from ..services.thread_manager import get_checkpointer, get_async_checkpointer
 from .routes.chat import router as chat_router
 from .routes.health import router as health_router
 from .routes.ideas import router as ideas_router
@@ -19,6 +19,11 @@ async def lifespan(_app: FastAPI):
 
     checkpointer = get_checkpointer()
     print(f"[Startup] Checkpointer initialized at {checkpointer.conn}")
+
+    # Initialize async checkpointer for astream() compatibility
+    async_checkpointer = get_async_checkpointer()
+    await async_checkpointer.setup()
+    print(f"[Startup] Async checkpointer initialized")
 
     yield
 
