@@ -73,7 +73,7 @@ development_status:
   epic-1-retrospective: done
 
   # EP-2: Conversation Threads
-  epic-2: in-progress
+  epic-2: done
   2-1-clean-up-api-routes-threads-py: done
   2-2-thread-switching-with-checkpoint-restoration: done
   2-3-backend-tests-thread-crud-checkpoint-restoration: done
@@ -81,7 +81,7 @@ development_status:
   2-5-thread-list-sidebar-with-create-switch-delete: done
   2-6-frontend-tests-thread-management-ui: done
   2-7-agent-error-recovery-and-resilience: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   # EP-3: Ideas Management
   epic-3: backlog
@@ -178,4 +178,16 @@ action_items:
   - epic: 1
     action: "Review asyncio.run() in MCP tools"
     owner: "Amelia"
+    status: open
+  - epic: 2
+    action: "Review deferred-work.md at retro start"
+    owner: "Amelia"
+    status: open
+  - epic: 2
+    action: "Limit retro action items to 3 maximum"
+    owner: "Ameen"
+    status: open
+  - epic: 2
+    action: "Resolve 6 pre-existing test failures NOW before Epic 3"
+    owner: "Dana/Amelia"
     status: open
