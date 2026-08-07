@@ -1,18 +1,13 @@
-"""Thread API — wraps LangGraph thread management as REST endpoints.
-
-Every chat conversation maps to one LangGraph thread (checkpoint).
-These endpoints manage threads and wire user messages through the
-DeepAgents graph with true astream_events streaming.
-"""
+"""Thread API — wraps LangGraph thread management as REST + streaming endpoints."""
 
 import json
+import logging
 from typing import Any, AsyncGenerator, Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
-from ...agent.runner import execute_deep_agent_workflow_streaming
+from ..schemas import CreateThreadRequest, SendMessageRequest, UpdateThreadRequest
 from ...services.thread_manager import (
     create_thread,
     delete_thread,
@@ -23,37 +18,12 @@ from ...services.thread_manager import (
     update_thread,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/threads", tags=["threads"])
 
 THREAD_NOT_FOUND = "Thread not found"
 NO_FIELDS_TO_UPDATE = "No fields to update"
-
-
-# ── Schemas ────────────────────────────────────────────────────────────────
-
-
-class CreateThreadRequest(BaseModel):
-    title: str = "New Chat"
-    idea_id: Optional[str] = None
-    tags: list[str] = []
-    agent_names: list[str] = []
-
-
-class UpdateThreadRequest(BaseModel):
-    title: Optional[str] = None
-    status: Optional[str] = None
-    idea_id: Optional[str] = None
-    tags: Optional[list[str]] = None
-    agent_names: Optional[list[str]] = None
-
-
-class SendMessageRequest(BaseModel):
-    text: str
-    sender: str = "user"
-    idea_id: Optional[str] = None
-
-
-# ── Endpoints ──────────────────────────────────────────────────────────────
 
 
 @router.get("")
@@ -88,15 +58,13 @@ async def api_get_thread(thread_id: str) -> dict[str, Any]:
     return {"thread": thread}
 
 
-@router.put(
-    "/{thread_id}",
-    responses={400: {"description": NO_FIELDS_TO_UPDATE}, 404: {"description": THREAD_NOT_FOUND}},
-)
+@router.put("/{thread_id}")
+@router.patch("/{thread_id}")
 async def api_update_thread(
     thread_id: str,
     req: UpdateThreadRequest,
 ) -> dict[str, Any]:
-    """Update thread metadata."""
+    """Update thread metadata (supports both PUT and PATCH)."""
     updates = {k: v for k, v in req.model_dump(exclude_none=True).items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
@@ -113,45 +81,30 @@ async def api_delete_thread(thread_id: str) -> dict[str, bool]:
     return {"deleted": deleted}
 
 
-@router.get(
-    "/{thread_id}/messages",
-    responses={404: {"description": THREAD_NOT_FOUND}},
-)
+@router.get("/{thread_id}/messages")
 async def api_get_thread_messages(thread_id: str) -> dict[str, Any]:
     """Retrieve messages from a thread's latest checkpoint state."""
     thread = get_thread(thread_id)
     if not thread:
         raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
-    messages = get_thread_messages(thread_id)
+    messages = await get_thread_messages(thread_id)
     return {"messages": messages, "count": len(messages)}
 
 
-@router.post(
-    "/{thread_id}/stream",
-    responses={404: {"description": THREAD_NOT_FOUND}},
-)
+@router.post("/{thread_id}/stream")
 async def api_stream_message(
     thread_id: str,
     req: SendMessageRequest,
 ) -> StreamingResponse:
-    """Send a message to a thread and stream the agent response.
-
-    Uses LangGraph's astream_events for true event-bound streaming.
-    """
+    """Send a message to a thread and stream the agent response."""
     thread = get_thread(thread_id)
     if not thread:
         raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
-
-    # Touch updated_at
     touch_thread(thread_id)
-
     return StreamingResponse(
         _thread_stream_generator(thread_id, req.text, req.idea_id),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
@@ -163,10 +116,32 @@ async def _thread_stream_generator(
     text: str,
     idea_id: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
-    """Stream agent reasoning and response events for a thread message."""
-    async for event in execute_deep_agent_workflow_streaming(
-        idea_id or "",
-        text,
-        thread_id=thread_id,
-    ):
-        yield f"data: {json.dumps(event)}\n\n"
+    """Stream agent response events for a thread message via ainvoke + checkpointing."""
+    from ...orchestrator.supervisor import get_supervisor_graph
+    from langchain_core.messages import HumanMessage
+
+    emitted_done = False
+    supervisor = get_supervisor_graph()
+    try:
+        final_state = await supervisor.ainvoke(
+            input={"messages": [HumanMessage(content=text)]},
+            config={"configurable": {"thread_id": thread_id}},
+        )
+        response = final_state.get("response")
+        error = final_state.get("error")
+        if error:
+            err = {'type': 'error', 'error': {'code': 'agent_failure', 'message': str(error) if not isinstance(error, dict) else error.get('message', str(error)), 'retryable': isinstance(error, dict) and error.get('retryable', False)}}
+            yield f"data: {json.dumps(err)}\n\n"
+            emitted_done = True
+        elif response:
+            ev = {'type': 'state_update', 'response': str(response), 'error': None, 'routing_key': final_state.get('routing_key', 'general')}
+            yield f"data: {json.dumps(ev)}\n\n"
+            emitted_done = True
+        else:
+            logger.warning("Agent returned empty response for thread %s", thread_id)
+    except Exception as exc:
+        logger.error("Thread stream failed: %s", exc, exc_info=True)
+        yield f"data: {json.dumps({'type': 'error', 'error': {'code': 'streaming_failure', 'message': str(exc), 'retryable': True}})}\n\n"
+    finally:
+        if not emitted_done:
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"

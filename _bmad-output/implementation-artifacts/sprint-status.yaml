@@ -1,5 +1,5 @@
 # generated: 2026-08-02
-# last_updated: 2026-08-04
+# last_updated: 2026-08-07
 # project: Companion
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-02
-last_updated: 2026-08-04
+last_updated: 2026-08-07
 project: Companion
 project_key: NOKEY
 tracking_system: file-system
@@ -62,24 +62,25 @@ development_status:
   1-1-create-teams-yaml-and-mcp-json: done
   1-2-update-config-py: done
   1-3-rewrite-api-app-py: done
-  1-4-create-langgraph-supervisor-graph: backlog
-  1-5-wire-deepagents-runtime-into-supervisor: backlog
-  1-6-rewrite-api-routes-chat-py: backlog
-  1-7-rewrite-sse-event-bus: backlog
-  1-8-backend-tests-supervisor-chat-sse-test-db-isolation: backlog
-  1-9-update-use-chat-stream: backlog
-  1-10-update-app-tsx-routing-and-app-sidebar: backlog
-  1-11-frontend-tests-chat-ui-streaming-hook: backlog
+  1-4-create-langgraph-supervisor-graph: done
+  1-5-wire-deepagents-runtime-into-supervisor: done
+  1-6-rewrite-api-routes-chat-py: done
+  1-7-rewrite-sse-event-bus: done
+  1-8-backend-tests-supervisor-chat-sse-test-db-isolation: done
+  1-9-update-use-chat-stream: done
+  1-10-update-app-tsx-routing-and-app-sidebar: done
+  1-11-frontend-tests-chat-ui-streaming-hook: done
   epic-1-retrospective: optional
 
   # EP-2: Conversation Threads
-  epic-2: backlog
-  2-1-clean-up-api-routes-threads-py: backlog
-  2-2-thread-switching-with-checkpoint-restoration: backlog
-  2-3-backend-tests-thread-crud-checkpoint-restoration: backlog
+  epic-2: in-progress
+  2-1-clean-up-api-routes-threads-py: done
+  2-2-thread-switching-with-checkpoint-restoration: done
+  2-3-backend-tests-thread-crud-checkpoint-restoration: done
   2-4-update-use-thread-manager: backlog
-  2-5-thread-list-sidebar-with-create-switch-delete: backlog
+  2-5-thread-list-sidebar-with-create-switch-delete: done
   2-6-frontend-tests-thread-management-ui: backlog
+  2-7-agent-error-recovery-and-resilience: done
   epic-2-retrospective: optional
 
   # EP-3: Ideas Management

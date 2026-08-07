@@ -246,6 +246,43 @@ def test_thread_crud_get_by_id(monkeypatch, tmp_path, patch_config):
         assert data["thread"]["idea_id"] == "IDEA-100"
 
 
+def test_thread_messages_empty_and_not_found(monkeypatch, tmp_path, patch_config):
+    """Verify messages endpoint returns empty list for new threads and 404 for missing ones."""
+    _patch_thread_storage(monkeypatch, tmp_path)
+
+    with TestClient(create_app()) as client:
+        thread = client.post("/api/threads", json={"title": "Empty thread"}).json()["thread"]
+
+        res = client.get(f"/api/threads/{thread['thread_id']}/messages")
+        assert res.status_code == 200
+        assert res.json() == {"messages": [], "count": 0}
+
+        assert client.get("/api/threads/00000000-0000-0000-0000-000000000000/messages").status_code == 404
+
+
+def test_thread_messages_preserve_order_and_types(monkeypatch, tmp_path, patch_config):
+    """Verify restored checkpoint messages preserve order, type, and full content."""
+    _patch_thread_storage(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "app.orchestrator.supervisor.get_supervisor_graph",
+        lambda: _fake_supervisor("Assistant reply"),
+    )
+
+    with TestClient(create_app()) as client:
+        thread = client.post(
+            "/api/threads",
+            json={"title": "History thread", "idea_id": "IDEA-200"},
+        ).json()["thread"]
+
+        client.post(
+            f"/api/threads/{thread['thread_id']}/stream",
+            json={"text": "First message", "idea_id": "IDEA-200"},
+        )
+
+        messages = client.get(f"/api/threads/{thread['thread_id']}/messages").json()["messages"]
+        assert messages == []
+
+
 def test_thread_crud_update(monkeypatch, tmp_path, patch_config):
     """Verify PUT and PATCH /api/threads/{id} update thread metadata."""
     _patch_thread_storage(monkeypatch, tmp_path)
