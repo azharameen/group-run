@@ -1,5 +1,5 @@
 # generated: 2026-08-02
-# last_updated: 2026-08-07
+# last_updated: 2026-08-08
 # project: Companion
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-02
-last_updated: 2026-08-07
+last_updated: 2026-08-08
 project: Companion
 project_key: NOKEY
 tracking_system: file-system
@@ -84,7 +84,7 @@ development_status:
   epic-2-retrospective: done
 
   # EP-3: Ideas Management
-  epic-3: in-progress
+  epic-3: done
   3-1-rewrite-api-routes-ideas-py: done
   3-2-update-models-idea-py: done
   3-3-validate-workspace-filesystem-management: done
@@ -93,7 +93,7 @@ development_status:
   3-6-ideas-list-page-with-create-view-update-delete: done
   3-7-frontend-tests-ideas-ui: done
   3-8-adapt-ui-to-standard-shadcn-components: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   # EP-4: HITL Approvals
   epic-4: backlog
@@ -187,8 +187,20 @@ action_items:
   - epic: 2
     action: "Limit retro action items to 3 maximum"
     owner: "Ameen"
-    status: open
+    status: in-progress
   - epic: 2
     action: "Resolve 6 pre-existing test failures NOW before Epic 3"
     owner: "Dana/Amelia"
+    status: open
+  - epic: 3
+    action: "Fix 6 pre-existing test failures via ST-4.0 prep story"
+    owner: "Dana/Amelia"
+    status: open
+  - epic: 3
+    action: "Retro commitments become Epic 4 prep stories with acceptance criteria"
+    owner: "Ameen"
+    status: open
+  - epic: 3
+    action: "Triage deferred-work.md with go/no-go decisions before Epic 4 kickoff"
+    owner: "Amelia/Charlie"
     status: open
