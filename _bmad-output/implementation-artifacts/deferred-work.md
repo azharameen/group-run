@@ -131,3 +131,13 @@
   summary: No validation on message emptiness or tool_input payload size
   evidence: CreateInterruptRequest accepts empty strings and unlimited dict payloads; SQLite and API may degrade with oversized inputs
 
+## Deferred from: code review of 4-2-create-sse-bridge-for-interrupt-events (2026-08-08)
+
+- source_spec: `spec-4-2-create-sse-bridge-for-interrupt-events.md`
+  summary: SSE endpoint test doesn't verify stream yields SSE frames
+  evidence: test_sse_endpoint_returns_streaming_response checks return type but not that _bus.subscribe() produces SSE-formatted output; StreamBus has its own tests but bridge-level integration is untested
+
+- source_spec: `spec-4-2-create-sse-bridge-for-interrupt-events.md`
+  summary: Publish failure silently drops event without DB rollback
+  evidence: _bus.publish() is called after commit() succeeds; if publish fails, DB is committed but no event is emitted, leaving frontend out of sync
+

@@ -49,7 +49,7 @@ function AppContent() {
 					isWorkspaceOpen={isWorkspaceOpen}
 					onToggleWorkspace={toggleWorkspace}
 				/>
-				<main className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+				<main className="flex-1 flex flex-col p-4 pt-0">
 					<Suspense
 						fallback={
 							<div className="h-full w-full p-6 space-y-6 animate-pulse">

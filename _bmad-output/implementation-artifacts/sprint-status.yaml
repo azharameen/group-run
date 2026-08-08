@@ -98,7 +98,7 @@ development_status:
   # EP-4: HITL Approvals
   epic-4: in-progress
   4-1-create-interrupt-management-service: done
-  4-2-create-sse-bridge-for-interrupt-events: backlog
+  4-2-create-sse-bridge-for-interrupt-events: done
   4-3-create-interrupt-api-endpoints: backlog
   4-4-backend-tests-interrupt-lifecycle: backlog
   4-5-create-hitl-approval-ui-component: backlog
