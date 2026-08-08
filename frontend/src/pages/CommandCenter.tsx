@@ -71,8 +71,8 @@ export default function CommandCenter({
 	}, [threads, onThreadsUpdate, setActiveThreadId]);
 
 	return (
-		<div className="flex flex-col h-full w-full overflow-hidden bg-background text-foreground">
-			<div className="flex-1 overflow-hidden relative">
+		<div className="flex flex-col flex-1 h-full min-h-0 w-full overflow-hidden bg-background text-foreground">
+			<div className="flex-1 min-h-0 overflow-hidden relative">
 				{!isWorkspaceOpen ? (
 					<div className="h-full w-full overflow-hidden flex flex-col bg-sidebar text-sidebar-foreground">
 						<CommandCenterChatPane

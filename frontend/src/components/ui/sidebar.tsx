@@ -130,7 +130,7 @@ export const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper flex h-svh w-full overflow-hidden has-[[data-variant=inset]]:bg-sidebar",
+              "group/sidebar-wrapper flex h-svh max-h-svh w-full overflow-hidden has-[[data-variant=inset]]:bg-sidebar",
               className
             )}
             ref={ref}
@@ -303,14 +303,13 @@ SidebarRail.displayName = "SidebarRail"
 
 export const SidebarInset = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"main">
+  React.ComponentProps<"div">
 >(({ className, ...props }, ref) => {
   return (
-    <main
+    <div
       ref={ref}
       className={cn(
         "relative flex h-svh max-h-svh flex-1 flex-col overflow-hidden bg-background",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
         className
       )}
       {...props}

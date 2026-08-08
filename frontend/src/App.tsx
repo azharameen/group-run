@@ -35,7 +35,7 @@ function AppContent() {
 				onSelectThread={setActiveThreadId}
 				onThreadsUpdate={setThreads}
 			/>
-			<SidebarInset className="flex flex-col h-full overflow-hidden min-w-0">
+			<SidebarInset >
 				<SiteHeader
 					ideaTitle={currentIdeaTitle}
 					activeThreadId={activeThreadId}
@@ -46,7 +46,7 @@ function AppContent() {
 					isWorkspaceOpen={isWorkspaceOpen}
 					onToggleWorkspace={toggleWorkspace}
 				/>
-				<main className="flex-1 h-[calc(100vh-3.5rem)] max-h-[calc(100vh-3.5rem)] overflow-hidden">
+				<main className="flex-1 min-h-0 overflow-y-auto flex flex-col">
 					<Suspense fallback={
 						<div className="h-full w-full p-6 space-y-6 animate-pulse">
 							<div className="flex items-center justify-between">

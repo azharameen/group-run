@@ -113,7 +113,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 	const idea = detail.idea;
 
 	return (
-		<div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
+		<div className="p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6 flex-1">
 			<IdeaActionsHeader
 				ideaId={ideaId}
 				title={idea?.title}

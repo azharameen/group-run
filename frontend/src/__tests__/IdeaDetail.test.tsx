@@ -240,7 +240,7 @@ describe('IdeaDetail', () => {
 
     // Verify the mock was called
     await waitFor(() => {
-      expect(apiClient.addIdeaComment.mock.calls.length).toBeGreaterThan(0);
+      expect(vi.mocked(apiClient.addIdeaComment)).toHaveBeenCalled();
     });
   });
 

@@ -121,3 +121,13 @@
   summary: test_list_with_data checks only count, not idea contents
   evidence: test_list_with_data asserts `count == 1` but doesn't verify idea_id, title, or timestamps in the returned list
 
+## Deferred from: code review of 4-1-create-interrupt-management-service (2026-08-08)
+
+- source_spec: `spec-4-1-create-interrupt-management-service.md`
+  summary: Test coverage gaps for edge cases (non-serializable tool_input, concurrent approve/reject race, DB corruption)
+  evidence: 6 tests cover happy paths and basic transitions but lack concurrency tests, error handling tests, and API-level integration tests
+
+- source_spec: `spec-4-1-create-interrupt-management-service.md`
+  summary: No validation on message emptiness or tool_input payload size
+  evidence: CreateInterruptRequest accepts empty strings and unlimited dict payloads; SQLite and API may degrade with oversized inputs
+

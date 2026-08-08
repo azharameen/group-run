@@ -1,5 +1,6 @@
 """Shared request/response schemas for API routes."""
-from typing import Optional
+
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -26,3 +27,32 @@ class SendMessageRequest(BaseModel):
     text: str
     sender: str = "user"
     idea_id: Optional[str] = None
+
+
+class Interrupt(BaseModel):
+    id: str
+    thread_id: str
+    tool_name: str
+    tool_input: dict[str, Any]
+    message: str
+    status: str
+    decision: Optional[str] = None
+    reason: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class CreateInterruptRequest(BaseModel):
+    thread_id: str
+    tool_name: str
+    message: str
+    tool_input: dict[str, Any] = {}
+
+
+class InterruptDecisionRequest(BaseModel):
+    decision: str
+    reason: str = ""
+
+
+class InterruptResponse(BaseModel):
+    interrupt: Interrupt

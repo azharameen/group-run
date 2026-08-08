@@ -1,0 +1,78 @@
+"""Interrupt service for HITL approvals."""
+
+import json
+import sqlite3
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from .thread_manager import get_checkpointer
+
+
+class InterruptService:
+    _instance: "InterruptService | None" = None
+
+    def __init__(self) -> None:
+        self._init_table()
+
+    @classmethod
+    def instance(cls) -> "InterruptService":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def _conn(self) -> sqlite3.Connection:
+        return get_checkpointer().conn
+
+    def _init_table(self) -> None:
+        self._conn().execute(
+            "CREATE TABLE IF NOT EXISTS interrupts (id TEXT PRIMARY KEY, thread_id TEXT NOT NULL, tool_name TEXT NOT NULL DEFAULT 'unknown', tool_input TEXT DEFAULT '{}', message TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', decision TEXT, reason TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
+        )
+        self._conn().commit()
+
+    def create_interrupt(self, thread_id: str, tool_name: str, message: str, tool_input: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+        interrupt_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        self._conn().execute(
+            "INSERT INTO interrupts (id, thread_id, tool_name, tool_input, message, status, decision, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)",
+            (interrupt_id, thread_id, tool_name, json.dumps(tool_input or {}), message, now, now),
+        )
+        self._conn().commit()
+        return self.get_interrupt(interrupt_id)  # type: ignore[return-value]
+
+    def list_pending(self) -> list[dict[str, Any]]:
+        rows = self._conn().execute("SELECT * FROM interrupts WHERE status = 'pending' ORDER BY created_at DESC").fetchall()
+        return [self._row_dict(row) for row in rows]
+
+    def get_interrupt(self, interrupt_id: str) -> Optional[dict[str, Any]]:
+        row = self._conn().execute("SELECT * FROM interrupts WHERE id = ?", (interrupt_id,)).fetchone()
+        return self._row_dict(row) if row else None
+
+    def approve_interrupt(self, interrupt_id: str, decision: str, reason: str = "") -> Optional[dict[str, Any]]:
+        now = datetime.now(timezone.utc).isoformat()
+        cur = self._conn().execute(
+            "UPDATE interrupts SET status = 'approved', decision = ?, reason = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
+            (decision, reason, now, interrupt_id),
+        )
+        self._conn().commit()
+        if cur.rowcount == 0:
+            return None
+        return self.get_interrupt(interrupt_id)
+
+    def reject_interrupt(self, interrupt_id: str, reason: str) -> Optional[dict[str, Any]]:
+        now = datetime.now(timezone.utc).isoformat()
+        cur = self._conn().execute(
+            "UPDATE interrupts SET status = 'rejected', decision = 'rejected', reason = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
+            (reason, now, interrupt_id),
+        )
+        self._conn().commit()
+        if cur.rowcount == 0:
+            return None
+        return self.get_interrupt(interrupt_id)
+
+    def _row_dict(self, row: sqlite3.Row | None) -> Optional[dict[str, Any]]:
+        if row is None:
+            return None
+        data = dict(row)
+        data["tool_input"] = json.loads(data["tool_input"]) if isinstance(data.get("tool_input"), str) else data.get("tool_input", {})
+        return data

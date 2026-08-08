@@ -59,14 +59,14 @@ export default function KnowledgeBase() {
 
   if (loading) {
     return (
-      <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto flex items-center justify-center min-h-[300px]">
+      <div className="p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto flex items-center justify-center min-h-[300px] flex-1">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
+    <div className="p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6 flex-1">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Knowledge Base</h1>
         <p className="text-sm text-muted-foreground mt-1">Multi-modal knowledge repositories and patent sources powering signal extraction</p>

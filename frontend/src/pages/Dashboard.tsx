@@ -163,7 +163,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
+      <div className="p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6 flex-1">
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-32 w-full rounded-lg" />
@@ -174,7 +174,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6">
+    <div className="p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6 flex-1">
       {/* Control Bar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1 flex-wrap">
