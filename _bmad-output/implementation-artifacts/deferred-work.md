@@ -141,3 +141,29 @@
   summary: Publish failure silently drops event without DB rollback
   evidence: _bus.publish() is called after commit() succeeds; if publish fails, DB is committed but no event is emitted, leaving frontend out of sync
 
+## Deferred from: code review of 4-3-api-route-tests-for-interrupt-endpoints (2026-08-08)
+
+- source_spec: `spec-4-3-api-route-tests-for-interrupt-endpoints.md`
+  summary: Error response bodies not verified in route tests
+  evidence: Tests check status codes (404, 409) but don't assert response body content; regressions in error payloads would slip through
+
+- source_spec: `spec-4-3-api-route-tests-for-interrupt-endpoints.md`
+  summary: Pending list filtering and ordering not validated
+  evidence: test_list_pending_with_data inserts one item and checks count; no test verifies resolved interrupts are excluded or ordering is correct
+
+- source_spec: `spec-4-3-api-route-tests-for-interrupt-endpoints.md`
+  summary: Cross-resolution conflicts not tested (approve then reject)
+  evidence: "Already resolved" tests only re-apply the same verb; cross-action conflicts (approve→reject, reject→approve) are untested
+
+- source_spec: `spec-4-3-api-route-tests-for-interrupt-endpoints.md`
+  summary: Malformed interrupt IDs not tested
+  evidence: Not-found tests use fabricated "missing" string; no test validates that malformed IDs (non-UUID format) are distinguished from valid-but-absent IDs
+
+- source_spec: `spec-4-3-api-route-tests-for-interrupt-endpoints.md`
+  summary: Route tests don't verify DB persistence after approve/reject
+  evidence: Tests assert response status but don't verify the interrupt is actually persisted as resolved in the DB
+
+- source_spec: `spec-4-3-api-route-tests-for-interrupt-endpoints.md`
+  summary: Decision payload validation not tested against endpoint action
+  evidence: Approve/reject endpoints accept decision field in request body but don't validate it matches the endpoint action; wrong status transition could be accepted
+

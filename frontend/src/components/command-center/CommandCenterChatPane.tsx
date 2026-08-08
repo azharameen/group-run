@@ -214,7 +214,7 @@ export function CommandCenterChatPane({
 			</div>
 
 			{/* Chat Input Footer */}
-			<div className="border-t p-3 bg-sidebar shrink-0">
+			<div className="border-t p-3 shrink-0">
 				<div className="space-y-2">
 					{messageQueue.length > 0 && (
 						<div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
@@ -228,7 +228,7 @@ export function CommandCenterChatPane({
 						</div>
 					)}
 
-					<div className="rounded-lg border bg-background p-2 focus-within:ring-1 focus-within:ring-ring focus-within:border-ring">
+					<div className="rounded-lg bg-secondary p-2 focus-within:ring-1 focus-within:ring-ring">
 						<Textarea
 							placeholder={
 								isGenerating
