@@ -195,7 +195,7 @@ action_items:
   - epic: 3
     action: "Fix 6 pre-existing test failures via ST-4.0 prep story"
     owner: "Dana/Amelia"
-    status: open
+    status: done
   - epic: 3
     action: "Retro commitments become Epic 4 prep stories with acceptance criteria"
     owner: "Ameen"
