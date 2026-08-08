@@ -15,23 +15,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export interface IdeaListItem {
   idea_id: string;
   title: string;
-  phase: string;
-  state: string;
-  composite_score: number;
-  strength_rating: string;
-  running_agent: string;
-  active_processing?: boolean;
-  paused_processing?: boolean;
-  active_agent?: string;
-  active_state?: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface IdeaDetail {
   idea: Record<string, any>;
-  state: Record<string, any>;
-  scores: Record<string, any>;
   comments?: Array<{
     author: string;
     text: string;
@@ -63,30 +52,8 @@ export interface ArtifactRevision {
   evidence_refs: string[];
 }
 
-export interface CriterionDetail {
-  score: number;
-  reasoning: string;
-  confidence: number;
-}
-
-export interface ScoreResult {
-  composite: number;
-  breakdown: Record<string, number>;
-  criteria_detail: Record<string, CriterionDetail>;
-  summary: string;
-  change_explanation: string;
-  strength_rating: string;
-  meets_threshold: boolean;
-  threshold_reason: string;
-}
-
-export async function fetchIdeas(params?: { phase?: string; state?: string; min_score?: number }): Promise<IdeaListItem[]> {
-  const query = new URLSearchParams();
-  if (params?.phase) query.set('phase', params.phase);
-  if (params?.state) query.set('state', params.state);
-  if (params?.min_score !== undefined) query.set('min_score', String(params.min_score));
-  const qs = query.toString();
-  const data = await request<{ ideas: IdeaListItem[] }>(`/ideas${qs ? `?${qs}` : ''}`);
+export async function fetchIdeas(): Promise<IdeaListItem[]> {
+  const data = await request<{ ideas: IdeaListItem[] }>(`/ideas`);
   return data.ideas;
 }
 
@@ -108,34 +75,15 @@ export async function fetchArtifactDiff(ideaId: string, artifactName: string): P
   return request(`/ideas/${ideaId}/artifacts/${encodeURIComponent(artifactName)}/diff`);
 }
 
-export async function createIdea(signalText: string, title?: string): Promise<{ idea_id: string; score: ScoreResult }> {
+export async function createIdea(signalText: string, title?: string): Promise<{ idea_id: string; message: string }> {
   return request('/ideas', {
     method: 'POST',
     body: JSON.stringify({ signal_text: signalText, title: title || '' }),
   });
 }
 
-export async function advanceIdea(ideaId: string, targetState?: string): Promise<any> {
-  return request(`/ideas/${ideaId}/advance`, {
-    method: 'POST',
-    body: JSON.stringify({ target_state: targetState }),
-  });
-}
-
-export async function scoreIdea(ideaId: string): Promise<ScoreResult> {
-  return request(`/ideas/${ideaId}/score`, { method: 'POST' });
-}
-
 export async function deleteIdea(ideaId: string): Promise<{ idea_id: string; deleted: boolean; interrupt_pending?: boolean; message?: string }> {
   return request(`/ideas/${ideaId}`, { method: 'DELETE' });
-}
-
-export async function pauseIdea(ideaId: string): Promise<{ idea_id: string; paused_processing: boolean }> {
-  return request(`/ideas/${ideaId}/pause`, { method: 'POST' });
-}
-
-export async function resumeIdea(ideaId: string): Promise<{ idea_id: string; paused_processing: boolean }> {
-  return request(`/ideas/${ideaId}/resume`, { method: 'POST' });
 }
 
 export async function addIdeaComment(ideaId: string, text: string, author = 'User'): Promise<any> {
@@ -152,9 +100,3 @@ export async function updateIdea(ideaId: string, field: string, value: any): Pro
   });
 }
 
-export async function addEvidence(ideaId: string, source: string, content: string): Promise<any> {
-  return request(`/ideas/${ideaId}/evidence`, {
-    method: 'POST',
-    body: JSON.stringify({ source, content }),
-  });
-}

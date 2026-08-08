@@ -2,15 +2,16 @@ import * as React from "react";
 import { useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	MessageScroller,
-	Message,
-	Bubble,
-	Marker,
-	MessageActions,
-	LiveTrace,
-	TurnMinimap,
-} from "@/components/ui/chat-primitives";
+import { Textarea } from "@/components/ui/textarea";
+// shadcn-compatible chat UI primitives
+import { MessageScroller } from "@/components/ui/message-scroller";
+import { Message } from "@/components/ui/message";
+import { Bubble } from "@/components/ui/bubble";
+import { Marker } from "@/components/ui/marker";
+// Feature-specific chat components (app-level, not generic UI)
+import { LiveTrace } from "./chat-ui/live-trace";
+import { TurnMinimap } from "./chat-ui/turn-minimap";
+import { MessageActions } from "./chat-ui/message-actions";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { BotMessageSquare, Send, Plus, Mic, Square } from "lucide-react";
@@ -228,7 +229,7 @@ export function CommandCenterChatPane({
 					)}
 
 					<div className="rounded-lg border bg-background p-2 focus-within:ring-1 focus-within:ring-ring focus-within:border-ring">
-						<textarea
+						<Textarea
 							placeholder={
 								isGenerating
 									? "Type to queue message..."
@@ -242,7 +243,7 @@ export function CommandCenterChatPane({
 									onSendOrQueue();
 								}
 							}}
-							className="w-full bg-transparent border-0 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-xs min-h-[42px] max-h-[80px] resize-none p-0 placeholder:text-muted-foreground text-foreground"
+							className="w-full border-0 shadow-none outline-none focus:outline-none focus-visible:ring-0 text-xs min-h-[42px] max-h-[80px] resize-none p-0 placeholder:text-muted-foreground text-foreground bg-transparent"
 						/>
 						<div className="flex items-center justify-between pt-1">
 							<div className="flex items-center gap-1 text-muted-foreground">

@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -372,12 +373,13 @@ export function CommandCenterWorkspacePane() {
 													.map((file) => {
 														const isSelected = file.path === selectedFilePath;
 														return (
-															<button
+															<Button
 																key={file.path}
+																variant="ghost"
 																onClick={() => setSelectedFilePath(file.path)}
-																className={`w-full flex items-center justify-between p-1.5 px-2.5 rounded-md text-left transition-colors text-xs ${
+																className={`w-full flex items-center justify-between p-1.5 px-2.5 h-auto rounded-md text-left transition-colors text-xs ${
 																	isSelected
-																		? "bg-primary text-primary-foreground font-medium shadow-xs"
+																		? "bg-primary text-primary-foreground font-medium shadow-xs hover:bg-primary/90"
 																		: "hover:bg-muted text-foreground"
 																}`}
 															>
@@ -391,7 +393,7 @@ export function CommandCenterWorkspacePane() {
 																		{file.filename}
 																	</span>
 																</div>
-															</button>
+															</Button>
 														);
 													})}
 											</div>
@@ -407,12 +409,13 @@ export function CommandCenterWorkspacePane() {
 													.map((file) => {
 														const isSelected = file.path === selectedFilePath;
 														return (
-															<button
+															<Button
 																key={file.path}
+																variant="ghost"
 																onClick={() => setSelectedFilePath(file.path)}
-																className={`w-full flex items-center justify-between p-1.5 px-2.5 rounded-md text-left transition-colors text-xs ${
+																className={`w-full flex items-center justify-between p-1.5 px-2.5 h-auto rounded-md text-left transition-colors text-xs ${
 																	isSelected
-																		? "bg-primary text-primary-foreground font-medium shadow-xs"
+																		? "bg-primary text-primary-foreground font-medium shadow-xs hover:bg-primary/90"
 																		: "hover:bg-muted text-foreground"
 																}`}
 															>
@@ -422,7 +425,7 @@ export function CommandCenterWorkspacePane() {
 																		{file.filename}
 																	</span>
 																</div>
-															</button>
+															</Button>
 														);
 													})}
 											</div>
@@ -514,13 +517,13 @@ export function CommandCenterWorkspacePane() {
 
 							<form onSubmit={handleTerminalSubmit} className="flex items-center border-t border-slate-800 pt-2 shrink-0">
 								<span className="text-emerald-500 mr-2 font-bold select-none">$</span>
-								<input
-									type="text"
-									value={terminalInput}
-									onChange={(e) => setTerminalInput(e.target.value)}
-									placeholder="Type terminal command e.g., 'help'..."
-									className="flex-1 bg-transparent border-0 outline-none ring-0 text-slate-100 placeholder:text-slate-600 text-xs font-mono p-0 focus:ring-0 focus:outline-none"
-								/>
+							<Input
+								type="text"
+								value={terminalInput}
+								onChange={(e) => setTerminalInput(e.target.value)}
+								placeholder="Type terminal command e.g., 'help'..."
+								className="flex-1 bg-transparent border-0 shadow-none outline-none ring-0 text-slate-100 placeholder:text-slate-600 text-xs font-mono p-0 h-auto focus-visible:ring-0"
+							/>
 							</form>
 						</div>
 					</TabsContent>
@@ -1070,12 +1073,12 @@ export function CommandCenterWorkspacePane() {
 										<label className="text-xs font-semibold text-foreground">
 											Agent Thought & Activity Log
 										</label>
-										<textarea
+										<Textarea
 											rows={3}
 											placeholder="Agent thought context or execution steps..."
 											value={sheetThought}
 											onChange={(e) => setSheetThought(e.target.value)}
-											className="w-full rounded-md border bg-background px-3 py-2 text-xs font-mono text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+											className="w-full text-xs font-mono text-foreground"
 										/>
 									</div>
 

@@ -1,4 +1,4 @@
-import type { TraceStep } from "@/components/ui/chat-primitives";
+import type { TraceStep } from "@/components/command-center/chat-ui/live-trace";
 import type { StreamEvent, StateUpdateResponse } from "@/api/client";
 import type { ChatMessage } from "@/types/chat";
 

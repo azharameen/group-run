@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ThreadProvider, useThreadContext } from "@/context/ThreadContext";
 import { WorkspaceProvider, useWorkspaceContext } from "@/context/WorkspaceContext";
@@ -35,7 +35,7 @@ function AppContent() {
 				onSelectThread={setActiveThreadId}
 				onThreadsUpdate={setThreads}
 			/>
-			<SidebarInset className="flex flex-col h-svh overflow-hidden min-w-0">
+			<SidebarInset className="flex flex-col h-full overflow-hidden min-w-0">
 				<SiteHeader
 					ideaTitle={currentIdeaTitle}
 					activeThreadId={activeThreadId}
@@ -46,8 +46,21 @@ function AppContent() {
 					isWorkspaceOpen={isWorkspaceOpen}
 					onToggleWorkspace={toggleWorkspace}
 				/>
-				<main className="flex-1 overflow-hidden">
-					<Suspense fallback={<PageSkeleton />}>
+				<main className="flex-1 h-[calc(100vh-3.5rem)] max-h-[calc(100vh-3.5rem)] overflow-hidden">
+					<Suspense fallback={
+						<div className="h-full w-full p-6 space-y-6 animate-pulse">
+							<div className="flex items-center justify-between">
+								<Skeleton className="h-8 w-48 rounded-md" />
+								<Skeleton className="h-8 w-24 rounded-md" />
+							</div>
+							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+								<Skeleton className="h-28 rounded-xl" />
+								<Skeleton className="h-28 rounded-xl" />
+								<Skeleton className="h-28 rounded-xl" />
+							</div>
+							<Skeleton className="h-64 w-full rounded-xl" />
+						</div>
+					}>
 						<Routes>
 							<Route
 								path="/"

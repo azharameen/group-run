@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Select,
   SelectContent,
@@ -273,26 +274,19 @@ export function ProviderSettings() {
         </p>
       </div>
 
-      {/* Provider Selector Tabs */}
-      <div className="flex rounded-lg border border-border/80 p-1 bg-muted/30">
-        {LLM_PROVIDERS.map((provider) => (
-          <button
-            key={provider.value}
-            onClick={() => setActiveProvider(provider.value)}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
-              activeProvider === provider.value
-                ? "bg-background text-foreground shadow-sm font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {provider.label}
-          </button>
-        ))}
-      </div>
+      {/* Provider Selector Tabs — using shadcn Tabs */}
+      <Tabs value={activeProvider} onValueChange={(v) => setActiveProvider(v as "openai" | "ollama" | "custom")}>
+        <TabsList className="w-full">
+          {LLM_PROVIDERS.map((provider) => (
+            <TabsTrigger key={provider.value} value={provider.value} className="flex-1">
+              {provider.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
       {/* Config Form Cards */}
-      <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm space-y-4">
-        {activeProvider === "openai" && (
+      <div className="mt-4 rounded-xl border border-border/60 bg-card p-5 shadow-sm space-y-4">
+        <TabsContent value="openai">
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-foreground font-medium text-sm">
               <Cpu className="h-4.5 w-4.5 text-indigo-500" />
@@ -310,13 +304,15 @@ export function ProviderSettings() {
                     onChange={(e) => setOpenaiKey(e.target.value)}
                     className="pr-10 border-border/80 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500"
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setShowOpenAIKey(!showOpenAIKey)}
-                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
                   >
                     {showOpenAIKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -334,10 +330,10 @@ export function ProviderSettings() {
                 </Select>
               </div>
             </div>
-          </div>
-        )}
+           </div>
+        </TabsContent>
 
-        {activeProvider === "ollama" && (
+        <TabsContent value="ollama">
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-foreground font-medium text-sm">
               <Database className="h-4.5 w-4.5 text-orange-500" />
@@ -386,10 +382,10 @@ export function ProviderSettings() {
                 )}
               </div>
             </div>
-          </div>
-        )}
+           </div>
+        </TabsContent>
 
-        {activeProvider === "custom" && (
+        <TabsContent value="custom">
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-foreground font-medium text-sm">
               <Globe className="h-4.5 w-4.5 text-blue-500" />
@@ -418,13 +414,15 @@ export function ProviderSettings() {
                     onChange={(e) => setCustomKey(e.target.value)}
                     className="pr-10 border-border/80 focus-visible:ring-blue-500/20 focus-visible:border-blue-500"
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setShowCustomKey(!showCustomKey)}
-                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
                   >
                     {showCustomKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -439,9 +437,10 @@ export function ProviderSettings() {
                 />
               </div>
             </div>
-          </div>
-        )}
+           </div>
+        </TabsContent>
       </div>
+      </Tabs>
 
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="default" className="h-9 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-sm transition-all border-none">

@@ -1,4 +1,4 @@
-import type { TraceStep } from "@/components/ui/chat-primitives";
+import type { TraceStep } from "@/components/command-center/chat-ui/live-trace";
 
 export interface ChatMessage {
 	id: string;

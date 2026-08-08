@@ -9,47 +9,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
 	MoreVertical,
-	Play,
-	Pause,
-	RefreshCw,
-	Loader2,
-	Send,
 	Trash2,
 } from "lucide-react";
 
 interface IdeaActionsHeaderProps {
 	ideaId?: string;
 	title?: string;
-	phase?: string;
-	currentState?: string;
-	pausedProcessing?: boolean;
-	scoring: boolean;
-	advancing: boolean;
-	pausing: boolean;
-	resuming: boolean;
 	deleting: boolean;
-	onScore: () => void;
-	onAdvance: () => void;
-	onPause: () => void;
-	onResume: () => void;
 	onDelete: () => void;
 }
 
 export function IdeaActionsHeader({
 	ideaId,
 	title,
-	phase,
-	currentState = "",
-	pausedProcessing,
-	scoring,
-	advancing,
-	pausing,
-	resuming,
 	deleting,
-	onScore,
-	onAdvance,
-	onPause,
-	onResume,
 	onDelete,
 }: IdeaActionsHeaderProps) {
 	return (
@@ -66,20 +39,6 @@ export function IdeaActionsHeader({
 						<span className="font-semibold text-foreground">ID:</span>
 						<span className="font-mono text-primary font-medium">{ideaId}</span>
 					</div>
-					<Separator orientation="vertical" className="h-3" />
-					<div className="flex items-center gap-1.5">
-						<span className="font-semibold text-foreground">Phase:</span>
-						<Badge variant="outline" className="capitalize text-[11px] px-2 py-0">
-							{phase || "discovery"}
-						</Badge>
-					</div>
-					<Separator orientation="vertical" className="h-3" />
-					<div className="flex items-center gap-1.5">
-						<span className="font-semibold text-foreground">Status:</span>
-						<span className="font-medium text-foreground capitalize bg-muted/60 px-2 py-0.5 rounded">
-							{currentState.replace(/_/g, " ")}
-						</span>
-					</div>
 				</div>
 			</div>
 
@@ -93,43 +52,6 @@ export function IdeaActionsHeader({
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-48">
-						<DropdownMenuItem
-							onClick={pausedProcessing ? onResume : onPause}
-							disabled={pausing || resuming}
-							className="gap-2 cursor-pointer"
-						>
-							{pausedProcessing ? (
-								<>
-									<Play className="w-4 h-4 text-emerald-500" />
-									<span>Resume Processing</span>
-								</>
-							) : (
-								<>
-									<Pause className="w-4 h-4 text-amber-500" />
-									<span>Pause Processing</span>
-								</>
-							)}
-						</DropdownMenuItem>
-						<DropdownMenuItem
-							onClick={onScore}
-							disabled={scoring}
-							className="gap-2 cursor-pointer"
-						>
-							<RefreshCw className={`w-4 h-4 text-blue-500 ${scoring ? "animate-spin" : ""}`} />
-							<span>Re-Score Idea</span>
-						</DropdownMenuItem>
-						<DropdownMenuItem
-							onClick={onAdvance}
-							disabled={advancing}
-							className="gap-2 cursor-pointer"
-						>
-							{advancing ? (
-								<Loader2 className="w-4 h-4 animate-spin text-primary" />
-							) : (
-								<Send className="w-4 h-4 text-indigo-500" />
-							)}
-							<span>Advance Cycle</span>
-						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={onDelete}
 							disabled={deleting}
