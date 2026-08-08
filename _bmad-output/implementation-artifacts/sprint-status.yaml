@@ -90,8 +90,8 @@ development_status:
   3-3-validate-workspace-filesystem-management: done
   3-4-backend-tests-ideas-crud-workspace-files: done
   3-5-update-pages-idea-detail-tsx: done
-  3-6-ideas-list-page-with-create-view-update-delete: ready-for-dev
-  3-7-frontend-tests-ideas-ui: ready-for-dev
+  3-6-ideas-list-page-with-create-view-update-delete: done
+  3-7-frontend-tests-ideas-ui: done
   3-8-adapt-ui-to-standard-shadcn-components: done
   epic-3-retrospective: optional
 
