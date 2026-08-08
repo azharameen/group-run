@@ -6,6 +6,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from app.infrastructure.events.stream_bus import _bus
+
 from .thread_manager import get_checkpointer
 
 
@@ -38,7 +40,10 @@ class InterruptService:
             (interrupt_id, thread_id, tool_name, json.dumps(tool_input or {}), message, now, now),
         )
         self._conn().commit()
-        return self.get_interrupt(interrupt_id)  # type: ignore[return-value]
+        interrupt = self.get_interrupt(interrupt_id)
+        if interrupt is not None:
+            _bus.publish("interrupt.created", {"interrupt": interrupt, "thread_id": thread_id})
+        return interrupt  # type: ignore[return-value]
 
     def list_pending(self) -> list[dict[str, Any]]:
         rows = self._conn().execute("SELECT * FROM interrupts WHERE status = 'pending' ORDER BY created_at DESC").fetchall()
@@ -57,7 +62,10 @@ class InterruptService:
         self._conn().commit()
         if cur.rowcount == 0:
             return None
-        return self.get_interrupt(interrupt_id)
+        interrupt = self.get_interrupt(interrupt_id)
+        if interrupt is not None:
+            _bus.publish("interrupt.approved", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
+        return interrupt
 
     def reject_interrupt(self, interrupt_id: str, reason: str) -> Optional[dict[str, Any]]:
         now = datetime.now(timezone.utc).isoformat()
@@ -68,7 +76,10 @@ class InterruptService:
         self._conn().commit()
         if cur.rowcount == 0:
             return None
-        return self.get_interrupt(interrupt_id)
+        interrupt = self.get_interrupt(interrupt_id)
+        if interrupt is not None:
+            _bus.publish("interrupt.rejected", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
+        return interrupt
 
     def _row_dict(self, row: sqlite3.Row | None) -> Optional[dict[str, Any]]:
         if row is None:

@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-import backend.app.services.interrupt_service as interrupt_module
-from backend.app.services.interrupt_service import InterruptService
+import app.services.interrupt_service as interrupt_module
+from app.services.interrupt_service import InterruptService
 
 
 @pytest.fixture()
