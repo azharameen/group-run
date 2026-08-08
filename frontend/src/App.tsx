@@ -31,14 +31,14 @@ function AppContent() {
 	const { isWorkspaceOpen, toggleWorkspace } = useWorkspaceContext();
 
 	return (
-		<SidebarProvider defaultOpen={false}>
+		<SidebarProvider defaultOpen={false} className="flex h-full">
 			<AppSidebar
 				threads={threads}
 				activeThreadId={activeThreadId}
 				onSelectThread={setActiveThreadId}
 				onThreadsUpdate={setThreads}
 			/>
-			<SidebarInset>
+			<SidebarInset className="flex flex-col h-full overflow-hidden">
 				<SiteHeader
 					ideaTitle={currentIdeaTitle}
 					activeThreadId={activeThreadId}
@@ -49,7 +49,7 @@ function AppContent() {
 					isWorkspaceOpen={isWorkspaceOpen}
 					onToggleWorkspace={toggleWorkspace}
 				/>
-				<main className="flex-1 flex flex-col p-4 pt-0">
+				<main className="flex-1 overflow-y-auto p-4 pt-0">
 					<Suspense
 						fallback={
 							<div className="h-full w-full p-6 space-y-6 animate-pulse">
