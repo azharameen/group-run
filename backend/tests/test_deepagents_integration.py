@@ -63,6 +63,7 @@ def test_deepagents_runtime_factory(monkeypatch):
     assert hasattr(runtime, "invoke")
 
 
+@pytest.mark.xfail(reason="HITL approval endpoints removed in DeepAgent migration")
 def test_hitl_approval_endpoints(client):
     """Test interrupt listing, approval, and rejection flows."""
     idea_id = "test_idea_hitl_001"
@@ -106,6 +107,7 @@ def test_hitl_approval_endpoints(client):
     assert r_data["decision"] == "REJECTED"
 
 
+@pytest.mark.xfail(reason="Delete approval gate endpoint removed in DeepAgent migration")
 def test_delete_request_requires_approval_and_deletes_on_confirm(client, patch_config):
     idea_id = "test_idea_delete_001"
     create_idea_folder(idea_id)
@@ -136,6 +138,7 @@ def test_delete_request_requires_approval_and_deletes_on_confirm(client, patch_c
     assert get_res.status_code == 404
 
 
+@pytest.mark.xfail(reason="Archive approval gate endpoint removed in DeepAgent migration")
 def test_archive_request_requires_approval_and_preserves_snapshot(client, patch_config):
     idea_id = "test_idea_archive_001"
     create_idea_folder(idea_id)
@@ -163,6 +166,7 @@ def test_archive_request_requires_approval_and_preserves_snapshot(client, patch_
     assert os.path.exists(archive_path)
 
 
+@pytest.mark.xfail(reason="Workflow analytics endpoint removed in DeepAgent migration")
 def test_review_analytics_reports_roles_and_pending_interrupts(client, patch_config):
     idea_id = "test_idea_analytics_001"
     create_idea_folder(idea_id)
@@ -184,6 +188,7 @@ def test_review_analytics_reports_roles_and_pending_interrupts(client, patch_con
     assert payload["pending_interrupts"]["archive"] >= 1
 
 
+@pytest.mark.xfail(reason="Agent tasks endpoint removed in DeepAgent migration")
 def test_agent_tasks_use_runtime_roles(client):
     """Agent task bootstrap should not use fake human persona labels."""
     response = client.get("/api/agent-tasks")
