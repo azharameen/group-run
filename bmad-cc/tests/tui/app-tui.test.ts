@@ -24,15 +24,28 @@ describe('React Ink App TUI Component - 3 Column Workstation Layout', () => {
     driverName: 'gemini'
   };
 
-  it('renders left tree panel, middle supervisor console, and right sub-sessions panel', () => {
+  it('renders 3-column command center layout with all panels', () => {
     const { lastFrame } = render(React.createElement(App, { initialState: mockState }));
     const frame = lastFrame();
 
+    // Top header bar
     expect(frame).toContain('BMad Command Center');
-    expect(frame).toContain('Workstation');
-    expect(frame).toContain('Sprint Epics');
-    expect(frame).toContain('Supervisor Agent');
-    expect(frame).toContain('Sub-Sessions');
-    expect(frame).toContain('bmad-dev-story');
+    expect(frame).toContain('Test Project');
+
+    // Left panel: Epic tree
+    expect(frame).toContain('Epics');
+    expect(frame).toContain('EP-4');
+
+    // Middle panel: Supervisor chat
+    expect(frame).toContain('Supervisor Console');
+    expect(frame).toContain('gemini');
+
+    // Right panel: Sub-session monitor
+    expect(frame).toContain('Sub-Session');
+
+    // Bottom status bar — keybinding hints appear (labels may wrap in narrow test viewport)
+    expect(frame).toContain('[Tab]');
+    expect(frame).toContain('[r]');
+    expect(frame).toContain('[Esc]');
   });
 });

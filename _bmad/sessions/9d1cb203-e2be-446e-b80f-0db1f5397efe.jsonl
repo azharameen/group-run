@@ -1,0 +1,2 @@
+{"phase":"pre-flight","storyKey":"5-1-create-mcp-server-management-api","event":"phase-start","data":{"storyKey":"5-1-create-mcp-server-management-api","currentStatus":"ready-for-dev","dryRun":false},"timestamp":"2026-08-09T06:26:59.433Z"}
+{"phase":"gate-decision","storyKey":"5-1-create-mcp-server-management-api","event":"gate-decision","data":{"finalDecision":"ESCALATE_TO_HUMAN","totalRetries":4,"startingStatus":"ready-for-dev","nextStatus":"ready-for-dev"},"timestamp":"2026-08-09T06:33:03.327Z"}

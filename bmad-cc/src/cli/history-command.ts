@@ -11,13 +11,13 @@ export interface HistoryOptions {
 
 export async function historyCommand(options: HistoryOptions): Promise<void> {
   const config = loadConfig();
-  const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+  const stateDir = path.resolve(config.projectRoot, '_bmad');
   const ledgerPath = path.resolve(stateDir, 'decisions.jsonl');
 
   console.log(chalk.cyan.bold('\n📜 BMad Command Center History\n'));
 
   if (!(await fileExists(ledgerPath))) {
-    console.log(chalk.gray('No history recorded yet in .bmad-cc/decisions.jsonl.'));
+    console.log(chalk.gray('No history recorded yet in _bmad/decisions.jsonl.'));
     return;
   }
 

@@ -5,7 +5,10 @@
       "name": "example-stdio-server",
       "transport": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server_example"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server_example"
+      ],
       "options": {}
     },
     {

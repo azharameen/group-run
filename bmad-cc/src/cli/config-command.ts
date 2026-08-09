@@ -17,7 +17,7 @@ export async function configCommand(options: ConfigOptions): Promise<void> {
       return;
     }
 
-    const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+    const stateDir = path.resolve(config.projectRoot, '_bmad');
     await ensureDir(stateDir);
     const configJsonPath = path.resolve(stateDir, 'config.json');
 

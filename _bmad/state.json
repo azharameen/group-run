@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "startedAt": "2026-08-09T06:05:09.546Z",
+  "lastUpdatedAt": "2026-08-09T09:31:24.253Z",
+  "currentPhase": "verification",
+  "currentStoryKey": "5-4-create-team-subgraph-factory",
+  "currentEpicKey": null,
+  "retryCount": 0,
+  "completedStories": [],
+  "skippedStories": [],
+  "activeSessionId": "cb495449-da29-44b5-b917-e86cbdf0ea58",
+  "lastError": "Subprocess aborted in phase create",
+  "driverName": "copilot"
+}

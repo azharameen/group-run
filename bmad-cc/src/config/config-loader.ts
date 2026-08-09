@@ -28,7 +28,7 @@ function isObject(item: any): boolean {
 }
 
 /**
- * Loads and validates the configuration from `.bmad-cc/config.json`.
+ * Loads and validates configuration natively from `_bmad/bmad-config.yaml` or `_bmad/config.json`.
  * Automatically resolves relative paths against `projectRoot`.
  * 
  * @param projectRoot Optional project root to override default inference.
@@ -36,16 +36,16 @@ function isObject(item: any): boolean {
  */
 export function loadConfig(projectRoot?: string): BmadCcConfig {
   const root = projectRoot || DEFAULT_CONFIG.projectRoot;
-  const configPath = path.join(root, '.bmad-cc', 'config.json');
+  const bmadConfigPath = path.join(root, '_bmad', 'config.json');
   
   let config = { ...DEFAULT_CONFIG, projectRoot: root };
   
-  if (fs.existsSync(configPath)) {
+  if (fs.existsSync(bmadConfigPath)) {
     try {
-      const userConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const userConfig = JSON.parse(fs.readFileSync(bmadConfigPath, 'utf8'));
       config = deepMerge(config, userConfig);
     } catch (err) {
-      console.warn(`Failed to parse config at ${configPath}, using defaults.`);
+      console.warn(`Failed to parse config at ${bmadConfigPath}, using native defaults.`);
     }
   }
 

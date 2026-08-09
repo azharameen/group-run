@@ -1,0 +1,2 @@
+{"phase":"pre-flight","storyKey":"5-4-create-team-subgraph-factory","event":"phase-start","data":{"storyKey":"5-4-create-team-subgraph-factory","currentStatus":"backlog","dryRun":false},"timestamp":"2026-08-09T09:27:03.998Z"}
+{"phase":"gate-decision","storyKey":"5-4-create-team-subgraph-factory","event":"gate-decision","data":{"finalDecision":"ESCALATE_TO_HUMAN","totalRetries":2,"startingStatus":"backlog","nextStatus":"backlog"},"timestamp":"2026-08-09T09:31:24.364Z"}

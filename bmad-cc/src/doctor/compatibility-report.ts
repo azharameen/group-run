@@ -84,19 +84,19 @@ export async function generateReport(projectRoot: string): Promise<Compatibility
   });
 
   // 5. Config File
-  const configPath = path.join(projectRoot, '.bmad-cc', 'config.json');
+  const configPath = path.join(projectRoot, '_bmad', 'config.json');
   try {
     await fs.access(configPath);
     checks.push({
       name: 'Config File',
       status: 'pass',
-      message: '.bmad-cc/config.json exists'
+      message: '_bmad/config.json exists'
     });
   } catch {
     checks.push({
       name: 'Config File',
       status: 'warn',
-      message: '.bmad-cc/config.json missing, using defaults'
+      message: '_bmad/config.json missing, using defaults'
     });
   }
 

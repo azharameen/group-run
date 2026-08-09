@@ -10,7 +10,7 @@ export default class Resume extends Command {
 
   public async run(): Promise<void> {
     const config = loadConfig();
-    const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+    const stateDir = path.resolve(config.projectRoot, '_bmad');
     const stateManager = new StateManager(stateDir);
 
     const state = await stateManager.load();

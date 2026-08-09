@@ -15,14 +15,14 @@ export default class History extends Command {
   public async run(): Promise<void> {
     const { flags } = await this.parse(History);
     const config = loadConfig();
-    const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+    const stateDir = path.resolve(config.projectRoot, '_bmad');
     const ledgerPath = path.resolve(stateDir, 'decisions.jsonl');
 
     if (!(await fileExists(ledgerPath))) {
       if (flags.json) {
         this.log(JSON.stringify([], null, 2));
       } else {
-        this.log(chalk.gray('No history recorded yet in .bmad-cc/decisions.jsonl.'));
+        this.log(chalk.gray('No history recorded yet in _bmad/decisions.jsonl.'));
       }
       return;
     }

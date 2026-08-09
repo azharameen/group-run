@@ -15,6 +15,7 @@ import { SessionLogger } from '../state/session-logger.js';
 import { StoryExecutor } from '../session/story-executor.js';
 import { createDriver, type DriverName } from '../agent/driver-factory.js';
 import { AgentOutputStream } from '../tui/agent-output-stream.js';
+import { routeSkillsForStory } from '../supervisor/skill-router.js';
 
 export default class Tui extends Command {
   static override description = 'Launch full-screen interactive React Ink Command Center TUI app';
@@ -56,7 +57,7 @@ export default class Tui extends Command {
       activeStoryKey: string | null = null,
       activePhase: string = 'idle',
       activeSkill?: string,
-      agentOutput: string = 'System ready. Full-screen workstation loaded.',
+      agentOutput: string = 'Supervisor Agent active. Native BMad Workstation loaded.',
       driverName: DriverName = (flags.driver || config.agent.driver) as DriverName
     ): DashboardState => {
       const stories: StoryRow[] = [];
@@ -116,8 +117,14 @@ export default class Tui extends Command {
       }
     };
 
+    let activeAbortController: AbortController | null = null;
+
     const handlePause = () => {
       isPaused = true;
+      if (activeAbortController) {
+        activeAbortController.abort();
+        activeAbortController = null;
+      }
     };
 
     const handleRun = async (
@@ -137,7 +144,8 @@ export default class Tui extends Command {
       const activeDriverName = driverOverride || (flags.driver || config.agent.driver) as DriverName;
       const driver = createDriver(activeDriverName, config.agent.drivers?.[activeDriverName]);
       
-      const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+      // Store state and sessions natively inside `_bmad/sessions/`
+      const stateDir = path.resolve(config.projectRoot, '_bmad');
       await ensureDir(stateDir);
       const stateManager = new StateManager(stateDir);
 
@@ -159,8 +167,14 @@ export default class Tui extends Command {
       while (nextStory && !isPaused) {
         const storyKey = nextStory.storyKey;
         const initialStatus = sprintStatus.developmentStatus[storyKey] || 'backlog';
-        const activePhase = initialStatus === 'review' ? 'review' : 'develop';
-        const activeSkill = initialStatus === 'review' ? 'bmad-code-review' : 'bmad-dev-story';
+        const epicMatch = storyKey.match(/^(\d+)-/);
+        const epicNumber = epicMatch ? epicMatch[1] : '0';
+        const epicStatus = sprintStatus.developmentStatus[`epic-${epicNumber}`] || 'in-progress';
+        const routedSkills = routeSkillsForStory(storyKey, initialStatus, '', epicStatus, false);
+        const activePhase = routedSkills[0]?.phase || 'develop';
+        const activeSkill = routedSkills[0]?.skillName || 'bmad-dev-story';
+
+        activeAbortController = new AbortController();
 
         outputStream.append(`Supervisor starting execution for ${storyKey} (status: ${initialStatus})...`);
         updateUIState(buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName));
@@ -169,16 +183,23 @@ export default class Tui extends Command {
           dryRun: false,
           skipReview: false,
           skipTests: false,
+          abortController: activeAbortController,
           onProgress: (progress) => {
             if (onLogUpdate) {
               onLogUpdate(progress.sessionId, progress.skillName, progress.message);
             }
             outputStream.append(`[${progress.skillName}] ${progress.message}`);
             updateUIState(buildState(storyKey, progress.phase, progress.skillName, outputStream.render(), activeDriverName));
+          },
+          onSubagentQuery: (query) => {
+            outputStream.append(`[SUB-AGENT QUERY] ${query.rawPrompt}`);
+            updateUIState(buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName));
           }
         });
 
-        // Reload sprint status from disk
+        activeAbortController = null;
+
+        // Reload sprint status natively from disk
         sprintStatus = await parseSprintStatus(sprintStatusPath);
 
         outputStream.append(`Decision for ${storyKey}: ${result.finalDecision} -> next: ${result.nextStatus || 'done'}`);

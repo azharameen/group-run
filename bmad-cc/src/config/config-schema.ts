@@ -29,6 +29,7 @@ export interface BmadCcConfig {
     driver: DriverName;
     model?: string;
     drivers: Record<string, AgentDriverConfig>;
+    skillDrivers?: Record<string, DriverName>;
   };
   limits: {
     maxRetries: number;

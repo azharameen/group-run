@@ -92,3 +92,26 @@ class ListMCPServersResponse(BaseModel):
 
     servers: list[MCPServerResponse] = Field(default_factory=list)
     count: int = 0
+
+
+# ── Config reload schemas ───────────────────────────────────────────────────
+
+
+class ConfigReloadRequest(BaseModel):
+    """Request to reload teams.yaml. Empty body — reload is idempotent."""
+
+
+class ConfigReloadResponse(BaseModel):
+    """Response for a successful teams.yaml reload."""
+
+    teams: list[str] = Field(default_factory=list)
+    count: int = 0
+    message: str = "Teams config reloaded successfully"
+
+
+class MCPReloadResponse(BaseModel):
+    """Response for a successful mcp.json validation."""
+
+    servers: list[str] = Field(default_factory=list)
+    count: int = 0
+    message: str = "MCP config validated successfully"

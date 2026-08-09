@@ -1,4 +1,4 @@
-import { select, input } from '@inquirer/prompts';
+import readline from 'readline';
 import chalk from 'chalk';
 
 export interface EscalationContext {
@@ -15,6 +15,9 @@ export type EscalationDecision = {
   customPrompt?: string;
 };
 
+/**
+ * Non-TUI CLI prompt fallback using standard readline (no @inquirer/prompts dependency).
+ */
 export async function promptForDecision(context: EscalationContext): Promise<EscalationDecision> {
   process.stdout.write('\x07');
 
@@ -34,23 +37,40 @@ export async function promptForDecision(context: EscalationContext): Promise<Esc
     console.log(lines.join('\n') + (lines.length === 10 ? '\n... (truncated)' : ''));
   }
 
-  const answer = await select({
-    message: 'How would you like to proceed?',
-    choices: [
-      { name: 'Retry (same prompt)', value: 'retry' },
-      { name: 'Retry with custom instructions', value: 'retry-with-prompt' },
-      { name: 'Override and pass', value: 'override-pass' },
-      { name: 'Skip this story', value: 'skip' },
-      { name: 'Abort entire sprint execution', value: 'abort' },
-    ],
+  console.log(chalk.bold('\nHow would you like to proceed?'));
+  console.log('  1. Retry (same prompt)');
+  console.log('  2. Retry with custom instructions');
+  console.log('  3. Override and pass');
+  console.log('  4. Skip this story');
+  console.log('  5. Abort entire sprint execution');
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
   });
 
-  if (answer === 'retry-with-prompt') {
-    const customPrompt = await input({
-      message: 'Enter custom instructions for the agent:',
+  const ask = (q: string): Promise<string> => new Promise(res => rl.question(q, res));
+
+  let choice = await ask('\nEnter choice (1-5): ');
+  choice = choice.trim();
+
+  rl.close();
+
+  if (choice === '2') {
+    const rl2 = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
     });
-    return { action: answer, customPrompt };
+    const customPrompt = await new Promise<string>(res => rl2.question('Enter custom instructions for agent: ', res));
+    rl2.close();
+    return { action: 'retry-with-prompt', customPrompt };
   }
 
-  return { action: answer as EscalationDecision['action'] };
+  switch (choice) {
+    case '1': return { action: 'retry' };
+    case '3': return { action: 'override-pass' };
+    case '4': return { action: 'skip' };
+    case '5': return { action: 'abort' };
+    default: return { action: 'retry' };
+  }
 }

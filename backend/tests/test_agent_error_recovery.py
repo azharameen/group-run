@@ -168,11 +168,6 @@ def test_mcp_http_timeout_applied(monkeypatch, tmp_path):
         ]
     }))
 
-    # Clear cached modules.
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.agent.runtime") or mod.startswith("app.config"):
-            del sys.modules[mod]
-
     # Mock the MCP adapter.
     client_module = types.ModuleType("langchain_mcp_adapters.client")
 
@@ -190,8 +185,11 @@ def test_mcp_http_timeout_applied(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "langchain_mcp_adapters", types.ModuleType("langchain_mcp_adapters"))
 
     from app.agent import runtime as runtime_mod
-    # Override _mcp_config_path to use our temp file
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    # Three-location monkeypatch for MCP_CONFIG_PATH (same pattern as test_config_reload.py)
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     runtime_mod._load_mcp_tools()
 
@@ -210,10 +208,6 @@ def test_mcp_custom_timeout_preserved(monkeypatch, tmp_path):
         ]
     }))
 
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.agent.runtime") or mod.startswith("app.config"):
-            del sys.modules[mod]
-
     client_module = types.ModuleType("langchain_mcp_adapters.client")
 
     captured_connections = {}
@@ -230,7 +224,10 @@ def test_mcp_custom_timeout_preserved(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "langchain_mcp_adapters", types.ModuleType("langchain_mcp_adapters"))
 
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     runtime_mod._load_mcp_tools()
 
@@ -248,10 +245,6 @@ def test_mcp_stdio_no_timeout_added(monkeypatch, tmp_path):
         ]
     }))
 
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.agent.runtime") or mod.startswith("app.config"):
-            del sys.modules[mod]
-
     client_module = types.ModuleType("langchain_mcp_adapters.client")
 
     captured_connections = {}
@@ -268,7 +261,10 @@ def test_mcp_stdio_no_timeout_added(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "langchain_mcp_adapters", types.ModuleType("langchain_mcp_adapters"))
 
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     runtime_mod._load_mcp_tools()
 
@@ -292,14 +288,11 @@ def test_mcp_graceful_degradation_on_import_error(monkeypatch, caplog, tmp_path)
         "servers": [{"name": "server", "transport": "http", "url": "http://localhost:3001"}]
     }))
 
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.agent.runtime") or mod.startswith("app.config"):
-            del sys.modules[mod]
-
-    # Do NOT mock langchain_mcp_adapters — let ImportError happen.
-
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     with caplog.at_level(logging.ERROR):
         tools = runtime_mod._load_mcp_tools()
@@ -316,12 +309,11 @@ def test_mcp_graceful_degradation_on_invalid_json(monkeypatch, caplog, tmp_path)
     mcp_config = tmp_path / "mcp.json"
     mcp_config.write_text("{invalid-json}")
 
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.agent.runtime") or mod.startswith("app.config"):
-            del sys.modules[mod]
-
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     with caplog.at_level(logging.ERROR):
         tools = runtime_mod._load_mcp_tools()
@@ -347,10 +339,6 @@ def test_mcp_structured_logging_on_success(monkeypatch, caplog, tmp_path):
         ]
     }))
 
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.agent.runtime") or mod.startswith("app.config"):
-            del sys.modules[mod]
-
     client_module = types.ModuleType("langchain_mcp_adapters.client")
 
     class _FakeClient:
@@ -365,7 +353,10 @@ def test_mcp_structured_logging_on_success(monkeypatch, caplog, tmp_path):
     monkeypatch.setitem(sys.modules, "langchain_mcp_adapters", types.ModuleType("langchain_mcp_adapters"))
 
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     with caplog.at_level(logging.INFO):
         runtime_mod._load_mcp_tools()
@@ -387,10 +378,6 @@ def test_mcp_structured_logging_on_failure(monkeypatch, caplog, tmp_path):
         ]
     }))
 
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.agent.runtime") or mod.startswith("app.config"):
-            del sys.modules[mod]
-
     client_module = types.ModuleType("langchain_mcp_adapters.client")
 
     class _FakeClient:
@@ -405,7 +392,10 @@ def test_mcp_structured_logging_on_failure(monkeypatch, caplog, tmp_path):
     monkeypatch.setitem(sys.modules, "langchain_mcp_adapters", types.ModuleType("langchain_mcp_adapters"))
 
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     with caplog.at_level(logging.ERROR):
         tools = runtime_mod._load_mcp_tools()

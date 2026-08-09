@@ -1,0 +1,3 @@
+{"phase":"pre-flight","storyKey":"4-7-frontend-tests-approval-ui","event":"phase-start","data":{"storyKey":"4-7-frontend-tests-approval-ui","currentStatus":"backlog","dryRun":false},"timestamp":"2026-08-09T04:34:31.415Z"}
+{"phase":"gate-decision","storyKey":"4-7-frontend-tests-approval-ui","event":"gate-decision","data":{"finalDecision":"ESCALATE_TO_HUMAN","totalRetries":4,"startingStatus":"backlog","nextStatus":"backlog"},"timestamp":"2026-08-09T04:39:05.691Z"}
+{"phase":"pre-flight","storyKey":"5-1-create-mcp-server-management-api","event":"phase-start","data":{"storyKey":"5-1-create-mcp-server-management-api","currentStatus":"backlog","dryRun":false},"timestamp":"2026-08-09T04:39:06.453Z"}

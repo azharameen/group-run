@@ -32,6 +32,16 @@ export class GeminiDriver extends AgentDriver {
       }, options.timeoutMs);
     }
 
+    if (options.signal) {
+      if (options.signal.aborted) {
+        abortController.abort();
+      } else {
+        options.signal.addEventListener('abort', () => {
+          abortController.abort();
+        }, { once: true });
+      }
+    }
+
     const args = ['--prompt', options.prompt];
 
     let stdout = '';
@@ -77,7 +87,7 @@ export class GeminiDriver extends AgentDriver {
       stderr,
       durationMs: Date.now() - startTime,
       timedOut,
-      killedByWatchdog: timedOut,
+      killedByWatchdog: timedOut || (options.signal?.aborted ?? false),
     };
   }
 }

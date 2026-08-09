@@ -14,6 +14,7 @@ import { AgentOutputStream } from '../tui/agent-output-stream.js';
 import { fileExists, ensureDir } from '../utils/file-helpers.js';
 import { promptForDecision } from '../tui/decision-prompt.js';
 import { DecisionLedger } from '../state/decision-ledger.js';
+import { routeSkillsForStory } from '../supervisor/skill-router.js';
 
 export default class Run extends Command {
   static override description = 'Start autonomous sprint execution with Supervisor Agent & sub-session tracking';
@@ -45,7 +46,7 @@ export default class Run extends Command {
       status: flags.status
     });
 
-    const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+    const stateDir = path.resolve(config.projectRoot, '_bmad');
     await ensureDir(stateDir);
     const stateManager = new StateManager(stateDir);
 
@@ -150,15 +151,22 @@ export default class Run extends Command {
       for (const storyKey of storiesToRun) {
         activeStoryKey = storyKey;
         const initialStatus = sprintStatus.developmentStatus[storyKey] || 'backlog';
-        activePhase = initialStatus === 'review' ? 'review' : 'develop';
-        activeSkill = initialStatus === 'review' ? 'bmad-code-review' : 'bmad-dev-story';
+        const epicMatch = storyKey.match(/^(\d+)-/);
+        const epicNumber = epicMatch ? epicMatch[1] : '0';
+        const epicStatus = sprintStatus.developmentStatus[`epic-${epicNumber}`] || 'in-progress';
+        const routedSkills = routeSkillsForStory(storyKey, initialStatus, '', epicStatus, false);
+        activePhase = routedSkills[0]?.phase || 'develop';
+        activeSkill = routedSkills[0]?.skillName || 'bmad-dev-story';
 
         outputStream.append(`Supervisor starting execution for ${storyKey} (status: ${initialStatus})...`);
 
         const result = await storyExecutor.execute(storyKey, sprintStatus, {
           dryRun: flags['dry-run'] || false,
           skipReview: flags['skip-review'] || false,
-          skipTests: flags['skip-tests'] || false
+          skipTests: flags['skip-tests'] || false,
+          onProgress: (progress) => {
+            outputStream.append(`[${progress.skillName}] ${progress.message}`);
+          }
         });
 
         // Reload sprint status to reflect updated disk state

@@ -13,6 +13,7 @@ import { AgentOutputStream } from '../tui/agent-output-stream.js';
 import { fileExists, ensureDir } from '../utils/file-helpers.js';
 import { promptForDecision } from '../tui/decision-prompt.js';
 import { DecisionLedger } from '../state/decision-ledger.js';
+import { routeSkillsForStory } from '../supervisor/skill-router.js';
 
 export interface RunOptions {
   driver?: string;
@@ -36,7 +37,7 @@ export async function runCommand(options: RunOptions): Promise<void> {
   const queue = new ExecutionQueue();
   queue.buildFromSprintStatus(sprintStatus);
 
-  const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+  const stateDir = path.resolve(config.projectRoot, '_bmad');
   await ensureDir(stateDir);
   const stateManager = new StateManager(stateDir);
 
@@ -129,7 +130,11 @@ export async function runCommand(options: RunOptions): Promise<void> {
     for (const storyKey of storiesToRun) {
       activeStoryKey = storyKey;
       const initialStatus = sprintStatus.developmentStatus[storyKey] || 'backlog';
-      activePhase = initialStatus === 'review' ? 'review' : 'develop';
+      const epicMatch = storyKey.match(/^(\d+)-/);
+      const epicNumber = epicMatch ? epicMatch[1] : '0';
+      const epicStatus = sprintStatus.developmentStatus[`epic-${epicNumber}`] || 'in-progress';
+      const routedSkills = routeSkillsForStory(storyKey, initialStatus, '', epicStatus, false);
+      activePhase = routedSkills[0]?.phase || 'develop';
 
       outputStream.append(`Starting execution for story ${storyKey} (status: ${initialStatus})...`);
 

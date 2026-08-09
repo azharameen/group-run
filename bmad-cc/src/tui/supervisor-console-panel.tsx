@@ -11,6 +11,7 @@ export interface SupervisorConsolePanelProps {
   isExecuting: boolean;
   isFocused: boolean;
   panelHeight?: number;
+  cursorIndex?: number;
   onSubmitDirective?: (directive: string) => void;
 }
 
@@ -22,13 +23,20 @@ export const SupervisorConsolePanel: React.FC<SupervisorConsolePanelProps> = ({
   isExecuting,
   isFocused,
   panelHeight = 18,
+  cursorIndex = 0,
   onSubmitDirective
 }) => {
-  const maxLines = Math.max(4, panelHeight - 11);
-  const outputLines = agentOutput.split('\n').filter(Boolean).slice(-maxLines);
-  if (outputLines.length === 0) {
-    outputLines.push('Supervisor Agent active. Type a directive below or press [r] to run sprint.');
+  // Flatten all newlines into single lines so multi-line stack traces never overflow box height
+  const allLines = agentOutput.split('\n').map(l => l.trimEnd()).filter(Boolean);
+  if (allLines.length === 0) {
+    allLines.push('Supervisor Agent active. Type a directive below or press [r] to run sprint.');
   }
+
+  const maxVisibleLines = Math.max(3, panelHeight - 12);
+  const totalLines = allLines.length;
+  const clampedCursor = Math.max(0, Math.min(cursorIndex, totalLines - 1));
+  const startIdx = Math.max(0, Math.min(clampedCursor, Math.max(0, totalLines - maxVisibleLines)));
+  const visibleLines = allLines.slice(startIdx, startIdx + maxVisibleLines);
 
   const getPhaseBadge = (phase: string) => {
     switch (phase) {
@@ -50,7 +58,7 @@ export const SupervisorConsolePanel: React.FC<SupervisorConsolePanelProps> = ({
       {/* Console Header */}
       <Box justifyContent="space-between" marginBottom={1}>
         <Text bold color={isFocused ? 'cyan' : 'white'}>
-          {isFocused ? '❯ ' : '  '}Supervisor Agent Interactive Console
+          {isFocused ? '❯ ' : '  '}Supervisor Console
         </Text>
         <Text color="yellow">Driver: <Text bold color="white">{driverName}</Text></Text>
       </Box>
@@ -58,21 +66,24 @@ export const SupervisorConsolePanel: React.FC<SupervisorConsolePanelProps> = ({
       {/* Active Story & Phase Bar */}
       <Box flexDirection="row" justifyContent="space-between" backgroundColor="gray" paddingX={1} marginBottom={1}>
         <Text color="white" bold wrap="truncate">
-          Active Target: <Text color="yellow">{currentStoryKey ? (currentStoryKey.length > 22 ? currentStoryKey.substring(0, 20) + '..' : currentStoryKey) : 'None'}</Text>
+          Active: <Text color="yellow">{currentStoryKey ? (currentStoryKey.length > 22 ? currentStoryKey.substring(0, 20) + '..' : currentStoryKey) : 'None'}</Text>
         </Text>
         <Text>
           Phase: {getPhaseBadge(currentPhase)}
         </Text>
       </Box>
 
-      {/* Live Supervisor Dialogue & Directive Stream */}
+      {/* Live Supervisor Log Stream */}
       <Box flexDirection="column" flexGrow={1} borderWidth={1} borderColor="gray" padding={1} marginBottom={1}>
-        <Text bold color="green">Supervisor Log Stream:</Text>
+        <Box justifyContent="space-between">
+          <Text bold color="green">Supervisor Log Stream:</Text>
+          {isFocused && <Text color="yellow" dimColor>[↑/↓ Scroll Logs]</Text>}
+        </Box>
         <Box flexDirection="column" marginTop={1}>
-          {outputLines.map((line, idx) => (
+          {visibleLines.map((line, idx) => (
             <Text key={idx} color="white" wrap="truncate">
               <Text color="gray">{`> `}</Text>
-              {line}
+              {line.length > 60 ? line.substring(0, 58) + '..' : line}
             </Text>
           ))}
         </Box>

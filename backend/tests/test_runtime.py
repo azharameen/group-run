@@ -93,10 +93,11 @@ def test_mcp_http_timeout_configuration(monkeypatch, _mock_mcp_adapter, _mock_mo
         "servers": [{"name": "http-server", "transport": "http", "url": "http://localhost:3001/mcp"}]
     }))
 
-    _clear_runtime_modules(monkeypatch)
-
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     tools = runtime_mod._load_mcp_tools()
     assert len(tools) == 1
@@ -116,10 +117,11 @@ def test_mcp_structured_logging(monkeypatch, _mock_mcp_adapter, _mock_modules, c
         ]
     }))
 
-    _clear_runtime_modules(monkeypatch)
-
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     with caplog.at_level(logging.INFO):
         tools = runtime_mod._load_mcp_tools()
@@ -159,14 +161,11 @@ def test_mcp_invalid_json_configuration(monkeypatch, _mock_modules, caplog, tmp_
     mcp_config = tmp_path / "mcp.json"
     mcp_config.write_text("{invalid-json}")
 
-    # Re-import to pick up the new config file.
-    if "app.agent.runtime" in sys.modules:
-        del sys.modules["app.agent.runtime"]
-    if "app.config" in sys.modules:
-        del sys.modules["app.config"]
-
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     with caplog.at_level(logging.ERROR):
         tools = runtime_mod._load_mcp_tools()
@@ -178,12 +177,6 @@ def test_mcp_invalid_json_configuration(monkeypatch, _mock_modules, caplog, tmp_
 def test_mcp_empty_configuration_returns_empty(monkeypatch, _mock_modules):
     """Ensure empty MCP configuration returns an empty tool list."""
     monkeypatch.setenv("MCP_SERVERS", "{}")
-
-    # Clear cached modules.
-    if "app.agent.runtime" in sys.modules:
-        del sys.modules["app.agent.runtime"]
-    if "app.config" in sys.modules:
-        del sys.modules["app.config"]
 
     from app.agent.runtime import _load_mcp_tools
 
@@ -201,14 +194,11 @@ def test_mcp_custom_timeout_preserved(monkeypatch, _mock_mcp_adapter, _mock_modu
         ]
     }))
 
-    # Clear cached modules.
-    if "app.agent.runtime" in sys.modules:
-        del sys.modules["app.agent.runtime"]
-    if "app.config" in sys.modules:
-        del sys.modules["app.config"]
-
     from app.agent import runtime as runtime_mod
-    monkeypatch.setattr(runtime_mod, "_mcp_config_path", mcp_config)
+    import app.config as config_mod
+
+    monkeypatch.setattr("app.config.MCP_CONFIG_PATH", str(mcp_config))
+    monkeypatch.setattr(runtime_mod, "_config", config_mod)
 
     tools = runtime_mod._load_mcp_tools()
     assert len(tools) == 1

@@ -5,6 +5,8 @@ import { generateDirective } from './directive-generator.js';
 import { evaluateResult } from './result-evaluator.js';
 import { makeGateDecision, type GateDecisionType } from './gate-decision.js';
 
+import { HeartbeatMonitor } from '../watchdog/heartbeat-monitor.js';
+
 export interface SupervisorResult {
   storyKey: string;
   finalDecision: GateDecisionType;
@@ -28,7 +30,7 @@ export interface SprintStatus {
 }
 
 export interface AgentDriver {
-  executeSkill(directive: any): Promise<{ testExitCode: number; testOutput: string; gitDiff: string; changedFiles: string[]; reviewOutput?: string }>;
+  executeSkill(directive: any, options?: { signal?: AbortSignal }): Promise<{ testExitCode: number; testOutput: string; gitDiff: string; changedFiles: string[]; reviewOutput?: string }>;
 }
 
 export class SupervisorAgent {
@@ -43,7 +45,7 @@ export class SupervisorAgent {
     storySpec: StorySpec,
     sprintStatus: SprintStatus,
     driver: AgentDriver,
-    options: { dryRun?: boolean; skipReview?: boolean; skipTests?: boolean } = {}
+    options: { dryRun?: boolean; skipReview?: boolean; skipTests?: boolean; abortController?: AbortController; inactivityTimeoutMs?: number } = {}
   ): Promise<SupervisorResult> {
     const sessionId = randomUUID();
     let retryCount = 0;
@@ -63,6 +65,11 @@ export class SupervisorAgent {
 
     const context = await assembleContext(this.projectRoot);
     
+    let lastGateDecision: import('./gate-decision.js').GateDecision | undefined = undefined;
+
+    const activeAbortController = options.abortController || new AbortController();
+    const timeoutMs = options.inactivityTimeoutMs || 120000;
+
     for (const skill of skills) {
       if (options.skipReview && skill.phase === 'review') continue;
 
@@ -72,7 +79,7 @@ export class SupervisorAgent {
       
       while (phaseDecision === 'RETRY_WITH_FEEDBACK' && attempt <= this.maxRetries) {
         const start = Date.now();
-        const directive = generateDirective(storyKey, skill, storySpec, context, retryFeedback);
+        const directive = generateDirective(storyKey, skill, storySpec, context, retryFeedback, lastGateDecision?.statusUpdateNote);
         
         if (options.dryRun) {
           phases.push({ phase: skill.phase, skill: skill.skillName, durationMs: 0, outcome: 'DRY_RUN' });
@@ -80,7 +87,19 @@ export class SupervisorAgent {
           break;
         }
 
-        const result = await driver.executeSkill(directive);
+        const heartbeat = new HeartbeatMonitor({
+          timeoutMs,
+          onTimeout: () => activeAbortController.abort(),
+          onActivity: () => {}
+        });
+
+        heartbeat.start();
+        let result: { testExitCode: number; testOutput: string; gitDiff: string; changedFiles: string[]; reviewOutput?: string };
+        try {
+          result = await driver.executeSkill(directive, { signal: activeAbortController.signal });
+        } finally {
+          heartbeat.stop();
+        }
         
         const evaluation = await evaluateResult(
           storyKey,
@@ -93,7 +112,8 @@ export class SupervisorAgent {
           options.skipReview ? undefined : result.reviewOutput
         );
 
-        const gate = makeGateDecision(evaluation, attempt, this.maxRetries);
+        const gate = makeGateDecision(evaluation, attempt, this.maxRetries, currentStatus);
+        lastGateDecision = gate;
         phaseDecision = gate.decision;
         retryFeedback = gate.feedback;
         
@@ -108,16 +128,8 @@ export class SupervisorAgent {
       }
     }
 
-    // Determine target disk status based on current status & decision
-    let nextStatus = currentStatus;
-    if (finalDecision === 'APPROVE') {
-      if (currentStatus === 'backlog') nextStatus = 'ready-for-dev';
-      else if (currentStatus === 'ready-for-dev' || currentStatus === 'in-progress') nextStatus = 'review';
-      else if (currentStatus === 'review') nextStatus = 'done';
-    } else if (finalDecision === 'RETRY_WITH_FEEDBACK' && currentStatus === 'review') {
-      // Review failed; route back to in-progress for developer fix
-      nextStatus = 'in-progress';
-    }
+    // Target status transition determined agentically by supervisor gate evaluation
+    const nextStatus = lastGateDecision?.targetStatus || currentStatus;
     
     return {
       storyKey,
@@ -129,3 +141,4 @@ export class SupervisorAgent {
     };
   }
 }
+

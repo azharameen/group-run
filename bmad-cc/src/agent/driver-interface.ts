@@ -15,6 +15,8 @@ export interface AgentSpawnOptions {
   env?: Record<string, string>;
   onStdout?: (data: string) => void;
   onStderr?: (data: string) => void;
+  signal?: AbortSignal;
+  onQuery?: (query: string) => Promise<string | undefined> | string | undefined;
 }
 
 export abstract class AgentDriver {

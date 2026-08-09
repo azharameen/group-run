@@ -10,6 +10,7 @@ export interface SubSessionMonitorPanelProps {
   isFocused: boolean;
   panelHeight?: number;
   subSessionOutput?: string[];
+  cursorIndex?: number;
 }
 
 export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
@@ -20,12 +21,23 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
   isFocused,
   panelHeight = 18,
   subSessionOutput = [
-    'Sub-agent standing by.',
-    'Transcripts saved to .bmad-cc/sessions/'
-  ]
+    '[DRIVER READY] Standing by.',
+    'Session transcripts logged to _bmad/sessions/'
+  ],
+  cursorIndex = 0
 }) => {
-  const maxLogs = Math.max(3, panelHeight - 12);
-  const visibleLogs = subSessionOutput.slice(-maxLogs);
+  // Flatten multi-line output into individual clean lines
+  const allLines: string[] = [];
+  for (const rawLog of subSessionOutput) {
+    const split = rawLog.split('\n').map(l => l.trimEnd()).filter(Boolean);
+    allLines.push(...split);
+  }
+
+  const windowSize = Math.max(3, panelHeight - 13);
+  const totalLogs = allLines.length;
+  const clampedCursor = Math.max(0, Math.min(cursorIndex, totalLogs - 1));
+  const startIdx = Math.max(0, Math.min(clampedCursor, Math.max(0, totalLogs - windowSize)));
+  const visibleLogs = allLines.slice(startIdx, startIdx + windowSize);
 
   return (
     <Box flexDirection="column" borderWidth={1} borderColor={isFocused ? 'cyan' : 'gray'} padding={1} width="100%" height={panelHeight}>
@@ -76,16 +88,35 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
         </Box>
       </Box>
 
-      {/* Sub-Agent Real-time Execution Output Stream */}
+      {/* Sub-Agent Real-time Execution Output & Driver Prompt Inspector */}
       <Box flexDirection="column" flexGrow={1} borderWidth={1} borderColor="magenta" padding={1}>
-        <Text bold color="magenta">Driver Event Stream & Transcript:</Text>
+        <Box justifyContent="space-between">
+          <Text bold color="magenta">Driver Stream:</Text>
+          {isFocused && <Text color="yellow" dimColor>[↑/↓ Scroll Logs]</Text>}
+        </Box>
         <Box flexDirection="column" marginTop={1}>
-          {visibleLogs.map((log, idx) => (
-            <Text key={idx} color="white" wrap="truncate">
-              <Text color="magenta">{`⚡ `}</Text>
-              {log}
-            </Text>
-          ))}
+          {visibleLogs.map((log, idx) => {
+            const isDriverInit = log.startsWith('[DRIVER INIT]');
+            const isPrompt = log.startsWith('[PROMPT LOG]');
+            const isTest = log.startsWith('[TEST');
+            const isGate = log.startsWith('[GATE');
+
+            const formattedLog = log.length > 45 ? log.substring(0, 43) + '..' : log;
+
+            return (
+              <Box key={idx}>
+                <Text
+                  color={
+                    isDriverInit ? 'cyan' : isPrompt ? 'yellow' : isTest ? 'magenta' : isGate ? 'green' : 'white'
+                  }
+                  wrap="truncate"
+                >
+                  <Text color="magenta">{`⚡ `}</Text>
+                  {formattedLog}
+                </Text>
+              </Box>
+            );
+          })}
         </Box>
       </Box>
     </Box>

@@ -6,7 +6,7 @@ import { runCommand } from './run-command.js';
 
 export async function resumeCommand(): Promise<void> {
   const config = loadConfig();
-  const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+  const stateDir = path.resolve(config.projectRoot, '_bmad');
   const stateManager = new StateManager(stateDir);
 
   const state = await stateManager.load();

@@ -2,6 +2,7 @@ export class HeartbeatMonitor {
   private timeoutId: NodeJS.Timeout | null = null;
   private lastActivityAt: Date | null = null;
   private timedOut: boolean = false;
+  private running: boolean = false;
   private readonly timeoutMs: number;
   private readonly onTimeout: () => void;
   private readonly onActivity: () => void;
@@ -17,13 +18,14 @@ export class HeartbeatMonitor {
       this.stop();
     }
     
+    this.running = true;
     this.timedOut = false;
     this.lastActivityAt = new Date();
     this.scheduleTimeout();
   }
 
   pulse(): void {
-    if (this.timedOut) return;
+    if (!this.running || this.timedOut) return;
     
     this.lastActivityAt = new Date();
     this.onActivity();
@@ -35,6 +37,7 @@ export class HeartbeatMonitor {
   }
 
   stop(): void {
+    this.running = false;
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;

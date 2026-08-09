@@ -8,6 +8,7 @@ from typing import Any
 
 import yaml
 
+from .. import config as _config
 from ..config import (
     INSTRUCTIONS_DIR,
     MCP_CONFIG_PATH,
@@ -38,25 +39,29 @@ def _load_and_validate_teams() -> dict:
     - No duplicate routing_keys across teams
     - subgraph.nodes reference agents defined in the same team
     """
-    path = Path(TEAMS_CONFIG_PATH)
+    # Read from module reference at runtime to pick up monkeypatches
+    # (test_chat_endpoint.py clears app.config from sys.modules, causing
+    # a reimport that would overwrite module-level bindings)
+    teams_path = _config.TEAMS_CONFIG_PATH
+    path = Path(teams_path)
     if not path.exists():
-        raise ValueError(f"Teams config not found: {TEAMS_CONFIG_PATH}")
+        raise ValueError(f"Teams config not found: {teams_path}")
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
-        raise ValueError(f"Failed to parse {TEAMS_CONFIG_PATH}: {exc}") from exc
+        raise ValueError(f"Failed to parse {teams_path}: {exc}") from exc
     if not isinstance(data, dict):
-        raise ValueError(f"Teams config must be a YAML mapping: {TEAMS_CONFIG_PATH}")
+        raise ValueError(f"Teams config must be a YAML mapping: {teams_path}")
     version = data.get("schema_version")
     if version != TEAMS_SCHEMA_VERSION:
         raise ValueError(
             f"Teams schema version mismatch: expected {TEAMS_SCHEMA_VERSION}, "
-            f"got {version!r} in {TEAMS_CONFIG_PATH}"
+            f"got {version!r} in {teams_path}"
         )
 
     teams = data.get("teams", {})
     if not teams:
-        raise ValueError(f"Teams config must define at least one team: {TEAMS_CONFIG_PATH}")
+        raise ValueError(f"Teams config must define at least one team: {teams_path}")
 
     # Validate no duplicate routing_keys across teams
     seen_keys: dict[str, str] = {}
@@ -93,9 +98,29 @@ def _load_and_validate_teams() -> dict:
 _teams_config: dict = _load_and_validate_teams()
 
 
-# Validate MCP_CONFIG_PATH exists (not parseable until _load_mcp_tools is called).
-_mcp_config_path = Path(MCP_CONFIG_PATH)
-if not _mcp_config_path.exists():
+def _reload_teams_config() -> dict:
+    """Re-read and re-validate teams.yaml, then update in-memory `_teams_config`.
+
+    Loads fresh from disk and runs full validation via `_load_and_validate_teams()`.
+    Only updates `_teams_config` if validation passes completely — on failure the
+    original config is preserved (atomic reload, no partial state).
+
+    Raises:
+        ValueError: if the file is missing, invalid, or fails validation.
+
+    Returns:
+        The newly loaded and validated teams config dict.
+    """
+    global _teams_config
+    new_config = _load_and_validate_teams()  # raises ValueError on failure
+    _teams_config = new_config
+    logger.info("Teams config reloaded: teams=%s", list(new_config.get("teams", {}).keys()))
+    return new_config
+
+
+# Warn at startup if MCP config is missing (non-blocking).
+_mcp_config_path_startup = Path(MCP_CONFIG_PATH)
+if not _mcp_config_path_startup.exists():
     logger.warning("MCP config not found: %s — falling back to MCP_SERVERS env var", MCP_CONFIG_PATH)
 
 
@@ -114,15 +139,24 @@ def _load_system_prompt(team_description: str = "") -> str:
 def _load_mcp_tools() -> list[Any]:
     """Load tools from configured MCP servers (AD-14 file-first precedence).
 
-    Reads ``config/mcp.json`` first, falls back to ``MCP_SERVERS`` env var.
+    Reads ``config/mcp.json`` fresh from disk on each call, falls back to
+    ``MCP_SERVERS`` env var when the file is missing.
     Enforces HTTP connection timeouts (default 10s, AC-5).
+
+    MCP_CONFIG_PATH is read from the config module at runtime to pick up
+    test monkeypatches (test_chat_endpoint.py clears app.config from
+    sys.modules, causing a reimport that would overwrite module-level
+    bindings).
     """
+    # Read from module reference at runtime to pick up monkeypatches
+    mcp_path = Path(_config.MCP_CONFIG_PATH)
+
     # 1. Try config/mcp.json first (AD-14 file precedence)
-    if _mcp_config_path.exists():
+    if mcp_path.exists():
         try:
-            mcp_data = json.loads(_mcp_config_path.read_text(encoding="utf-8"))
+            mcp_data = json.loads(mcp_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
-            logger.error("MCP config invalid JSON: %s", MCP_CONFIG_PATH)
+            logger.error("MCP config invalid JSON: %s", _config.MCP_CONFIG_PATH)
             return []
 
         version = mcp_data.get("schema_version")
@@ -136,7 +170,7 @@ def _load_mcp_tools() -> list[Any]:
         if servers:
             # Convert array format [{name: "...", ...}] to dict {"name": {...}}
             connections = {s["name"]: {k: v for k, v in s.items() if k != "name"} for s in servers if s.get("name")}
-            logger.info("MCP tools loaded from file: %s", MCP_CONFIG_PATH)
+            logger.info("MCP tools loaded from file: %s", _config.MCP_CONFIG_PATH)
             return _create_mcp_tools(connections)
         # Empty servers: [] — file is authoritative (AD-14); no env var fallback
         logger.info("MCP tools: file exists but servers is empty — no MCP tools")
@@ -158,6 +192,42 @@ def _load_mcp_tools() -> list[Any]:
 
     logger.info("MCP tools loaded from env var: MCP_SERVERS")
     return _create_mcp_tools(connections)
+
+
+def _validate_mcp_config() -> list[dict]:
+    """Read and validate mcp.json, returning the servers list.
+
+    Returns:
+        List of server config dicts from mcp.json.
+
+    Raises:
+        ValueError: if the file is missing, invalid JSON, or has invalid structure.
+    """
+    mcp_path = Path(_config.MCP_CONFIG_PATH)
+    if not mcp_path.exists():
+        raise ValueError(f"MCP config not found: {_config.MCP_CONFIG_PATH}")
+
+    try:
+        content = mcp_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"Cannot read {_config.MCP_CONFIG_PATH}: {exc}") from exc
+
+    if not content.strip():
+        raise ValueError(f"MCP config is empty: {_config.MCP_CONFIG_PATH}")
+
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {_config.MCP_CONFIG_PATH}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise ValueError(f"MCP config must be a JSON object: {_config.MCP_CONFIG_PATH}")
+
+    servers = data.get("servers", [])
+    if not isinstance(servers, list):
+        raise ValueError(f"MCP config 'servers' must be an array: {_config.MCP_CONFIG_PATH}")
+
+    return servers
 
 
 def _create_mcp_tools(connections: dict[str, dict]) -> list[Any]:

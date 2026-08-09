@@ -1,39 +1,21 @@
-import { readFile, writeFile } from 'fs/promises';
-import { parseDocument, Document } from 'yaml';
 import { StoryStatusValue } from './sprint-status-parser.js';
 
-async function updateYamlKey(filePath: string, yamlPath: string[], newValue: any): Promise<void> {
-  const content = await readFile(filePath, 'utf8');
-  const doc = parseDocument(content);
-  
-  doc.setIn(yamlPath, newValue);
-  
-  await writeFile(filePath, doc.toString(), 'utf8');
+/**
+ * DEPRECATED / ZERO-MUTATION PRIMITIVE:
+ * Direct programmatic file modifications to sprint-status.yaml are removed.
+ * In accordance with BMad architecture (R1 & R2), sprint status updates are driven
+ * natively by BMad skill execution (e.g., bmad-dev-story, bmad-code-review) within
+ * CLI driver agent sessions.
+ */
+
+export async function updateStoryStatus(_filePath: string, _storyKey: string, _newStatus: StoryStatusValue): Promise<void> {
+  // No-op: Sprint status updates are performed natively by BMad skills within CLI drivers.
 }
 
-/**
- * Updates a specific story's status in the sprint status file.
- */
-export async function updateStoryStatus(filePath: string, storyKey: string, newStatus: StoryStatusValue): Promise<void> {
-  await updateYamlKey(filePath, ['development_status', storyKey], newStatus);
+export async function updateEpicStatus(_filePath: string, _epicKey: string, _newStatus: StoryStatusValue): Promise<void> {
+  // No-op: Epic status updates are performed natively by BMad skills within CLI drivers.
 }
 
-/**
- * Updates a specific epic's status in the sprint status file.
- */
-export async function updateEpicStatus(filePath: string, epicKey: string, newStatus: StoryStatusValue): Promise<void> {
-  await updateYamlKey(filePath, ['development_status', epicKey], newStatus);
-}
-
-/**
- * Updates the last_updated date to today in YYYY-MM-DD format.
- */
-export async function updateLastUpdated(filePath: string): Promise<void> {
-  const today = new Date().toISOString().split('T')[0];
-  const content = await readFile(filePath, 'utf8');
-  const doc = parseDocument(content);
-  
-  doc.set('last_updated', today);
-  
-  await writeFile(filePath, doc.toString(), 'utf8');
+export async function updateLastUpdated(_filePath: string): Promise<void> {
+  // No-op: Last updated timestamps are updated natively by BMad skills within CLI drivers.
 }

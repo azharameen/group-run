@@ -21,7 +21,7 @@ export default class Config extends Command {
         this.error('Format must be --set key=value (e.g. --set agent.driver=gemini)');
       }
 
-      const stateDir = path.resolve(config.projectRoot, '.bmad-cc');
+      const stateDir = path.resolve(config.projectRoot, '_bmad');
       await ensureDir(stateDir);
       const configJsonPath = path.resolve(stateDir, 'config.json');
 

@@ -41,6 +41,16 @@ export class CustomDriver extends AgentDriver {
       }, options.timeoutMs);
     }
 
+    if (options.signal) {
+      if (options.signal.aborted) {
+        abortController.abort();
+      } else {
+        options.signal.addEventListener('abort', () => {
+          abortController.abort();
+        }, { once: true });
+      }
+    }
+
     let stdout = '';
     let stderr = '';
     let exitCode = -1;
@@ -90,7 +100,7 @@ export class CustomDriver extends AgentDriver {
       stderr,
       durationMs: Date.now() - startTime,
       timedOut,
-      killedByWatchdog: timedOut,
+      killedByWatchdog: timedOut || (options.signal?.aborted ?? false),
     };
   }
 }
