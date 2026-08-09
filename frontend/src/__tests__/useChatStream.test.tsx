@@ -31,6 +31,8 @@ class MockEventSource {
 // Pending promise state for streamThreadMessage mock — reset in beforeEach/afterEach
 let pendingResolve: (() => void) | null = null;
 let pendingOnEvent: ((event: StreamEvent) => void) | undefined = undefined;
+// Interrupt callback from connectSSE 3rd parameter - reset each test
+let interruptCallback: ((eventType: string, payload: any) => void) | undefined;
 
 // Mock the API client module
 vi.mock('@/api/client', () => ({
@@ -56,6 +58,7 @@ beforeEach(() => {
   // Reset pending promise state
   pendingResolve = null;
   pendingOnEvent = undefined;
+  interruptCallback = undefined;
   // Mock EventSource globally
   globalThis.EventSource = MockEventSource as never;
   // Mock fetch for agent tasks
@@ -64,7 +67,8 @@ beforeEach(() => {
     json: async () => ({ tasks: [], completed: 0, total: 0 }),
   } as Response);
   // Configure connectSSE to replicate real behavior (register handlers on mockSSE)
-  vi.mocked(apiClient.connectSSE).mockImplementation((onEvent) => {
+  vi.mocked(apiClient.connectSSE).mockImplementation((onEvent, _onError, onInterrupt) => {
+    interruptCallback = onInterrupt;
     const knownEvents = ['idea.created', 'idea.transition', 'idea.scored', 'agent.progress'];
     knownEvents.forEach((eventName) => {
       mockSSE.addEventListener(eventName, (e: MessageEvent) => {
@@ -590,5 +594,105 @@ describe('useChatStream', () => {
     unmount();
 
     expect(closeSpy).toHaveBeenCalled();
+  });
+
+  // ── Interrupt SSE tests ──
+
+  test('SSE interrupt.created event sets pendingInterrupt and isInterruptActive', async () => {
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'write_file', message: 'needs approval', status: 'pending' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt).toBeTruthy());
+    expect(result.current.isInterruptActive).toBe(true);
+  });
+
+  test('SSE interrupt.approved event clears pendingInterrupt when ID matches', async () => {
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'write_file', message: 'needs approval', status: 'pending' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt).toBeTruthy());
+    await act(async () => {
+      interruptCallback?.('interrupt.approved', { interrupt: { id: 'int-1' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt).toBeNull());
+  });
+
+  test('SSE interrupt.rejected event clears pendingInterrupt when ID matches', async () => {
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'write_file', message: 'needs approval', status: 'pending' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt).toBeTruthy());
+    await act(async () => {
+      interruptCallback?.('interrupt.rejected', { interrupt: { id: 'int-1' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt).toBeNull());
+  });
+
+  test('SSE interrupt.created adds System message to chat messages', async () => {
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool', message: 'Need approval' } });
+    });
+    await waitFor(() => expect(result.current.messages.some((m) => m.sender === 'System')).toBe(true));
+  });
+
+  test('Duplicate interrupt.created for same ID is deduplicated', async () => {
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool' } });
+    });
+    await waitFor(() => {
+      const sys = result.current.messages.filter((m) => m.sender === 'System');
+      expect(sys.length).toBe(1);
+    });
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool' } });
+    });
+    await waitFor(() => {
+      const sys = result.current.messages.filter((m) => m.sender === 'System');
+      expect(sys.length).toBe(1); // still 1 — deduplicated
+    });
+  });
+
+  test('interrupt.created with different ID replaces pending interrupt', async () => {
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt?.id).toBe('int-1'));
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-2', tool_name: 'tool2' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt?.id).toBe('int-2'));
+  });
+
+  test('Stream type interrupt event sets pendingInterrupt', async () => {
+    const mockOnEvent = vi.fn();
+    vi.mocked(apiClient.streamThreadMessage).mockImplementation(
+      async (_tid, _text, _ideaId, onEvent) => {
+        mockOnEvent(onEvent);
+      }
+    );
+
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+
+    act(() => {
+      result.current.setChatInput('Test');
+    });
+
+    await act(async () => {
+      result.current.handleSendOrQueue();
+    });
+
+    const onEventCb = mockOnEvent.mock.calls[0]?.[0] as (evt: any) => void;
+    await act(async () => {
+      onEventCb?.({ type: 'interrupt', extras: { interrupt: { id: 'stream-1', tool_name: 'read_file', message: 'stream interrupt' } } });
+    });
+
+    await waitFor(() => expect(result.current.pendingInterrupt).toBeTruthy());
+    expect(result.current.pendingInterrupt?.id).toBe('stream-1');
   });
 });

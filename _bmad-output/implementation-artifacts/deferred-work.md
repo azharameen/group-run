@@ -181,3 +181,13 @@
   summary: SSE reconnect doesn't reload interrupt state — interrupt overlay may become stale on connection drop
   evidence: useChatStream SSE effect has no reconnect handler to reconcile interrupt state
 
+
+- source_spec: spec-4-7-frontend-tests-approval-ui.md
+  summary: No test coverage for approve/reject action flow at CommandCenter integration level
+  evidence: CommandCenter mock ChatPane does not render approve/reject buttons, so user approval flow cannot be tested end-to-end
+- source_spec: spec-4-7-frontend-tests-approval-ui.md
+  summary: No test that activeInterruptIdRef is reset after approve allowing same-ID reprocessing
+  evidence: Production dedup logic skips same ID; after approve ref is cleared but no test verifies new same-ID interrupt is accepted
+- source_spec: spec-4-7-frontend-tests-approval-ui.md
+  summary: Missing negative test for interrupt.approved with non-matching ID
+  evidence: Test suite only tests matching ID clear behavior; non-matching ID no-op is not verified

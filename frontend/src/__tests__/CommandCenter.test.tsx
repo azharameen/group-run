@@ -27,12 +27,22 @@ vi.mock('@/components/command-center/CommandCenterChatPane', () => ({
     messages,
     isGenerating,
     chatInput,
+    isInterruptActive,
+    pendingInterrupt,
     onChatInputChange,
     onSendOrQueue,
     onStopGeneration,
     onCreateNewThread,
   }: any) => (
     <div data-testid="chat-pane">
+      {isInterruptActive && <div data-testid="interrupt-overlay">Interrupt</div>}
+      <input
+        data-testid="chat-input"
+        value={chatInput}
+        onChange={(e) => onChatInputChange(e.target.value)}
+        placeholder={isInterruptActive ? 'Awaiting your approval...' : 'Type a message...'}
+        disabled={isInterruptActive}
+      />
       <div data-testid="message-list">
         {messages.map((m: any, i: number) => (
           <div key={m.id || i} data-testid={`message-${i}`}>
@@ -40,12 +50,7 @@ vi.mock('@/components/command-center/CommandCenterChatPane', () => ({
           </div>
         ))}
       </div>
-      <input
-        data-testid="chat-input"
-        value={chatInput}
-        onChange={(e) => onChatInputChange(e.target.value)}
-        placeholder="Type a message..."
-      />
+      {pendingInterrupt && <div data-testid="interrupt-data">{pendingInterrupt.id}</div>}
       <button
         data-testid="send-button"
         onClick={onSendOrQueue}
@@ -297,5 +302,84 @@ describe('CommandCenter', () => {
     expect(screen.getByTestId('chat-pane')).toBeDefined();
     // Workspace pane should not be visible when isWorkspaceOpen is false
     expect(screen.queryByTestId('workspace-pane')).not.toBeInTheDocument();
+  });
+
+  test('Interrupt overlay renders when isInterruptActive is true', () => {
+    mockUseChatStream.mockReturnValue({
+      chatInput: '',
+      setChatInput: vi.fn(),
+      isGenerating: false,
+      messageQueue: [],
+      messages: [],
+      handleStopGeneration: vi.fn(),
+      toggleTrace: vi.fn(),
+      handleSendOrQueue: vi.fn(),
+      executeSend: vi.fn(),
+      searchQuery: '',
+      setSearchQuery: vi.fn(),
+      tasks: [],
+      taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: { id: 'int-1' },
+      isInterruptActive: true,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: vi.fn(),
+    });
+    render(<CommandCenter {...defaultProps} />);
+    expect(screen.getByTestId('interrupt-overlay')).toBeInTheDocument();
+  });
+
+  test('Chat input is disabled when isInterruptActive is true', () => {
+    mockUseChatStream.mockReturnValue({
+      chatInput: '',
+      setChatInput: vi.fn(),
+      isGenerating: false,
+      messageQueue: [],
+      messages: [],
+      handleStopGeneration: vi.fn(),
+      toggleTrace: vi.fn(),
+      handleSendOrQueue: vi.fn(),
+      executeSend: vi.fn(),
+      searchQuery: '',
+      setSearchQuery: vi.fn(),
+      tasks: [],
+      taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: { id: 'int-1' },
+      isInterruptActive: true,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: vi.fn(),
+    });
+    render(<CommandCenter {...defaultProps} />);
+    expect(screen.getByTestId('chat-input')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Awaiting your approval...')).toBeInTheDocument();
+  });
+
+  test('No overlay and input enabled when isInterruptActive is false', () => {
+    render(<CommandCenter {...defaultProps} />);
+    expect(screen.queryByTestId('interrupt-overlay')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chat-input')).not.toBeDisabled();
+  });
+
+  test('Overlay renders with interrupt data', () => {
+    mockUseChatStream.mockReturnValue({
+      chatInput: '',
+      setChatInput: vi.fn(),
+      isGenerating: false,
+      messageQueue: [],
+      messages: [],
+      handleStopGeneration: vi.fn(),
+      toggleTrace: vi.fn(),
+      handleSendOrQueue: vi.fn(),
+      executeSend: vi.fn(),
+      searchQuery: '',
+      setSearchQuery: vi.fn(),
+      tasks: [],
+      taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: { id: 'int-42' },
+      isInterruptActive: true,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: vi.fn(),
+    });
+    render(<CommandCenter {...defaultProps} />);
+    expect(screen.getByTestId('interrupt-data')).toHaveTextContent('int-42');
   });
 });
