@@ -1,45 +1,44 @@
-# BRIEFING — 2026-08-09T19:34:21Z
+# BRIEFING — 2026-08-09T19:42:00Z
 
 ## Mission
-Implement Milestone 3 remediation fixes in bmad-cc (CSV line handling, driver fallback error handling, React TUI & test-runner TypeScript errors, run verification commands).
+Implement Milestone 3 remediation fixes in bmad-cc (CSV parsing, driver error handling fallback, React TUI & test runner TS errors, and verify with vitest, tsup, tsc).
 
 ## 🔒 My Identity
-- Archetype: implementer
+- Archetype: implementer/qa
 - Roles: implementer, qa, specialist
 - Working directory: d:/Projects/POC/ideator/.agents/worker_m3_remediation_gen2
 - Original parent: 4014c8a8-3151-45dc-94f9-2d259c1269b9
-- Milestone: Milestone 3 Remediation
+- Milestone: M3 Remediation
 
 ## 🔒 Key Constraints
-- CODE_ONLY network mode.
-- DO NOT CHEAT. All implementations must be genuine.
-- Minimal change principle.
-- Handoff report in d:/Projects/POC/ideator/.agents/worker_m3_remediation_gen2/handoff.md.
+- Fix CSV line handling in parseBmadHelpCsv (bmad-cc/src/supervisor/catalog-parser.ts).
+- Fix driver fallback error handling in bmad-cc/src/supervisor/bmad-help-discovery.ts.
+- Fix TypeScript compilation errors in React TUI components (src/tui/panels/*.tsx) and src/verification/test-runner.ts so `npx tsc --noEmit` passes with 0 errors.
+- Run vitest, tsup, tsc --noEmit and document output.
+- Write handoff report to d:/Projects/POC/ideator/.agents/worker_m3_remediation_gen2/handoff.md and send completion message to parent orchestrator.
 
 ## Current Parent
 - Conversation ID: 4014c8a8-3151-45dc-94f9-2d259c1269b9
-- Updated: 2026-08-09T19:34:21Z
+- Updated: 2026-08-09T19:42:00Z
 
 ## Task Summary
-- **What to build**: Remediation fixes in bmad-cc (catalog-parser.ts CSV line handling, bmad-help-discovery.ts driver fallback error handling, TUI & test-runner TS compilation errors).
-- **Success criteria**: All tests pass (`npx vitest run`), build succeeds (`npx tsup`), TS check succeeds with 0 errors (`npx tsc --noEmit`).
+- **What to build**: M3 remediation fixes in bmad-cc.
+- **Success criteria**: All vitest tests pass, tsup succeeds, tsc --noEmit passes with 0 errors, clean code without hardcoding or facades.
+- **Code layout**: bmad-cc codebase under d:/Projects/POC/ideator/bmad-cc.
 
 ## Change Tracker
-- **Files modified**: None yet
-- **Build status**: Pending initial run
-- **Pending issues**: Investigate CSV parser, driver fallback, TUI components, test runner TS errors
+- **Files modified**: [TBD]
+- **Build status**: [TBD]
+- **Pending issues**: [TBD]
 
 ## Quality Status
-- **Build/test result**: Pending
-- **Lint status**: Pending
-- **Tests added/modified**: None yet
+- **Build/test result**: [TBD]
+- **Lint status**: [TBD]
+- **Tests added/modified**: [TBD]
 
 ## Loaded Skills
-- None
-
-## Key Decisions Made
-- Initialized briefing and progress tracking.
+- None loaded yet.
 
 ## Artifact Index
-- ORIGINAL_REQUEST.md — Initial user request
-- BRIEFING.md — Persistent briefing state
+- d:/Projects/POC/ideator/.agents/worker_m3_remediation_gen2/ORIGINAL_REQUEST.md — Original task request
+- d:/Projects/POC/ideator/.agents/worker_m3_remediation_gen2/BRIEFING.md — Working briefing file

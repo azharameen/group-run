@@ -61,12 +61,17 @@ Refactor bmad-cc so the Supervisor Agent operates strictly as an orchestrator ac
 | Challenger M3-1 | teamwork_preview_challenger | Empirical Verification M3-1 | completed (PASS) | 23195107-fa40-47d1-b84b-8ea6c47b0701 |
 | Challenger M3-2 | teamwork_preview_challenger | Empirical Verification M3-2 | completed (PASS) | e9a65c6a-3fe8-42bc-908b-536a533fffc6 |
 | Forensic Auditor M3-1 | teamwork_preview_auditor | Forensic Integrity Audit M3-1 | completed (CLEAN) | de021c20-a4db-43f7-9cbb-290e881420b0 |
-| Worker M3 Remediation (gen2) | teamwork_preview_worker | Milestone 3 Remediation | in-progress | 06ca4df1-9fe3-4d53-a927-15da953a8d78 |
+| Worker M3 Remediation (gen2) | teamwork_preview_worker | Milestone 3 Remediation | completed | c3d6cc0a-4d57-41c7-a009-6cb1de19ee6c |
+| Reviewer M3 Rem-1 (gen2) | teamwork_preview_reviewer | Code Review M3 Rem-1 | in-progress | 2c97423f-2668-4433-ba49-7e5d58613f9d |
+| Reviewer M3 Rem-2 (gen2) | teamwork_preview_reviewer | Code Review M3 Rem-2 | in-progress | 9dd8207a-f018-4dff-84aa-2f214e41883d |
+| Challenger M3 Rem-1 (gen2) | teamwork_preview_challenger | Verification M3 Rem-1 | in-progress | 0ee9c4af-e6b4-4df5-8bfa-d33bb00e476d |
+| Challenger M3 Rem-2 (gen2) | teamwork_preview_challenger | Verification M3 Rem-2 | in-progress | 443fac9c-65c8-4a67-a83a-7334f004c145 |
+| Forensic Auditor M3 Rem-1 (gen2) | teamwork_preview_auditor | Integrity Audit M3 Rem-1 | in-progress | 5237d804-65ab-492e-ac9b-8df19ed3444b |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16 (Generation 2)
-- Pending subagents: 06ca4df1-9fe3-4d53-a927-15da953a8d78
+- Spawn count: 7 / 16 (Generation 2)
+- Pending subagents: 2c97423f-2668-4433-ba49-7e5d58613f9d, 9dd8207a-f018-4dff-84aa-2f214e41883d, 0ee9c4af-e6b4-4df5-8bfa-d33bb00e476d, 443fac9c-65c8-4a67-a83a-7334f004c145, 5237d804-65ab-492e-ac9b-8df19ed3444b
 - Predecessor: gen1 (handed off at 20 spawns)
 - Successor: not yet spawned
 
