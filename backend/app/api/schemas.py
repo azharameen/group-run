@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl
 
 
 # ── Thread schemas ──────────────────────────────────────────────────────────
@@ -56,3 +56,39 @@ class InterruptDecisionRequest(BaseModel):
 
 class InterruptResponse(BaseModel):
     interrupt: Interrupt
+
+
+class MCPServer(BaseModel):
+    """MCP server configuration."""
+
+    name: str = Field(..., min_length=1, max_length=64)
+    transport: str = Field(default="http", pattern="^(http|stdio)$")
+    url: Optional[str] = None
+    timeout: int = Field(default=10, ge=1, le=300)
+    options: dict = Field(default_factory=dict)
+
+
+class AddMCPServerRequest(BaseModel):
+    """Request to add a new HTTP MCP server."""
+
+    name: str = Field(..., min_length=1, max_length=64)
+    url: HttpUrl
+    timeout: int = Field(default=10, ge=1, le=300)
+    options: dict = Field(default_factory=dict)
+
+
+class MCPServerResponse(BaseModel):
+    """Response for a single MCP server."""
+
+    name: str
+    transport: str = "http"
+    url: str
+    timeout: int = 10
+    options: dict = Field(default_factory=dict)
+
+
+class ListMCPServersResponse(BaseModel):
+    """Response for listing MCP servers."""
+
+    servers: list[MCPServerResponse] = Field(default_factory=list)
+    count: int = 0

@@ -10,6 +10,7 @@ from ..services.thread_manager import get_checkpointer, get_async_checkpointer
 from .routes.chat import router as chat_router
 from .routes.interrupts import router as interrupts_router
 from .routes.health import router as health_router
+from .routes.mcp import router as mcp_router
 from .routes.ideas import router as ideas_router
 from .routes.sse import router as sse_router
 from .routes.threads import router as threads_router
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(ideas_router)
     app.include_router(chat_router)
     app.include_router(interrupts_router)
+    app.include_router(mcp_router)
     app.include_router(sse_router)
     app.include_router(threads_router)
 

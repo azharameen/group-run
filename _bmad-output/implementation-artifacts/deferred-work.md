@@ -211,3 +211,8 @@
 - source_spec: spec-4-7-frontend-tests-approval-ui.md
   summary: Missing negative test for interrupt.approved with non-matching ID
   evidence: Test suite only tests matching ID clear behavior; non-matching ID no-op is not verified
+- source_spec: 5-1-create-mcp-server-management-api.md
+  summary: Add file locking for concurrent MCP config writes (TOCTOU race condition in add/remove)
+  evidence: MCPServerManagementService loads, modifies, and saves mcp.json without file locking. Concurrent requests could cause lost updates under uvicorn async workers.
+  severity: medium
+  resolution: Evaluate filelock library or atomic write pattern (write to temp + os.replace()) in a dedicated story.
