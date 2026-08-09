@@ -121,6 +121,10 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: null,
+      isInterruptActive: false,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: vi.fn(),
     });
 
     mockCreateThread.mockResolvedValue({
@@ -173,6 +177,10 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: null,
+      isInterruptActive: false,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: vi.fn(),
     });
 
     render(<CommandCenter {...defaultProps} />);
@@ -196,6 +204,10 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: null,
+      isInterruptActive: false,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: vi.fn(),
     });
 
     render(<CommandCenter {...defaultProps} />);
@@ -218,6 +230,10 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: null,
+      isInterruptActive: false,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: vi.fn(),
     });
 
     render(<CommandCenter {...defaultProps} />);
@@ -243,6 +259,10 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: null,
+      isInterruptActive: false,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: vi.fn(),
     });
 
     render(<CommandCenter {...defaultProps} />);

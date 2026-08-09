@@ -114,9 +114,61 @@ export interface ThreadMessage {
   additional_kwargs?: Record<string, unknown>;
 }
 
+// ── Interrupt API ──────────────────────────────────────────────────────────
+
+export interface InterruptPayload {
+  id: string;
+  thread_id: string;
+  tool_name: string;
+  tool_input: Record<string, unknown>;
+  message: string;
+  status: 'pending' | 'approved' | 'rejected';
+  decision?: string;
+  reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchPendingInterrupts(): Promise<InterruptPayload[]> {
+  const res = await fetch(`${API_BASE}/interrupts/pending`);
+  if (!res.ok) throw new Error(`fetchPendingInterrupts ${res.status}`);
+  const data = await res.json();
+  return data.interrupts || [];
+}
+
+export async function approveInterrupt(
+  id: string,
+  decision: string,
+  reason: string,
+): Promise<InterruptPayload> {
+  const res = await fetch(`${API_BASE}/interrupts/${id}/approve`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ decision, reason }),
+  });
+  if (!res.ok) throw new Error(`approveInterrupt ${res.status}`);
+  const data = await res.json();
+  return data.interrupt;
+}
+
+export async function rejectInterrupt(
+  id: string,
+  reason: string,
+): Promise<InterruptPayload> {
+  const res = await fetch(`${API_BASE}/interrupts/${id}/reject`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ decision: 'rejected', reason }),
+  });
+  if (!res.ok) throw new Error(`rejectInterrupt ${res.status}`);
+  const data = await res.json();
+  return data.interrupt;
+}
+
 export function connectSSE(
   onEvent: (event: string, data: any) => void,
   onError?: (err: Event) => void,
+  onInterruptEvent?: (eventType: string, payload: any) => void,
 ): EventSource {
   const es = new EventSource(`${API_BASE}/sse`);
 
@@ -135,6 +187,19 @@ export function connectSSE(
       }
     });
   });
+
+  // StreamBus publishes generic `message` events for interrupts
+  es.onmessage = (e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data);
+      const type = data?.type;
+      if (type?.startsWith('interrupt.')) {
+        onInterruptEvent?.(type, data);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  };
 
   es.onerror = (err) => {
     console.error('SSE error:', err);

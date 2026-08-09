@@ -4,9 +4,12 @@ import {
 	streamThreadMessage,
 	getThreadMessages,
 	listThreads,
+	approveInterrupt,
+	rejectInterrupt,
 	type StreamEvent,
 	type ThreadMetadata,
 } from "@/api/client";
+import { type InterruptPayload } from "@/api/threads";
 import type { ChatMessage, TaskItem } from "@/types/chat";
 import { eventToMessage, groupMessages } from "@/lib/chat-utils";
 
@@ -28,6 +31,11 @@ export function useChatStream({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [tasks, setTasks] = useState<TaskItem[]>([]);
 	const [taskStats, setTaskStats] = useState({ completed: 0, total: 0 });
+
+	// Interrupt state
+	const [pendingInterrupt, setPendingInterrupt] = useState<InterruptPayload | null>(null);
+	const isInterruptActive = pendingInterrupt !== null;
+	const activeInterruptIdRef = useRef<string | null>(null);
 
 	const abortRef = useRef<AbortController | null>(null);
 	const streamMsgIdRef = useRef<string | null>(null);
@@ -74,23 +82,66 @@ export function useChatStream({
 			.catch((err) => console.error("Error fetching agent tasks:", err));
 	}, []);
 
-	// SSE: background agent.progress events + tasks_update
+	// SSE: background agent.progress events + tasks_update + interrupts
 	useEffect(() => {
-		const es = connectSSE((event, data) => {
-			if (event === "agent.progress" && data) {
-				setRawMessages((prev) => [
-					...prev,
-					eventToMessage({
-						type: "transition",
-						content: data.message,
-						agent: data.agent_name || "workflow-orchestrator",
-						speaker: data.agent_name || "Workflow Orchestrator",
-						role: "orchestrator",
-						provenance: `sse:${data.idea_id || "global"}`,
-					}),
-				]);
-			}
-		});
+		const es = connectSSE(
+			(event, data) => {
+				if (event === "agent.progress" && data) {
+					setRawMessages((prev) => [
+						...prev,
+						eventToMessage({
+							type: "transition",
+							content: data.message,
+							agent: data.agent_name || "workflow-orchestrator",
+							speaker: data.agent_name || "Workflow Orchestrator",
+							role: "orchestrator",
+							provenance: `sse:${data.idea_id || "global"}`,
+						}),
+					]);
+				}
+			},
+			undefined, // onError
+			(eventType, payload) => {
+				// interrupt.created — set pending interrupt with deduplication
+				if (eventType === "interrupt.created") {
+					const interrupt = payload.interrupt || payload;
+					const id = interrupt?.id;
+					if (!id) return;
+					// skip if already showing this interrupt (dedup)
+					if (id === activeInterruptIdRef.current) return;
+					activeInterruptIdRef.current = id;
+					setPendingInterrupt(interrupt);
+					// Add visual indicator message in chat
+					setRawMessages((prev) => [
+						...prev,
+						{
+							id: `interrupt_${id}`,
+							sender: "System",
+							text: `Agent requires approval: ${interrupt.message || interrupt.tool_name || "action"}`,
+							timestamp: new Date().toLocaleTimeString([], {
+								hour: "2-digit",
+								minute: "2-digit",
+							}),
+							eventType: "interrupt",
+							details: { interrupt_id: id, tool_name: interrupt.tool_name },
+						},
+					]);
+				} else if (
+					eventType === "interrupt.approved" ||
+					eventType === "interrupt.rejected"
+				) {
+					const id = payload.interrupt?.id || payload.id;
+					if (id) {
+						setPendingInterrupt((prev) =>
+							prev?.id === id ? null : prev,
+						);
+						if (id === activeInterruptIdRef.current) {
+							activeInterruptIdRef.current = null;
+						}
+					}
+				}
+			},
+		);
 		return () => es.close();
 	}, []);
 
@@ -140,6 +191,36 @@ export function useChatStream({
 		);
 	}, []);
 
+	// Interrupt approval handlers
+	const handleApproveInterrupt = useCallback(
+		async (id: string, decision: string, reason: string) => {
+			try {
+				await approveInterrupt(id, decision, reason);
+				setPendingInterrupt(null);
+				activeInterruptIdRef.current = null;
+			} catch {
+				// SSE will clear the interrupt when the resolution event arrives
+				setPendingInterrupt(null);
+				activeInterruptIdRef.current = null;
+			}
+		},
+		[],
+	);
+
+	const handleRejectInterrupt = useCallback(
+		async (id: string, reason: string) => {
+			try {
+				await rejectInterrupt(id, reason);
+				setPendingInterrupt(null);
+				activeInterruptIdRef.current = null;
+			} catch {
+				setPendingInterrupt(null);
+				activeInterruptIdRef.current = null;
+			}
+		},
+		[],
+	);
+
 	const executeSend = useCallback(
 		async (textToSend: string) => {
 			const userMsg: ChatMessage = {
@@ -171,6 +252,31 @@ export function useChatStream({
 					textToSend,
 					undefined,
 					(evt: StreamEvent) => {
+						// Task 3: Detect interrupt events from stream
+						if (evt.type === "interrupt") {
+							const interrupt = evt.extras?.interrupt || evt;
+							const id = (interrupt as any).id || `stream_${Date.now()}`;
+							// Deduplication: skip if same ID already active
+							if (id === activeInterruptIdRef.current) return;
+							activeInterruptIdRef.current = id;
+							setPendingInterrupt(interrupt as InterruptPayload);
+							setRawMessages((prev) => [
+								...prev,
+								{
+									id: `interrupt_${id}`,
+									sender: "System",
+									text: `Agent requires approval: ${(interrupt as any).message || (interrupt as any).tool_name || "action"}`,
+									timestamp: new Date().toLocaleTimeString([], {
+										hour: "2-digit",
+										minute: "2-digit",
+									}),
+									eventType: "interrupt",
+									details: { interrupt_id: id, tool_name: (interrupt as any).tool_name },
+								},
+							]);
+							return;
+						}
+
 						if (evt.type === "tasks_update" && evt.tasks) {
 							setTasks(evt.tasks as unknown as TaskItem[]);
 							setTaskStats({
@@ -282,6 +388,10 @@ export function useChatStream({
 		setSearchQuery,
 		tasks,
 		taskStats,
+		pendingInterrupt,
+		isInterruptActive,
+		handleApproveInterrupt,
+		handleRejectInterrupt,
 		handleStopGeneration,
 		toggleTrace,
 		handleSendOrQueue,

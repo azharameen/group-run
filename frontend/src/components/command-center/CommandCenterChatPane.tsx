@@ -1,4 +1,3 @@
-import * as React from "react";
 import { useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,11 +11,21 @@ import { Marker } from "@/components/ui/marker";
 import { LiveTrace } from "./chat-ui/live-trace";
 import { TurnMinimap } from "./chat-ui/turn-minimap";
 import { MessageActions } from "./chat-ui/message-actions";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+	Collapsible,
+	CollapsibleTrigger,
+	CollapsibleContent,
+} from "@/components/ui/collapsible";
+import {
+	Tooltip,
+	TooltipTrigger,
+	TooltipContent,
+} from "@/components/ui/tooltip";
 import { BotMessageSquare, Send, Plus, Mic, Square } from "lucide-react";
 import type { ChatMessage } from "@/types/chat";
+import type { InterruptPayload } from "@/api/threads";
 import { EVENT_LABELS, messageBadgeVariant } from "@/lib/chat-utils";
+import { HITLApprovalCard } from "@/components/deepagents/HITLApprovalCard";
 
 interface CommandCenterChatPaneProps {
 	messages: ChatMessage[];
@@ -29,6 +38,11 @@ interface CommandCenterChatPaneProps {
 	onToggleTrace: (id: string) => void;
 	onExecuteSend: (text: string) => void;
 	onCreateNewThread: () => void;
+	// Interrupt overlay props
+	isInterruptActive?: boolean;
+	pendingInterrupt?: InterruptPayload | null;
+	onApproveInterrupt?: (id: string, decision: string, reason: string) => Promise<void>;
+	onRejectInterrupt?: (id: string, reason: string) => Promise<void>;
 }
 
 export function CommandCenterChatPane({
@@ -42,6 +56,10 @@ export function CommandCenterChatPane({
 	onToggleTrace,
 	onExecuteSend,
 	onCreateNewThread,
+	isInterruptActive = false,
+	pendingInterrupt,
+	onApproveInterrupt,
+	onRejectInterrupt,
 }: CommandCenterChatPaneProps) {
 	const messageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -67,7 +85,8 @@ export function CommandCenterChatPane({
 						<div className="space-y-1">
 							<p className="text-sm font-semibold">Start a conversation</p>
 							<p className="text-xs text-muted-foreground">
-								Ask the Agent Companion team to assist with researching, designing, or advancing files.
+								Ask the Agent Companion team to assist with researching,
+								designing, or advancing files.
 							</p>
 						</div>
 					</div>
@@ -213,6 +232,21 @@ export function CommandCenterChatPane({
 				)}
 			</div>
 
+			{/* HITL Approval Overlay — appears above input when interrupt is active */}
+			{isInterruptActive && pendingInterrupt && (
+				<div className="px-3 pb-2 shrink-0">
+					<HITLApprovalCard
+						interrupts={[pendingInterrupt]}
+						onApproved={(id) =>
+							onApproveInterrupt?.(id, "approved", "Approved during chat")
+						}
+						onRejected={(id) =>
+							onRejectInterrupt?.(id, "Interrupt rejected during chat")
+						}
+					/>
+				</div>
+			)}
+
 			{/* Chat Input Footer */}
 			<div className="border-t p-3 shrink-0">
 				<div className="space-y-2">
@@ -228,12 +262,15 @@ export function CommandCenterChatPane({
 						</div>
 					)}
 
-					<div className="rounded-lg bg-secondary p-2 focus-within:ring-1 focus-within:ring-ring">
+					<div className="rounded-lg bg-secondary p-2">
 						<Textarea
+							disabled={isInterruptActive}
 							placeholder={
-								isGenerating
-									? "Type to queue message..."
-									: "Ask the team to bring your idea to life"
+								isInterruptActive
+									? "Awaiting your approval..."
+									: isGenerating
+										? "Type to queue message..."
+										: "Ask the team to bring your idea to life"
 							}
 							value={chatInput}
 							onChange={(e) => onChatInputChange(e.target.value)}
@@ -243,7 +280,7 @@ export function CommandCenterChatPane({
 									onSendOrQueue();
 								}
 							}}
-							className="w-full border-0 shadow-none outline-none focus:outline-none focus-visible:ring-0 text-xs min-h-[42px] max-h-[80px] resize-none p-0 placeholder:text-muted-foreground text-foreground bg-transparent"
+							className="w-full border-0 shadow-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 text-xs min-h-[42px] max-h-[80px] resize-none p-0 placeholder:text-muted-foreground text-foreground bg-transparent"
 						/>
 						<div className="flex items-center justify-between pt-1">
 							<div className="flex items-center gap-1 text-muted-foreground">
@@ -258,7 +295,9 @@ export function CommandCenterChatPane({
 											<Plus className="w-3.5 h-3.5" />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent side="top" className="text-xs">New thread</TooltipContent>
+									<TooltipContent side="top" className="text-xs">
+										New thread
+									</TooltipContent>
 								</Tooltip>
 							</div>
 
@@ -274,7 +313,9 @@ export function CommandCenterChatPane({
 											<Square className="w-3 h-3 fill-current" />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent side="top" className="text-xs">Stop generation</TooltipContent>
+									<TooltipContent side="top" className="text-xs">
+										Stop generation
+									</TooltipContent>
 								</Tooltip>
 							) : chatInput.trim() ? (
 								<Tooltip>
@@ -287,7 +328,9 @@ export function CommandCenterChatPane({
 											<Send className="w-3.5 h-3.5" />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent side="top" className="text-xs">Send message</TooltipContent>
+									<TooltipContent side="top" className="text-xs">
+										Send message
+									</TooltipContent>
 								</Tooltip>
 							) : (
 								<Tooltip>
@@ -300,7 +343,9 @@ export function CommandCenterChatPane({
 											<Mic className="w-3.5 h-3.5" />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent side="top" className="text-xs">Voice input</TooltipContent>
+									<TooltipContent side="top" className="text-xs">
+										Voice input
+									</TooltipContent>
 								</Tooltip>
 							)}
 						</div>

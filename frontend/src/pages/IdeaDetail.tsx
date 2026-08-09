@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { FileText, Target, AlertTriangle, Lightbulb, Loader2, SendHorizonal } from "lucide-react";
 import { fetchIdeaDetail, fetchIdeaFiles, deleteIdea, addIdeaComment, connectSSE, type IdeaDetail as IdeaDetailType, type IdeaFile } from "../api/client";
-import { fetchPendingInterrupts } from "../api/deepagents";
+import { fetchPendingInterrupts } from "@/api/client";
 import { InterruptItem } from "../types/deepagents";
 import { IdeaFilesystem } from "../components/IdeaFilesystem";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -42,7 +42,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 			const [detailRes, filesRes, interruptsRes] = await Promise.all([
 				fetchIdeaDetail(ideaId),
 				fetchIdeaFiles(ideaId).catch(() => []),
-				fetchPendingInterrupts(ideaId).catch(() => []),
+				fetchPendingInterrupts().catch(() => []),
 			]);
 			setDetail(detailRes);
 			setFiles(filesRes);

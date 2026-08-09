@@ -167,3 +167,17 @@
   summary: Decision payload validation not tested against endpoint action
   evidence: Approve/reject endpoints accept decision field in request body but don't validate it matches the endpoint action; wrong status transition could be accepted
 
+## Deferred from: code review (2026-08-09)
+
+- source_spec: `spec-4-5-create-hitl-approval-ui-component.md`
+  summary: HITLApprovalCard and InterruptInbox import from `@/api/threads` directly instead of `@/api/client`
+  evidence: Functions are re-exported through `@/api/client`, so no behavioral issue; refactor for consistency
+
+- source_spec: `spec-4-6-wire-approval-ui-into-chat-stream.md`
+  summary: Duplicate SSE subscriptions — InterruptInbox and useChatStream create independent SSE connections for interrupt events
+  evidence: Each manages its own state independently; acceptable as separate component responsibilities; architectural improvement candidate
+
+- source_spec: `spec-4-6-wire-approval-ui-into-chat-stream.md`
+  summary: SSE reconnect doesn't reload interrupt state — interrupt overlay may become stale on connection drop
+  evidence: useChatStream SSE effect has no reconnect handler to reconcile interrupt state
+

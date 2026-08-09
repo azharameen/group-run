@@ -1,0 +1,45 @@
+{
+  "name": "bmad-cc",
+  "version": "0.1.0",
+  "description": "BMad Agentic Development Command Center - Autonomous sprint execution engine",
+  "type": "module",
+  "bin": {
+    "bmad-cc": "./dist/bmad-cc.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx bin/bmad-cc.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "oclif": {
+    "bin": "bmad-cc",
+    "commands": "./dist/commands",
+    "dirname": "bmad-cc"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^5.3.0",
+    "@oclif/core": "^4.0.0",
+    "chalk": "^5.3.0",
+    "cli-cursor": "^5.0.0",
+    "execa": "^9.3.0",
+    "gray-matter": "^4.0.3",
+    "ink": "^7.1.1",
+    "ink-select-input": "^6.2.0",
+    "ink-spinner": "^5.0.0",
+    "log-update": "^8.0.0",
+    "pino": "^9.3.0",
+    "pino-pretty": "^11.2.0",
+    "react": "^19.2.8",
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ink-testing-library": "^4.0.0",
+    "tsup": "^8.1.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

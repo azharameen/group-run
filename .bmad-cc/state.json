@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "startedAt": "2026-08-08T16:20:14.881Z",
+  "lastUpdatedAt": "2026-08-09T04:21:26.833Z",
+  "currentPhase": "review",
+  "currentStoryKey": "4-5-create-hitl-approval-ui-component",
+  "currentEpicKey": null,
+  "retryCount": 0,
+  "completedStories": [
+    "4-7-frontend-tests-approval-ui",
+    "4-5-create-hitl-approval-ui-component"
+  ],
+  "skippedStories": [],
+  "activeSessionId": "8f9cea13-6aeb-49ce-8a27-ca9c5e8e2b25",
+  "lastError": "Escalated to human after 4 retries in phase review",
+  "driverName": "gemini"
+}

@@ -22,13 +22,26 @@ export interface ToolCallEvent {
 
 export interface InterruptItem {
   id: string;
-  idea_id: string;
-  type: string;
-  details: string;
-  status: 'PENDING' | 'RESOLVED' | 'REJECTED';
-  speaker?: string;
-  role?: string;
-  provenance?: string;
+  thread_id: string;
+  tool_name: string;
+  tool_input: Record<string, unknown>;
+  message: string;
+  status: 'pending' | 'approved' | 'rejected';
+  decision?: string;
+  reason?: string;
+  created_at: string;
+  updated_at: string;
+  // backward compatibility with legacy endpoints
+  idea_id?: string;
+}
+
+export interface InterruptListResponse {
+  interrupts: InterruptItem[];
+}
+
+export interface InterruptDecisionRequest {
+  decision: string;
+  reason: string;
 }
 
 export interface AgentTodoItem {

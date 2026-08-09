@@ -48,6 +48,10 @@ export default function CommandCenter({
 		toggleTrace,
 		handleSendOrQueue,
 		executeSend,
+		pendingInterrupt,
+		isInterruptActive,
+		handleApproveInterrupt,
+		handleRejectInterrupt,
 	} = useChatStream({
 		activeThreadId,
 		ensureThread: async () => {
@@ -86,6 +90,10 @@ export default function CommandCenter({
 							onToggleTrace={toggleTrace}
 							onExecuteSend={executeSend}
 							onCreateNewThread={handleCreateNewThread}
+							isInterruptActive={isInterruptActive}
+							pendingInterrupt={pendingInterrupt}
+							onApproveInterrupt={handleApproveInterrupt}
+							onRejectInterrupt={handleRejectInterrupt}
 						/>
 					</div>
 				) : (
@@ -110,6 +118,10 @@ export default function CommandCenter({
 										onToggleTrace={toggleTrace}
 										onExecuteSend={executeSend}
 										onCreateNewThread={handleCreateNewThread}
+										isInterruptActive={isInterruptActive}
+										pendingInterrupt={pendingInterrupt}
+										onApproveInterrupt={handleApproveInterrupt}
+										onRejectInterrupt={handleRejectInterrupt}
 									/>
 								</ResizablePanel>
 

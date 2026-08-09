@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { MessageSquare, Plus, ChevronDown, Folder, Search, PanelRight } from "lucide-react";
+import {
+	MessageSquare,
+	Plus,
+	ChevronDown,
+	Search,
+	PanelRight,
+} from "lucide-react";
 
 import {
 	Breadcrumb,
@@ -22,7 +28,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createThread, listThreads, type ThreadMetadata } from "@/api/client";
 
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+	Tooltip,
+	TooltipTrigger,
+	TooltipContent,
+} from "@/components/ui/tooltip";
 
 export function SiteHeader({
 	ideaTitle,
@@ -98,9 +108,7 @@ export function SiteHeader({
 									</BreadcrumbItem>
 									<BreadcrumbSeparator />
 									<BreadcrumbItem>
-										<BreadcrumbPage
-											className="max-w-[280px] truncate"
-										>
+										<BreadcrumbPage className="max-w-[280px] truncate">
 											{ideaTitle || "Idea Details"}
 										</BreadcrumbPage>
 									</BreadcrumbItem>
@@ -132,11 +140,16 @@ export function SiteHeader({
 									className="h-8 text-xs gap-1.5 border-muted-foreground/20 font-medium rounded-r-none border-r-0 max-w-[180px] sm:max-w-[240px]"
 								>
 									<MessageSquare className="w-3.5 h-3.5 text-primary shrink-0" />
-									<span className="truncate">{activeThreadTitle || "Select Thread"}</span>
+									<span className="truncate">
+										{activeThreadTitle || "Select Thread"}
+									</span>
 									<ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
 								</Button>
 							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-64 max-h-80 flex flex-col p-0">
+							<DropdownMenuContent
+								align="end"
+								className="w-64 max-h-80 flex flex-col p-0"
+							>
 								<div className="p-2 border-b">
 									<div className="relative">
 										<Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
@@ -160,7 +173,9 @@ export function SiteHeader({
 												key={t.thread_id}
 												onClick={() => onSelectThread?.(t.thread_id)}
 												className={`flex flex-col items-start gap-0.5 text-xs py-1.5 cursor-pointer ${
-													t.thread_id === activeThreadId ? "bg-accent font-semibold" : ""
+													t.thread_id === activeThreadId
+														? "bg-accent font-semibold"
+														: ""
 												}`}
 											>
 												<div className="truncate w-full">{t.title}</div>
@@ -195,12 +210,14 @@ export function SiteHeader({
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
-									variant="outline"
+									variant="ghost"
 									size="icon"
 									onClick={onToggleWorkspace}
-									className="h-8 w-8 border-muted-foreground/20 shrink-0"
+									className="h-8 w-8 border-0 bg-transparent shrink-0 hover:bg-accent hover:text-accent-foreground"
 								>
-									<PanelRight className={`w-3.5 h-3.5 ${isWorkspaceOpen ? "text-primary" : "text-muted-foreground"}`} />
+									<PanelRight
+										className={`w-3.5 h-3.5 ${isWorkspaceOpen ? "text-primary" : "text-muted-foreground"}`}
+									/>
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent side="bottom" className="text-xs">
