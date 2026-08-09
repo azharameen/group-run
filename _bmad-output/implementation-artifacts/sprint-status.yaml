@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-02
-last_updated: 2026-08-09T14:31:21+05:30
+last_updated: 2026-08-09T15:00:00+05:30
 project: Companion
 project_key: NOKEY
 tracking_system: file-system
@@ -107,7 +107,7 @@ development_status:
   epic-4-retrospective: done
 
   # EP-5: MCP & Team Config
-  epic-5: in-progress
+  epic-5: done
   5-1-create-mcp-server-management-api: done
   5-2-create-config-reload-endpoint: done
   5-3-update-mcp-tool-loading: done
@@ -116,7 +116,7 @@ development_status:
   5-6-mcp-server-management-ui: done
   5-7-team-agent-configuration-ui: done
   5-8-frontend-tests-mcp-and-team-ui: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
 
 
   # EP-6: Knowledge & Memory
@@ -225,3 +225,23 @@ action_items:
     action: "Fix test isolation for config reload tests (module reimport pollution)"
     owner: "Amelia"
     status: done
+  - epic: 5
+    action: "Retro action verification as blocking prerequisite before new epics"
+    owner: "Amelia"
+    status: open
+  - epic: 5
+    action: "Mandatory story spec before implementation starts"
+    owner: "Amelia"
+    status: open
+  - epic: 5
+    action: "Config validation schema standard for all config files"
+    owner: "Charlie"
+    status: open
+  - epic: 5
+    action: "MCP tool loading timeouts with per-server settings"
+    owner: "Elena"
+    status: open
+  - epic: 5
+    action: "Connection status polling for MCP servers in UI"
+    owner: "Elena"
+    status: open
