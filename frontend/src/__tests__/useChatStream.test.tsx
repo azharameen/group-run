@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+﻿import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatStream } from '@/hooks/useChatStream';
 import type { UseChatStreamOptions } from '@/hooks/useChatStream';
@@ -45,6 +45,8 @@ vi.mock('@/api/client', () => ({
   getThread: vi.fn(),
   updateThread: vi.fn(),
   deleteThread: vi.fn(),
+  approveInterrupt: vi.fn(),
+  rejectInterrupt: vi.fn(),
 }));
 
 // Shared mock SSE instance (created after MockEventSource is defined)
@@ -667,6 +669,49 @@ describe('useChatStream', () => {
       interruptCallback?.('interrupt.created', { interrupt: { id: 'int-2', tool_name: 'tool2' } });
     });
     await waitFor(() => expect(result.current.pendingInterrupt?.id).toBe('int-2'));
+  });
+
+  test('approve clears activeInterruptIdRef allowing same-ID reprocessing', async () => {
+    vi.mocked(apiClient.approveInterrupt).mockResolvedValue({ id: 'int-1', status: 'resolved' });
+
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+
+    // Create interrupt int-1
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool', message: 'needs approval', status: 'pending' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt?.id).toBe('int-1'));
+
+    // Approve it — clears pendingInterrupt and ref
+    await act(async () => {
+      result.current.handleApproveInterrupt('int-1', 'yes', 'go ahead');
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt).toBeNull());
+
+    // Create same ID again — should be accepted (not deduped)
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool', message: 'needs approval again', status: 'pending' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt?.id).toBe('int-1'));
+  });
+
+  test('interrupt.approved with non-matching ID does not clear pendingInterrupt', async () => {
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+
+    // Create interrupt int-1
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool', message: 'needs approval', status: 'pending' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt?.id).toBe('int-1'));
+
+    // Receive approved event for a completely different ID
+    await act(async () => {
+      interruptCallback?.('interrupt.approved', { interrupt: { id: 'int-99' } });
+    });
+
+    // pendingInterrupt should remain unchanged
+    expect(result.current.pendingInterrupt?.id).toBe('int-1');
+    expect(result.current.isInterruptActive).toBe(true);
   });
 
   test('Stream type interrupt event sets pendingInterrupt', async () => {

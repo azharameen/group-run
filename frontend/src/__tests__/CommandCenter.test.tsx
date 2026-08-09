@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CommandCenter from '@/pages/CommandCenter';
 import * as apiClient from '@/api/client';
@@ -33,6 +33,8 @@ vi.mock('@/components/command-center/CommandCenterChatPane', () => ({
     onSendOrQueue,
     onStopGeneration,
     onCreateNewThread,
+    onApproveInterrupt,
+    onRejectInterrupt,
   }: any) => (
     <div data-testid="chat-pane">
       {isInterruptActive && <div data-testid="interrupt-overlay">Interrupt</div>}
@@ -66,6 +68,16 @@ vi.mock('@/components/command-center/CommandCenterChatPane', () => ({
       <button data-testid="new-thread-button" onClick={onCreateNewThread}>
         New Thread
       </button>
+      {isInterruptActive && (
+        <>
+          <button data-testid="approve-button" onClick={() => onApproveInterrupt?.(pendingInterrupt?.id, "yes", "approved")} disabled={!isInterruptActive}>
+            Approve
+          </button>
+          <button data-testid="reject-button" onClick={() => onRejectInterrupt?.(pendingInterrupt?.id, "rejected")} disabled={!isInterruptActive}>
+            Reject
+          </button>
+        </>
+      )}
     </div>
   ),
 }));
@@ -381,5 +393,55 @@ describe('CommandCenter', () => {
     });
     render(<CommandCenter {...defaultProps} />);
     expect(screen.getByTestId('interrupt-data')).toHaveTextContent('int-42');
+  });
+  test('approve button calls handleApproveInterrupt', () => {
+    const mockApprove = vi.fn();
+    mockUseChatStream.mockReturnValue({
+      chatInput: '',
+      setChatInput: vi.fn(),
+      isGenerating: false,
+      messageQueue: [],
+      messages: [],
+      handleStopGeneration: vi.fn(),
+      toggleTrace: vi.fn(),
+      handleSendOrQueue: vi.fn(),
+      executeSend: vi.fn(),
+      searchQuery: '',
+      setSearchQuery: vi.fn(),
+      tasks: [],
+      taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: { id: 'int-1' },
+      isInterruptActive: true,
+      handleApproveInterrupt: mockApprove,
+      handleRejectInterrupt: vi.fn(),
+    });
+    render(<CommandCenter {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('approve-button'));
+    expect(mockApprove).toHaveBeenCalledWith('int-1', 'yes', 'approved');
+  });
+  test('reject button calls handleRejectInterrupt', () => {
+    const mockReject = vi.fn();
+    mockUseChatStream.mockReturnValue({
+      chatInput: '',
+      setChatInput: vi.fn(),
+      isGenerating: false,
+      messageQueue: [],
+      messages: [],
+      handleStopGeneration: vi.fn(),
+      toggleTrace: vi.fn(),
+      handleSendOrQueue: vi.fn(),
+      executeSend: vi.fn(),
+      searchQuery: '',
+      setSearchQuery: vi.fn(),
+      tasks: [],
+      taskStats: { completed: 0, total: 0 },
+      pendingInterrupt: { id: 'int-1' },
+      isInterruptActive: true,
+      handleApproveInterrupt: vi.fn(),
+      handleRejectInterrupt: mockReject,
+    });
+    render(<CommandCenter {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('reject-button'));
+    expect(mockReject).toHaveBeenCalledWith('int-1', 'rejected');
   });
 });

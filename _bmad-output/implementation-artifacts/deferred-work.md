@@ -1,3 +1,12 @@
+﻿
+## Resolved from: spec-4-7-frontend-tests-approval-ui.md (2026-08-09)
+
+- [RESOLVED] No test coverage for approve/reject action flow at CommandCenter integration level
+  - Added approve/reject buttons to mock ChatPane + 2 integration tests verifying handleApproveInterrupt/handleRejectInterrupt calls
+- [RESOLVED] No test that activeInterruptIdRef is reset after approve allowing same-ID reprocessing
+  - Added test in useChatStream.test.tsx verifying approve clears ref and same-ID reprocessing is accepted
+- [RESOLVED] Missing negative test for interrupt.approved with non-matching ID
+  - Added test verifying pendingInterrupt remains when approved event has different ID
 # Deferred Work Ledger
 
 ## Deferred from: code review of EP-0 dead code cleanup (2026-08-03)
