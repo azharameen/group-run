@@ -112,7 +112,7 @@ development_status:
   5-2-create-config-reload-endpoint: done
   5-3-update-mcp-tool-loading: done
   5-4-create-team-subgraph-factory: done
-  5-5-backend-tests-mcp-config-reload-team-loading: in-progress
+  5-5-backend-tests-mcp-config-reload-team-loading: done
   5-6-mcp-server-management-ui: backlog
   5-7-team-agent-configuration-ui: backlog
   5-8-frontend-tests-mcp-and-team-ui: backlog
