@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-02
-last_updated: 2026-08-09
+last_updated: 2026-08-09T20:00:00Z
 project: Companion
 project_key: NOKEY
 tracking_system: file-system
@@ -96,15 +96,15 @@ development_status:
   epic-3-retrospective: done
 
   # EP-4: HITL Approvals
-  epic-4: in-progress
+  epic-4: done
   4-1-create-interrupt-management-service: done
   4-2-create-sse-bridge-for-interrupt-events: done
   4-3-create-interrupt-api-endpoints: done
   4-4-backend-tests-interrupt-lifecycle: done
   4-5-create-hitl-approval-ui-component: done
   4-6-wire-approval-ui-into-chat-stream: done
-  4-7-frontend-tests-approval-ui: backlog
-  epic-4-retrospective: optional
+  4-7-frontend-tests-approval-ui: done
+  epic-4-retrospective: done
 
   # EP-5: MCP & Team Config
   epic-5: backlog
@@ -167,7 +167,7 @@ action_items:
   - epic: 1
     action: "Address pre-existing test failures before Epic 3"
     owner: "Dana/Amelia"
-    status: open
+    status: done
   - epic: 1
     action: "Review ST-1.9 deferred items before Epic 3"
     owner: "Amelia"
@@ -191,7 +191,7 @@ action_items:
   - epic: 2
     action: "Resolve 6 pre-existing test failures NOW before Epic 3"
     owner: "Dana/Amelia"
-    status: open
+    status: done
   - epic: 3
     action: "Fix 6 pre-existing test failures via ST-4.0 prep story"
     owner: "Dana/Amelia"
@@ -203,4 +203,16 @@ action_items:
   - epic: 3
     action: "Triage deferred-work.md with go/no-go decisions before Epic 4 kickoff"
     owner: "Amelia/Charlie"
+    status: open
+  - epic: 4
+    action: "Embed retro action verification into sprint-planning workflow"
+    owner: "Amelia"
+    status: open
+  - epic: 4
+    action: "Document cumulative deferred risk threshold and cleanup policy"
+    owner: "Charlie"
+    status: open
+  - epic: 4
+    action: "Codify Windows file lock workaround in dev-story skill"
+    owner: "Amelia"
     status: open
