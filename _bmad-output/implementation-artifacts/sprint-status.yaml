@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-02
-last_updated: 2026-08-09T20:15:00Z
+last_updated: 2026-08-09T14:31:21+05:30
 project: Companion
 project_key: NOKEY
 tracking_system: file-system
@@ -109,10 +109,10 @@ development_status:
   # EP-5: MCP & Team Config
   epic-5: in-progress
   5-1-create-mcp-server-management-api: done
-  5-2-create-config-reload-endpoint: backlog
-  5-3-update-mcp-tool-loading: backlog
-  5-4-create-team-subgraph-factory: backlog
-  5-5-backend-tests-mcp-config-reload-team-loading: backlog
+  5-2-create-config-reload-endpoint: done
+  5-3-update-mcp-tool-loading: done
+  5-4-create-team-subgraph-factory: done
+  5-5-backend-tests-mcp-config-reload-team-loading: in-progress
   5-6-mcp-server-management-ui: backlog
   5-7-team-agent-configuration-ui: backlog
   5-8-frontend-tests-mcp-and-team-ui: backlog
@@ -219,4 +219,8 @@ action_items:
   - epic: 4
     action: "Fix BLOCK-EP5 + CRITICAL deferred debt items before Epic 5"
     owner: "Amelia/Charlie"
+    status: done
+  - epic: 5
+    action: "Fix test isolation for config reload tests (module reimport pollution)"
+    owner: "Amelia"
     status: done

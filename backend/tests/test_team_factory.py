@@ -353,3 +353,115 @@ def test_exports_from_orchestrator_init(monkeypatch: pytest.MonkeyPatch):
 
     assert TeamSubgraphFactory is not None
     assert TeamState is not None
+
+
+# ---------------------------------------------------------------------------
+# Edge case tests (Story 5.5)
+# ---------------------------------------------------------------------------
+
+
+def test_empty_agents_list_raises_value_error(monkeypatch: pytest.MonkeyPatch):
+    """Team with empty agents list and subgraph referencing nodes raises ValueError.
+
+    The subgraph.nodes references 'only-node', but the agents list is empty.
+    The factory detects this when building the sequential subgraph.
+    """
+    custom_config = {
+        "schema_version": "1.0",
+        "teams": {
+            "empty-agents": {
+                "name": "Empty Agents Team",
+                "description": "Team with no agents.",
+                "agents": [],
+                "subgraph": {
+                    "type": "sequential",
+                    "nodes": ["only-node"],
+                },
+                "routing_keys": ["empty"],
+            }
+        },
+    }
+
+    _clear_modules(monkeypatch)
+    _stub_deepagents(monkeypatch)
+    _patch_teams_config(custom_config)
+
+    from app.orchestrator.team_factory import TeamSubgraphFactory
+
+    factory = TeamSubgraphFactory()
+
+    with pytest.raises(ValueError, match="only-node"):
+        factory.create_team_subgraph("empty-agents")
+
+
+def test_duplicate_node_names_raises_value_error(monkeypatch: pytest.MonkeyPatch):
+    """subgraph.nodes containing duplicate names raises ValueError with details."""
+    custom_config = {
+        "schema_version": "1.0",
+        "teams": {
+            "dup-nodes": {
+                "name": "Duplicate Nodes Team",
+                "description": "Team with duplicate subgraph nodes.",
+                "agents": [
+                    {"name": "agent-a", "role": "assistant", "model": "auto"},
+                ],
+                "subgraph": {
+                    "type": "sequential",
+                    "nodes": ["agent-a", "agent-a"],
+                },
+                "routing_keys": ["dup"],
+            }
+        },
+    }
+
+    _clear_modules(monkeypatch)
+    _stub_deepagents(monkeypatch)
+    _patch_teams_config(custom_config)
+
+    from app.orchestrator.team_factory import TeamSubgraphFactory
+
+    factory = TeamSubgraphFactory()
+
+    with pytest.raises(ValueError, match="duplicates"):
+        factory.create_team_subgraph("dup-nodes")
+
+
+def test_auto_model_missing_deepagents_model_raises_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Agent with model='auto' and no deepagents_model configured raises RuntimeError.
+
+    The factory's _create_agent_node resolves 'auto' to settings.deepagents_model.
+    When deepagents_model is empty/None, a RuntimeError is raised at graph
+    construction time (not at invocation time).
+    """
+    monkeypatch.setattr("app.config.settings.deepagents_model", None)
+
+    custom_config = {
+        "schema_version": "1.0",
+        "teams": {
+            "no-model": {
+                "name": "No Model Team",
+                "description": "Team with auto model and no deepagents_model.",
+                "agents": [
+                    {"name": "auto-agent", "role": "assistant", "model": "auto"},
+                ],
+                "subgraph": {
+                    "type": "sequential",
+                    "nodes": ["auto-agent"],
+                },
+                "routing_keys": ["nomodel"],
+            }
+        },
+    }
+
+    _clear_modules(monkeypatch)
+    _stub_deepagents(monkeypatch)
+    _patch_teams_config(custom_config)
+
+    from app.orchestrator.team_factory import TeamSubgraphFactory
+
+    factory = TeamSubgraphFactory()
+
+    with pytest.raises(RuntimeError, match="deepagents_model"):
+        factory.create_team_subgraph("no-model")

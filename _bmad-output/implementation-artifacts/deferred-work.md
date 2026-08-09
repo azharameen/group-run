@@ -216,3 +216,26 @@
   evidence: MCPServerManagementService loads, modifies, and saves mcp.json without file locking. Concurrent requests could cause lost updates under uvicorn async workers.
   severity: medium
   resolution: Evaluate filelock library or atomic write pattern (write to temp + os.replace()) in a dedicated story.
+
+## Deferred from: code review of 5-2-create-config-reload-endpoint (2026-08-12)
+
+- Unauthenticated config reload endpoint — no auth/permission check on POST /api/config/reload; pre-existing pattern (all app endpoints are unauthenticated), defer until auth infrastructure is added
+- Test coverage gaps for real lifecycle integration — tests patch internals but don't verify other modules re-read config after reload; pre-existing test pattern across codebase
+- Monkeypatch strategy is brittle — `runtime.py` uses `from .. import config as _config` module reference to survive `sys.modules` clearing; pre-existing workaround inherited from test_chat_endpoint.py
+- Permission errors propagate as 500 — `Path.read_text()` raises `PermissionError` not caught by `except ValueError`; pre-existing pattern also affects module-level load
+
+## Deferred from: code review of 5-3-update-mcp-tool-loading (2026-08-12)
+
+- _validate_mcp_config() doesn't check schema_version or validate server object fields (untime.py:197-230) — reload-mcp can return 200 for configs that _load_mcp_tools() later rejects; lightweight validation is intentional, full validation deferred to dedicated config quality story
+- MCP_CONFIG_PATH = None raises unhandled TypeError (untime.py:206) — Path(None) crashes instead of returning clean error; pre-existing pattern, would require config module guard
+- Duplicate server names silently overwrite in connections dict (untime.py:172) — later entries override earlier ones without warning; pre-existing pattern in array-to-dict conversion
+
+## Deferred from: code review of 5-4-create-team-subgraph-factory (2026-08-09)
+
+- Circular import risk if runtime.py imports from team_factory.py for supervisor integration — team_factory.py imports from app.agent.runtime (_teams_config, _load_mcp_tools, _load_system_prompt); when supervisor integration adds imports from team_factory back into runtime, circular dependency will occur. Consider lazy imports or a shared config module.
+
+- [PENDING] Duplicate import in mcp.py: rom pydantic import ValidationError appears on lines 10 and 14 — pre-existing dead code from Story 5.1 refactor (source_spec: spec-5-5-backend-tests-mcp-config-reload-team-loading.md)
+
+- source_spec: 'spec-5-5-backend-tests-mcp-config-reload-team-loading.md'
+  summary: 'Duplicate rom pydantic import ValidationError import in mcp.py lines 10 and 14 — pre-existing dead code'
+  evidence: 'Grep shows two identical imports; second is dead code from ST-5.1 refactor'
