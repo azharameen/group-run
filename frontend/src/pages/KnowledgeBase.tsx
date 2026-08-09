@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Database, FileText, FolderOpen, Loader2 } from 'lucide-react'
-import { fetchIdeas, fetchKnowledgeBase, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE } from '../api/client'
+import { fetchIdeas, fetchKnowledgeBase, fetchKBDocument, type IdeaListItem, type KBDocument, type KnowledgeBaseData, connectSSE } from '../api/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { DocumentUploadCard } from '@/components/knowledge-base/DocumentUploadCard'
 import { DocumentViewerCard } from '@/components/knowledge-base/DocumentViewerCard'
@@ -48,7 +48,26 @@ export default function KnowledgeBase() {
     })
   }
 
-  const toggleDocExpand = (path: string) => {
+  const toggleDocExpand = async (path: string) => {
+    const isExpanding = !expandedDocs.has(path)
+    if (isExpanding) {
+      const doc = kbData?.documents.find(d => d.path === path)
+      if (doc && !doc.content) {
+        try {
+          const fullDoc = await fetchKBDocument(path)
+          setKbData(prev => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              documents: prev.documents.map(d => d.path === path ? fullDoc : d)
+            }
+          })
+        } catch (err) {
+          console.error(err)
+        }
+      }
+    }
+
     setExpandedDocs(prev => {
       const next = new Set(prev)
       if (next.has(path)) next.delete(path)
@@ -57,10 +76,33 @@ export default function KnowledgeBase() {
     })
   }
 
+  const handleViewContent = async (doc: KBDocument) => {
+    if (!doc.content) {
+      try {
+        const fullDoc = await fetchKBDocument(doc.path)
+        setExpandedDoc(fullDoc)
+        // Also update the list so it stays cached
+        setKbData(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            documents: prev.documents.map(d => d.path === doc.path ? fullDoc : d)
+          }
+        })
+      } catch (err) {
+        console.error(err)
+      }
+    } else {
+      setExpandedDoc(doc)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto flex items-center justify-center min-h-[300px] flex-1">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div data-testid="loader">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
       </div>
     )
   }
@@ -80,7 +122,7 @@ export default function KnowledgeBase() {
               <Database className="w-4 h-4 text-primary" />
               <span className="text-xs font-medium">Source Documents</span>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{kbData ? kbData.sources.raw + kbData.sources.processed : 0}</p>
+            <p className="text-3xl font-bold tracking-tight">{(kbData?.documents.filter(d => d.source === 'raw').length ?? 0) + (kbData?.documents.filter(d => d.source === 'processed').length ?? 0)}</p>
             <p className="text-xs text-muted-foreground mt-1">{kbData?.documents.length ?? 0} total documents</p>
           </CardContent>
         </Card>
@@ -91,7 +133,7 @@ export default function KnowledgeBase() {
               <FileText className="w-4 h-4 text-primary" />
               <span className="text-xs font-medium">Repository Sources</span>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{kbData ? Object.keys(kbData.sources).length : 0}</p>
+            <p className="text-3xl font-bold tracking-tight">{new Set(kbData?.documents.map(d => d.source)).size}</p>
             <p className="text-xs text-muted-foreground mt-1">Ingested document categories</p>
           </CardContent>
         </Card>
@@ -122,6 +164,7 @@ export default function KnowledgeBase() {
         toggleDocExpand={toggleDocExpand}
         expandedDoc={expandedDoc}
         setExpandedDoc={setExpandedDoc}
+        onViewContent={handleViewContent}
       />
     </div>
   )

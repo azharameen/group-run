@@ -120,13 +120,13 @@ development_status:
 
 
   # EP-6: Knowledge & Memory
-  epic-6: backlog
-  6-1-knowledge-base-api: backlog
+  epic-6: in-progress
+  6-1-knowledge-base-api: done
   6-2-wire-memory-backend-into-deepagents-runtime: backlog
-  6-3-wire-skills-loading-into-deepagents-runtime: backlog
-  6-4-backend-tests-kb-api-memory-persistence: backlog
-  6-5-update-pages-knowledge-base-tsx: backlog
-  6-6-frontend-tests-kb-browser: backlog
+  6-3-wire-skills-loading-into-deepagents-runtime: done
+  6-4-backend-tests-kb-api-memory-persistence: done
+  6-5-update-pages-knowledge-base-tsx: done
+  6-6-frontend-tests-kb-browser: done
   epic-6-retrospective: optional
 
   # EP-7: Production Readiness

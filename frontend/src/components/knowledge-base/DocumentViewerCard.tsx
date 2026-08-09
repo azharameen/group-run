@@ -10,7 +10,7 @@ import {
 	DialogTitle,
 	DialogDescription,
 } from "@/components/ui/dialog";
-import { BookOpen, ChevronDown, ChevronRight, File, Globe } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, File, Globe, Loader2 } from "lucide-react";
 import type { KBDocument, KnowledgeBaseData } from "@/api/client";
 
 interface DocumentViewerCardProps {
@@ -21,6 +21,7 @@ interface DocumentViewerCardProps {
 	toggleDocExpand: (path: string) => void;
 	expandedDoc: KBDocument | null;
 	setExpandedDoc: (doc: KBDocument | null) => void;
+	onViewContent: (doc: KBDocument) => Promise<void>;
 }
 
 export function DocumentViewerCard({
@@ -31,6 +32,7 @@ export function DocumentViewerCard({
 	toggleDocExpand,
 	expandedDoc,
 	setExpandedDoc,
+	onViewContent,
 }: DocumentViewerCardProps) {
 	return (
 		<>
@@ -56,9 +58,12 @@ export function DocumentViewerCard({
 						<div className="divide-y">
 							{kbData.documents.map((doc, i) => (
 								<div key={i}>
-									<button
+									<div
+										role="button"
+										tabIndex={0}
 										onClick={() => toggleDocExpand(doc.path)}
-										className="w-full flex items-center justify-between p-3.5 px-4 text-left hover:bg-muted/20 transition-colors"
+										onKeyDown={(e) => e.key === "Enter" && toggleDocExpand(doc.path)}
+										className="w-full flex items-center justify-between p-3.5 px-4 text-left hover:bg-muted/20 transition-colors cursor-pointer"
 									>
 										<div className="flex items-center gap-2 min-w-0">
 											<File className="w-4 h-4 shrink-0 text-muted-foreground" />
@@ -74,7 +79,7 @@ export function DocumentViewerCard({
 												className="h-7 text-xs"
 												onClick={(e) => {
 													e.stopPropagation();
-													setExpandedDoc(doc);
+													onViewContent(doc);
 												}}
 											>
 												View Content
@@ -85,11 +90,18 @@ export function DocumentViewerCard({
 												<ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
 											)}
 										</div>
-									</button>
+									</div>
 									{expandedDocs.has(doc.path) && (
 										<div className="px-4 pb-3 pt-1 pl-10">
 											<pre className="text-xs text-muted-foreground bg-muted p-3 rounded-md overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">
-												{typeof doc.content === "string" ? doc.content : JSON.stringify(doc.content, null, 2)}
+												{doc.content === undefined ? (
+													<div className="flex items-center gap-2">
+														<Loader2 className="w-3 h-3 animate-spin" />
+														Loading content...
+													</div>
+												) : (
+													typeof doc.content === "string" ? doc.content : JSON.stringify(doc.content, null, 2)
+												)}
 											</pre>
 										</div>
 									)}

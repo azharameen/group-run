@@ -143,3 +143,23 @@ class TeamConfigResponse(BaseModel):
 
     schema_version: str
     teams: dict[str, TeamDefinition]
+
+
+# ── Knowledge Base schemas ─────────────────────────────────────────────────
+
+
+class KnowledgeDocument(BaseModel):
+    """A document in the knowledge base."""
+
+    source: str
+    path: str
+    filename: str
+    content: Any  # Can be dict (sidecar) or str (markdown/text)
+
+
+class KnowledgeBaseResponse(BaseModel):
+    """Response for listing knowledge base documents."""
+
+    documents: list[KnowledgeDocument] = Field(default_factory=list)
+    count: int = 0
+    sources: dict[str, int] = Field(default_factory=dict)

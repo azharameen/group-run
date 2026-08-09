@@ -6,7 +6,7 @@ import json
 import mimetypes
 import os
 import re
-from datetime import datetime
+from datetime import datetime, UTC
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -86,7 +86,7 @@ def save_knowledge_base_upload(
     bucket = os.path.join(KNOWLEDGE_BASE_DIR, source, "uploads")
     os.makedirs(bucket, exist_ok=True)
 
-    safe_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4().hex[:8]}-{_safe_stem(filename)}"
+    safe_name = f"{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}-{uuid4().hex[:8]}-{_safe_stem(filename)}"
     ext = Path(filename).suffix.lower() or mimetypes.guess_extension(mime_type or "") or ""
     binary_name = f"{safe_name}{ext}"
     binary_path = os.path.join(bucket, binary_name)
@@ -100,7 +100,7 @@ def save_knowledge_base_upload(
         "stored_filename": binary_name,
         "mime_type": mime_type or mimetypes.guess_type(filename)[0] or "application/octet-stream",
         "byte_length": len(content),
-        "stored_at": datetime.utcnow().isoformat(),
+        "stored_at": datetime.now(UTC).isoformat(),
         "path": os.path.relpath(binary_path, KNOWLEDGE_BASE_DIR).replace("\\", "/"),
     }
 

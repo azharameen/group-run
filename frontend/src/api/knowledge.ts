@@ -1,10 +1,18 @@
 const API_BASE = '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers = (options?.headers as Record<string, string>) || {};
+
+  // Only add Content-Type: application/json if it's not FormData
+  if (!(options?.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
     ...options,
+    headers,
   });
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${res.status}: ${text}`);
@@ -27,24 +35,31 @@ export interface KnowledgeBaseData {
 
 export interface KnowledgeBaseUploadResult {
   success: boolean;
-  record?: Record<string, any>;
-  documents?: KBDocument[];
-  count?: number;
+  filename?: string;
+  path?: string;
   error?: string;
 }
 
 export async function fetchKnowledgeBase(): Promise<KnowledgeBaseData> {
-  return request<KnowledgeBaseData>('/knowledge-base');
+  return request<KnowledgeBaseData>('/kb/');
+}
+
+export async function fetchKBDocument(path: string): Promise<KBDocument> {
+  return request<KBDocument>(`/kb/${path}`);
 }
 
 export async function ingestKnowledgeBaseDocument(payload: {
-  filename: string;
-  mime_type: string;
-  content_base64: string;
+  file: File;
   source?: string;
 }): Promise<KnowledgeBaseUploadResult> {
-  return request<KnowledgeBaseUploadResult>('/knowledge-base/ingest', {
+  const formData = new FormData();
+  formData.append('file', payload.file);
+  if (payload.source) {
+    formData.append('source', payload.source);
+  }
+
+  return request<KnowledgeBaseUploadResult>('/kb/', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: formData,
   });
 }

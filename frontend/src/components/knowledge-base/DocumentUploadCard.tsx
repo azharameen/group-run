@@ -26,18 +26,8 @@ export function DocumentUploadCard({
 		if (!file) return;
 		setUploading(true);
 		try {
-			const buffer = await file.arrayBuffer();
-			const bytes = new Uint8Array(buffer);
-			let binary = "";
-			const chunkSize = 0x8000;
-			for (let i = 0; i < bytes.length; i += chunkSize) {
-				binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-			}
-			const content_base64 = btoa(binary);
 			const res = await ingestKnowledgeBaseDocument({
-				filename: file.name,
-				mime_type: file.type || "application/octet-stream",
-				content_base64,
+				file,
 				source: "raw",
 			});
 			if (res.success) {
@@ -67,11 +57,12 @@ export function DocumentUploadCard({
 				</p>
 				<div className="pt-2 flex items-center justify-center gap-2">
 					<Button variant="outline" size="sm" onClick={handleUploadClick} disabled={uploading}>
-						{uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+						{uploading ? <Loader2 data-testid="loader" className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
 						Upload file
 					</Button>
 					<input
 						ref={fileInputRef}
+						data-testid="file-input"
 						type="file"
 						className="hidden"
 						accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
