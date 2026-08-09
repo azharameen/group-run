@@ -11,6 +11,7 @@ import {
   Lock,
   Menu,
   MessageCircle,
+  Network,
   Paintbrush,
   Settings,
   Video,
@@ -44,12 +45,14 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { AccountSettings, NotificationSettings, BillingSettings, ProviderSettings, PreferenceSettings } from "./SettingsComponents"
+import { MCPManager } from "@/components/MCPManager"
 
 const data = {
   nav: [
     { name: "Account", icon: User, component: <AccountSettings /> },
     { name: "Preference", icon: Settings, component: <PreferenceSettings /> },
     { name: "Provider", icon: Server, component: <ProviderSettings /> },
+    { name: "MCP Servers", icon: Network, component: <MCPManager /> },
     { name: "Notifications", icon: Bell, component: <NotificationSettings /> },
     { name: "Billing", icon: CreditCard, component: <BillingSettings /> },
   ],

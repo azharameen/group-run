@@ -474,3 +474,8 @@ export function NotificationSettings() {
     </div>
   )
 }
+
+// -------------------------------------------------------------
+// Re-exports
+// -------------------------------------------------------------
+export { MCPManager } from '@/components/MCPManager'
