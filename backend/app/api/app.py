@@ -29,6 +29,32 @@ async def lifespan(_app: FastAPI):
 
     yield
 
+    # Shutdown: close database connections to release file handles
+    print("[Shutdown] Closing database connections...")
+    try:
+        # Close async checkpointer connection
+        if hasattr(async_checkpointer, "conn") and async_checkpointer.conn is not None:
+            await async_checkpointer.conn.close()
+            print("[Shutdown] Async checkpointer closed")
+    except Exception as exc:
+        print(f"[Shutdown] Async checkpointer close error: {exc}")
+
+    try:
+        # Close sync checkpointer connection
+        if hasattr(checkpointer, "conn") and checkpointer.conn is not None:
+            checkpointer.conn.close()
+            print("[Shutdown] Sync checkpointer closed")
+    except Exception as exc:
+        print(f"[Shutdown] Sync checkpointer close error: {exc}")
+
+    # Reset singleton references so re-initialization creates fresh connections
+    # (important for hot-reload and test environments)
+    from ..services import thread_manager as _tm
+    _tm._SQLITE_SAVER = None
+    _tm._ASYNC_SQLITE_SAVER = None
+    _tm._METADATA_CONN = None
+    _tm._THREAD_DB_PATH = None
+
 
 def create_app() -> FastAPI:
     app = FastAPI(

@@ -179,11 +179,11 @@ action_items:
   - epic: 1
     action: "Review asyncio.run() in MCP tools"
     owner: "Amelia"
-    status: in-progress
+    status: done
   - epic: 2
     action: "Review deferred-work.md at retro start"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 2
     action: "Limit retro action items to 3 maximum"
     owner: "Ameen"
@@ -216,3 +216,7 @@ action_items:
     action: "Codify Windows file lock workaround in dev-story skill"
     owner: "Amelia"
     status: open
+  - epic: 4
+    action: "Fix BLOCK-EP5 + CRITICAL deferred debt items before Epic 5"
+    owner: "Amelia/Charlie"
+    status: done

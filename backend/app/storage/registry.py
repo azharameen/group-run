@@ -11,7 +11,11 @@ def load_idea_registry() -> dict:
     path = os.path.join(WORKSPACE_DIR, "ideas.yaml")
     if not os.path.exists(path):
         return {"ideas": [], "next_id": 1}
-    return read_yaml(path)
+    result = read_yaml(path)
+    # yaml.safe_load("") returns None for empty files
+    if not isinstance(result, dict):
+        return {"ideas": [], "next_id": 1}
+    return result
 
 
 def save_idea_registry(registry: dict):

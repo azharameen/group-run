@@ -29,7 +29,15 @@ DEFAULT_MCP_TIMEOUT = 10
 # ── Module-level config validation (AD-11 fail-fast) ────────────────────
 
 def _load_and_validate_teams() -> dict:
-    """Load and validate teams.yaml at import time."""
+    """Load and validate teams.yaml at import time.
+
+    Validates:
+    - File exists and is valid YAML
+    - Schema version matches
+    - Teams collection is non-empty
+    - No duplicate routing_keys across teams
+    - subgraph.nodes reference agents defined in the same team
+    """
     path = Path(TEAMS_CONFIG_PATH)
     if not path.exists():
         raise ValueError(f"Teams config not found: {TEAMS_CONFIG_PATH}")
@@ -45,7 +53,40 @@ def _load_and_validate_teams() -> dict:
             f"Teams schema version mismatch: expected {TEAMS_SCHEMA_VERSION}, "
             f"got {version!r} in {TEAMS_CONFIG_PATH}"
         )
-    logger.info("Teams config loaded: teams=%s", list(data.get("teams", {}).keys()))
+
+    teams = data.get("teams", {})
+    if not teams:
+        raise ValueError(f"Teams config must define at least one team: {TEAMS_CONFIG_PATH}")
+
+    # Validate no duplicate routing_keys across teams
+    seen_keys: dict[str, str] = {}
+    for team_name, team_def in teams.items():
+        if not isinstance(team_def, dict):
+            continue
+        for key in team_def.get("routing_keys", []):
+            if key in seen_keys:
+                raise ValueError(
+                    f"Duplicate routing_key '{key}' in teams '{seen_keys[key]}' and "
+                    f"'{team_name}' — routing_keys must be globally unique"
+                )
+            seen_keys[key] = team_name
+
+    # Validate subgraph.nodes referential integrity
+    for team_name, team_def in teams.items():
+        if not isinstance(team_def, dict):
+            continue
+        agent_names = {a["name"] for a in team_def.get("agents", []) if isinstance(a, dict)}
+        subgraph = team_def.get("subgraph", {})
+        if not isinstance(subgraph, dict):
+            continue
+        for node in subgraph.get("nodes", []):
+            if node not in agent_names:
+                raise ValueError(
+                    f"Team '{team_name}': subgraph.node '{node}' not found in "
+                    f"agents list — available agents: {sorted(agent_names)}"
+                )
+
+    logger.info("Teams config loaded: teams=%s", list(teams.keys()))
     return data
 
 
@@ -89,6 +130,9 @@ def _load_mcp_tools() -> list[Any]:
             logger.warning("MCP schema version mismatch: expected %s, got %s", MCP_SCHEMA_VERSION, version)
 
         servers = mcp_data.get("servers", [])
+        if not isinstance(servers, list):
+            logger.error("MCP config: 'servers' must be an array, got %s", type(servers).__name__)
+            return []
         if servers:
             # Convert array format [{name: "...", ...}] to dict {"name": {...}}
             connections = {s["name"]: {k: v for k, v in s.items() if k != "name"} for s in servers if s.get("name")}
@@ -117,7 +161,14 @@ def _load_mcp_tools() -> list[Any]:
 
 
 def _create_mcp_tools(connections: dict[str, dict]) -> list[Any]:
-    """Create MCP tool instances from connection configs."""
+    """Create MCP tool instances from connection configs.
+
+    NOTE: MCP tool loading is inherently async (requires network I/O).
+    When called from a sync context, ``asyncio.run()`` is used.
+    When called from an existing event loop (ASGI handler), loading is
+    skipped with a warning — the agent runs without MCP tools.
+    Full async MCP loading is tracked for future implementation.
+    """
     try:
         from langchain_mcp_adapters.client import MultiServerMCPClient
 
@@ -130,10 +181,19 @@ def _create_mcp_tools(connections: dict[str, dict]) -> list[Any]:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = None
-        if loop is None:
-            tools = asyncio.run(client.get_tools())
-        else:
-            tools = loop.run_until_complete(client.get_tools())
+
+        if loop is not None:
+            # Already inside an event loop — asyncio.run() and
+            # loop.run_until_complete() both crash here.
+            # Fall back gracefully: agent runs without MCP tools.
+            logger.warning(
+                "MCP tools skipped (called from active event loop — "
+                "servers=%s). Async MCP loading not yet implemented.",
+                list(connections.keys()),
+            )
+            return []
+
+        tools = asyncio.run(client.get_tools())
         logger.info("MCP tools loaded: count=%d, servers=%s", len(tools), list(connections.keys()))
         return tools
     except ImportError as exc:

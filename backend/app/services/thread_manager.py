@@ -31,14 +31,32 @@ def _get_db_path() -> Path:
     return _THREAD_DB_PATH
 
 
+def _is_connection_alive(conn: Optional[sqlite3.Connection]) -> bool:
+    """Check whether a sync sqlite3 connection is still usable."""
+    if conn is None:
+        return False
+    try:
+        conn.execute("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+
 def get_checkpointer() -> SqliteSaver:
     """Return a singleton SqliteSaver backed by threads.sqlite."""
-    global _SQLITE_SAVER
+    global _SQLITE_SAVER, _METADATA_CONN
+    # Reconnect if the existing connection was closed (e.g. by lifespan shutdown)
+    if _SQLITE_SAVER is not None and not _is_connection_alive(_SQLITE_SAVER.conn):
+        try:
+            _SQLITE_SAVER.conn.close()
+        except Exception:
+            pass
+        _SQLITE_SAVER = None
+        _METADATA_CONN = None
     if _SQLITE_SAVER is None:
         db_path = _get_db_path()
         conn = sqlite3.connect(str(db_path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        global _METADATA_CONN
         _METADATA_CONN = conn
         _SQLITE_SAVER = SqliteSaver(conn)
         _init_metadata_table(conn)

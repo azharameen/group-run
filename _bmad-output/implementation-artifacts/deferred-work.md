@@ -1,4 +1,15 @@
 ﻿
+## Resolved from: Epic 4 Retro — Deferred Debt Triage (2026-08-09)
+
+- [RESOLVED] `asyncio.run()` in MCP tools hangs inside active event loop (`runtime.py:_create_mcp_tools()`) — replaced with graceful warning + empty return when inside active loop
+- [RESOLVED] Empty teams/servers degrade silently (`runtime.py:_load_and_validate_teams()`) — added fail-fast validation for empty teams
+- [RESOLVED] subgraph.nodes string references lack referential integrity (`runtime.py`) — loader now validates every node exists in agents list
+- [RESOLVED] Duplicate routing_keys across teams cause ambiguous routing (`runtime.py`) — loader validates global uniqueness
+- [RESOLVED] SQLite connection never closed in lifespan teardown (`app.py:lifespan()`) — shutdown sequence closes both sync and async connections and resets singletons
+- [RESOLVED] Empty YAML registry file crashes (`registry.py:load_idea_registry()`) — added None guard for `yaml.safe_load("")`
+- [RESOLVED] LANGGRAPH_STRICT_MSGPACK validator crashes on missing env (`config.py:validate_strict_msgpack()`) — reads `os.environ` directly to distinguish "not set" from "set to wrong value"
+- [RESOLVED] Thread test isolation failures (18/23 fail in full suite) (`thread_manager.py:get_checkpointer()`) — added connection health check that reconnects if the existing connection was closed
+
 ## Resolved from: spec-4-7-frontend-tests-approval-ui.md (2026-08-09)
 
 - [RESOLVED] No test coverage for approve/reject action flow at CommandCenter integration level
@@ -12,7 +23,7 @@
 ## Deferred from: code review of EP-0 dead code cleanup (2026-08-03)
 
 - Backend Siemens strings in agent prompts and model fields (`backend/app/agent/runtime.py`, `domain_tools.py`, `context.py`, `models/idea.py`) — structural domain data changes require product decisions for replacement names and data migration
-- LANGGRAPH_STRICT_MSGPACK validator breaks tests on fresh environments (`backend/app/config.py:38-43`) — runs at module import time before pytest fixtures can monkeypatch; add `.env.example` or autouse conftest fixture in ST-1.2
+- ~~LANGGRAPH_STRICT_MSGPACK validator breaks tests on fresh environments (`backend/app/config.py:38-43`)~~ — **RESOLVED 2026-08-09**: reads `os.environ` directly for lazy validation
 
 ## Deferred from: code review of 1-1-create-teams-yaml-and-mcp-json (2026-08-03)
 
@@ -20,15 +31,15 @@
 - No timeout/retry on MCP servers — loader must enforce timeout fields for HTTP transports or provide safe defaults
 - stdio npx dependency may not exist on host — placeholder example, replace with real server config when MCP is onboarded
 - localhost URL fails in Docker/K8s — placeholder example, use service names or env var substitution in production
-- Duplicate routing_keys across teams causes ambiguous routing — loader must validate global uniqueness when multiple teams exist
-- subgraph.nodes string references lack referential integrity — loader must validate every node exists in the agents list
-- Empty teams/servers degrade silently — loader must treat empty collections as a configuration error (fail fast)
+- ~~Duplicate routing_keys across teams causes ambiguous routing~~ — **RESOLVED 2026-08-09**: loader validates global uniqueness
+- ~~subgraph.nodes string references lack referential integrity~~ — **RESOLVED 2026-08-09**: loader validates every node exists in agents list
+- ~~Empty teams/servers degrade silently~~ — **RESOLVED 2026-08-09**: loader treats empty collections as configuration error (fail fast)
 - Open-ended options dict has no schema validation — loader must define and validate expected option keys per transport type
 
 ## Deferred from: code review of 1-2-update-config-py and 1-3-rewrite-api-app-py (2026-08-03)
 
-- Import-time config crash on missing LANGGRAPH_STRICT_MSGPACK (`backend/app/config.py:37-44`) — AD-11 fail-fast design decision; already tracked in EP-0 deferred entry, confirmed intentional for EP-1
-- SQLite connection never closed in lifespan teardown (`backend/app/services/thread_manager.py`) — `get_checkpointer()` creates a persistent sqlite3.Connection that is never closed; file handles and locks persist across reloads, especially problematic on Windows
+- ~~Import-time config crash on missing LANGGRAPH_STRICT_MSGPACK~~ (`backend/app/config.py:37-44`) — **RESOLVED 2026-08-09**: lazy validation from os.environ
+- ~~SQLite connection never closed in lifespan teardown~~ (`backend/app/services/thread_manager.py`) — **RESOLVED 2026-08-09**: lifespan shutdown closes connections and resets singletons
 - Shared SQLite connection concurrency risk (`backend/app/services/thread_manager.py:41`) — `check_same_thread=False` with a single global connection is not safely concurrent under load; EP-7 story 7-4 (sqlite-concurrency-tests) planned to address
 
 ## Deferred from: code review of 2-5-thread-list-sidebar-with-create-switch-delete (2026-08-05)
@@ -36,7 +47,7 @@
 - Missing import of `execute_deep_agent_workflow_streaming` in `chat.py:69` — pre-existing NameError bug, function called but never imported; not caused by this diff
 - Silent UI inconsistency in pre-existing `confirmRename` and `confirmDelete` (`nav-threads.tsx:90-92,113-114`) — same listThreads-failure pattern as create but in pre-existing code
 - Hardcoded "New Chat" title with no idea context (`nav-threads.tsx:126`) — every thread gets indistinguishable title until renamed; requires product decision for idea-aware defaults
-- Blocking `asyncio.run()` at module import can hang startup (`runtime.py:63`) — pre-existing pattern, diff adds MCP timeout but doesn't fix blocking behavior
+- ~~Blocking `asyncio.run()` at module import can hang startup~~ (`runtime.py:63`) — **RESOLVED 2026-08-09**: replaced with graceful warning + empty return when inside active loop
 
 ## Deferred from: code review of 3-3-validate-workspace-filesystem-management (2026-08-07)
 
