@@ -327,6 +327,7 @@ def get_deep_agent_runtime(team_name: str = "general"):
         permissions=build_agent_permissions(),
         subagents=build_agent_subagents(team_name),
         skills=["/skills/"],
+        memories=["/memories/"],
         context_schema=DeepAgentContext,
         interrupt_on=interrupt_on,
         checkpointer=get_checkpointer(),

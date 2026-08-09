@@ -54,6 +54,7 @@ def build_agent_subagents(team_name: str = "general") -> list[dict[str, Any]]:
                 "system_prompt": system_prompt,
                 "description": description,
                 "skills": agent_entry.get("skills", ["/skills/"]),
+                "memories": agent_entry.get("memories") or ["/memories/"],
             }
         )
 
