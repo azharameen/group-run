@@ -115,3 +115,31 @@ class MCPReloadResponse(BaseModel):
     servers: list[str] = Field(default_factory=list)
     count: int = 0
     message: str = "MCP config validated successfully"
+
+
+# ── Team Config schemas ────────────────────────────────────────────────────
+
+
+class AgentDefinition(BaseModel):
+    """Agent definition within a team."""
+
+    name: str
+    role: str
+    description: Optional[str] = None
+
+
+class TeamDefinition(BaseModel):
+    """Team definition from teams.yaml."""
+
+    name: str
+    description: str
+    agents: list[AgentDefinition]
+    routing_keys: list[str]
+    subgraph: Optional[dict[str, Any]] = None
+
+
+class TeamConfigResponse(BaseModel):
+    """Full team configuration response."""
+
+    schema_version: str
+    teams: dict[str, TeamDefinition]

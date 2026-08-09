@@ -16,6 +16,7 @@ import {
   Settings,
   Video,
   User,
+  Users,
   CreditCard,
   Server,
 } from "lucide-react"
@@ -44,7 +45,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { AccountSettings, NotificationSettings, BillingSettings, ProviderSettings, PreferenceSettings } from "./SettingsComponents"
+import { AccountSettings, NotificationSettings, BillingSettings, ProviderSettings, PreferenceSettings, TeamConfig } from "./SettingsComponents"
 import { MCPManager } from "@/components/MCPManager"
 
 const data = {
@@ -53,6 +54,7 @@ const data = {
     { name: "Preference", icon: Settings, component: <PreferenceSettings /> },
     { name: "Provider", icon: Server, component: <ProviderSettings /> },
     { name: "MCP Servers", icon: Network, component: <MCPManager /> },
+    { name: "Team Config", icon: Users, component: <TeamConfig /> },
     { name: "Notifications", icon: Bell, component: <NotificationSettings /> },
     { name: "Billing", icon: CreditCard, component: <BillingSettings /> },
   ],

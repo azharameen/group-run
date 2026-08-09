@@ -479,3 +479,4 @@ export function NotificationSettings() {
 // Re-exports
 // -------------------------------------------------------------
 export { MCPManager } from '@/components/MCPManager'
+export { TeamConfig } from '@/components/TeamConfig'

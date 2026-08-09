@@ -7,11 +7,23 @@ import logging
 from fastapi import APIRouter, HTTPException, status
 
 from ...agent import runtime
-from ..schemas import ConfigReloadResponse, MCPReloadResponse
+from ..schemas import ConfigReloadResponse, MCPReloadResponse, TeamConfigResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/config", tags=["config"])
+
+
+@router.get("", response_model=TeamConfigResponse)
+def get_config() -> TeamConfigResponse:
+    """Return the current validated in-memory team configuration.
+
+    Exposes the full ``teams.yaml`` structure currently used by the runtime.
+    """
+    return TeamConfigResponse(
+        schema_version=runtime._teams_config.get("schema_version", "unknown"),
+        teams=runtime._teams_config.get("teams", {}),
+    )
 
 
 @router.post("/reload", response_model=ConfigReloadResponse)
