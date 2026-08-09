@@ -2,10 +2,10 @@
 title: 'Story 5.1: Create MCP Server Management API'
 type: 'feature'
 created: '2026-08-09'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_revision: 'e36aeb7'
-final_revision: ''
+final_revision: '284405f'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/project-context.md'
