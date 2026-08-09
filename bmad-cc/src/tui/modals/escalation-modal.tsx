@@ -43,19 +43,19 @@ export const EscalationModal: React.FC<EscalationModalProps> = ({ context, onDec
         return;
       }
       if (key.backspace || key.delete) {
-        setCustomPrompt(prev => prev.slice(0, -1));
+        setCustomPrompt((prev: string) => prev.slice(0, -1));
         return;
       }
       if (input && !key.ctrl && !key.meta) {
-        setCustomPrompt(prev => prev + input);
+        setCustomPrompt((prev: string) => prev + input);
       }
       return;
     }
 
     if (key.upArrow) {
-      setSelectedIndex(prev => (prev > 0 ? prev - 1 : OPTIONS.length - 1));
+      setSelectedIndex((prev: number) => (prev > 0 ? prev - 1 : OPTIONS.length - 1));
     } else if (key.downArrow) {
-      setSelectedIndex(prev => (prev < OPTIONS.length - 1 ? prev + 1 : 0));
+      setSelectedIndex((prev: number) => (prev < OPTIONS.length - 1 ? prev + 1 : 0));
     } else if (key.return) {
       const selected = OPTIONS[selectedIndex];
       if (selected.action === 'retry-with-prompt') {

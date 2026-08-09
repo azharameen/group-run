@@ -90,7 +90,7 @@ export const GitDiffModal: React.FC<GitDiffModalProps> = ({
             <Text color={THEME.muted}>No modified or staged files currently in repository.</Text>
           </Box>
         ) : (
-          visible.map((line, idx) => {
+          visible.map((line: string, idx: number) => {
             const isCurrentLine = (startIdx + idx) === clamped;
             return (
               <Text

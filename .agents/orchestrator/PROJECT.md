@@ -16,8 +16,8 @@ Workspace: `d:/Projects/POC/ideator/bmad-cc`
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | 1 | Exploration & Audit | Deep codebase inspection & file mutator mapping | None | DONE |
-| 2 | Zero Direct File Mutators | Refactor `sprint-status-updater.ts` & `deferred-work-resolver.ts` to remove programmatic writes | M1 | IN_PROGRESS |
-| 3 | Skill Manifests & `bmad-help` | Dynamic skill discovery via `.agent/skills/`, `bmad-help.csv` & `/bmad-help` driver calls | M1 | PLANNED |
+| 2 | Zero Direct File Mutators | Refactor `sprint-status-updater.ts` & `deferred-work-resolver.ts` to remove programmatic writes | M1 | DONE |
+| 3 | Skill Manifests & `bmad-help` | Dynamic skill discovery via `.agent/skills/`, `bmad-help.csv` & `/bmad-help` driver calls | M1 | IN_PROGRESS |
 | 4 | TUI Loop & Interactive Modals | Stream throttling, ANSI safety, `QueryModal` & `EscalationModal` interactive pause/resume | M1 | PLANNED |
 | 5 | E2E Verification & Forensic Audit | `vitest` suite (100%), `tsup` ESM build, and Forensic Auditor integrity check | M2, M3, M4 | PLANNED |
 

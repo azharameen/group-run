@@ -1,15 +1,21 @@
 /**
  * skill-router.ts
  *
- * Provides the native BMad skill catalog for the Supervisor LLM.
- * NO hardcoded routing logic — the Supervisor agent decides which
- * skill(s) to invoke based on story state, context, and BMad skill specs.
- *
- * The TypeScript layer only provides:
- *   1. The skill catalog (metadata for the LLM to reason over).
- *   2. A helper to build a structured routing prompt for the Supervisor LLM.
- *   3. A parser to extract the LLM's routing decision back into typed records.
+ * Provides the dynamic BMad skill catalog and routing engine for the Supervisor.
+ * Dynamically scans installed BMad skills under `.agent/skills/<skill-name>/SKILL.md` and
+ * catalog entries in `_bmad/_config/bmad-help.csv`.
+ * Integrates the `/bmad-help` discovery harness when story state is ambiguous,
+ * missing prerequisites, or skill sequence is uncertain.
  */
+
+import type { AgentDriver } from '../agent/driver-interface.js';
+import { scanSkillManifests, type ScannedSkillManifest } from './skill-manifest-scanner.js';
+import { loadBmadHelpCatalog, type BmadHelpCatalogRow } from './catalog-parser.js';
+import {
+  runBmadHelpDiscovery,
+  mapSkillNameToPhase,
+  resolveSkillsFromCatalogAndManifests
+} from './bmad-help-discovery.js';
 
 export interface SkillInvocation {
   skillName: string;
@@ -21,14 +27,20 @@ export interface SkillInvocation {
 
 export interface SkillCatalogEntry {
   name: string;
-  phase: 'create' | 'develop' | 'review' | 'test' | 'document' | 'retrospective';
+  phase: 'create' | 'develop' | 'review' | 'test' | 'document' | 'retrospective' | string;
   description: string;
   defaultPriority: number;
   /** When this skill is applicable (for Supervisor context). */
   applicableWhen: string;
+  precededBy?: string;
+  followedBy?: string;
+  required?: boolean;
+  module?: string;
+  menuCode?: string;
+  action?: string;
 }
 
-/** Native BMad skill catalog — declarative metadata only, no routing rules. */
+/** Native BMad skill catalog — declarative metadata fallback. */
 export const NATIVE_SKILL_CATALOG: SkillCatalogEntry[] = [
   {
     name: 'bmad-create-story',
@@ -74,12 +86,91 @@ export const NATIVE_SKILL_CATALOG: SkillCatalogEntry[] = [
   }
 ];
 
+export interface RouteSkillsOptions {
+  projectRoot?: string;
+  customCatalog?: SkillCatalogEntry[];
+  driver?: AgentDriver;
+  enableBmadHelpDiscovery?: boolean;
+  catalogRows?: BmadHelpCatalogRow[];
+  manifests?: ScannedSkillManifest[];
+}
+
+/**
+ * Maps bmad-help.csv catalog rows and SKILL.md manifests into SkillCatalogEntry records.
+ */
+export function buildDynamicSkillCatalog(
+  manifests: ScannedSkillManifest[],
+  catalogRows: BmadHelpCatalogRow[]
+): SkillCatalogEntry[] {
+  const catalogMap = new Map<string, SkillCatalogEntry>();
+
+  // Add default catalog entries
+  for (const entry of NATIVE_SKILL_CATALOG) {
+    catalogMap.set(entry.name, { ...entry });
+  }
+
+  // Populate from CSV catalog
+  for (const row of catalogRows) {
+    if (!row.skill || row.skill === '_meta') continue;
+
+    const phase = mapSkillNameToPhase(row.skill);
+    const existing = catalogMap.get(row.skill);
+
+    catalogMap.set(row.skill, {
+      name: row.skill,
+      phase,
+      description: row.description || row.displayName || existing?.description || '',
+      defaultPriority: existing?.defaultPriority ?? 0,
+      applicableWhen: row.precededBy
+        ? `Preceded by: ${row.precededBy}. Phase: ${row.phase}`
+        : existing?.applicableWhen || `Phase: ${row.phase}`,
+      precededBy: row.precededBy,
+      followedBy: row.followedBy,
+      required: row.required,
+      module: row.module,
+      menuCode: row.menuCode,
+      action: row.action
+    });
+  }
+
+  // Enrich with scanned SKILL.md manifests
+  for (const manifest of manifests) {
+    const existing = catalogMap.get(manifest.name);
+    if (existing) {
+      existing.description = manifest.description || existing.description;
+      if (manifest.prerequisites.length > 0) {
+        existing.precededBy = manifest.prerequisites.join(', ');
+      }
+    } else {
+      catalogMap.set(manifest.name, {
+        name: manifest.name,
+        phase: manifest.phase ? mapSkillNameToPhase(manifest.name) : mapSkillNameToPhase(manifest.name),
+        description: manifest.description || 'Scanned BMad skill',
+        defaultPriority: 0,
+        applicableWhen: manifest.prerequisites.length
+          ? `Prerequisites: ${manifest.prerequisites.join(', ')}`
+          : 'Installed BMad skill',
+        precededBy: manifest.prerequisites.join(', '),
+        required: true
+      });
+    }
+  }
+
+  return Array.from(catalogMap.values());
+}
+
+/**
+ * Asynchronously loads dynamic skill catalog from project root directory.
+ */
+export async function loadDynamicSkillCatalog(projectRoot: string): Promise<SkillCatalogEntry[]> {
+  const manifests = await scanSkillManifests(projectRoot);
+  const catalogRows = await loadBmadHelpCatalog(projectRoot);
+  return buildDynamicSkillCatalog(manifests, catalogRows);
+}
+
 /**
  * Builds a structured prompt for the Supervisor LLM to decide which
  * BMad skill(s) to invoke for a given story context.
- *
- * The LLM reads this prompt and responds with a JSON array of SkillInvocation
- * objects (see `parseSkillRoutingResponse` below).
  */
 export function buildSkillRoutingPrompt(
   storyKey: string,
@@ -139,11 +230,9 @@ If no skills should be invoked (e.g., story is already done), respond with an em
 
 /**
  * Parses the Supervisor LLM's routing response into typed SkillInvocation records.
- * Falls back to an empty array if the LLM response is malformed.
  */
 export function parseSkillRoutingResponse(llmOutput: string): SkillInvocation[] {
   try {
-    // Extract JSON from the response (handle cases where LLM wraps in markdown)
     const jsonMatch = llmOutput.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return [];
 
@@ -169,9 +258,8 @@ export function parseSkillRoutingResponse(llmOutput: string): SkillInvocation[] 
 }
 
 /**
- * Synchronous fallback routing when the Supervisor LLM is unavailable.
- * Uses simple lifecycle state to determine a reasonable default skill.
- * This is the ONLY permitted fallback — not the primary routing path.
+ * Fallback routing when LLM is unavailable or for deterministic lifecycle routing.
+ * Uses dynamic catalog entries if provided.
  */
 export function fallbackSkillRouting(
   storyKey: string,
@@ -290,7 +378,8 @@ export function fallbackSkillRouting(
 }
 
 /**
- * Main skill routing function. Delegates to fallbackSkillRouting.
+ * Main skill routing function. Dynamically utilizes scanned manifests,
+ * bmad-help.csv catalog entries, and bmad-help discovery harness.
  */
 export function routeSkillsForStory(
   storyKey: string,
@@ -298,8 +387,55 @@ export function routeSkillsForStory(
   storyContent: string,
   epicStatus: string,
   allStoriesInEpicDone: boolean,
-  customCatalog?: SkillCatalogEntry[]
+  optionsOrCatalog?: RouteSkillsOptions | SkillCatalogEntry[]
 ): SkillInvocation[] {
+  let customCatalog: SkillCatalogEntry[] | undefined;
+  let options: RouteSkillsOptions | undefined;
+
+  if (Array.isArray(optionsOrCatalog)) {
+    customCatalog = optionsOrCatalog;
+  } else if (optionsOrCatalog && typeof optionsOrCatalog === 'object') {
+    options = optionsOrCatalog;
+    customCatalog = options.customCatalog;
+  }
+
+  const statusNormalized = (storyStatus || 'backlog').trim().toLowerCase();
+
+  // Check if state is ambiguous or sequence uncertain
+  const isAmbiguousStatus = !['backlog', 'ready-for-dev', 'in-progress', 'review', 'done'].includes(statusNormalized);
+  const isMissingSpecInDev = (statusNormalized === 'ready-for-dev' || statusNormalized === 'in-progress') && !storyContent.trim();
+
+  // Trigger bmad-help discovery harness if ambiguous state or explicit discovery options provided
+  if ((isAmbiguousStatus || isMissingSpecInDev || options?.enableBmadHelpDiscovery) && (options?.catalogRows || options?.manifests)) {
+    return resolveSkillsFromCatalogAndManifests(
+      {
+        storyKey,
+        storyStatus,
+        storyContent,
+        epicStatus,
+        projectRoot: options.projectRoot || '',
+        driver: options.driver,
+        catalogRows: options.catalogRows,
+        manifests: options.manifests
+      },
+      options.catalogRows || [],
+      options.manifests || []
+    );
+  }
+
+  // If custom catalog provided or built dynamically
+  if (options?.manifests || options?.catalogRows) {
+    const dynamicCatalog = buildDynamicSkillCatalog(options.manifests || [], options.catalogRows || []);
+    return fallbackSkillRouting(
+      storyKey,
+      storyStatus,
+      storyContent,
+      epicStatus,
+      allStoriesInEpicDone,
+      dynamicCatalog
+    );
+  }
+
   return fallbackSkillRouting(
     storyKey,
     storyStatus,
@@ -307,5 +443,55 @@ export function routeSkillsForStory(
     epicStatus,
     allStoriesInEpicDone,
     customCatalog
+  );
+}
+
+/**
+ * Asynchronous skill router that loads dynamic manifests and CSV catalog from project root,
+ * executing `/bmad-help` discovery when workflow state is ambiguous.
+ */
+export async function routeSkillsForStoryAsync(
+  storyKey: string,
+  storyStatus: string,
+  storyContent: string,
+  epicStatus: string,
+  allStoriesInEpicDone: boolean,
+  options: RouteSkillsOptions
+): Promise<SkillInvocation[]> {
+  if (!options.projectRoot) {
+    return routeSkillsForStory(storyKey, storyStatus, storyContent, epicStatus, allStoriesInEpicDone, options);
+  }
+
+  const manifests = options.manifests || (await scanSkillManifests(options.projectRoot));
+  const catalogRows = options.catalogRows || (await loadBmadHelpCatalog(options.projectRoot));
+  const statusNormalized = (storyStatus || 'backlog').trim().toLowerCase();
+
+  const isAmbiguous = !['backlog', 'ready-for-dev', 'in-progress', 'review', 'done'].includes(statusNormalized);
+  const isMissingSpec = (statusNormalized === 'ready-for-dev' || statusNormalized === 'in-progress') && !storyContent.trim();
+
+  if (isAmbiguous || isMissingSpec || options.enableBmadHelpDiscovery) {
+    const discoveryRes = await runBmadHelpDiscovery({
+      storyKey,
+      storyStatus,
+      storyContent,
+      epicStatus,
+      projectRoot: options.projectRoot,
+      driver: options.driver,
+      catalogRows,
+      manifests
+    });
+    if (discoveryRes.recommendedSkills.length > 0) {
+      return discoveryRes.recommendedSkills;
+    }
+  }
+
+  const dynamicCatalog = buildDynamicSkillCatalog(manifests, catalogRows);
+  return fallbackSkillRouting(
+    storyKey,
+    storyStatus,
+    storyContent,
+    epicStatus,
+    allStoriesInEpicDone,
+    dynamicCatalog
   );
 }

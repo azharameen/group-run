@@ -46,11 +46,19 @@ export class PhaseRunner {
     storyKey: string,
     model?: string
   ): Promise<PhaseResult> {
-    // We assume logger exposes these methods, or similar
-    this.logger.log(`Starting ${phaseName} phase for ${storyKey}`);
+    this.logger.log({
+      phase: phaseName,
+      storyKey,
+      event: 'phase-start',
+      data: { prompt }
+    });
     
     const startTime = Date.now();
-    const monitor = new HeartbeatMonitor(this.watchdogTimeoutMs);
+    const monitor = new HeartbeatMonitor({
+      timeoutMs: this.watchdogTimeoutMs,
+      onTimeout: () => {},
+      onActivity: () => {}
+    });
     
     monitor.start();
     
@@ -65,7 +73,12 @@ export class PhaseRunner {
       });
     } catch (err: unknown) {
       monitor.stop();
-      this.logger.log(`Error during ${phaseName} phase for ${storyKey}`);
+      this.logger.log({
+        phase: phaseName,
+        storyKey,
+        event: 'error',
+        data: { error: err instanceof Error ? err.message : String(err) }
+      });
       const errorMsg = err instanceof Error ? err.message : String(err);
       return {
         phase: phaseName,
@@ -79,11 +92,15 @@ export class PhaseRunner {
     }
 
     monitor.stop();
-    // Assuming HeartbeatMonitor has this method
     const timedOut = (monitor as any).hasTimedOut ? (monitor as any).hasTimedOut() : false;
     const success = result.exitCode === 0 && !timedOut;
 
-    this.logger.log(`Completed ${phaseName} phase for ${storyKey}. Success: ${success}`);
+    this.logger.log({
+      phase: phaseName,
+      storyKey,
+      event: 'phase-end',
+      data: { success, durationMs: Date.now() - startTime }
+    });
 
     return {
       phase: phaseName,

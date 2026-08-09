@@ -156,11 +156,11 @@ action_items:
   - epic: 0
     action: "Investigate 6 pre-existing test failures (HITL/KB 404s) - decide skip vs fix"
     owner: "Dana/Amelia"
-    status: open
+    status: done
   - epic: 0
     action: "Verify forbidden import script runs as pre-commit or CI step"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 1
     action: "Track deferred technical debt in central registry"
     owner: "Amelia"
@@ -172,7 +172,7 @@ action_items:
   - epic: 1
     action: "Review ST-1.9 deferred items before Epic 3"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 1
     action: "Add timeout to ainvoke() in supervisor graph"
     owner: "Amelia"
@@ -200,23 +200,23 @@ action_items:
   - epic: 3
     action: "Retro commitments become Epic 4 prep stories with acceptance criteria"
     owner: "Ameen"
-    status: open
+    status: done
   - epic: 3
     action: "Triage deferred-work.md with go/no-go decisions before Epic 4 kickoff"
     owner: "Amelia/Charlie"
-    status: open
+    status: done
   - epic: 4
     action: "Embed retro action verification into sprint-planning workflow"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 4
     action: "Document cumulative deferred risk threshold and cleanup policy"
     owner: "Charlie"
-    status: open
+    status: done
   - epic: 4
     action: "Codify Windows file lock workaround in dev-story skill"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 4
     action: "Fix BLOCK-EP5 + CRITICAL deferred debt items before Epic 5"
     owner: "Amelia/Charlie"

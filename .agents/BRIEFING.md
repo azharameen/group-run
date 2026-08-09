@@ -6,7 +6,7 @@ Refactor bmad-cc so the Supervisor Agent operates strictly as an orchestrator, l
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: d:/Projects/POC/ideator/.agents
-- Orchestrator: 3929e43a-950a-4565-9ce6-cefe2e2627ae
+- Orchestrator: 64664c88-37e5-401e-a5f5-5e795ba9c1f4 (Gen 2 Successor)
 - Victory Auditor: TBD
 
 ## 🔒 Key Constraints

@@ -62,7 +62,7 @@ export const LogInspectorModal: React.FC<LogInspectorModalProps> = ({
 
       {/* Full content viewport */}
       <Box flexDirection="column" flexGrow={1}>
-        {visible.map((line, idx) => {
+        {visible.map((line: string, idx: number) => {
           const lineColor = THEME.logLineColor(line);
           const isCurrentLine = (startIdx + idx) === clamped;
           return (

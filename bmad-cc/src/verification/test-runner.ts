@@ -27,7 +27,7 @@ export async function runTestCommands(
       const passed = exitCode === 0;
       results.push({
         command,
-        exitCode,
+        exitCode: typeof exitCode === 'number' ? exitCode : 1,
         stdout,
         stderr,
         passed,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
-import Spinner from 'ink-spinner';
+import InkSpinner from 'ink-spinner';
+const Spinner = InkSpinner as any;
 import path from 'node:path';
 
 import type { DashboardState } from './render-dashboard.js';
@@ -166,7 +167,7 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
   const stories = state.stories;
 
   // Apply filters for tree display
-  const filteredStories = stories.filter(s => {
+  const filteredStories = stories.filter((s: StoryRow) => {
     if (epicFilter) {
       const epicNum = epicFilter.replace(/\D/g, '');
       if (!s.epic.includes(epicNum)) return false;
@@ -178,12 +179,12 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
   const flattenedNodes = buildFlattenedNodes(filteredStories, expandedEpics);
   const currentNode = flattenedNodes[treeCursorIndex];
 
-  const completedCount = filteredStories.filter(s => s.status === 'done').length;
+  const completedCount = filteredStories.filter((s: StoryRow) => s.status === 'done').length;
 
   // ── Session log update handler ───────────────────────────────────────────────
   const handleLogUpdate = (sessionId: string, skill: string, message: string, fullData?: string) => {
-    setSessions(prev => {
-      const existingIdx = prev.findIndex(s => s.sessionId === sessionId);
+    setSessions((prev: SessionEntry[]) => {
+      const existingIdx = prev.findIndex((s: SessionEntry) => s.sessionId === sessionId);
       if (existingIdx >= 0) {
         const updated = [...prev];
         updated[existingIdx] = {
@@ -215,14 +216,14 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
     const cmd = text.toLowerCase().trim();
 
     // Add user message to chat
-    setChatMessages(prev => {
+    setChatMessages((prev: ChatMessage[]) => {
       const next = [...prev, { role: 'user' as const, text, timestamp: nowHHMMSS() }];
       setChatCursorIndex(next.length - 1);
       return next;
     });
 
     const addSupervisorMsg = (msg: string, eventType?: string) => {
-      setChatMessages(prev => {
+      setChatMessages((prev: ChatMessage[]) => {
         const next = [...prev, {
           role: 'supervisor' as const,
           text: msg,
@@ -285,10 +286,10 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
     setMiddlePaneView('story-spec');
 
     // Update global state current story key so header & status bar reflect selected story
-    setState(prev => ({ ...prev, currentStoryKey: storyKey }));
+    setState((prev: DashboardState) => ({ ...prev, currentStoryKey: storyKey }));
 
-    const status = stories.find(s => s.key === storyKey)?.status ?? 'backlog';
-    setChatMessages(prev => {
+    const status = stories.find((s: StoryRow) => s.key === storyKey)?.status ?? 'backlog';
+    setChatMessages((prev: ChatMessage[]) => {
       const next = [
         ...prev,
         {
@@ -307,8 +308,8 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
   useInput((input, key) => {
     // ── Git Diff modal controls ──────────────────────────────────────────────
     if (appMode === 'git-diff') {
-      if (key.upArrow) setGitDiffCursor(prev => Math.max(0, prev - 1));
-      if (key.downArrow) setGitDiffCursor(prev => prev + 1);
+      if (key.upArrow) setGitDiffCursor((prev: number) => Math.max(0, prev - 1));
+      if (key.downArrow) setGitDiffCursor((prev: number) => prev + 1);
       if (key.escape || input === 'g') { setAppMode('workstation'); setGitDiffCursor(0); }
       if (key.ctrl && input === 'c') { exit(); }
       return;
@@ -316,8 +317,8 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
 
     // ── Log Inspector modal controls ─────────────────────────────────────────
     if (appMode === 'log-inspector') {
-      if (key.upArrow) setInspectorCursor(prev => Math.max(0, prev - 1));
-      if (key.downArrow) setInspectorCursor(prev => prev + 1);
+      if (key.upArrow) setInspectorCursor((prev: number) => Math.max(0, prev - 1));
+      if (key.downArrow) setInspectorCursor((prev: number) => prev + 1);
       if (key.escape) { setAppMode('workstation'); setInspectorCursor(0); }
       if (key.ctrl && input === 'c') { exit(); }
       return;
@@ -358,18 +359,18 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
 
     // ── Tab: cycle pane focus ────────────────────────────────────────────────
     if (key.tab) {
-      setFocusedPane(prev => prev === 'tree' ? 'console' : prev === 'console' ? 'monitor' : 'tree');
+      setFocusedPane((prev: FocusedPane) => prev === 'tree' ? 'console' : prev === 'console' ? 'monitor' : 'tree');
       return;
     }
 
     // ── Pane-specific arrow key navigation ────────────────────────────────────
     if (focusedPane === 'tree') {
-      if (key.upArrow) setTreeCursorIndex(prev => Math.max(0, prev - 1));
-      if (key.downArrow) setTreeCursorIndex(prev => Math.min(flattenedNodes.length - 1, prev + 1));
+      if (key.upArrow) setTreeCursorIndex((prev: number) => Math.max(0, prev - 1));
+      if (key.downArrow) setTreeCursorIndex((prev: number) => Math.min(flattenedNodes.length - 1, prev + 1));
 
       if (key.return && currentNode) {
         if (currentNode.type === 'epic') {
-          setExpandedEpics(prev => ({ ...prev, [currentNode.epicKey]: !prev[currentNode.epicKey] }));
+          setExpandedEpics((prev: Record<string, boolean>) => ({ ...prev, [currentNode.epicKey]: !prev[currentNode.epicKey] }));
         } else if (currentNode.type === 'story') {
           // Build story file path from config
           const storyKey = currentNode.story.key;
@@ -381,13 +382,13 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
         }
       }
       if (input === ' ' && currentNode?.type === 'epic') {
-        setExpandedEpics(prev => ({ ...prev, [currentNode.epicKey]: !prev[currentNode.epicKey] }));
+        setExpandedEpics((prev: Record<string, boolean>) => ({ ...prev, [currentNode.epicKey]: !prev[currentNode.epicKey] }));
       }
     }
 
     if (focusedPane === 'console') {
-      if (key.upArrow) setChatCursorIndex(prev => Math.max(0, prev - 1));
-      if (key.downArrow) setChatCursorIndex(prev => prev + 1);
+      if (key.upArrow) setChatCursorIndex((prev: number) => Math.max(0, prev - 1));
+      if (key.downArrow) setChatCursorIndex((prev: number) => prev + 1);
       if (key.escape && middlePaneView === 'story-spec') {
         setMiddlePaneView('chat');
         setSelectedStoryKey(null);
@@ -395,15 +396,15 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
     }
 
     if (focusedPane === 'monitor') {
-      if (key.upArrow) setMonitorCursorIndex(prev => Math.max(0, prev - 1));
+      if (key.upArrow) setMonitorCursorIndex((prev: number) => Math.max(0, prev - 1));
       if (key.downArrow) {
         const sel = sessions[selectedSessionIndex];
         const maxIdx = (sel?.logs.length ?? 1) - 1;
-        setMonitorCursorIndex(prev => Math.min(maxIdx, prev + 1));
+        setMonitorCursorIndex((prev: number) => Math.min(maxIdx, prev + 1));
       }
       // Session list navigation
-      if (key.leftArrow) setSelectedSessionIndex(prev => Math.max(0, prev - 1));
-      if (key.rightArrow) setSelectedSessionIndex(prev => Math.min(sessions.length - 1, prev + 1));
+      if (key.leftArrow) setSelectedSessionIndex((prev: number) => Math.max(0, prev - 1));
+      if (key.rightArrow) setSelectedSessionIndex((prev: number) => Math.min(sessions.length - 1, prev + 1));
 
       // Open log inspector
       if ((input === 'v' || key.return) && sessions.length > 0) {
@@ -431,7 +432,7 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
         if (onPause) onPause();
       }
       if (input === 'd') {
-        setDriverIndex(prev => (prev + 1) % DRIVERS.length);
+        setDriverIndex((prev: number) => (prev + 1) % DRIVERS.length);
       }
     }
   });
@@ -478,7 +479,7 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
       <Box width="100%" height={totalHeight} flexDirection="column" alignItems="center" justifyContent="center">
         <EscalationModal
           context={escCtx}
-          onDecision={(decision) => {
+          onDecision={(decision: EscalationDecisionResult) => {
             setAppMode('workstation');
             (initialState as any).onEscalationDecision?.(decision);
           }}
@@ -493,7 +494,7 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
       <Box width="100%" height={totalHeight} flexDirection="column" alignItems="center" justifyContent="center">
         <QueryModal
           rawPrompt={query.rawPrompt}
-          onAnswer={(answer) => {
+          onAnswer={(answer: string) => {
             setAppMode('workstation');
             (initialState as any).onQueryAnswer?.(answer);
           }}
@@ -540,7 +541,7 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
           <FilterModal
             currentEpicFilter={epicFilter}
             currentStatusFilter={statusFilter}
-            onApply={(epic, status) => {
+            onApply={(epic: string | undefined, status: string | undefined) => {
               setEpicFilter(epic);
               setStatusFilter(status);
               setAppMode('workstation');
@@ -573,7 +574,7 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
             <StorySpecViewer
               storyKey={selectedStoryKey}
               storyFilePath={selectedStoryFilePath}
-              storyStatus={filteredStories.find(s => s.key === selectedStoryKey)?.status ?? 'backlog'}
+              storyStatus={filteredStories.find((s: StoryRow) => s.key === selectedStoryKey)?.status ?? 'backlog'}
               isFocused={focusedPane === 'console'}
               panelHeight={panelHeight}
               cursorIndex={specViewerCursor}
@@ -605,7 +606,7 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
             isFocused={focusedPane === 'monitor'}
             panelHeight={panelHeight}
             logCursorIndex={monitorCursorIndex}
-            onInspectLog={(fullLog) => {
+            onInspectLog={(fullLog: string) => {
               setInspectorLog(fullLog);
               setInspectorMeta({ skill: state.activeSkill, phase: state.currentPhase });
               setInspectorCursor(0);

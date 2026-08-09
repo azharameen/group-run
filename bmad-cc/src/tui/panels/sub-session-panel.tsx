@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
+import InkSpinner from 'ink-spinner';
+const Spinner = InkSpinner as any;
 import { THEME } from '../theme.js';
 
 export interface SessionEntry {
@@ -33,7 +34,7 @@ export const SubSessionPanel: React.FC<SubSessionPanelProps> = ({
   panelHeight,
   logCursorIndex,
   onInspectLog
-}) => {
+}: SubSessionPanelProps) => {
   // Layout: header(2) + session list (max 4 rows) + divider(1) + stream header(1) + stream logs + footer(1) = reserve ~10
   const sessionListHeight = Math.min(4, sessions.length + 1);
   const streamViewportHeight = Math.max(3, panelHeight - sessionListHeight - 8);
@@ -72,7 +73,7 @@ export const SubSessionPanel: React.FC<SubSessionPanelProps> = ({
         {sessions.length === 0 ? (
           <Text color={THEME.muted} dimColor>No sessions yet.</Text>
         ) : (
-          sessions.slice(0, 4).map((sess, i) => {
+          sessions.slice(0, 4).map((sess: SessionEntry, i: number) => {
             const isSelected = i === selectedSessionIndex;
             const statusIcon = sess.status === 'running'
               ? <Text color={THEME.success}><Spinner type="dots" /></Text>
@@ -139,7 +140,7 @@ export const SubSessionPanel: React.FC<SubSessionPanelProps> = ({
           {isFocused && <Text color={THEME.muted} dimColor>[↑/↓] [v] Inspect</Text>}
         </Box>
         <Box flexDirection="column">
-          {visibleLogs.map((log, idx) => {
+          {visibleLogs.map((log: string, idx: number) => {
             const lineColor = THEME.logLineColor(log);
             const displayLog = log.length > 38 ? log.slice(0, 36) + '..' : log;
             const isCurrentLine = (startIdx + idx) === clamped && isFocused;

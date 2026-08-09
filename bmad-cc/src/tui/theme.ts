@@ -23,6 +23,9 @@ export const THEME = {
   highlight: 'magenta' as const,
   userChat: 'cyan' as const,
   agentChat: 'magenta' as const,
+  text: 'white' as const,
+  errorText: 'red' as const,
+  warningText: 'yellow' as const,
 
   // ── Status badge definitions ───────────────────────────────────
   statusColor: (status: string): 'green' | 'yellow' | 'cyan' | 'gray' | 'blue' => {

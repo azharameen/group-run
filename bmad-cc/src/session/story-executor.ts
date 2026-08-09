@@ -8,7 +8,7 @@ import { createDriver, type DriverName } from '../agent/driver-factory.js';
 import type { StateManager } from '../state/state-manager.js';
 import type { SessionLogger } from '../state/session-logger.js';
 import { parseStorySpec } from '../sprint/story-spec-parser.js';
-import { routeSkillsForStory } from '../supervisor/skill-router.js';
+import { routeSkillsForStoryAsync } from '../supervisor/skill-router.js';
 import { assembleContext } from '../supervisor/context-assembler.js';
 import { generateDirective } from '../supervisor/directive-generator.js';
 import { evaluateResult } from '../supervisor/result-evaluator.js';
@@ -111,13 +111,14 @@ export class StoryExecutor {
     const epicNumber = epicMatch ? epicMatch[1] : '0';
     const epicStatus = sprintStatus.developmentStatus[`epic-${epicNumber}`] || 'in-progress';
 
-    // Route skills based strictly on ACTUAL currentStoryStatus
-    const skillInvocations = routeSkillsForStory(
+    // Route skills based strictly on ACTUAL currentStoryStatus using dynamic catalog & bmad-help discovery
+    const skillInvocations = await routeSkillsForStoryAsync(
       storyKey,
       currentStoryStatus,
       storyContent,
       epicStatus,
-      false
+      false,
+      { projectRoot: this.config.projectRoot, driver: this.driver }
     );
 
     const context = await assembleContext(this.config.projectRoot);

@@ -28,7 +28,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({
     }
 
     if (key.tab) {
-      setActiveField(prev => prev === 'epic' ? 'status' : 'epic');
+      setActiveField((prev: 'epic' | 'status') => prev === 'epic' ? 'status' : 'epic');
       return;
     }
 
@@ -41,9 +41,9 @@ export const FilterModal: React.FC<FilterModalProps> = ({
 
     if (key.backspace || key.delete) {
       if (activeField === 'epic') {
-        setEpicInput(prev => prev.slice(0, -1));
+        setEpicInput((prev: string) => prev.slice(0, -1));
       } else {
-        setStatusInput(prev => prev.slice(0, -1));
+        setStatusInput((prev: string) => prev.slice(0, -1));
       }
       return;
     }
@@ -52,9 +52,9 @@ export const FilterModal: React.FC<FilterModalProps> = ({
 
     if (input) {
       if (activeField === 'epic') {
-        setEpicInput(prev => prev + input);
+        setEpicInput((prev: string) => prev + input);
       } else {
-        setStatusInput(prev => prev + input);
+        setStatusInput((prev: string) => prev + input);
       }
     }
   });

@@ -50,10 +50,10 @@ baseline_revision: bf15b6c
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `frontend/src/components/__tests__/MCPManager.test.tsx` -- Implement tests for listing, adding, and removing MCP servers.
-- [ ] `frontend/src/components/__tests__/TeamConfig.test.tsx` -- Implement tests for listing teams and triggering config reload.
-- [ ] Verify error state handling in both components via mocked API failures.
-- [ ] Ensure all tests pass with `npm run test`.
+- [x] `frontend/src/components/__tests__/MCPManager.test.tsx` -- Implement tests for listing, adding, and removing MCP servers.
+- [x] `frontend/src/components/__tests__/TeamConfig.test.tsx` -- Implement tests for listing teams and triggering config reload.
+- [x] Verify error state handling in both components via mocked API failures.
+- [x] Ensure all tests pass with `npm run test`.
 
 **Acceptance Criteria:**
 - GIVEN the MCPManager component, WHEN it mounts, THEN it correctly displays the list of servers from the mocked API.
@@ -69,3 +69,8 @@ baseline_revision: bf15b6c
 - `npm run test frontend/src/components/__tests__/MCPManager.test.tsx`
 - `npm run test frontend/src/components/__tests__/TeamConfig.test.tsx`
 - `npm run test` (Full suite check)
+
+## Auto Run Result
+Status: done
+Verification: Vitest component tests passed (11/11). MCPManager test was fixed for ambiguous queries. TeamConfig.tsx was implemented to satisfy dependency.
+Human tasks: None.

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
+import InkSpinner from 'ink-spinner';
+const Spinner = InkSpinner as any;
 import { ChatInput } from './chat-input.js';
 
 export interface SupervisorConsolePanelProps {
@@ -25,9 +26,9 @@ export const SupervisorConsolePanel: React.FC<SupervisorConsolePanelProps> = ({
   panelHeight = 18,
   cursorIndex = 0,
   onSubmitDirective
-}) => {
+}: SupervisorConsolePanelProps) => {
   // Flatten all newlines into single lines so multi-line stack traces never overflow box height
-  const allLines = agentOutput.split('\n').map(l => l.trimEnd()).filter(Boolean);
+  const allLines = agentOutput.split('\n').map((l: string) => l.trimEnd()).filter(Boolean);
   if (allLines.length === 0) {
     allLines.push('Supervisor Agent active. Type a directive below or press [r] to run sprint.');
   }
@@ -54,7 +55,7 @@ export const SupervisorConsolePanel: React.FC<SupervisorConsolePanelProps> = ({
   };
 
   return (
-    <Box flexDirection="column" borderWidth={1} borderColor={isFocused ? 'cyan' : 'gray'} padding={1} width="100%" height={panelHeight}>
+    <Box flexDirection="column" borderStyle="single" borderColor={isFocused ? 'cyan' : 'gray'} padding={1} width="100%" height={panelHeight}>
       {/* Console Header */}
       <Box justifyContent="space-between" marginBottom={1}>
         <Text bold color={isFocused ? 'cyan' : 'white'}>
@@ -74,13 +75,13 @@ export const SupervisorConsolePanel: React.FC<SupervisorConsolePanelProps> = ({
       </Box>
 
       {/* Live Supervisor Log Stream */}
-      <Box flexDirection="column" flexGrow={1} borderWidth={1} borderColor="gray" padding={1} marginBottom={1}>
+      <Box flexDirection="column" flexGrow={1} borderStyle="single" borderColor="gray" padding={1} marginBottom={1}>
         <Box justifyContent="space-between">
           <Text bold color="green">Supervisor Log Stream:</Text>
           {isFocused && <Text color="yellow" dimColor>[↑/↓ Scroll Logs]</Text>}
         </Box>
         <Box flexDirection="column" marginTop={1}>
-          {visibleLines.map((line, idx) => (
+          {visibleLines.map((line: string, idx: number) => (
             <Text key={idx} color="white" wrap="truncate">
               <Text color="gray">{`> `}</Text>
               {line.length > 60 ? line.substring(0, 58) + '..' : line}
@@ -92,7 +93,7 @@ export const SupervisorConsolePanel: React.FC<SupervisorConsolePanelProps> = ({
       {/* Interactive Supervisor Chat Input Box */}
       <ChatInput
         isFocused={isFocused}
-        onSubmit={val => {
+        onSubmit={(val: string) => {
           if (onSubmitDirective) {
             onSubmitDirective(val);
           }

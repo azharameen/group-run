@@ -11,7 +11,6 @@ from pydantic import ValidationError
 
 from ...config import MCP_CONFIG_PATH, MCP_SCHEMA_VERSION
 from ..schemas import AddMCPServerRequest, ListMCPServersResponse, MCPServerResponse
-from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 

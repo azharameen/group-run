@@ -237,5 +237,29 @@
 - [PENDING] Duplicate import in mcp.py: rom pydantic import ValidationError appears on lines 10 and 14 — pre-existing dead code from Story 5.1 refactor (source_spec: spec-5-5-backend-tests-mcp-config-reload-team-loading.md)
 
 - source_spec: 'spec-5-5-backend-tests-mcp-config-reload-team-loading.md'
-  summary: 'Duplicate rom pydantic import ValidationError import in mcp.py lines 10 and 14 — pre-existing dead code'
+  summary: 'Duplicate from pydantic import ValidationError import in mcp.py lines 10 and 14 — pre-existing dead code'
   evidence: 'Grep shows two identical imports; second is dead code from ST-5.1 refactor'
+
+## Epic 5 Kickoff Triage (2026-08-09)
+
+The following items are triaged for Epic 5 (MCP & Team Config):
+
+### [CRITICAL] Resolve Now
+- **Circular import risk runtime/team_factory (Story 5.4)**: This is a blocker for supervisor integration in Epic 5. Must be resolved by moving the factory or using lazy imports.
+- **Duplicate from pydantic import ValidationError (Story 5.4)**: Quick cleanup in mcp.py.
+
+### [MEDIUM] Plan for Epic 5
+- **File locking for concurrent MCP config writes (Story 5.1)**: Medium risk of lost updates during concurrent management API calls. Plan a dedicated fix in Epic 5.
+- **O(n) transcript growth via React state (Story 1.9)**: Monitor performance; virtualization needed if transcript exceeds 100 messages.
+
+### [LOW] Defer to Epic 7 (Production Readiness)
+- **Unauthenticated config reload (Story 5.2)**: Acceptable until auth infrastructure is added in Epic 7.
+- **Monkeypatch strategy brittle (Story 5.2)**: Test infrastructure improvement.
+- **Permission errors propagate as 500 (Story 5.2)**: Improve error handling.
+- **_validate_mcp_config() lightweight (Story 5.3)**: Add full schema validation.
+- **MCP_CONFIG_PATH = None (Story 5.3)**: Robust path handling.
+- **Duplicate server names overwrite (Story 5.3)**: Add validation for uniqueness.
+- **Partial SSE frames dropped on disconnect (Story 1.9)**: Add retry/backoff logic.
+- **Concurrent send accumulator shared (Story 1.9)**: Add per-message accumulator.
+- **Global SSE events pollute active chat (Story 1.9)**: Add idea-ID filtering.
+- **Thread-scoped in-flight stream abort (Story 1.9)**: Refactor stream lifecycle.

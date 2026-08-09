@@ -72,7 +72,7 @@ export class AntigravityDriver extends AgentDriver {
       });
 
       const result = await subprocess;
-      exitCode = result.exitCode;
+      exitCode = result.exitCode ?? 0;
     } catch (error: any) {
       if (error.isCanceled || error.name === 'AbortError') {
         exitCode = 143; // SIGTERM typically

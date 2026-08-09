@@ -30,19 +30,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     if (key.backspace || key.delete) {
       if (cursorPos > 0) {
-        setValue(prev => prev.slice(0, cursorPos - 1) + prev.slice(cursorPos));
-        setCursorPos(prev => prev - 1);
+        setValue((prev: string) => prev.slice(0, cursorPos - 1) + prev.slice(cursorPos));
+        setCursorPos((prev: number) => prev - 1);
       }
       return;
     }
 
     // Left/right cursor movement within input
     if (key.leftArrow) {
-      setCursorPos(prev => Math.max(0, prev - 1));
+      setCursorPos((prev: number) => Math.max(0, prev - 1));
       return;
     }
     if (key.rightArrow) {
-      setCursorPos(prev => Math.min(value.length, prev + 1));
+      setCursorPos((prev: number) => Math.min(value.length, prev + 1));
       return;
     }
 
@@ -59,8 +59,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
 
     if (input) {
-      setValue(prev => prev.slice(0, cursorPos) + input + prev.slice(cursorPos));
-      setCursorPos(prev => prev + input.length);
+      setValue((prev: string) => prev.slice(0, cursorPos) + input + prev.slice(cursorPos));
+      setCursorPos((prev: number) => prev + input.length);
     }
   });
 

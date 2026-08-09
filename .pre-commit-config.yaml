@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: forbidden-imports
+        name: forbidden-imports
+        entry: python scripts/forbidden_imports.py
+        language: system
+        pass_filenames: false
+        always_run: true

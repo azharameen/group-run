@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
+import InkSpinner from 'ink-spinner';
+const Spinner = InkSpinner as any;
 import type { StoryRow } from './story-status-table.js';
 
 export interface EpicTreeNode {
@@ -30,7 +31,7 @@ export const EpicTreePanel: React.FC<EpicTreePanelProps> = ({
   expandedEpics,
   isFocused,
   panelHeight = 18
-}) => {
+}: EpicTreePanelProps) => {
   // Group stories into Epics
   const epicsMap: Record<string, StoryRow[]> = {};
   for (const story of stories) {
@@ -96,7 +97,7 @@ export const EpicTreePanel: React.FC<EpicTreePanelProps> = ({
   const hiddenBelow = Math.max(0, flattenedNodes.length - (startIdx + windowSize));
 
   return (
-    <Box flexDirection="column" borderWidth={1} borderColor={isFocused ? 'cyan' : 'gray'} padding={1} width="100%" height={panelHeight}>
+    <Box flexDirection="column" borderStyle="single" borderColor={isFocused ? 'cyan' : 'gray'} padding={1} width="100%" height={panelHeight}>
       {/* Sidebar Header */}
       <Box justifyContent="space-between" marginBottom={1}>
         <Text bold color={isFocused ? 'cyan' : 'white'}>
@@ -112,7 +113,7 @@ export const EpicTreePanel: React.FC<EpicTreePanelProps> = ({
 
       {/* Viewport items */}
       <Box flexDirection="column" flexGrow={1}>
-        {visibleNodes.map((node, i) => {
+        {visibleNodes.map((node: FlattenedTreeNode, i: number) => {
           const actualIdx = startIdx + i;
           const isSelected = actualIdx === clampedCursor;
 

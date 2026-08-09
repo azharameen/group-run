@@ -5,7 +5,7 @@ export interface SessionLogEntry {
   timestamp: string;
   phase: string;
   storyKey: string;
-  event: 'phase-start' | 'phase-end' | 'agent-output' | 'test-result' | 'review-result' | 'gate-decision' | 'error' | 'retry' | 'escalation';
+  event: 'phase-start' | 'phase-end' | 'agent-output' | 'test-result' | 'review-result' | 'gate-decision' | 'error' | 'retry' | 'escalation' | 'stalled-process-timeout';
   data: Record<string, unknown>;
 }
 

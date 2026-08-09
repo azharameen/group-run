@@ -23,6 +23,15 @@ description: 'Execute story implementation following a context filled story spec
 - `{project-root}`-prefixed paths resolve from the project working directory.
 - `{skill-name}` resolves to the skill directory's basename.
 
+## Windows Environment Notes
+
+- **File Locking:** When editing files that may be mapped by test runners or IDEs (common on Windows), direct writes may fail with `user-mapped section open`. Use a **write-temp-then-rename** pattern:
+  1. Write the new content to a temporary file (e.g., `path/to/file.py.tmp`).
+  2. Delete or move the original file.
+  3. Rename the temporary file to the original path.
+- **Line Endings:** Use `\n` (LF) for internal string operations to avoid silent mismatches during replacement, but ensure final output matches the project's expected line endings.
+- **Path Handling:** Always use forward slashes `/` or `os.path.join` to ensure cross-platform compatibility.
+
 ## On Activation
 
 ### Step 1: Resolve the Workflow Block

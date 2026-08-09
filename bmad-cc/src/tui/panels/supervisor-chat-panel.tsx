@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
+import InkSpinner from 'ink-spinner';
+const Spinner = InkSpinner as any;
 import { ChatInput } from '../chat-input.js';
 import { THEME } from '../theme.js';
 
@@ -33,7 +34,7 @@ export const SupervisorChatPanel: React.FC<SupervisorChatPanelProps> = ({
   panelHeight,
   cursorIndex,
   onSubmitDirective
-}) => {
+}: SupervisorChatPanelProps) => {
   // Reserve: border(2) + header(2) + phase-bar(1) + divider(1) + chat-input(3) + margins(2) = ~11
   const chatViewportHeight = Math.max(4, panelHeight - 11);
 
@@ -41,7 +42,7 @@ export const SupervisorChatPanel: React.FC<SupervisorChatPanelProps> = ({
   const allLines: Array<{ role: 'user' | 'supervisor'; line: string; timestamp: string; eventType?: string }> = [];
   for (const msg of messages) {
     const lines = msg.text.split('\n').filter(Boolean);
-    lines.forEach((line, i) => {
+    lines.forEach((line: string, i: number) => {
       allLines.push({
         role: msg.role,
         line,

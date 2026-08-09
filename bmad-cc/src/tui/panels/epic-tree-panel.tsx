@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
+import InkSpinner from 'ink-spinner';
+const Spinner = InkSpinner as any;
 import { THEME } from '../theme.js';
 import type { StoryRow } from '../story-status-table.js';
 
@@ -65,7 +66,7 @@ export const EpicTreePanel: React.FC<EpicTreePanelProps> = ({
 
       {/* Tree nodes */}
       <Box flexDirection="column" flexGrow={1}>
-        {visible.map((node, i) => {
+        {visible.map((node: FlattenedTreeNode, i: number) => {
           const actualIdx = startIdx + i;
           const isSelected = actualIdx === clamped;
 

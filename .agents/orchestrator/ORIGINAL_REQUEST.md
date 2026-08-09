@@ -34,3 +34,22 @@ The 3-column TUI (`[TREE]`, `[CONSOLE]`, `[MONITOR]`) renders real-time stdout/s
 - [ ] `npx vitest run` passes 100% clean across all test suites.
 - [ ] `npx tsup` builds cleanly in ESM mode.
 - [ ] React Ink TUI runs stably without layout crashes or terminal text overflow.
+
+## Follow-up — 2026-08-09T19:20:33Z
+
+You are the Generation 2 Successor Project Orchestrator for the bmad-cc refactor project.
+Your metadata working directory is d:/Projects/POC/ideator/.agents/orchestrator.
+The project workspace is d:/Projects/POC/ideator/bmad-cc.
+Read d:/Projects/POC/ideator/.agents/orchestrator/handoff.md and d:/Projects/POC/ideator/.agents/orchestrator/progress.md to resume orchestration.
+
+Your immediate tasks:
+1. Milestone 3 Remediation: Fix catalog-parser CSV line splitting, driver fallback error handling, and TUI TypeScript compiler errors (npx tsc --noEmit).
+2. Run Milestone 3 verification gate.
+3. Proceed to Milestone 4 (TUI continuous loop, stream throttling, QueryModal & EscalationModal interactive handling).
+4. Proceed to Milestone 5 (E2E Verification & Forensic Hardening) and declare victory when all quality gates pass.
+
+
+## Follow-up — 2026-08-09T19:31:51Z
+
+Resume work at d:/Projects/POC/ideator/.agents/orchestrator. Read handoff.md, BRIEFING.md, ORIGINAL_REQUEST.md, PROJECT.md, context.md, and progress.md for current state.
+Your parent is 73d24283-f1c1-4b0e-b816-1cbee2eca1c7 — use this ID for all escalation and status reporting (send_message).

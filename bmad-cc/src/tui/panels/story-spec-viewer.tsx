@@ -113,7 +113,7 @@ export const StorySpecViewer: React.FC<StorySpecViewerProps> = ({
               • Press <Text color={THEME.accent} bold>[Esc]</Text> to switch to Supervisor Chat thread.
             </Text>
           </Box>
-        ) : visible.map((line, idx) => (
+        ) : visible.map((line: string, idx: number) => (
           <Text
             key={startIdx + idx}
             color={getLineColor(line)}

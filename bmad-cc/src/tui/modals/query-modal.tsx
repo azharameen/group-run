@@ -18,11 +18,11 @@ export const QueryModal: React.FC<QueryModalProps> = ({ rawPrompt, onAnswer }) =
         return;
       }
       if (key.backspace || key.delete) {
-        setCustomAnswer(prev => prev.slice(0, -1));
+        setCustomAnswer((prev: string) => prev.slice(0, -1));
         return;
       }
       if (input && !key.ctrl && !key.meta) {
-        setCustomAnswer(prev => prev + input);
+        setCustomAnswer((prev: string) => prev + input);
       }
       return;
     }

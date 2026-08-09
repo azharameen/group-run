@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
+import InkSpinner from 'ink-spinner';
+const Spinner = InkSpinner as any;
 
 export interface SubSessionMonitorPanelProps {
   activeSkill?: string;
@@ -25,11 +26,11 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
     'Session transcripts logged to _bmad/sessions/'
   ],
   cursorIndex = 0
-}) => {
+}: SubSessionMonitorPanelProps) => {
   // Flatten multi-line output into individual clean lines
   const allLines: string[] = [];
   for (const rawLog of subSessionOutput) {
-    const split = rawLog.split('\n').map(l => l.trimEnd()).filter(Boolean);
+    const split = rawLog.split('\n').map((l: string) => l.trimEnd()).filter(Boolean);
     allLines.push(...split);
   }
 
@@ -40,7 +41,7 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
   const visibleLogs = allLines.slice(startIdx, startIdx + windowSize);
 
   return (
-    <Box flexDirection="column" borderWidth={1} borderColor={isFocused ? 'cyan' : 'gray'} padding={1} width="100%" height={panelHeight}>
+    <Box flexDirection="column" borderStyle="single" borderColor={isFocused ? 'cyan' : 'gray'} padding={1} width="100%" height={panelHeight}>
       {/* Sub-Session Header */}
       <Box justifyContent="space-between" marginBottom={1}>
         <Text bold color={isFocused ? 'cyan' : 'white'}>
@@ -60,7 +61,7 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
       {/* Sub-Agent Skill Cards */}
       <Box flexDirection="column" gap={1} marginBottom={1}>
         {/* Session 1: Developer Sub-Agent */}
-        <Box flexDirection="column" borderWidth={1} borderColor={activeSkill === 'bmad-dev-story' ? 'yellow' : 'gray'} paddingX={1}>
+        <Box flexDirection="column" borderStyle="single" borderColor={activeSkill === 'bmad-dev-story' ? 'yellow' : 'gray'} paddingX={1}>
           <Box justifyContent="space-between">
             <Text bold color="yellow">⚙️ bmad-dev-story</Text>
             <Text color={isExecuting && activeSkill !== 'bmad-code-review' ? 'green' : 'gray'}>
@@ -74,7 +75,7 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
         </Box>
 
         {/* Session 2: Code Review Auditor */}
-        <Box flexDirection="column" borderWidth={1} borderColor={activeSkill === 'bmad-code-review' ? 'cyan' : 'gray'} paddingX={1}>
+        <Box flexDirection="column" borderStyle="single" borderColor={activeSkill === 'bmad-code-review' ? 'cyan' : 'gray'} paddingX={1}>
           <Box justifyContent="space-between">
             <Text bold color="cyan">⚙️ bmad-code-review</Text>
             <Text color={isExecuting && activeSkill === 'bmad-code-review' ? 'cyan' : 'gray'}>
@@ -89,13 +90,13 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
       </Box>
 
       {/* Sub-Agent Real-time Execution Output & Driver Prompt Inspector */}
-      <Box flexDirection="column" flexGrow={1} borderWidth={1} borderColor="magenta" padding={1}>
+      <Box flexDirection="column" flexGrow={1} borderStyle="single" borderColor="magenta" padding={1}>
         <Box justifyContent="space-between">
           <Text bold color="magenta">Driver Stream:</Text>
           {isFocused && <Text color="yellow" dimColor>[↑/↓ Scroll Logs]</Text>}
         </Box>
         <Box flexDirection="column" marginTop={1}>
-          {visibleLogs.map((log, idx) => {
+          {visibleLogs.map((log: string, idx: number) => {
             const isDriverInit = log.startsWith('[DRIVER INIT]');
             const isPrompt = log.startsWith('[PROMPT LOG]');
             const isTest = log.startsWith('[TEST');

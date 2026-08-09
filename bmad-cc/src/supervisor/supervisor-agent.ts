@@ -1,9 +1,11 @@
+
 import { randomUUID } from 'crypto';
-import { routeSkillsForStory, type SkillInvocation } from './skill-router.js';
+import { routeSkillsForStoryAsync, type SkillInvocation } from './skill-router.js';
 import { assembleContext } from './context-assembler.js';
 import { generateDirective } from './directive-generator.js';
 import { evaluateResult } from './result-evaluator.js';
 import { makeGateDecision, type GateDecisionType } from './gate-decision.js';
+export type { GateDecisionType };
 
 import { HeartbeatMonitor } from '../watchdog/heartbeat-monitor.js';
 
@@ -54,13 +56,14 @@ export class SupervisorAgent {
 
     const currentStatus = sprintStatus.developmentStatus[storyKey] || storySpec.status || 'backlog';
     
-    // Route skills based on ACTUAL story status
-    const skills = routeSkillsForStory(
+    // Route skills based on ACTUAL story status using dynamic skill catalog & bmad-help discovery
+    const skills = await routeSkillsForStoryAsync(
       storyKey,
       currentStatus,
       storySpec.content,
       sprintStatus.epicStatus,
-      sprintStatus.allStoriesInEpicDone
+      sprintStatus.allStoriesInEpicDone,
+      { projectRoot: this.projectRoot }
     );
 
     const context = await assembleContext(this.projectRoot);
