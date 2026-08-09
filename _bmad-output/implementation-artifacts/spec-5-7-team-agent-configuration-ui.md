@@ -2,7 +2,7 @@
 title: 'ST-5.7 — Team/Agent Configuration UI'
 type: 'feature'
 created: '2026-08-09T15:00:00Z'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: ['_bmad-output/implementation-artifacts/epic-5-context.md']
@@ -96,3 +96,8 @@ The `GET /api/config` should return the full `teams` mapping from `_teams_config
 - Verify "Team Config" appears in Settings menu.
 - Verify reload button triggers a request to `/api/config/reload`.
 - Verify validation errors from `teams.yaml` (e.g. duplicate keys) are displayed as toasts.
+
+## Auto Run Result
+Status: done
+Verification: Backend tests and Vitest component tests passed.
+Human tasks: None.

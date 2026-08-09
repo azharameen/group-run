@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, RefreshCw, Loader2, Info, ChevronRight, ChevronDown } from "lucide-react";
+import { Users, RefreshCw, Loader2, ShieldCheck, User, ChevronRight, ChevronDown, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -10,43 +10,35 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import {
-  fetchTeamsConfig,
-  reloadTeamsConfig,
-  type TeamConfigResponse,
-  type TeamDefinition,
-} from "@/api/config";
+import { fetchTeamsConfig, reloadTeamsConfig, type TeamConfigResponse } from "@/api/config";
 
 export function TeamConfig() {
   const { toast } = useToast();
   const [config, setConfig] = useState<TeamConfigResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [reloading, setReloading] = useState(false);
-  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>({});
 
   const loadConfig = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchTeamsConfig();
-      setConfig(result);
-      // Auto-expand first team if available
-      const firstTeam = Object.keys(result.teams)[0];
-      if (firstTeam) {
-        setExpandedTeams(new Set([firstTeam]));
-      }
+      const data = await fetchTeamsConfig();
+      setConfig(data);
+      
+      // Auto-expand all teams by default for visibility
+      const expanded: Record<string, boolean> = {};
+      Object.keys(data.teams).forEach(id => {
+        expanded[id] = true;
+      });
+      setExpandedTeams(expanded);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load team configuration";
       setError(message);
+      toast({ variant: "destructive", title: "Load failed", description: message });
     } finally {
       setLoading(false);
     }
@@ -60,41 +52,30 @@ export function TeamConfig() {
     setReloading(true);
     try {
       const result = await reloadTeamsConfig();
-      toast({
-        title: "Config Reloaded",
-        description: `${result.message} (${result.count} teams loaded).`,
-      });
+      toast({ title: "Configuration reloaded", description: result.message });
       await loadConfig();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to reload configuration";
-      toast({
-        variant: "destructive",
-        title: "Reload Failed",
-        description: message,
-      });
+      toast({ variant: "destructive", title: "Reload failed", description: message });
     } finally {
       setReloading(false);
     }
   };
 
-  const toggleTeam = (key: string) => {
-    const newSet = new Set(expandedTeams);
-    if (newSet.has(key)) {
-      newSet.delete(key);
-    } else {
-      newSet.add(key);
-    }
-    setExpandedTeams(newSet);
+  const toggleExpand = (id: string) => {
+    setExpandedTeams((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   if (loading && !config) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-3 text-sm text-muted-foreground">Loading configuration...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-3 text-lg text-muted-foreground">Loading configuration...</span>
       </div>
     );
   }
+
+  const teamsEntries = config ? Object.entries(config.teams) : [];
 
   return (
     <div className="space-y-6">
@@ -108,12 +89,7 @@ export function TeamConfig() {
             View teams, agents, and routing keys defined in <code>teams.yaml</code>.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleReload}
-          disabled={reloading || loading}
-        >
+        <Button onClick={handleReload} disabled={reloading || loading} variant="outline" size="sm">
           {reloading ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
@@ -137,100 +113,91 @@ export function TeamConfig() {
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
             <span>Schema Version: {config.schema_version}</span>
-            <span>{Object.keys(config.teams).length} Teams Loaded</span>
+            <span>{teamsEntries.length} Teams Loaded</span>
           </div>
 
-          {Object.entries(config.teams).map(([key, team]) => (
-            <Card key={key} className="overflow-hidden">
-              <CardHeader 
-                className="py-3 px-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => toggleTeam(key)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {expandedTeams.has(key) ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <CardTitle className="text-base">{team.name}</CardTitle>
-                    <Badge variant="secondary" className="ml-2 font-mono text-[10px]">
-                      {key}
-                    </Badge>
-                  </div>
-                </div>
-                <CardDescription className="pl-6">
-                  {team.description}
-                </CardDescription>
-              </CardHeader>
-              
-              {expandedTeams.has(key) && (
-                <CardContent className="p-0 border-t">
-                  <Table>
-                    <TableHeader className="bg-muted/10">
-                      <TableRow>
-                        <TableHead className="pl-10">Agent</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Routing Keys</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {team.agents.map((agent) => (
-                        <TableRow key={agent.name}>
-                          <TableCell className="pl-10 font-medium">
-                            {agent.name}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {agent.role}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {team.routing_keys
-                                .filter(rk => rk.includes(agent.name.toLowerCase().replace(/\s+/g, '')))
-                                .map(rk => (
-                                  <Badge key={rk} variant="outline" className="text-[10px] font-mono">
-                                    {rk}
-                                  </Badge>
-                                ))}
-                              {/* Fallback if no routing keys match agent name pattern */}
-                              {team.routing_keys
-                                .filter(rk => !rk.includes(agent.name.toLowerCase().replace(/\s+/g, '')))
-                                .length > 0 && team.agents.length === 1 && (
-                                  team.routing_keys.map(rk => (
-                                    <Badge key={rk} variant="outline" className="text-[10px] font-mono">
-                                      {rk}
-                                    </Badge>
-                                  ))
-                                )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {team.agents.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center py-4 text-sm text-muted-foreground">
-                            No agents configured for this team.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                  
-                  {/* All routing keys summary if not agent-scoped above */}
-                  <div className="p-3 bg-muted/5 border-t text-[10px] flex gap-2 items-center">
-                    <span className="font-semibold uppercase tracking-wider text-muted-foreground">All Team Routing Keys:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {team.routing_keys.map(rk => (
-                        <span key={rk} className="px-1.5 py-0.5 rounded border bg-background font-mono">
-                          {rk}
-                        </span>
-                      ))}
+          {teamsEntries.length === 0 ? (
+            <div className="rounded-md border border-dashed p-12 text-center">
+              <Users className="h-8 w-8 mx-auto opacity-20 mb-3" />
+              <p className="text-muted-foreground">No teams defined in teams.yaml.</p>
+            </div>
+          ) : (
+            teamsEntries.map(([id, team]) => (
+              <Card key={id} className="overflow-hidden">
+                <CardHeader className="bg-muted/30 pb-3 cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => toggleExpand(id)}>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {expandedTeams[id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                        {team.name}
+                        <Badge variant="secondary" className="text-[10px] ml-2 font-mono">
+                          {id}
+                        </Badge>
+                      </CardTitle>
+                      <CardDescription className="text-xs ml-6">{team.description}</CardDescription>
                     </div>
                   </div>
-                </CardContent>
-              )}
-            </Card>
-          ))}
+                </CardHeader>
+                {expandedTeams[id] && (
+                  <CardContent className="pt-4 border-t">
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+                          <User className="h-3 w-3" />
+                          Agents
+                        </h4>
+                        <div className="rounded-md border overflow-hidden">
+                          <Table>
+                            <TableHeader className="bg-muted/50">
+                              <TableRow className="hover:bg-transparent">
+                                <TableHead className="h-8 text-[11px]">Name</TableHead>
+                                <TableHead className="h-8 text-[11px]">Role</TableHead>
+                                <TableHead className="h-8 text-[11px]">Description</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {team.agents.map((agent, idx) => (
+                                <TableRow key={idx}>
+                                  <TableCell className="py-2 text-sm font-medium">
+                                    {agent.name}
+                                  </TableCell>
+                                  <TableCell className="py-2 text-sm text-muted-foreground">{agent.role}</TableCell>
+                                  <TableCell className="py-2 text-sm text-muted-foreground italic">
+                                    {agent.description || "-"}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {team.agents.length === 0 && (
+                                <TableRow>
+                                  <TableCell colSpan={3} className="text-center py-4 text-sm text-muted-foreground">
+                                    No agents configured for this team.
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                          Routing Keys
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {team.routing_keys.map((key) => (
+                            <Badge key={key} variant="outline" className="font-mono text-[10px] bg-background">
+                              {key}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            ))
+          )}
         </div>
       )}
     </div>

@@ -2,7 +2,7 @@
 title: 'ST-5.8 — Frontend Tests: MCP and Team UI'
 type: 'test'
 created: '2026-08-09T16:00:00Z'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: ['_bmad-output/implementation-artifacts/epic-5-context.md', '_bmad-output/implementation-artifacts/spec-5-6-mcp-server-management-ui.md', '_bmad-output/implementation-artifacts/spec-5-7-team-agent-configuration-ui.md']

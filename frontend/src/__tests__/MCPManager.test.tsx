@@ -131,7 +131,7 @@ describe('MCPManager', () => {
 
     const nameInput = screen.getByTestId('input-my-server');
     const urlInput = screen.getByTestId('input-http://localhost:8080/mcp');
-    const addButton = screen.getByText(/Add Server/i);
+    const addButton = screen.getByRole('button', { name: /Add Server/i });
 
     await user.type(nameInput, 'new-server');
     await user.type(urlInput, 'http://localhost:9000');
@@ -150,10 +150,10 @@ describe('MCPManager', () => {
     render(<MCPManager />);
     
     await waitFor(() => {
-      expect(screen.getByText(/Add Server/i)).toBeDefined();
+      expect(screen.getByRole('button', { name: /Add Server/i })).toBeDefined();
     });
 
-    const addButton = screen.getByText(/Add Server/i);
+    const addButton = screen.getByRole('button', { name: /Add Server/i });
     await user.click(addButton);
 
     expect(screen.getByText(/Name and URL are required/i)).toBeDefined();

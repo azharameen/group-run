@@ -20,9 +20,10 @@ def get_config() -> TeamConfigResponse:
 
     Exposes the full ``teams.yaml`` structure currently used by the runtime.
     """
+    config = runtime._teams_config or {}
     return TeamConfigResponse(
-        schema_version=runtime._teams_config.get("schema_version", "unknown"),
-        teams=runtime._teams_config.get("teams", {}),
+        schema_version=config.get("schema_version", "unknown"),
+        teams=config.get("teams", {}),
     )
 
 

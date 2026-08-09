@@ -114,9 +114,10 @@ development_status:
   5-4-create-team-subgraph-factory: done
   5-5-backend-tests-mcp-config-reload-team-loading: done
   5-6-mcp-server-management-ui: done
-  5-7-team-agent-configuration-ui: backlog
-  5-8-frontend-tests-mcp-and-team-ui: backlog
+  5-7-team-agent-configuration-ui: done
+  5-8-frontend-tests-mcp-and-team-ui: done
   epic-5-retrospective: optional
+
 
   # EP-6: Knowledge & Memory
   epic-6: backlog

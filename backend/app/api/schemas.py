@@ -135,7 +135,7 @@ class TeamDefinition(BaseModel):
     description: str
     agents: list[AgentDefinition]
     routing_keys: list[str]
-    subgraph: Optional[dict[str, Any]] = None
+    # subgraph excluded to avoid leaking internal orchestration details (AD-13)
 
 
 class TeamConfigResponse(BaseModel):

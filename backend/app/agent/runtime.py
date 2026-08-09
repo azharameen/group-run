@@ -104,6 +104,8 @@ def _reload_teams_config() -> dict:
     Loads fresh from disk and runs full validation via `_load_and_validate_teams()`.
     Only updates `_teams_config` if validation passes completely — on failure the
     original config is preserved (atomic reload, no partial state).
+    Updates the global dictionary in-place to ensure other modules holding a
+    reference to it (like team_factory.py) see the new data (AD-14).
 
     Raises:
         ValueError: if the file is missing, invalid, or fails validation.
@@ -113,9 +115,10 @@ def _reload_teams_config() -> dict:
     """
     global _teams_config
     new_config = _load_and_validate_teams()  # raises ValueError on failure
-    _teams_config = new_config
+    _teams_config.clear()
+    _teams_config.update(new_config)
     logger.info("Teams config reloaded: teams=%s", list(new_config.get("teams", {}).keys()))
-    return new_config
+    return _teams_config
 
 
 # Warn at startup if MCP config is missing (non-blocking).
