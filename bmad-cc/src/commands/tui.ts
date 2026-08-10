@@ -16,6 +16,10 @@ import { StoryExecutor } from '../session/story-executor.js';
 import { createDriver, type DriverName } from '../agent/driver-factory.js';
 import { AgentOutputStream } from '../tui/agent-output-stream.js';
 import { routeSkillsForStory } from '../supervisor/skill-router.js';
+import { StreamThrottler } from '../utils/stream-throttler.js';
+import { stripAnsi } from '../utils/ansi-cleaner.js';
+import type { SubagentQueryInfo } from '../session/stream-parser.js';
+import type { EscalationContextInfo, EscalationDecisionResult } from '../tui/modals/escalation-modal.js';
 
 export default class Tui extends Command {
   static override description = 'Launch full-screen interactive React Ink Command Center TUI app';
@@ -131,7 +135,9 @@ export default class Tui extends Command {
       epicFilter?: string,
       statusFilter?: string,
       driverOverride?: DriverName,
-      onLogUpdate?: (sessionId: string, skill: string, message: string) => void
+      onLogUpdate?: (sessionId: string, skill: string, message: string) => void,
+      onQuery?: (queryInfo: SubagentQueryInfo) => Promise<string>,
+      onEscalation?: (context: EscalationContextInfo) => Promise<EscalationDecisionResult>
     ) => {
       if (isExecuting) {
         isPaused = false;
@@ -155,68 +161,203 @@ export default class Tui extends Command {
       const sessionLogger = new SessionLogger(sessionsDir, sessionId);
 
       const storyExecutor = new StoryExecutor(config, driver, stateManager, sessionLogger);
-      const outputStream = new AgentOutputStream(10);
+      const outputStream = new AgentOutputStream(20);
       const queue = new ExecutionQueue();
+
+      // Throttler for stream output updates to UI (50ms buffer)
+      const streamThrottler = new StreamThrottler<{ sessionId: string; skill: string; message: string; phase: string; storyKey: string }>((batch) => {
+        for (const item of batch) {
+          const cleanMsg = stripAnsi(item.message);
+          outputStream.append(`[${item.skill}] ${cleanMsg}`);
+          if (onLogUpdate) {
+            onLogUpdate(item.sessionId, item.skill, cleanMsg);
+          }
+        }
+        const lastItem = batch[batch.length - 1];
+        if (lastItem) {
+          updateUIState(buildState(lastItem.storyKey, lastItem.phase, lastItem.skill, outputStream.render(), activeDriverName));
+        }
+      }, 50);
 
       queue.buildFromSprintStatus(sprintStatus, {
         epic: epicFilter,
         status: statusFilter
       });
 
-      let nextStory = queue.next();
-      while (nextStory && !isPaused) {
-        const storyKey = nextStory.storyKey;
-        const initialStatus = sprintStatus.developmentStatus[storyKey] || 'backlog';
-        const epicMatch = storyKey.match(/^(\d+)-/);
-        const epicNumber = epicMatch ? epicMatch[1] : '0';
-        const epicStatus = sprintStatus.developmentStatus[`epic-${epicNumber}`] || 'in-progress';
-        const routedSkills = routeSkillsForStory(storyKey, initialStatus, '', epicStatus, false);
-        const activePhase = routedSkills[0]?.phase || 'develop';
-        const activeSkill = routedSkills[0]?.skillName || 'bmad-dev-story';
+      let currentStoryKey: string | null = null;
+      let activePhase: string = 'idle';
+      let activeSkill: string = 'bmad-dev-story';
 
-        activeAbortController = new AbortController();
+      try {
+        let nextStory = queue.next();
+        while (nextStory && !isPaused) {
+          const storyKey = nextStory.storyKey;
+          currentStoryKey = storyKey;
+          const initialStatus = sprintStatus.developmentStatus[storyKey] || 'backlog';
+          const epicMatch = storyKey.match(/^(\d+)-/);
+          const epicNumber = epicMatch ? epicMatch[1] : '0';
+          const epicStatus = sprintStatus.developmentStatus[`epic-${epicNumber}`] || 'in-progress';
+          const routedSkills = routeSkillsForStory(storyKey, initialStatus, '', epicStatus, false);
+          activePhase = routedSkills[0]?.phase || 'develop';
+          activeSkill = routedSkills[0]?.skillName || 'bmad-dev-story';
 
-        outputStream.append(`Supervisor starting execution for ${storyKey} (status: ${initialStatus})...`);
-        updateUIState(buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName));
+          activeAbortController = new AbortController();
 
-        const result = await storyExecutor.execute(storyKey, sprintStatus, {
-          dryRun: false,
-          skipReview: false,
-          skipTests: false,
-          abortController: activeAbortController,
-          onProgress: (progress) => {
-            if (onLogUpdate) {
-              onLogUpdate(progress.sessionId, progress.skillName, progress.message);
-            }
-            outputStream.append(`[${progress.skillName}] ${progress.message}`);
-            updateUIState(buildState(storyKey, progress.phase, progress.skillName, outputStream.render(), activeDriverName));
-          },
-          onSubagentQuery: (query) => {
-            outputStream.append(`[SUB-AGENT QUERY] ${query.rawPrompt}`);
-            updateUIState(buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName));
+          outputStream.append(`Supervisor continuous loop starting execution for ${storyKey} (status: ${initialStatus})...`);
+          streamThrottler.flush();
+          updateUIState(buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName));
+
+          let result;
+          try {
+            result = await storyExecutor.execute(storyKey, sprintStatus, {
+              dryRun: false,
+              skipReview: false,
+              skipTests: false,
+              abortController: activeAbortController,
+              onProgress: (progress) => {
+                const cleanMsg = stripAnsi(progress.message);
+                streamThrottler.push({
+                  sessionId: progress.sessionId,
+                  skill: progress.skillName,
+                  message: cleanMsg,
+                  phase: progress.phase,
+                  storyKey
+                });
+              },
+              onSubagentQuery: async (query) => {
+                outputStream.append(`[SUB-AGENT QUERY] ${query.rawPrompt}`);
+                streamThrottler.flush();
+                if (onQuery) {
+                  return await onQuery(query);
+                }
+
+                // Interactive QueryModal wiring in TUI
+                return new Promise<string>((resolve) => {
+                  updateUIState({
+                    ...buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName),
+                    activeQuery: query,
+                    onQueryAnswer: (answer: string) => {
+                      outputStream.append(`[USER ANSWER] ${answer}`);
+                      updateUIState({
+                        ...buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName),
+                        activeQuery: null,
+                        onQueryAnswer: undefined
+                      });
+                      resolve(answer);
+                    }
+                  });
+                });
+              },
+              onEscalation: async (escContext) => {
+                outputStream.append(`[ESCALATION REQUIRED] ${escContext.storyKey}: ${escContext.reason}`);
+                streamThrottler.flush();
+                if (onEscalation) {
+                  return await onEscalation(escContext);
+                }
+                return new Promise<EscalationDecisionResult>((resolve) => {
+                  updateUIState({
+                    ...buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName),
+                    escalationContext: escContext,
+                    onEscalationDecision: (decision: EscalationDecisionResult) => {
+                      outputStream.append(`[USER ESCALATION SELECTION] Action: ${decision.action}`);
+                      updateUIState({
+                        ...buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName),
+                        escalationContext: null,
+                        onEscalationDecision: undefined
+                      });
+                      resolve(decision);
+                    }
+                  });
+                });
+              }
+            });
+          } catch (execErr: any) {
+            const cleanErr = stripAnsi(execErr?.message || String(execErr));
+            outputStream.append(`[SUPERVISOR EXCEPTION HANDLED] ${cleanErr}`);
+            streamThrottler.flush();
+            result = {
+              storyKey,
+              finalDecision: 'ESCALATE_TO_HUMAN' as const,
+              totalRetries: 0,
+              phases: [],
+              sessionId,
+              nextStatus: initialStatus
+            };
           }
-        });
 
-        activeAbortController = null;
+          streamThrottler.flush();
+          activeAbortController = null;
 
-        // Reload sprint status natively from disk
-        sprintStatus = await parseSprintStatus(sprintStatusPath);
+          // Reload sprint status natively from disk
+          sprintStatus = await parseSprintStatus(sprintStatusPath);
 
-        outputStream.append(`Decision for ${storyKey}: ${result.finalDecision} -> next: ${result.nextStatus || 'done'}`);
-        updateUIState(buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName));
+          outputStream.append(`Decision for ${storyKey}: ${result.finalDecision} -> next: ${result.nextStatus || 'done'}`);
+          updateUIState(buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName));
 
-        if (result.finalDecision === 'APPROVE') {
-          queue.markCompleted(storyKey);
-        } else {
-          queue.markSkipped(storyKey);
+          if (result.finalDecision === 'APPROVE') {
+            queue.markCompleted(storyKey);
+          } else if (result.finalDecision === 'ESCALATE_TO_HUMAN') {
+            const escalationContext: EscalationContextInfo = {
+              storyKey,
+              reason: `Gate decision: ESCALATE_TO_HUMAN after ${result.totalRetries} retries in phase ${activePhase}`,
+              retryCount: result.totalRetries,
+              maxRetries: config.limits.maxRetries || 3,
+              testOutput: result.phases.map(p => `[${p.phase}] ${p.outcome}`).join('\n')
+            };
+
+            let decision: EscalationDecisionResult;
+            if (onEscalation) {
+              decision = await onEscalation(escalationContext);
+            } else {
+              decision = await new Promise<EscalationDecisionResult>((resolve) => {
+                updateUIState({
+                  ...buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName),
+                  escalationContext,
+                  onEscalationDecision: (dec: EscalationDecisionResult) => {
+                    updateUIState({
+                      ...buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName),
+                      escalationContext: null,
+                      onEscalationDecision: undefined
+                    });
+                    resolve(dec);
+                  }
+                });
+              });
+            }
+
+            outputStream.append(`[HUMAN ESCALATION DECISION] Action: ${decision.action}`);
+            updateUIState(buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName));
+
+            if (decision.action === 'override-pass') {
+              outputStream.append(`Human override: Story ${storyKey} marked as PASSED/COMPLETED.`);
+              queue.markCompleted(storyKey);
+            } else if (decision.action === 'retry' || decision.action === 'retry-with-prompt') {
+              outputStream.append(`Human retry: Re-queuing story ${storyKey}${decision.customPrompt ? ` with prompt: "${decision.customPrompt}"` : ''}...`);
+              continue;
+            } else if (decision.action === 'abort') {
+              outputStream.append(`Human abort: Sprint execution aborted.`);
+              isPaused = true;
+              break;
+            } else {
+              outputStream.append(`Human skip: Story ${storyKey} skipped.`);
+              queue.markSkipped(storyKey);
+            }
+          } else {
+            queue.markSkipped(storyKey);
+          }
+
+          nextStory = queue.next();
         }
-
-        nextStory = queue.next();
+      } catch (loopError: any) {
+        const cleanErr = stripAnsi(loopError?.message || String(loopError));
+        outputStream.append(`[SUPERVISOR CONTINUOUS LOOP RECOVERY] ${cleanErr}`);
+        streamThrottler.flush();
+      } finally {
+        streamThrottler.flush();
+        isExecuting = false;
+        outputStream.append(isPaused ? 'Execution paused by user.' : 'Supervisor monitoring active. Continuous loop ready.');
+        updateUIState(buildState(null, 'idle', undefined, outputStream.render(), activeDriverName));
       }
-
-      isExecuting = false;
-      outputStream.append(isPaused ? 'Execution paused by user.' : 'All sprint stories completed!');
-      updateUIState(buildState(null, 'idle', undefined, outputStream.render(), activeDriverName));
     };
 
     inkInstance = render(
@@ -231,3 +372,4 @@ export default class Tui extends Command {
     cleanupScreen();
   }
 }
+

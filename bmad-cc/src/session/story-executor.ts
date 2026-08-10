@@ -17,6 +17,7 @@ import { runTestCommands, summarizeTestResults } from '../verification/test-runn
 import { fileExists } from '../utils/file-helpers.js';
 import { HeartbeatMonitor } from '../watchdog/heartbeat-monitor.js';
 import { StreamQueryParser, type SubagentQueryInfo } from './stream-parser.js';
+import type { EscalationContextInfo, EscalationDecisionResult } from '../tui/modals/escalation-modal.js';
 
 export interface StoryExecutionProgress {
   sessionId: string;
@@ -35,7 +36,8 @@ export interface StoryExecutionOptions {
   abortController?: AbortController;
   inactivityTimeoutMs?: number;
   onProgress?: (progress: StoryExecutionProgress) => void;
-  onSubagentQuery?: (queryInfo: SubagentQueryInfo) => void;
+  onSubagentQuery?: (queryInfo: SubagentQueryInfo) => Promise<string | void> | void;
+  onEscalation?: (context: EscalationContextInfo) => Promise<EscalationDecisionResult> | EscalationDecisionResult;
 }
 
 export class StoryExecutor {
@@ -235,11 +237,11 @@ export class StoryExecutor {
             workingDirectory: this.config.projectRoot,
             model: this.config.agent.model,
             signal: activeAbortController.signal,
-            onStdout: (data) => {
+            onStdout: async (data) => {
               heartbeat.pulse();
               const query = streamParser.parseChunk(data);
               if (query && options.onSubagentQuery) {
-                options.onSubagentQuery(query);
+                await options.onSubagentQuery(query);
               }
               const clean = data.trim();
               if (!clean) return;
@@ -259,11 +261,11 @@ export class StoryExecutor {
                 message: clean
               });
             },
-            onStderr: (data) => {
+            onStderr: async (data) => {
               heartbeat.pulse();
               const query = streamParser.parseChunk(data);
               if (query && options.onSubagentQuery) {
-                options.onSubagentQuery(query);
+                await options.onSubagentQuery(query);
               }
               const clean = data.trim();
               if (!clean) return;
@@ -368,6 +370,31 @@ export class StoryExecutor {
       }
 
       if (phaseDecision === 'ESCALATE_TO_HUMAN') {
+        if (options.onEscalation) {
+          const escResult = await options.onEscalation({
+            storyKey,
+            reason: lastGateDecision?.feedback || `Gate decision: RETRY_WITH_FEEDBACK limit exceeded (${maxRetries} retries)`,
+            retryCount: attempt,
+            maxRetries,
+            testOutput: lastGateDecision?.statusUpdateNote,
+            reviewFindings: lastGateDecision?.feedback
+          });
+          if (escResult.action === 'retry' || escResult.action === 'retry-with-prompt') {
+            attempt = 0;
+            phaseDecision = 'RETRY_WITH_FEEDBACK';
+            retryFeedback = escResult.customPrompt || lastGateDecision?.feedback;
+            continue;
+          } else if (escResult.action === 'override-pass') {
+            phaseDecision = 'APPROVE';
+            finalDecision = 'APPROVE';
+            break;
+          } else if (escResult.action === 'skip') {
+            phaseDecision = 'REJECT';
+            finalDecision = 'REJECT';
+            break;
+          }
+        }
+
         finalDecision = 'ESCALATE_TO_HUMAN';
         const currentState = await this.stateManager.load();
         if (!currentState?.lastError) {

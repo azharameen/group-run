@@ -4,6 +4,9 @@ import cliCursor from 'cli-cursor';
 import { renderStoryTable, type StoryRow } from './story-status-table.js';
 import { renderProgressBar } from './sprint-progress-bar.js';
 
+import type { EscalationContextInfo, EscalationDecisionResult } from './modals/escalation-modal.js';
+import type { SubagentQueryInfo } from '../session/stream-parser.js';
+
 export interface DashboardState {
   projectName: string;
   totalStories: number;
@@ -18,6 +21,10 @@ export interface DashboardState {
   agentOutput: string;
   elapsedTime: number;  // ms
   driverName: string;
+  escalationContext?: EscalationContextInfo | null;
+  onEscalationDecision?: (decision: EscalationDecisionResult) => void;
+  activeQuery?: SubagentQueryInfo | null;
+  onQueryAnswer?: (answer: string) => void;
 }
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];

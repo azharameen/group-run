@@ -3,6 +3,7 @@ import { Box, Text } from 'ink';
 import InkSpinner from 'ink-spinner';
 const Spinner = InkSpinner as any;
 import { THEME } from '../theme.js';
+import { stripAnsi, cleanAndSplitLines } from '../../utils/ansi-cleaner.js';
 
 export interface SessionEntry {
   sessionId: string;
@@ -40,10 +41,11 @@ export const SubSessionPanel: React.FC<SubSessionPanelProps> = ({
   const streamViewportHeight = Math.max(3, panelHeight - sessionListHeight - 8);
 
   const selectedSession = sessions[selectedSessionIndex] ?? null;
-  const allStreamLines: string[] = selectedSession?.logs ?? [
+  const rawLogs: string[] = selectedSession?.logs ?? [
     '[DRIVER READY] Standing by for session.',
     `Session transcripts logged to _bmad/sessions/`
   ];
+  const allStreamLines: string[] = rawLogs.flatMap(line => cleanAndSplitLines(line));
 
   const totalLogs = allStreamLines.length;
   const clamped = Math.max(0, Math.min(logCursorIndex, Math.max(0, totalLogs - 1)));
@@ -141,8 +143,9 @@ export const SubSessionPanel: React.FC<SubSessionPanelProps> = ({
         </Box>
         <Box flexDirection="column">
           {visibleLogs.map((log: string, idx: number) => {
-            const lineColor = THEME.logLineColor(log);
-            const displayLog = log.length > 38 ? log.slice(0, 36) + '..' : log;
+            const clean = stripAnsi(log);
+            const lineColor = THEME.logLineColor(clean);
+            const displayLog = clean.length > 38 ? clean.slice(0, 36) + '..' : clean;
             const isCurrentLine = (startIdx + idx) === clamped && isFocused;
 
             return (

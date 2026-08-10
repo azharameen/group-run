@@ -1,10 +1,10 @@
 # Project Progress — bmad-cc Refactor
 
 ## Current Status
-Last visited: 2026-08-09T19:42:00Z
+Last visited: 2026-08-10T09:41:30Z
 
 ## Iteration Status
-Current iteration: 2 / 32
+Current iteration: 3 / 32
 
 ## Checklist
 - [x] Create project orchestrator state files (`BRIEFING.md`, `ORIGINAL_REQUEST.md`, `progress.md`, `plan.md`, `context.md`, `PROJECT.md`)
@@ -16,10 +16,8 @@ Current iteration: 2 / 32
   - [x] Collect handoff reports & synthesize findings into `context.md` & `PROJECT.md`
 - [/] Phase 2: Milestone Execution & Quality Gates
   - [x] Milestone 2: Zero Direct File Mutators Refactoring (Verified CLEAN by Forensic Auditor `2923c836-cd63-4ba8-8ffb-50649eb64f57`, Reviewers PASS, Challengers PASS)
-  - [/] Milestone 3: Skill Manifests & `bmad-help` Dynamic Discovery
-    - [x] Worker M3 (`d4cd6537-6b1f-45d1-9ccf-f0641ff2a311`): Refactoring & initial tests completed
-    - [/] Milestone 3 Remediation: Fix catalog-parser CSV line splitting, driver fallback error handling, and TUI TypeScript compiler errors (`ba2c83fe-30c0-44f2-84fc-3fb78bef1908` in-progress)
-  - [ ] Milestone 4: TUI Continuous Loop, Stream Throttling & Interactive Modals
+  - [x] Milestone 3: Skill Manifests & `bmad-help` Dynamic Discovery (Verified CLEAN by Forensic Auditor `0f25a999-638d-4270-8e3e-d54153db8652`, Reviewers PASS, Challengers PASS)
+  - [/] Milestone 4: TUI Loop & Interactive Modals (Worker M4 `cf418d88-9f24-4d11-b1a5-ccd1e357096a` in-progress)
   - [ ] Milestone 5: E2E Verification & Forensic Hardening
 - [ ] Phase 3: Final Acceptance & Victory Report
 

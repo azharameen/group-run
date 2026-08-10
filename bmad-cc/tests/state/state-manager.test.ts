@@ -1,19 +1,26 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { StateManager, createInitialState } from '../../src/state/state-manager';
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import crypto from 'crypto';
 
 describe('StateManager', () => {
-  const testDir = path.join(process.cwd(), 'tests', '.tmp', 'bmad-cc-state-test');
+  const baseDir = path.join(__dirname, '../.tmp/bmad-cc-state-test');
+  let testDir: string;
   let manager: StateManager;
 
   beforeEach(async () => {
+    testDir = path.join(baseDir, crypto.randomUUID());
     await fs.mkdir(testDir, { recursive: true });
     manager = new StateManager(testDir);
   });
 
   afterEach(async () => {
     await fs.rm(testDir, { recursive: true, force: true });
+  });
+
+  afterAll(async () => {
+    await fs.rm(baseDir, { recursive: true, force: true });
   });
 
   it('createInitialState creates valid default state', () => {

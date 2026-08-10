@@ -3,6 +3,8 @@ import { Box, Text } from 'ink';
 import InkSpinner from 'ink-spinner';
 const Spinner = InkSpinner as any;
 
+import { stripAnsi } from '../utils/ansi-cleaner.js';
+
 export interface SubSessionMonitorPanelProps {
   activeSkill?: string;
   activeSessionId?: string | null;
@@ -97,12 +99,13 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
         </Box>
         <Box flexDirection="column" marginTop={1}>
           {visibleLogs.map((log: string, idx: number) => {
-            const isDriverInit = log.startsWith('[DRIVER INIT]');
-            const isPrompt = log.startsWith('[PROMPT LOG]');
-            const isTest = log.startsWith('[TEST');
-            const isGate = log.startsWith('[GATE');
+            const clean = stripAnsi(log);
+            const isDriverInit = clean.startsWith('[DRIVER INIT]');
+            const isPrompt = clean.startsWith('[PROMPT LOG]');
+            const isTest = clean.startsWith('[TEST');
+            const isGate = clean.startsWith('[GATE');
 
-            const formattedLog = log.length > 45 ? log.substring(0, 43) + '..' : log;
+            const formattedLog = clean.length > 45 ? clean.substring(0, 43) + '..' : clean;
 
             return (
               <Box key={idx}>

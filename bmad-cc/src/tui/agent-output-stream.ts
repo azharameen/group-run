@@ -1,3 +1,5 @@
+import { stripAnsi } from '../utils/ansi-cleaner.js';
+
 export class AgentOutputStream {
   private lines: string[] = [];
   private maxLines: number;
@@ -8,7 +10,8 @@ export class AgentOutputStream {
 
   /** Append new output */
   append(data: string): void {
-    const newLines = data.split('\n');
+    const cleaned = stripAnsi(data);
+    const newLines = cleaned.split('\n');
     for (const line of newLines) {
       if (line.trim().length > 0) {
         this.lines.push(line);

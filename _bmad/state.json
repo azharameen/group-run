@@ -1,14 +1,14 @@
 {
   "version": 1,
   "startedAt": "2026-08-09T06:05:09.546Z",
-  "lastUpdatedAt": "2026-08-09T09:31:24.253Z",
+  "lastUpdatedAt": "2026-08-10T04:47:41.858Z",
   "currentPhase": "verification",
-  "currentStoryKey": "5-4-create-team-subgraph-factory",
+  "currentStoryKey": "7-3-set-up-playwright-for-e2e-testing",
   "currentEpicKey": null,
   "retryCount": 0,
   "completedStories": [],
   "skippedStories": [],
-  "activeSessionId": "cb495449-da29-44b5-b917-e86cbdf0ea58",
+  "activeSessionId": "ef938594-f011-4a2d-a152-688b2d634686",
   "lastError": "Subprocess aborted in phase create",
   "driverName": "copilot"
 }

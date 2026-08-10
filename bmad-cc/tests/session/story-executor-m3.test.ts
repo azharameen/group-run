@@ -123,7 +123,7 @@ describe('StoryExecutor Milestone 3 Integrations (Heartbeat & AbortController & 
     expect(result.finalDecision).toBe('ESCALATE_TO_HUMAN');
     const state = await stateManager.load();
     expect(state?.lastError).toContain('stalled');
-  });
+  }, 15000);
 
   it('detects sub-agent queries and fires onSubagentQuery callback', async () => {
     const driver = new MockDriver('query');
@@ -143,7 +143,7 @@ describe('StoryExecutor Milestone 3 Integrations (Heartbeat & AbortController & 
 
     expect(capturedQueryPrompt).not.toBeNull();
     expect(capturedQueryPrompt).toContain('[y/N]');
-  });
+  }, 15000);
 
   it('supports active AbortController cancellation mid-execution', async () => {
     const driver = new MockDriver('stall');

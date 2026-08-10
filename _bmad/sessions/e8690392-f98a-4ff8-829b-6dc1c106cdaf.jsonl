@@ -1,0 +1,5 @@
+{"phase":"pre-flight","storyKey":"7-1-set-up-ci-pipeline","event":"phase-start","data":{"storyKey":"7-1-set-up-ci-pipeline","currentStatus":"backlog","dryRun":false},"timestamp":"2026-08-10T04:29:28.339Z"}
+{"phase":"gate-decision","storyKey":"7-1-set-up-ci-pipeline","event":"gate-decision","data":{"finalDecision":"ESCALATE_TO_HUMAN","totalRetries":4,"startingStatus":"backlog","nextStatus":"backlog"},"timestamp":"2026-08-10T04:41:23.284Z"}
+{"phase":"pre-flight","storyKey":"7-2-validate-and-update-dockerfiles","event":"phase-start","data":{"storyKey":"7-2-validate-and-update-dockerfiles","currentStatus":"backlog","dryRun":false},"timestamp":"2026-08-10T04:41:23.406Z"}
+{"phase":"gate-decision","storyKey":"7-2-validate-and-update-dockerfiles","event":"gate-decision","data":{"finalDecision":"ESCALATE_TO_HUMAN","totalRetries":4,"startingStatus":"backlog","nextStatus":"backlog"},"timestamp":"2026-08-10T04:47:40.961Z"}
+{"phase":"pre-flight","storyKey":"7-3-set-up-playwright-for-e2e-testing","event":"phase-start","data":{"storyKey":"7-3-set-up-playwright-for-e2e-testing","currentStatus":"backlog","dryRun":false},"timestamp":"2026-08-10T04:47:41.121Z"}

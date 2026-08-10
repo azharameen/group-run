@@ -26,6 +26,8 @@ import { QueryModal } from './modals/query-modal.js';
 import type { SubagentQueryInfo } from '../session/stream-parser.js';
 import { askConversationalSupervisor } from '../supervisor/conversational-supervisor.js';
 import { createDriver } from '../agent/driver-factory.js';
+import { StreamThrottler } from '../utils/stream-throttler.js';
+import { stripAnsi } from '../utils/ansi-cleaner.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -84,7 +86,15 @@ function buildFlattenedNodes(
 
 // ── Main App Component ─────────────────────────────────────────────────────────
 
-export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
+export const App: React.FC<AppProps> = ({
+  initialState,
+  onRun,
+  onPause,
+  escalationContext: propsEscalationContext,
+  onEscalationDecision: propsOnEscalationDecision,
+  activeQuery: propsActiveQuery,
+  onQueryAnswer: propsOnQueryAnswer
+}) => {
   const { exit } = useApp();
   const { stdout } = useStdout();
 
@@ -157,10 +167,74 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
     return () => clearInterval(timer);
   }, [isRunning]);
 
-  // ── Re-sync state from initialState ─────────────────────────────────────────
+  // ── Active modal contexts & interactive resolvers ───────────────────────────
+  const [internalActiveQuery, setInternalActiveQuery] = useState<SubagentQueryInfo | null>(null);
+  const [queryResolver, setQueryResolver] = useState<((answer: string) => void) | null>(null);
+
+  const [internalEscalationContext, setInternalEscalationContext] = useState<EscalationContextInfo | null>(null);
+  const [escalationResolver, setEscalationResolver] = useState<((decision: EscalationDecisionResult) => void) | null>(null);
+
+  const currentActiveQuery = propsActiveQuery ?? state.activeQuery ?? initialState.activeQuery ?? internalActiveQuery;
+  const currentEscalationContext = propsEscalationContext ?? state.escalationContext ?? initialState.escalationContext ?? internalEscalationContext;
+  const handleQueryAnswer = propsOnQueryAnswer ?? state.onQueryAnswer ?? initialState.onQueryAnswer;
+  const handleEscalationDecision = propsOnEscalationDecision ?? state.onEscalationDecision ?? initialState.onEscalationDecision;
+
+  const handleQuery = (queryInfo: SubagentQueryInfo): Promise<string> => {
+    return new Promise<string>((resolve) => {
+      setInternalActiveQuery(queryInfo);
+      setQueryResolver(() => resolve);
+      setAppMode('subagent-query');
+    });
+  };
+
+  const handleEscalation = (contextInfo: EscalationContextInfo): Promise<EscalationDecisionResult> => {
+    return new Promise<EscalationDecisionResult>((resolve) => {
+      setInternalEscalationContext(contextInfo);
+      setEscalationResolver(() => resolve);
+      setAppMode('escalation');
+    });
+  };
+
+  const onQuerySubmit = (answer: string) => {
+    setAppMode('workstation');
+    setInternalActiveQuery(null);
+    if (queryResolver) {
+      queryResolver(answer);
+      setQueryResolver(null);
+    }
+    if (handleQueryAnswer) {
+      handleQueryAnswer(answer);
+    }
+  };
+
+  const onEscalationSubmit = (decision: EscalationDecisionResult) => {
+    setAppMode('workstation');
+    setInternalEscalationContext(null);
+    if (escalationResolver) {
+      escalationResolver(decision);
+      setEscalationResolver(null);
+    }
+    if (handleEscalationDecision) {
+      handleEscalationDecision(decision);
+    }
+  };
+
+  // ── Re-sync state & auto-trigger modal mode ──────────────────────────────────
   useEffect(() => {
     setState(initialState);
-  }, [initialState]);
+    if (propsActiveQuery || initialState.activeQuery || internalActiveQuery) {
+      setAppMode('subagent-query');
+    } else if (propsEscalationContext || initialState.escalationContext || internalEscalationContext) {
+      setAppMode('escalation');
+    } else {
+      setAppMode((prev: AppMode) => {
+        if (prev === 'escalation' || prev === 'subagent-query') {
+          return 'workstation';
+        }
+        return prev;
+      });
+    }
+  }, [initialState, propsActiveQuery, propsEscalationContext, internalActiveQuery, internalEscalationContext]);
 
   // ── Computed values ──────────────────────────────────────────────────────────
   const activeDriver = DRIVERS[driverIndex] || 'gemini';
@@ -181,34 +255,49 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
 
   const completedCount = filteredStories.filter((s: StoryRow) => s.status === 'done').length;
 
-  // ── Session log update handler ───────────────────────────────────────────────
-  const handleLogUpdate = (sessionId: string, skill: string, message: string, fullData?: string) => {
-    setSessions((prev: SessionEntry[]) => {
-      const existingIdx = prev.findIndex((s: SessionEntry) => s.sessionId === sessionId);
-      if (existingIdx >= 0) {
-        const updated = [...prev];
-        updated[existingIdx] = {
-          ...updated[existingIdx],
-          logs: [...updated[existingIdx].logs, message],
-          status: 'running'
-        };
-        // Auto-scroll monitor to bottom
-        setMonitorCursorIndex(updated[existingIdx].logs.length - 1);
+  // ── Throttled session log update handler (~50ms buffer + ANSI cleaning) ──────
+  const logThrottlerRef = useRef<StreamThrottler<{ sessionId: string; skill: string; message: string; fullData?: string }>>(
+    new StreamThrottler((batch) => {
+      setSessions((prev: SessionEntry[]) => {
+        let updated = [...prev];
+        for (const item of batch) {
+          const cleanMessage = stripAnsi(item.message);
+          const lines = cleanMessage.split(/\r?\n/).filter(Boolean);
+          const existingIdx = updated.findIndex((s: SessionEntry) => s.sessionId === item.sessionId);
+          if (existingIdx >= 0) {
+            updated[existingIdx] = {
+              ...updated[existingIdx],
+              logs: [...updated[existingIdx].logs, ...lines],
+              status: 'running'
+            };
+            setMonitorCursorIndex(updated[existingIdx].logs.length - 1);
+          } else {
+            const newSession: SessionEntry = {
+              sessionId: item.sessionId,
+              storyKey: state.currentStoryKey || 'unknown',
+              driverName: activeDriver,
+              skill: item.skill,
+              status: 'running',
+              startedAt: nowHHMMSS(),
+              logs: lines.length > 0 ? lines : [cleanMessage]
+            };
+            setSelectedSessionIndex(updated.length);
+            updated.push(newSession);
+          }
+        }
         return updated;
-      } else {
-        const newSession: SessionEntry = {
-          sessionId,
-          storyKey: state.currentStoryKey || 'unknown',
-          driverName: activeDriver,
-          skill,
-          status: 'running',
-          startedAt: nowHHMMSS(),
-          logs: [message]
-        };
-        setSelectedSessionIndex(prev.length); // auto-select newest session
-        return [...prev, newSession];
-      }
-    });
+      });
+    }, 50)
+  );
+
+  useEffect(() => {
+    return () => {
+      logThrottlerRef.current.flush();
+    };
+  }, []);
+
+  const handleLogUpdate = (sessionId: string, skill: string, message: string, fullData?: string) => {
+    logThrottlerRef.current.push({ sessionId, skill, message, fullData });
   };
 
   // ── Supervisor directive handler ─────────────────────────────────────────────
@@ -473,30 +562,28 @@ export const App: React.FC<AppProps> = ({ initialState, onRun, onPause }) => {
     );
   }
 
-  if (appMode === 'escalation' && (initialState as any).escalationContext) {
-    const escCtx = (initialState as any).escalationContext;
+  if (appMode === 'escalation' && currentEscalationContext) {
     return (
       <Box width="100%" height={totalHeight} flexDirection="column" alignItems="center" justifyContent="center">
         <EscalationModal
-          context={escCtx}
+          context={currentEscalationContext}
           onDecision={(decision: EscalationDecisionResult) => {
             setAppMode('workstation');
-            (initialState as any).onEscalationDecision?.(decision);
+            handleEscalationDecision?.(decision);
           }}
         />
       </Box>
     );
   }
 
-  if (appMode === 'subagent-query' && (initialState as any).activeQuery) {
-    const query = (initialState as any).activeQuery;
+  if (appMode === 'subagent-query' && currentActiveQuery) {
     return (
       <Box width="100%" height={totalHeight} flexDirection="column" alignItems="center" justifyContent="center">
         <QueryModal
-          rawPrompt={query.rawPrompt}
+          rawPrompt={currentActiveQuery.rawPrompt}
           onAnswer={(answer: string) => {
             setAppMode('workstation');
-            (initialState as any).onQueryAnswer?.(answer);
+            handleQueryAnswer?.(answer);
           }}
         />
       </Box>

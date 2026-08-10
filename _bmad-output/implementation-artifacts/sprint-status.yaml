@@ -122,12 +122,12 @@ development_status:
   # EP-6: Knowledge & Memory
   epic-6: in-progress
   6-1-knowledge-base-api: done
-  6-2-wire-memory-backend-into-deepagents-runtime: backlog
+  6-2-wire-memory-backend-into-deepagents-runtime: done
   6-3-wire-skills-loading-into-deepagents-runtime: done
   6-4-backend-tests-kb-api-memory-persistence: done
   6-5-update-pages-knowledge-base-tsx: done
   6-6-frontend-tests-kb-browser: done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   # EP-7: Production Readiness
   epic-7: backlog
@@ -141,6 +141,18 @@ development_status:
   epic-7-retrospective: optional
 
 action_items:
+  - epic: 6
+    action: "Add spec-existence check to create-story skill"
+    owner: "Amelia"
+    status: open
+  - epic: 6
+    action: "Implement JSON Schema validation for teams.yaml and mcp.json"
+    owner: "Charlie"
+    status: open
+  - epic: 6
+    action: "Add KB Management API (Delete/Archive) to knowledge_base.py"
+    owner: "Elena"
+    status: open
   - epic: 0
     action: "Run code review per story, not batched at epic end"
     owner: "Ameen"
