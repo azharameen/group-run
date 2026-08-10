@@ -193,6 +193,28 @@
   summary: HITLApprovalCard and InterruptInbox import from `@/api/threads` directly instead of `@/api/client`
   evidence: Functions are re-exported through `@/api/client`, so no behavioral issue; refactor for consistency
 
+## Deferred from: spec-7-7-update-project-documentation.md (2026-08-10)
+
+- source_spec: `spec-7-7-update-project-documentation.md`
+  summary: VITE_API_URL documented in multiple places but never consumed by frontend runtime code
+  evidence: Frontend uses VITE_API_PROXY (Node-level vite.config.ts proxy) and nginx.conf for Docker; VITE_API_URL has no import.meta.env consumer
+
+- source_spec: `spec-7-7-update-project-documentation.md`
+  summary: NFR references (A10, A12, A13) used in documentation without defined meaning
+  evidence: backend/README.md references NFR-A10, NFR-A12, NFR-A13 but no doc defines these identifiers
+
+- source_spec: `spec-7-7-update-project-documentation.md`
+  summary: SqliteSaver documented as sync-only singleton but AsyncSqliteSaver also exists
+  evidence: thread_manager.py maintains both _SQLITE_SAVER and _ASYNC_SQLITE_SAVER singletons; docs mention only the sync variant
+
+- source_spec: `spec-7-7-update-project-documentation.md`
+  summary: CI security audit runs pip-audit and npm audit with continue-on-error, so vulnerabilities don't fail pipeline
+  evidence: .github/workflows/ci.yml security-audit job uses continue-on-error: true for both audit commands
+
+- source_spec: `spec-7-7-update-project-documentation.md`
+  summary: VITE_API_URL set in docker-compose.yml frontend environment has no consumer inside nginx container
+  evidence: Frontend runs behind nginx which handles /api proxying; runtime VITE_API_URL env var is dead code in Docker
+
 - source_spec: `spec-4-6-wire-approval-ui-into-chat-stream.md`
   summary: Duplicate SSE subscriptions — InterruptInbox and useChatStream create independent SSE connections for interrupt events
   evidence: Each manages its own state independently; acceptable as separate component responsibilities; architectural improvement candidate
