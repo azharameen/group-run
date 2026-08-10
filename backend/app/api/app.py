@@ -1,9 +1,15 @@
 """FastAPI app factory."""
 
+import logging
 from contextlib import asynccontextmanager
+from time import time
+from typing import Awaitable, Callable
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from ..infrastructure.observability import configure_langsmith_tracing
 from ..services.thread_manager import get_checkpointer, get_async_checkpointer
@@ -16,6 +22,35 @@ from .routes.mcp import router as mcp_router
 from .routes.ideas import router as ideas_router
 from .routes.sse import router as sse_router
 from .routes.threads import router as threads_router
+
+logger = logging.getLogger(__name__)
+
+
+class TimingMiddleware(BaseHTTPMiddleware):
+    """Measure request latency and attach ``X-Process-Time`` header.
+
+    Skips SSE endpoints (``/api/sse``) because streaming responses
+    would keep the middleware blocked until the client disconnects.
+    Logs duration at debug level for observability.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:  # type: ignore[override]
+        # Skip SSE endpoints — they're streaming, timing would block
+        if request.url.path == "/api/sse":
+            return await call_next(request)
+
+        start_time = time()
+        response: Response = await call_next(request)
+        duration_ms = (time() - start_time) * 1000
+        response.headers["X-Process-Time"] = f"{duration_ms:.2f}"
+        logger.debug(
+            "Request %s %s completed in %.2fms (status=%s)",
+            request.method,
+            request.url.path,
+            duration_ms,
+            response.status_code,
+        )
+        return response
 
 
 @asynccontextmanager
@@ -73,6 +108,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Timing middleware — adds X-Process-Time header to non-streaming responses
+    app.add_middleware(TimingMiddleware)
 
     app.include_router(health_router)
     app.include_router(ideas_router)
