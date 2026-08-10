@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-02
-last_updated: 2026-08-09T15:00:00+05:30
+last_updated: '2026-08-10T13:52:00+05:30'
 project: Companion
 project_key: NOKEY
 tracking_system: file-system
@@ -130,10 +130,10 @@ development_status:
   epic-6-retrospective: done
 
   # EP-7: Production Readiness
-  epic-7: backlog
-  7-1-set-up-ci-pipeline: backlog
-  7-2-validate-and-update-dockerfiles: backlog
-  7-3-set-up-playwright-for-e2e-testing: backlog
+  epic-7: in-progress
+  7-1-set-up-ci-pipeline: done
+  7-2-validate-and-update-dockerfiles: done
+  7-3-set-up-playwright-for-e2e-testing: done
   7-4-sqlite-concurrency-tests: backlog
   7-5-write-e2e-tests-for-critical-flows: backlog
   7-6-performance-validation: backlog
