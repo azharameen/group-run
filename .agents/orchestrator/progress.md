@@ -1,10 +1,10 @@
 # Project Progress — bmad-cc Refactor
 
 ## Current Status
-Last visited: 2026-08-10T14:52:00Z
+Last visited: 2026-08-10T20:01:30Z
 
 ## Iteration Status
-Current iteration: 3 / 32
+Current iteration: 4 / 32
 
 ## Checklist
 - [x] Create project orchestrator state files (`BRIEFING.md`, `ORIGINAL_REQUEST.md`, `progress.md`, `plan.md`, `context.md`, `PROJECT.md`)
@@ -17,15 +17,20 @@ Current iteration: 3 / 32
 - [/] Phase 2: Milestone Execution & Quality Gates
   - [x] Milestone 2: Zero Direct File Mutators Refactoring (Verified CLEAN by Forensic Auditor `2923c836-cd63-4ba8-8ffb-50649eb64f57`, Reviewers PASS, Challengers PASS)
   - [x] Milestone 3: Skill Manifests & `bmad-help` Dynamic Discovery (Verified CLEAN by Forensic Auditor `edc81091-2c9b-46c8-9d1b-23f7debb1b48`, Reviewers PASS, Challengers PASS)
-  - [/] Milestone 4: TUI Loop & Interactive Modals
-    - [x] Worker M4 (`491b1acd-936e-4caf-a675-e9fefe16939c`): TUI continuous loop, stream throttling & interactive modal refactoring completed
-    - [/] Reviewer M4-1 (`b7c3692e-cd18-4d05-a462-d340a3d488ba`): Reviewing
-    - [/] Reviewer M4-2 (`91f83414-b300-4e34-85ec-a10987597d93`): Reviewing
-    - [/] Challenger M4-1 (`fd170cd6-59bb-40c1-9374-6a023d87ad00`): Empirical verification
-    - [/] Challenger M4-2 (`17182f1c-a333-477b-8c66-c4fb70484cf8`): Empirical verification
-    - [/] Forensic Auditor M4-1 (`2dfaa32c-4e60-4606-8e19-151bf57da8ff`): Forensic integrity audit
-  - [ ] Milestone 5: E2E Verification & Forensic Hardening
+  - [x] Milestone 4: TUI Loop & Interactive Modals (Verified CLEAN by Forensic Auditor `d7441824-0eb0-452d-9a97-76082db47629`, Reviewers PASS, Challengers PASS)
+  - [/] Milestone 5: E2E Verification & Forensic Hardening
+    - [/] Reviewer M5 (`b268fea1-1071-4fb4-82b5-93fb555f806a`): Final code review
+    - [/] Challenger M5 (`67f5531d-6080-472f-8c9c-bd1a3d9a1edf`): E2E stress testing
+    - [/] Forensic Auditor M5 (`23e813d3-5587-4833-999b-3a69911cc020`): Final overall Forensic Audit
 - [ ] Phase 3: Final Acceptance & Victory Report
 
+## Milestone 4: TUI Loop & Interactive Modals (Remediation)
+    - [x] Worker M4 Remediation (`64b89eb4-a482-478b-8eb8-9ace06d97fc3`): Remediation completed
+    - [/] Reviewer M4 Rem-1 (`b316230a-2c56-45aa-bd77-9d29e7a4c8f3`): Reviewing
+    - [/] Reviewer M4 Rem-2 (`90eeaa81-2f35-41c7-9ec9-8dd63d1643fa`): Reviewing
+    - [/] Challenger M4 Rem-1 (`52724ab0-6d6d-4c22-b9b5-3b2d165cc29c`): Empirical verification
+    - [/] Challenger M4 Rem-2 (`85b33934-88d9-4f4f-ab00-80cb7701d296`): Empirical verification
+    - [/] Forensic Auditor M4 Rem-1 (`8da85449-dc4e-46f2-91ba-b5694ae12694`): Forensic integrity audit to fix `story-executor.ts` TypeScript errors, `App` component modal state sync, and 5 failing TUI tests.
+
 ## Retrospective Notes
-- Worker M4 completed Milestone 4 implementation. Verification crew dispatched to evaluate Quality Gate criteria.
+- Dispatched Worker M4 Remediation (`64b89eb4-a482-478b-8eb8-9ace06d97fc3`) to fix `story-executor.ts` TypeScript errors, `App` component modal state sync, and 5 failing TUI tests.

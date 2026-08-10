@@ -16,6 +16,7 @@ import { makeGateDecision } from '../supervisor/gate-decision.js';
 import { runTestCommands, summarizeTestResults } from '../verification/test-runner.js';
 import { fileExists } from '../utils/file-helpers.js';
 import { HeartbeatMonitor } from '../watchdog/heartbeat-monitor.js';
+import { ProcessKiller } from '../watchdog/process-killer.js';
 import { StreamQueryParser, type SubagentQueryInfo } from './stream-parser.js';
 import type { EscalationContextInfo, EscalationDecisionResult } from '../tui/modals/escalation-modal.js';
 
@@ -202,16 +203,19 @@ export class StoryExecutor {
         const inactivityTimeoutMs = options.inactivityTimeoutMs || (this.config.limits as any)?.inactivityTimeoutMs || 120000;
 
         let processStalled = false;
+        let activeSubprocessPid: number | undefined;
+        const processKiller = new ProcessKiller({ graceMs: 2000 });
+
         const heartbeat = new HeartbeatMonitor({
           timeoutMs: inactivityTimeoutMs,
-          onTimeout: () => {
+          onTimeout: async () => {
             processStalled = true;
-            this.logger.log({
+            await this.logger.log({
               phase: skill.phase,
               storyKey,
               event: 'stalled-process-timeout',
-              data: { durationMs: inactivityTimeoutMs }
-            });
+              data: { durationMs: inactivityTimeoutMs, pid: activeSubprocessPid }
+            }).catch(() => {});
             options.onProgress?.({
               sessionId,
               storyKey,
@@ -220,6 +224,9 @@ export class StoryExecutor {
               eventType: 'stderr',
               message: `[WATCHDOG] Subprocess output stalled (inactivity threshold ${inactivityTimeoutMs}ms reached). Aborting process...`
             });
+            if (activeSubprocessPid) {
+              await processKiller.kill(activeSubprocessPid, `Watchdog inactivity timeout in phase ${skill.phase}`).catch(() => {});
+            }
             activeAbortController.abort();
           },
           onActivity: () => {}
@@ -237,6 +244,9 @@ export class StoryExecutor {
             workingDirectory: this.config.projectRoot,
             model: this.config.agent.model,
             signal: activeAbortController.signal,
+            onSpawn: (pid) => {
+              activeSubprocessPid = pid;
+            },
             onStdout: async (data) => {
               heartbeat.pulse();
               const query = streamParser.parseChunk(data);
@@ -245,12 +255,12 @@ export class StoryExecutor {
               }
               const clean = data.trim();
               if (!clean) return;
-              this.logger.log({
+              await this.logger.log({
                 phase: skill.phase,
                 storyKey,
                 event: 'agent-output',
                 data: { stream: 'stdout', chunk: clean }
-              });
+              }).catch(() => {});
               // Pipe full lines without artificial length truncation!
               options.onProgress?.({
                 sessionId,
@@ -269,12 +279,12 @@ export class StoryExecutor {
               }
               const clean = data.trim();
               if (!clean) return;
-              this.logger.log({
+              await this.logger.log({
                 phase: skill.phase,
                 storyKey,
                 event: 'agent-output',
                 data: { stream: 'stderr', chunk: clean }
-              });
+              }).catch(() => {});
               options.onProgress?.({
                 sessionId,
                 storyKey,

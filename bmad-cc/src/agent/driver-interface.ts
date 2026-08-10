@@ -17,6 +17,7 @@ export interface AgentSpawnOptions {
   onStderr?: (data: string) => void;
   signal?: AbortSignal;
   onQuery?: (query: string) => Promise<string | undefined> | string | undefined;
+  onSpawn?: (pid: number) => void;
 }
 
 export abstract class AgentDriver {

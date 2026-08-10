@@ -1,5 +1,6 @@
 import { execa } from 'execa';
 import { AgentDriver, AgentSessionResult, AgentSpawnOptions } from './driver-interface.js';
+import { ProcessKiller } from '../watchdog/process-killer.js';
 
 export class AntigravityDriver extends AgentDriver {
   readonly name = 'antigravity';
@@ -21,6 +22,7 @@ export class AntigravityDriver extends AgentDriver {
   async execute(options: AgentSpawnOptions): Promise<AgentSessionResult> {
     const startTime = Date.now();
     const abortController = new AbortController();
+    const processKiller = new ProcessKiller({ graceMs: 2000 });
     
     let timedOut = false;
     let timeoutId: NodeJS.Timeout | undefined;
@@ -58,6 +60,10 @@ export class AntigravityDriver extends AgentDriver {
         signal: abortController.signal,
         all: true
       });
+
+      if (subprocess.pid) {
+        options.onSpawn?.(subprocess.pid);
+      }
 
       subprocess.stdout?.on('data', (chunk) => {
         const str = chunk.toString();

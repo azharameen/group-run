@@ -1,5 +1,6 @@
 import { execa } from 'execa';
 import { AgentDriver, AgentSessionResult, AgentSpawnOptions } from './driver-interface.js';
+import { ProcessKiller } from '../watchdog/process-killer.js';
 
 export class CustomDriver extends AgentDriver {
   readonly name = 'custom';
@@ -30,6 +31,7 @@ export class CustomDriver extends AgentDriver {
   async execute(options: AgentSpawnOptions): Promise<AgentSessionResult> {
     const startTime = Date.now();
     const abortController = new AbortController();
+    const processKiller = new ProcessKiller({ graceMs: 2000 });
     
     let timedOut = false;
     let timeoutId: NodeJS.Timeout | undefined;
@@ -61,6 +63,10 @@ export class CustomDriver extends AgentDriver {
         env: options.env,
         signal: abortController.signal,
       });
+
+      if (subprocess.pid) {
+        options.onSpawn?.(subprocess.pid);
+      }
 
       // Write prompt to stdin if process accepts it
       if (subprocess.stdin) {

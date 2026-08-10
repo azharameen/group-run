@@ -19,15 +19,22 @@ export class SessionLogger {
   }
 
   async log(entry: Omit<SessionLogEntry, 'timestamp'>): Promise<void> {
-    await fs.mkdir(this.sessionsDir, { recursive: true });
-    
-    const fullEntry: SessionLogEntry = {
-      ...entry,
-      timestamp: new Date().toISOString()
-    };
-    
-    const line = JSON.stringify(fullEntry) + '\n';
-    await fs.appendFile(this.logPath, line, 'utf8');
+    try {
+      await fs.mkdir(this.sessionsDir, { recursive: true });
+      
+      const fullEntry: SessionLogEntry = {
+        ...entry,
+        timestamp: new Date().toISOString()
+      };
+      
+      const line = JSON.stringify(fullEntry) + '\n';
+      await fs.appendFile(this.logPath, line, 'utf8');
+    } catch (error: any) {
+      if (error.code === 'ENOENT' || error.code === 'EBUSY' || error.code === 'EACCES' || error.code === 'ENOTDIR') {
+        return;
+      }
+      throw error;
+    }
   }
 
   async readAll(): Promise<SessionLogEntry[]> {

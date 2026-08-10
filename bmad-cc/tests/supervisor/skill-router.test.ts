@@ -17,7 +17,17 @@ describe('skill-router', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(tempDir, { recursive: true, force: true });
+    let retries = 5;
+    while (retries > 0) {
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+        break;
+      } catch {
+        retries--;
+        if (retries === 0) break;
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    }
   });
 
   it('routes backlog to bmad-create-story', () => {

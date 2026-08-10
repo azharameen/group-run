@@ -114,6 +114,23 @@ describe('Empirical Challenge M4 — Deep Stress & Edge Case Harness', () => {
       expect(cleaned).toBe('[RGB BOLD] Click Here Status OK');
     });
 
+    it('strips OSC 8 hyperlinks with \\x1b\\\\ ST terminator and \\x07 BEL terminator and multi-digit OSC codes', () => {
+      const oscSt = '\u001b]8;;https://bmad.dev\u001b\\Hyperlink ST\u001b]8;;\u001b\\';
+      expect(stripAnsi(oscSt)).toBe('Hyperlink ST');
+
+      const oscBel = '\x1b]8;;https://bmad.dev\x07Hyperlink BEL\x1b]8;;\x07';
+      expect(stripAnsi(oscBel)).toBe('Hyperlink BEL');
+
+      const osc8BitSt = '\x1b]8;;https://bmad.dev\x9cHyperlink 8-bit ST\x1b]8;;\x9c';
+      expect(stripAnsi(osc8BitSt)).toBe('Hyperlink 8-bit ST');
+
+      const osc8BitBoth = '\x9d8;;https://bmad.dev\x9cHyperlink 8-bit OSC and ST\x9d8;;\x9c';
+      expect(stripAnsi(osc8BitBoth)).toBe('Hyperlink 8-bit OSC and ST');
+
+      const twoDigitOsc = '\x1b]10;rgb:1234/5678/9abc\x1b\\TwoDigitOSC\x1b]99;custom\x07';
+      expect(stripAnsi(twoDigitOsc)).toBe('TwoDigitOSC');
+    });
+
     it('handles empty strings, undefined inputs, and whitespace-only strings gracefully', () => {
       expect(stripAnsi('')).toBe('');
       expect(stripAnsi(null as any)).toBe('');
