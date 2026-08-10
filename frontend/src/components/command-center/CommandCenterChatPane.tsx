@@ -78,7 +78,7 @@ export function CommandCenterChatPane({
 			/>
 
 			{/* Chat messages viewport */}
-			<div className="flex-1 overflow-hidden flex flex-col h-full bg-background/50 relative">
+			<div data-testid="message-list" className="flex-1 overflow-hidden flex flex-col h-full bg-background/50 relative">
 				{messages.length === 0 ? (
 					<div className="flex flex-col items-center justify-center h-full text-center p-6 text-muted-foreground space-y-4">
 						<BotMessageSquare className="w-12 h-12 text-primary opacity-50" />
@@ -104,6 +104,7 @@ export function CommandCenterChatPane({
 							return (
 								<div
 									key={msg.id}
+									data-testid={`message-${idx}`}
 									ref={(el) => {
 										messageRefs.current[idx] = el;
 									}}
@@ -234,7 +235,7 @@ export function CommandCenterChatPane({
 
 			{/* HITL Approval Overlay — appears above input when interrupt is active */}
 			{isInterruptActive && pendingInterrupt && (
-				<div className="px-3 pb-2 shrink-0">
+				<div data-testid="interrupt-overlay" className="px-3 pb-2 shrink-0">
 					<HITLApprovalCard
 						interrupts={[pendingInterrupt]}
 						onApproved={(id) =>
@@ -264,6 +265,7 @@ export function CommandCenterChatPane({
 
 					<div className="rounded-lg bg-secondary p-2">
 						<Textarea
+							data-testid="chat-input"
 							disabled={isInterruptActive}
 							placeholder={
 								isInterruptActive
@@ -287,6 +289,7 @@ export function CommandCenterChatPane({
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											data-testid="new-thread-button"
 											variant="ghost"
 											size="icon"
 											className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
@@ -305,6 +308,7 @@ export function CommandCenterChatPane({
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											data-testid="stop-button"
 											size="icon"
 											variant="destructive"
 											onClick={onStopGeneration}
@@ -321,6 +325,7 @@ export function CommandCenterChatPane({
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											data-testid="send-button"
 											size="icon"
 											onClick={onSendOrQueue}
 											className="h-6 w-6 rounded-md bg-primary text-primary-foreground"

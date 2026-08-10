@@ -4,6 +4,7 @@ import InkSpinner from 'ink-spinner';
 const Spinner = InkSpinner as any;
 import { ChatInput } from '../chat-input.js';
 import { THEME } from '../theme.js';
+import { cleanAndSplitLines } from '../../utils/ansi-cleaner.js';
 
 export interface ChatMessage {
   role: 'user' | 'supervisor';
@@ -41,7 +42,7 @@ export const SupervisorChatPanel: React.FC<SupervisorChatPanelProps> = ({
   // Build flat lines from messages for viewport slicing
   const allLines: Array<{ role: 'user' | 'supervisor'; line: string; timestamp: string; eventType?: string }> = [];
   for (const msg of messages) {
-    const lines = msg.text.split('\n').filter(Boolean);
+    const lines = cleanAndSplitLines(msg.text).filter(Boolean);
     lines.forEach((line: string, i: number) => {
       allLines.push({
         role: msg.role,

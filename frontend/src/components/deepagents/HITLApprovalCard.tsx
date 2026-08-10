@@ -109,6 +109,7 @@ export const HITLApprovalCard: React.FC<HITLApprovalCardProps> = ({
           </CardContent>
           <CardFooter className="flex justify-end gap-3 pt-2">
             <Button
+              data-testid="reject-button"
               variant="outline"
               size="sm"
               onClick={() => handleReject(item)}
@@ -119,6 +120,7 @@ export const HITLApprovalCard: React.FC<HITLApprovalCardProps> = ({
               Reject
             </Button>
             <Button
+              data-testid="approve-button"
               size="sm"
               onClick={() => handleApprove(item)}
               disabled={loading[item.id]}

@@ -16,11 +16,11 @@ describe('StateManager', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(testDir, { recursive: true, force: true });
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   });
 
   afterAll(async () => {
-    await fs.rm(baseDir, { recursive: true, force: true });
+    await fs.rm(baseDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   });
 
   it('createInitialState creates valid default state', () => {

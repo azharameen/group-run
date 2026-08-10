@@ -3,7 +3,7 @@ import { Box, Text } from 'ink';
 import InkSpinner from 'ink-spinner';
 const Spinner = InkSpinner as any;
 
-import { stripAnsi } from '../utils/ansi-cleaner.js';
+import { stripAnsi, cleanAndSplitLines } from '../utils/ansi-cleaner.js';
 
 export interface SubSessionMonitorPanelProps {
   activeSkill?: string;
@@ -32,7 +32,7 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
   // Flatten multi-line output into individual clean lines
   const allLines: string[] = [];
   for (const rawLog of subSessionOutput) {
-    const split = rawLog.split('\n').map((l: string) => l.trimEnd()).filter(Boolean);
+    const split = cleanAndSplitLines(rawLog).map((l: string) => l.trimEnd()).filter(Boolean);
     allLines.push(...split);
   }
 
@@ -105,7 +105,7 @@ export const SubSessionMonitorPanel: React.FC<SubSessionMonitorPanelProps> = ({
             const isTest = clean.startsWith('[TEST');
             const isGate = clean.startsWith('[GATE');
 
-            const formattedLog = clean.length > 45 ? clean.substring(0, 43) + '..' : clean;
+            const formattedLog = clean.length > 38 ? clean.slice(0, 36) + '..' : clean;
 
             return (
               <Box key={idx}>

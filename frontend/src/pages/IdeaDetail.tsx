@@ -131,7 +131,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+						<AlertDialogAction onClick={handleDelete} data-testid="confirm-delete-button" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
 							Delete Idea
 						</AlertDialogAction>
 					</AlertDialogFooter>
@@ -141,14 +141,14 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 			<div className="w-full space-y-4">
 				<Tabs defaultValue="overview" className="w-full">
 					<TabsList className="w-full justify-start border-b rounded-none h-auto bg-transparent p-0 gap-2 overflow-x-auto flex-nowrap">
-						<TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Overview</TabsTrigger>
-						<TabsTrigger value="filesystem" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Filesystem</TabsTrigger>
-						<TabsTrigger value="comments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Comments</TabsTrigger>
+						<TabsTrigger value="overview" data-testid="tab-overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Overview</TabsTrigger>
+						<TabsTrigger value="filesystem" data-testid="tab-filesystem" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Filesystem</TabsTrigger>
+						<TabsTrigger value="comments" data-testid="tab-comments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Comments</TabsTrigger>
 					</TabsList>
 					<TabsContent value="overview" className="space-y-6 pt-4">
 						<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 							<div className="lg:col-span-2 space-y-5">
-								<Card><CardHeader className="p-4 pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Target className="w-4 h-4 text-primary" />Problem Statement</CardTitle></CardHeader><CardContent className="p-4 pt-1"><p className="text-sm">{idea?.problem_statement || idea?.signal_text || "No problem statement defined yet."}</p></CardContent></Card>
+								<Card><CardHeader className="p-4 pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Target className="w-4 h-4 text-primary" />Problem Statement</CardTitle></CardHeader><CardContent className="p-4 pt-1"><p data-testid="idea-detail-description" className="text-sm">{idea?.problem_statement || idea?.signal_text || "No problem statement defined yet."}</p></CardContent></Card>
 								{idea?.solution_concept && <Card><CardHeader className="p-4 pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Lightbulb className="w-4 h-4 text-primary" />Solution Concept</CardTitle></CardHeader><CardContent className="p-4 pt-1"><p className="text-sm">{idea.solution_concept}</p></CardContent></Card>}
 								{idea?.source_evidence?.length > 0 && <Card><CardHeader className="p-4 pb-2"><CardTitle className="flex items-center gap-2 text-sm"><FileText className="w-4 h-4 text-primary" />Source Evidence &amp; References</CardTitle></CardHeader><CardContent className="p-4 pt-1"><ScrollArea className="max-h-48 pr-2"><ul className="space-y-2">{idea.source_evidence.map((ev: string, i: number) => <li key={i} className="text-xs flex items-start gap-2 border-b last:border-0 pb-1.5"><FileText className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />{ev}</li>)}</ul></ScrollArea></CardContent></Card>}
 							</div>
@@ -166,12 +166,13 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 							<CardContent className="p-4 pt-1 space-y-3">
 								<Textarea
 									className="min-h-28 text-sm"
+									data-testid="comment-textarea"
 									value={commentText}
 									onChange={(e) => setCommentText(e.target.value)}
 									placeholder="Write a note for this idea"
 								/>
 								<div className="flex justify-end">
-									<Button onClick={handleComment} disabled={savingComment || !commentText.trim()} className="gap-2">
+									<Button onClick={handleComment} data-testid="submit-comment-button" disabled={savingComment || !commentText.trim()} className="gap-2">
 										<SendHorizonal className="w-4 h-4" />
 										Add Comment
 									</Button>

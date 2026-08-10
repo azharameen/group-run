@@ -182,6 +182,7 @@ export default function Dashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
+              data-testid="filter-input"
               placeholder="Filter ideas by keyword..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -249,6 +250,7 @@ export default function Dashboard() {
               <label className="text-sm font-medium">Title *</label>
               <Input
                 value={newTitle}
+                data-testid="idea-title-input"
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Enter idea title"
                 maxLength={100}
@@ -258,6 +260,7 @@ export default function Dashboard() {
               <label className="text-sm font-medium">Signal Text (optional)</label>
               <Textarea
                 value={newSignalText}
+                data-testid="idea-description-input"
                 onChange={(e) => setNewSignalText(e.target.value)}
                 placeholder="Describe the problem or opportunity..."
                 rows={3}
@@ -266,7 +269,7 @@ export default function Dashboard() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={!newTitle.trim()}>Create Idea</Button>
+            <Button onClick={handleCreate} data-testid="submit-idea-button" disabled={!newTitle.trim()}>Create Idea</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -282,7 +285,7 @@ export default function Dashboard() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} data-testid="confirm-delete-button" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete Idea
             </AlertDialogAction>
           </AlertDialogFooter>

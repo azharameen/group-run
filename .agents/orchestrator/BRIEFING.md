@@ -1,4 +1,4 @@
-# BRIEFING — 2026-08-09T19:31:55Z
+# BRIEFING — 2026-08-10T14:40:00Z
 
 ## Mission
 Refactor bmad-cc so the Supervisor Agent operates strictly as an orchestrator according to BMad Method specifications (zero direct file mutations in TypeScript, pure BMad skill execution via CLI drivers, bmad-help dynamic workflow discovery, continuous TUI loop).
@@ -20,11 +20,11 @@ Refactor bmad-cc so the Supervisor Agent operates strictly as an orchestrator ac
 - **Work items**:
   1. Milestone 1: Exploration & Codebase Audit [completed]
   2. Milestone 2: Zero Direct File Mutators Refactoring [completed & verified CLEAN]
-  3. Milestone 3: Skill Manifests & bmad-help Discovery [handed off to Successor gen2 for remediation & re-verification]
-  4. Milestone 4: TUI Loop & Interactive Modals [pending]
+  3. Milestone 3: Skill Manifests & bmad-help Discovery [completed & verified CLEAN]
+  4. Milestone 4: TUI Loop & Interactive Modals [verification crew executing]
   5. Milestone 5: E2E Verification & Forensic Audit [pending]
-- **Current phase**: 2 (Milestone Execution & Succession Handed Off)
-- **Current focus**: Self-succession complete. Generation 2 successor running (`4014c8a8-3151-45dc-94f9-2d259c1269b9`).
+- **Current phase**: 2 (Milestone Execution)
+- **Current focus**: Milestone 4 — Review, Challenge & Forensic Audit Verification
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files directly.
@@ -35,38 +35,29 @@ Refactor bmad-cc so the Supervisor Agent operates strictly as an orchestrator ac
 
 ## Current Parent
 - Conversation ID: 73d24283-f1c1-4b0e-b816-1cbee2eca1c7
-- Updated: 2026-08-09T19:34:00Z
+- Updated: 2026-08-10T14:40:00Z
 
 ## Key Decisions Made
 - Initiated bmad-cc refactor project under Project Pattern.
 - Milestone 1 & 2 completed & verified CLEAN.
-- Generation 2 resumed execution.
-- Dispatched Worker M3 Remediation (gen2) (`06ca4df1-9fe3-4d53-a927-15da953a8d78`) to implement catalog-parser CSV line splitting fix, driver fallback error handling, and React TUI TypeScript compiler errors.
+- Milestone 3 remediated and verified CLEAN by Forensic Auditor `0f25a999-638d-4270-8e3e-d54153db8652`.
+- Worker M4 (`31625c11-03bd-4bf8-9596-dc02240cbd8d`) completed Milestone 4 refactoring.
+- Dispatched 2 Reviewers, 2 Challengers, and 1 Forensic Auditor for Milestone 4 verification gate.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| Explorer 1 | teamwork_preview_explorer | Direct File Mutators Audit | completed | 7b623790-2b2c-4fbe-a11a-88d3dd65a795 |
-| Explorer 2 | teamwork_preview_explorer | Skills, Drivers & bmad-help Audit | completed | 676375b5-b3db-4c91-bc1d-c129fa8163e2 |
-| Explorer 3 | teamwork_preview_explorer | TUI Loop & Monitoring Audit | completed | 523ff45a-e49a-4312-9e9b-bd3782fb5ee1 |
-| Worker M2 | teamwork_preview_worker | Zero Direct File Mutators Refactoring | completed | 1833be91-efed-44b8-9010-ff0148772e9f |
-| Worker M3 Remediation (gen2) | teamwork_preview_worker | Milestone 3 Remediation | completed | c3d6cc0a-4d57-41c7-a009-6cb1de19ee6c |
-| Reviewer M3 Rem-1 (gen2) | teamwork_preview_reviewer | Code Review M3 Rem-1 | completed (PASS) | ce63c4ac-f855-4553-b03c-7777aca2d53d |
-| Reviewer M3 Rem-2 (gen2) | teamwork_preview_reviewer | Code Review M3 Rem-2 | completed (PASS) | aca81b2e-48e9-4153-b574-d7ab41c75097 |
-| Challenger M3 Rem-1 (gen2) | teamwork_preview_challenger | Verification M3 Rem-1 | completed (PASS) | a202a908-3634-48c0-b4b2-6537934a1655 |
-| Challenger M3 Rem-2 (gen2) | teamwork_preview_challenger | Verification M3 Rem-2 | completed (PASS) | fdd24765-5356-4c1f-b248-09db2d369f56 |
-| Forensic Auditor M3 Rem-1 (gen2) | teamwork_preview_auditor | Integrity Audit M3 Rem-1 | completed (CLEAN) | 0f25a999-638d-4270-8e3e-d54153db8652 |
-| Worker M4 (gen2) | teamwork_preview_worker | Milestone 4 TUI Loop & Modals | in-progress | 5cd5b80a-ac39-4164-8cca-e3ebbbb78c46 |
+| Worker M4 Remediation (gen2) | teamwork_preview_worker | Milestone 4 Remediation | in-progress | f520bf0c-8f1e-4aa8-a4f0-35aab7baa354 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 12 / 16 (Generation 2)
-- Pending subagents: 5cd5b80a-ac39-4164-8cca-e3ebbbb78c46
+- Spawn count: 7 / 16 (Generation 2)
+- Pending subagents: f520bf0c-8f1e-4aa8-a4f0-35aab7baa354-4e60-4606-8e19-151bf57da8ff
 - Predecessor: gen1 (handed off at 20 spawns)
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: active (task-29)
+- Heartbeat cron: active
 - Safety timer: none
 
 ## Artifact Index
@@ -76,4 +67,3 @@ Refactor bmad-cc so the Supervisor Agent operates strictly as an orchestrator ac
 - d:/Projects/POC/ideator/.agents/orchestrator/progress.md — Liveness & status tracking
 - d:/Projects/POC/ideator/.agents/orchestrator/context.md — Architectural context & findings
 - d:/Projects/POC/ideator/.agents/orchestrator/PROJECT.md — Global index & decomposition
-- d:/Projects/POC/ideator/.agents/orchestrator/handoff.md — Succession soft handoff report

@@ -163,6 +163,7 @@ export function NavThreads({
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
+								data-testid="sidebar-new-thread-button"
 								variant="ghost"
 								size="sm"
 								disabled={isCreating}
@@ -201,9 +202,10 @@ export function NavThreads({
 							filteredThreads.map((t) => {
 								const isActive = t.thread_id === activeThreadId;
 								return (
-									<SidebarMenuItem key={t.thread_id}>
+									<SidebarMenuItem key={t.thread_id} data-testid={`thread-item-${t.thread_id}`}>
 										<SidebarMenuButton
-											isActive={isActive}
+												data-testid={`thread-button-${t.thread_id}`}
+												isActive={isActive}
 											onClick={() => onSelectThread?.(t.thread_id)}
 											tooltip={t.title}
 											className="group/btn"

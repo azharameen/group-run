@@ -108,7 +108,10 @@ export default class Tui extends Command {
     let currentState = buildState();
     let inkInstance: any;
 
-    const updateUIState = (newState: DashboardState) => {
+    let renderTimer: NodeJS.Timeout | null = null;
+    let pendingState: DashboardState | null = null;
+
+    const performRerender = (newState: DashboardState) => {
       currentState = newState;
       if (inkInstance) {
         inkInstance.rerender(
@@ -118,6 +121,28 @@ export default class Tui extends Command {
             onPause: handlePause
           })
         );
+      }
+    };
+
+    const updateUIState = (newState: DashboardState, immediate: boolean = false) => {
+      pendingState = newState;
+      if (immediate) {
+        if (renderTimer) {
+          clearTimeout(renderTimer);
+          renderTimer = null;
+        }
+        performRerender(newState);
+        pendingState = null;
+        return;
+      }
+      if (!renderTimer) {
+        renderTimer = setTimeout(() => {
+          renderTimer = null;
+          if (pendingState) {
+            performRerender(pendingState);
+            pendingState = null;
+          }
+        }, 50);
       }
     };
 
@@ -135,9 +160,9 @@ export default class Tui extends Command {
       epicFilter?: string,
       statusFilter?: string,
       driverOverride?: DriverName,
-      onLogUpdate?: (sessionId: string, skill: string, message: string) => void,
-      onQuery?: (queryInfo: SubagentQueryInfo) => Promise<string>,
-      onEscalation?: (context: EscalationContextInfo) => Promise<EscalationDecisionResult>
+      externalOnLogUpdate?: (sessionId: string, skill: string, message: string) => void,
+      externalOnQuery?: (queryInfo: SubagentQueryInfo) => Promise<string>,
+      externalOnEscalation?: (context: EscalationContextInfo) => Promise<EscalationDecisionResult>
     ) => {
       if (isExecuting) {
         isPaused = false;
@@ -169,8 +194,8 @@ export default class Tui extends Command {
         for (const item of batch) {
           const cleanMsg = stripAnsi(item.message);
           outputStream.append(`[${item.skill}] ${cleanMsg}`);
-          if (onLogUpdate) {
-            onLogUpdate(item.sessionId, item.skill, cleanMsg);
+          if (externalOnLogUpdate) {
+            externalOnLogUpdate(item.sessionId, item.skill, cleanMsg);
           }
         }
         const lastItem = batch[batch.length - 1];
@@ -205,7 +230,7 @@ export default class Tui extends Command {
 
           outputStream.append(`Supervisor continuous loop starting execution for ${storyKey} (status: ${initialStatus})...`);
           streamThrottler.flush();
-          updateUIState(buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName));
+          updateUIState(buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName), true);
 
           let result;
           try {
@@ -227,8 +252,8 @@ export default class Tui extends Command {
               onSubagentQuery: async (query) => {
                 outputStream.append(`[SUB-AGENT QUERY] ${query.rawPrompt}`);
                 streamThrottler.flush();
-                if (onQuery) {
-                  return await onQuery(query);
+                if (externalOnQuery) {
+                  return await externalOnQuery(query);
                 }
 
                 // Interactive QueryModal wiring in TUI
@@ -242,17 +267,17 @@ export default class Tui extends Command {
                         ...buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName),
                         activeQuery: null,
                         onQueryAnswer: undefined
-                      });
+                      }, true);
                       resolve(answer);
                     }
-                  });
+                  }, true);
                 });
               },
               onEscalation: async (escContext) => {
                 outputStream.append(`[ESCALATION REQUIRED] ${escContext.storyKey}: ${escContext.reason}`);
                 streamThrottler.flush();
-                if (onEscalation) {
-                  return await onEscalation(escContext);
+                if (externalOnEscalation) {
+                  return await externalOnEscalation(escContext);
                 }
                 return new Promise<EscalationDecisionResult>((resolve) => {
                   updateUIState({
@@ -264,10 +289,10 @@ export default class Tui extends Command {
                         ...buildState(storyKey, activePhase, activeSkill, outputStream.render(), activeDriverName),
                         escalationContext: null,
                         onEscalationDecision: undefined
-                      });
+                      }, true);
                       resolve(decision);
                     }
-                  });
+                  }, true);
                 });
               }
             });
@@ -292,7 +317,7 @@ export default class Tui extends Command {
           sprintStatus = await parseSprintStatus(sprintStatusPath);
 
           outputStream.append(`Decision for ${storyKey}: ${result.finalDecision} -> next: ${result.nextStatus || 'done'}`);
-          updateUIState(buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName));
+          updateUIState(buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName), true);
 
           if (result.finalDecision === 'APPROVE') {
             queue.markCompleted(storyKey);
@@ -306,8 +331,8 @@ export default class Tui extends Command {
             };
 
             let decision: EscalationDecisionResult;
-            if (onEscalation) {
-              decision = await onEscalation(escalationContext);
+            if (externalOnEscalation) {
+              decision = await externalOnEscalation(escalationContext);
             } else {
               decision = await new Promise<EscalationDecisionResult>((resolve) => {
                 updateUIState({
@@ -318,15 +343,15 @@ export default class Tui extends Command {
                       ...buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName),
                       escalationContext: null,
                       onEscalationDecision: undefined
-                    });
+                    }, true);
                     resolve(dec);
                   }
-                });
+                }, true);
               });
             }
 
             outputStream.append(`[HUMAN ESCALATION DECISION] Action: ${decision.action}`);
-            updateUIState(buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName));
+            updateUIState(buildState(storyKey, 'gate', activeSkill, outputStream.render(), activeDriverName), true);
 
             if (decision.action === 'override-pass') {
               outputStream.append(`Human override: Story ${storyKey} marked as PASSED/COMPLETED.`);
@@ -356,7 +381,7 @@ export default class Tui extends Command {
         streamThrottler.flush();
         isExecuting = false;
         outputStream.append(isPaused ? 'Execution paused by user.' : 'Supervisor monitoring active. Continuous loop ready.');
-        updateUIState(buildState(null, 'idle', undefined, outputStream.render(), activeDriverName));
+        updateUIState(buildState(null, 'idle', undefined, outputStream.render(), activeDriverName), true);
       }
     };
 
@@ -372,4 +397,5 @@ export default class Tui extends Command {
     cleanupScreen();
   }
 }
+
 

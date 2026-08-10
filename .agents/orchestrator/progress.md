@@ -1,7 +1,7 @@
 # Project Progress — bmad-cc Refactor
 
 ## Current Status
-Last visited: 2026-08-10T09:41:30Z
+Last visited: 2026-08-10T14:52:00Z
 
 ## Iteration Status
 Current iteration: 3 / 32
@@ -16,10 +16,16 @@ Current iteration: 3 / 32
   - [x] Collect handoff reports & synthesize findings into `context.md` & `PROJECT.md`
 - [/] Phase 2: Milestone Execution & Quality Gates
   - [x] Milestone 2: Zero Direct File Mutators Refactoring (Verified CLEAN by Forensic Auditor `2923c836-cd63-4ba8-8ffb-50649eb64f57`, Reviewers PASS, Challengers PASS)
-  - [x] Milestone 3: Skill Manifests & `bmad-help` Dynamic Discovery (Verified CLEAN by Forensic Auditor `0f25a999-638d-4270-8e3e-d54153db8652`, Reviewers PASS, Challengers PASS)
-  - [/] Milestone 4: TUI Loop & Interactive Modals (Worker M4 `cf418d88-9f24-4d11-b1a5-ccd1e357096a` in-progress)
+  - [x] Milestone 3: Skill Manifests & `bmad-help` Dynamic Discovery (Verified CLEAN by Forensic Auditor `edc81091-2c9b-46c8-9d1b-23f7debb1b48`, Reviewers PASS, Challengers PASS)
+  - [/] Milestone 4: TUI Loop & Interactive Modals
+    - [x] Worker M4 (`491b1acd-936e-4caf-a675-e9fefe16939c`): TUI continuous loop, stream throttling & interactive modal refactoring completed
+    - [/] Reviewer M4-1 (`b7c3692e-cd18-4d05-a462-d340a3d488ba`): Reviewing
+    - [/] Reviewer M4-2 (`91f83414-b300-4e34-85ec-a10987597d93`): Reviewing
+    - [/] Challenger M4-1 (`fd170cd6-59bb-40c1-9374-6a023d87ad00`): Empirical verification
+    - [/] Challenger M4-2 (`17182f1c-a333-477b-8c66-c4fb70484cf8`): Empirical verification
+    - [/] Forensic Auditor M4-1 (`2dfaa32c-4e60-4606-8e19-151bf57da8ff`): Forensic integrity audit
   - [ ] Milestone 5: E2E Verification & Forensic Hardening
 - [ ] Phase 3: Final Acceptance & Victory Report
 
 ## Retrospective Notes
-- Gen 2 Successor resumed orchestration. Dispatched Worker M3 Remediation (`ba2c83fe-30c0-44f2-84fc-3fb78bef1908`).
+- Worker M4 completed Milestone 4 implementation. Verification crew dispatched to evaluate Quality Gate criteria.

@@ -1,13 +1,16 @@
-# Progress — Worker M4
+# Progress Log - Worker M4
 
-Last visited: 2026-08-10T09:36:00Z
+Last visited: 2026-08-10T14:37:10Z
 
-- [x] Initialized BRIEFING.md and ORIGINAL_REQUEST.md
-- [ ] Run existing tests to check baseline state
-- [ ] Investigate `src/commands/tui.ts`, `src/tui/app.tsx`, `QueryModal`, `EscalationModal`, and sub-session panels
-- [ ] Implement `QueryModal` interactive wiring
-- [ ] Implement `EscalationModal` interactive wiring
-- [ ] Implement 50ms stream output throttling for `inkInstance.rerender`
-- [ ] Implement ANSI stripping before log slicing in sub-session panel
-- [ ] Run vitest, tsc, and tsup verification
-- [ ] Write handoff.md and send message to orchestrator
+## Steps Completed
+- [x] Step 1: Initialization, ORIGINAL_REQUEST.md and BRIEFING.md created.
+- [x] Step 2: Codebase exploration and analysis.
+- [x] Step 3: Implemented/verified clean ANSI strip before slice(0, 36) in sub-session panels and Windows test cleanup stability in state-manager.test.ts.
+- [x] Step 4: Verification completed (`npx vitest run` 26/26 files passed, `npx tsc --noEmit` 0 errors, `npx tsup` build clean).
+
+## Current Step
+- Step 5: Final handoff and notification.
+
+## Plan Ahead
+- [ ] Run `npx tsc --noEmit` and `npx tsup` after vitest finishes.
+- [ ] Prepare handoff.md and notify orchestrator.

@@ -50,7 +50,7 @@ export default function IdeaCard({
   }
 
   return (
-    <Link to={`/ideas/${idea.idea_id}`} className="block group">
+    <Link to={`/ideas/${idea.idea_id}`} className="block group" data-testid={`idea-card-${idea.idea_id}`}>
       <Card className={`h-full transition-all duration-200 hover:shadow-md hover:border-primary/50 ${isSelected ? 'border-primary ring-2 ring-primary/20' : ''}`}>
         <CardHeader className="p-5 pb-3">
           <div className="flex items-start gap-2 min-w-0">
@@ -58,6 +58,7 @@ export default function IdeaCard({
               <div className="pt-1">
                 <input
                   type="checkbox"
+                  data-testid={`checkbox-${idea.idea_id}`}
                   checked={isSelected}
                   onChange={(e) => {
                     e.stopPropagation()
@@ -93,6 +94,7 @@ export default function IdeaCard({
                 </div>
               ) : (
                 <CardTitle
+                  data-testid={`idea-title-${idea.idea_id}`}
                   className="text-base font-semibold group-hover:text-primary transition-colors line-clamp-2"
                   onDoubleClick={(e) => {
                     e.preventDefault()
@@ -108,6 +110,7 @@ export default function IdeaCard({
               <Button
                 size="icon"
                 variant="ghost"
+                data-testid={`delete-btn-${idea.idea_id}`}
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()

@@ -1,25 +1,26 @@
-## 2026-08-10T09:36:00Z
+## 2026-08-10T14:31:10Z
+
 You are Worker M4 working on Milestone 4: TUI Loop, Stream Throttling & Interactive Modals for bmad-cc refactor.
 
 Working directory for your metadata/handoffs: `d:/Projects/POC/ideator/.agents/worker_m4/`
 Target codebase directory: `d:/Projects/POC/ideator/bmad-cc`
 
-### Detailed Milestone 4 Objectives
+### Objectives for Milestone 4
 1. **Interactive `QueryModal` Wiring**:
-   In `src/commands/tui.ts` and `src/tui/app.tsx`, wire sub-agent query events (`onSubagentQuery`) so that when a sub-agent requests clarification or input, the TUI displays `QueryModal`, pauses stream processing, captures stdin input from the user, and routes the answer back to resume execution.
+   In `src/commands/tui.ts` and `src/tui/app.tsx`, wire `onSubagentQuery` so that when a sub-agent emits a query event, the TUI opens `QueryModal`, pauses output stream updates, captures interactive user stdin input, and routes the response back to resume session execution.
 
 2. **Interactive `EscalationModal` Wiring**:
-   In `src/commands/tui.ts` and `src/tui/app.tsx`, wire `finalDecision === 'ESCALATE_TO_HUMAN'` decision gates so that the TUI presents `EscalationModal`, allowing interactive selection (`retry`, `skip`, `abort`), captures the choice, and applies it to control workflow progression.
+   In `src/commands/tui.ts` and `src/tui/app.tsx`, wire decision gates so that when `finalDecision === 'ESCALATE_TO_HUMAN'`, the TUI presents `EscalationModal` to the user with choices (`retry`, `skip`, `abort`), captures user selection, and applies the choice to control workflow continuation.
 
-3. **Stream Output Throttling (50ms buffer)**:
-   In `src/commands/tui.ts`, implement 50ms batching/throttling for `inkInstance.rerender` on live stdout/stderr chunk streaming to ensure smooth rendering without terminal UI lag or stutter.
+3. **Stream Output Rerender Throttling (50ms buffer)**:
+   In `src/commands/tui.ts`, implement 50ms batching/throttling for `inkInstance.rerender` on live stdout/stderr chunk streaming to eliminate terminal lag and stutter.
 
 4. **ANSI Strip / Cleaning**:
-   In `src/tui/panels/sub-session-panel.tsx` (or `sub-session-monitor-panel.tsx`), strip or cleanly handle ANSI color codes before log slicing (`slice(0, 36)`) to avoid split/corrupted ANSI control sequences.
+   In `src/tui/panels/sub-session-panel.tsx` (or `sub-session-monitor-panel.tsx`), strip ANSI escape sequences before log slicing (`slice(0, 36)`) to prevent broken ANSI sequences.
 
 5. **Build & Test Verification**:
    Run the following in `d:/Projects/POC/ideator/bmad-cc`:
-   - `npx vitest run` (Must pass 100% across all 21+ test files with 0 failures).
+   - `npx vitest run` (Must pass 100% clean across all test files).
    - `npx tsc --noEmit` (Must complete with 0 compilation errors).
    - `npx tsup` (Must build clean ESM artifacts in `dist/`).
 

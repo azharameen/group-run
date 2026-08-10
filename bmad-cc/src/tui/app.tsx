@@ -114,7 +114,11 @@ export const App: React.FC<AppProps> = ({
   }, [stdout]);
 
   // ── App mode & pane state ────────────────────────────────────────────────────
-  const [appMode, setAppMode] = useState<AppMode>('workstation');
+  const [appMode, setAppMode] = useState<AppMode>(() => {
+    if (propsActiveQuery || initialState.activeQuery) return 'subagent-query';
+    if (propsEscalationContext || initialState.escalationContext) return 'escalation';
+    return 'workstation';
+  });
   const [middlePaneView, setMiddlePaneView] = useState<MiddlePaneView>('chat');
   const [focusedPane, setFocusedPane] = useState<FocusedPane>('console');
 
@@ -222,9 +226,9 @@ export const App: React.FC<AppProps> = ({
   // ── Re-sync state & auto-trigger modal mode ──────────────────────────────────
   useEffect(() => {
     setState(initialState);
-    if (propsActiveQuery || initialState.activeQuery || internalActiveQuery) {
+    if (propsActiveQuery || initialState.activeQuery || state.activeQuery || internalActiveQuery) {
       setAppMode('subagent-query');
-    } else if (propsEscalationContext || initialState.escalationContext || internalEscalationContext) {
+    } else if (propsEscalationContext || initialState.escalationContext || state.escalationContext || internalEscalationContext) {
       setAppMode('escalation');
     } else {
       setAppMode((prev: AppMode) => {
@@ -234,7 +238,7 @@ export const App: React.FC<AppProps> = ({
         return prev;
       });
     }
-  }, [initialState, propsActiveQuery, propsEscalationContext, internalActiveQuery, internalEscalationContext]);
+  }, [initialState, propsActiveQuery, propsEscalationContext, internalActiveQuery, internalEscalationContext, state.activeQuery, state.escalationContext]);
 
   // ── Computed values ──────────────────────────────────────────────────────────
   const activeDriver = DRIVERS[driverIndex] || 'gemini';
@@ -255,7 +259,9 @@ export const App: React.FC<AppProps> = ({
 
   const completedCount = filteredStories.filter((s: StoryRow) => s.status === 'done').length;
 
-  // ── Throttled session log update handler (~50ms buffer + ANSI cleaning) ──────
+  // ── Throttled session log update handler (~50ms buffer + ANSI cleaning + 500 line cap) ──────
+  const MAX_SESSION_LOGS = 500;
+
   const logThrottlerRef = useRef<StreamThrottler<{ sessionId: string; skill: string; message: string; fullData?: string }>>(
     new StreamThrottler((batch) => {
       setSessions((prev: SessionEntry[]) => {
@@ -265,13 +271,21 @@ export const App: React.FC<AppProps> = ({
           const lines = cleanMessage.split(/\r?\n/).filter(Boolean);
           const existingIdx = updated.findIndex((s: SessionEntry) => s.sessionId === item.sessionId);
           if (existingIdx >= 0) {
+            const combinedLogs = [...updated[existingIdx].logs, ...lines];
+            const cappedLogs = combinedLogs.length > MAX_SESSION_LOGS
+              ? combinedLogs.slice(-MAX_SESSION_LOGS)
+              : combinedLogs;
             updated[existingIdx] = {
               ...updated[existingIdx],
-              logs: [...updated[existingIdx].logs, ...lines],
+              logs: cappedLogs,
               status: 'running'
             };
-            setMonitorCursorIndex(updated[existingIdx].logs.length - 1);
+            setMonitorCursorIndex(cappedLogs.length - 1);
           } else {
+            const initialLines = lines.length > 0 ? lines : [cleanMessage];
+            const cappedLines = initialLines.length > MAX_SESSION_LOGS
+              ? initialLines.slice(-MAX_SESSION_LOGS)
+              : initialLines;
             const newSession: SessionEntry = {
               sessionId: item.sessionId,
               storyKey: state.currentStoryKey || 'unknown',
@@ -279,7 +293,7 @@ export const App: React.FC<AppProps> = ({
               skill: item.skill,
               status: 'running',
               startedAt: nowHHMMSS(),
-              logs: lines.length > 0 ? lines : [cleanMessage]
+              logs: cappedLines
             };
             setSelectedSessionIndex(updated.length);
             updated.push(newSession);

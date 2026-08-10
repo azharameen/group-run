@@ -29,7 +29,7 @@ export function IdeaActionsHeader({
 		<div className="relative p-6 rounded-xl border bg-card text-card-foreground shadow-sm">
 			<div className="flex flex-col gap-4">
 				{/* Title on top */}
-				<h1 className="text-2xl font-bold tracking-tight text-foreground leading-tight pr-10">
+				<h1 data-testid="idea-detail-title" className="text-2xl font-bold tracking-tight text-foreground leading-tight pr-10">
 					{title || ideaId}
 				</h1>
 
@@ -55,6 +55,7 @@ export function IdeaActionsHeader({
 						<DropdownMenuItem
 							onClick={onDelete}
 							disabled={deleting}
+							data-testid="delete-idea-action"
 							className="gap-2 cursor-pointer text-destructive focus:text-destructive"
 						>
 							<Trash2 className="w-4 h-4" />

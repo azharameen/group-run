@@ -389,8 +389,8 @@ export class StoryExecutor {
             finalDecision = 'APPROVE';
             break;
           } else if (escResult.action === 'skip') {
-            phaseDecision = 'REJECT';
-            finalDecision = 'REJECT';
+            phaseDecision = 'ESCALATE_TO_HUMAN';
+            finalDecision = 'ESCALATE_TO_HUMAN';
             break;
           }
         }

@@ -1,46 +1,54 @@
-# BRIEFING — 2026-08-10T09:36:00Z
+# BRIEFING — 2026-08-10T14:31:10Z
 
 ## Mission
-Milestone 4: TUI Loop, Stream Throttling & Interactive Modals for bmad-cc refactor.
+Complete Milestone 4: TUI Loop, Stream Throttling & Interactive Modals for bmad-cc refactor.
 
 ## 🔒 My Identity
-- Archetype: worker
+- Archetype: implementer, qa, specialist
 - Roles: implementer, qa, specialist
 - Working directory: d:/Projects/POC/ideator/.agents/worker_m4
 - Original parent: 14e65847-56cc-4e74-a907-69ba7a50addc
-- Milestone: Milestone 4 - TUI Loop & Interactive Modals
+- Milestone: Milestone 4
 
 ## 🔒 Key Constraints
-- CODE_ONLY network mode (no external web requests)
-- Minimal changes principle, re-read files before edit
-- Genuine implementation — no hardcoded test results, facade outputs, or cheating
-- All vitest tests (21+ test files) must pass 100%, tsc --noEmit and tsup build clean
+- CODE_ONLY mode (no external network requests).
+- Follow minimal change principle.
+- Absolute integrity: no hardcoded test outputs or fake logic.
+- Verify using `npx vitest run`, `npx tsc --noEmit`, `npx tsup`.
 
 ## Current Parent
 - Conversation ID: 14e65847-56cc-4e74-a907-69ba7a50addc
-- Updated: 2026-08-10T09:36:00Z
+- Updated: 2026-08-10T14:31:10Z
 
 ## Task Summary
-- **What to build**: Interactive `QueryModal` & `EscalationModal` wiring in `tui.ts` & `app.tsx`, 50ms batching/throttling for `inkInstance.rerender` in `tui.ts`, ANSI stripping before log slicing in sub-session panel, clean test/tsc/tsup build.
-- **Success criteria**: 100% tests passing, clean tsc and tsup, fully working interactive modals and throttled rendering.
-- **Interface contracts**: `bmad-cc` existing TUI & engine specs.
-- **Code layout**: `d:/Projects/POC/ideator/bmad-cc/src/`
+- **What to build**:
+  1. Interactive QueryModal wiring in tui.ts & app.tsx (onSubagentQuery, stream pausing, stdin input, route response).
+  2. Interactive EscalationModal wiring in tui.ts & app.tsx (finalDecision === ESCALATE_TO_HUMAN, choices retry/skip/abort, workflow control).
+  3. Stream output rerender throttling (50ms buffer) for inkInstance.rerender in tui.ts.
+  4. ANSI strip/cleaning before slice(0, 36) in sub-session panels.
+  5. Clean build & test verification.
+- **Success criteria**: All tests pass clean (100%), tsc passes with 0 errors, tsup builds clean ESM output in dist/.
+- **Code layout**: `d:/Projects/POC/ideator/bmad-cc`
 
 ## Key Decisions Made
-- Starting initial investigation of `bmad-cc` codebase.
+- Confirmed existing implementation of QueryModal and EscalationModal interactive wiring in `tui.ts` & `app.tsx`.
+- Confirmed StreamThrottler 50ms batching for rerenders in `tui.ts`.
+- Updated `tests/state/state-manager.test.ts` to add maxRetries & retryDelay to fs.rm for Windows test teardown stability.
+- Updated `sub-session-monitor-panel.tsx` to slice(0, 36) after stripAnsi.
 
 ## Artifact Index
-- d:/Projects/POC/ideator/.agents/worker_m4/ORIGINAL_REQUEST.md — Initial request description
+- `.agents/worker_m4/ORIGINAL_REQUEST.md` — Original request text
+- `.agents/worker_m4/BRIEFING.md` — Agent briefing & state tracking
+- `.agents/worker_m4/progress.md` — Progress heartbeat log
 
 ## Change Tracker
-- **Files modified**: None yet
-- **Build status**: Pending
+- **Files modified**:
+  - `tests/state/state-manager.test.ts`: Added maxRetries & retryDelay to `fs.rm` calls in test teardown.
+  - `src/tui/sub-session-monitor-panel.tsx`: Updated string truncation to use `clean.slice(0, 36) + '..'` after `stripAnsi`.
+- **Build status**: Vitest running
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: Pending
-- **Lint status**: Pending
-- **Tests added/modified**: Pending
-
-## Loaded Skills
-- None
+- **Build/test result**: In progress
+- **Lint/TSC status**: Pending
+- **Tests added/modified**: `tests/state/state-manager.test.ts` updated for Windows filesystem cleanup reliability.

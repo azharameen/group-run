@@ -95,7 +95,7 @@ describe('Milestone 4 - TUI Interactive Modals & Stream Throttling', () => {
     expect(cleanLog).toBe('[DRIVER INIT] Spawning sub-agent bmad-dev-story...');
 
     const sliced = cleanLog.length > 38 ? cleanLog.slice(0, 36) + '..' : cleanLog;
-    expect(sliced).toBe('[DRIVER INIT] Spawning sub-agent b..');
+    expect(sliced).toBe('[DRIVER INIT] Spawning sub-agent bma..');
     expect(sliced).not.toContain('\u001b');
   });
 });
