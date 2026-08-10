@@ -25,6 +25,12 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/e2e-results/
+
 # IDE
 .vscode/
 .idea/
