@@ -35,8 +35,8 @@ class TimingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:  # type: ignore[override]
-        # Skip SSE endpoints — they're streaming, timing would block
-        if request.url.path == "/api/sse":
+        # Skip streaming endpoints — timing would block until client disconnects
+        if request.url.path in ("/api/sse", "/api/chat/stream"):
             return await call_next(request)
 
         start_time = time()

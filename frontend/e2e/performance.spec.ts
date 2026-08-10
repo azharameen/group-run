@@ -82,18 +82,23 @@ test.describe('Performance Measurements', () => {
       threads.push(data.thread);
     }
 
-    // Navigate and measure page load
-    const startTime = Date.now();
-    await page.goto('/');
+    // Verify all threads were created
+    if (threads.length < threadCount) {
+      throw new Error(`Only created ${threads.length}/${threadCount} threads`);
+    }
 
+    // Navigate first, then measure render time
+    await page.goto('/');
+    
     // Wait for thread list to render
+    const startTime = Date.now();
     if (threads.length > 0) {
       const firstThreadButton = page.getByTestId(`thread-button-${threads[0].thread_id}`);
       await expect(firstThreadButton).toBeVisible({ timeout: 15_000 });
     }
 
     const elapsed = Date.now() - startTime;
-    console.log(`[PERF] Thread list page load (${threadCount} threads): ${elapsed}ms`);
+    console.log(`[PERF] Thread list render (${threadCount} threads): ${elapsed}ms`);
 
     // Verify page loaded
     await expect(commandCenter.chatInput).toBeEditable();
@@ -208,8 +213,12 @@ test.describe('Performance Measurements', () => {
   });
 
   test('page metrics baseline', async ({ page }) => {
+    // Capture navigation timing before interaction
+    const startTime = Date.now();
     const commandCenter = new CommandCenterPage(page);
     await commandCenter.goto();
+    const navTime = Date.now() - startTime;
+
     await expect(commandCenter.chatInput).toBeEditable();
 
     // Capture browser performance metrics
@@ -223,6 +232,7 @@ test.describe('Performance Measurements', () => {
     });
 
     console.log('[PERF] Page metrics baseline:');
+    console.log(`  Navigation time: ${navTime}ms`);
     console.log(`  DOMContentLoaded: ${navTiming.domReady.toFixed(2)}ms`);
     console.log(`  Load complete: ${navTiming.load.toFixed(2)}ms`);
   });

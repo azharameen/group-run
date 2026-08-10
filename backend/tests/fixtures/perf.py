@@ -100,16 +100,21 @@ async def load_test_generator():
             return (index, result, elapsed)
 
         tasks = [_run_with_timing(i) for i in range(num_tasks)]
-        completed = await asyncio.wait_for(
-            asyncio.gather(*tasks, return_exceptions=True),
-            timeout=timeout,
-        )
+        try:
+            completed = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            completed = [TimeoutError("gather timeout")] * num_tasks
 
-        for item in completed:
+        for idx, item in enumerate(completed):
             if isinstance(item, Exception):
-                results.append((-1, item, 0))
-            else:
+                results.append((idx, item, 0))
+            elif isinstance(item, tuple) and len(item) == 3:
                 results.append(item)
+            else:
+                results.append((idx, item, 0))
 
         return results
 

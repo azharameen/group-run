@@ -135,7 +135,7 @@ development_status:
   7-2-validate-and-update-dockerfiles: done
   7-3-set-up-playwright-for-e2e-testing: done
   7-4-sqlite-concurrency-tests: done
-  7-5-write-e2e-tests-for-critical-flows: backlog
+  7-5-write-e2e-tests-for-critical-flows: done
   7-6-performance-validation: backlog
   7-7-update-project-documentation: backlog
   epic-7-retrospective: optional

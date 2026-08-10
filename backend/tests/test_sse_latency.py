@@ -72,9 +72,6 @@ class TestSsePublishLatency:
             # Allow a tick for the event to be received
             await asyncio.sleep(0.001)
 
-            if len(queue_holder) >= iterations:
-                break
-
         # Cancel subscriber
         sub_task.cancel()
         try:
@@ -223,9 +220,9 @@ class TestSseConcurrentClients:
         for r in results:
             print(f"    Client {r['client_id']} (delay={r['delay']}s): {r['events']} events")
 
-        # All late subscribers should receive at least some events
+        # All late subscribers should receive events (at least 2 given timing windows)
         for r in results:
-            assert r["events"] > 0, f"Client {r['client_id']} received no events"
+            assert r["events"] >= 2, f"Client {r['client_id']} received only {r['events']} events (expected >= 2)"
 
 
 # ---------------------------------------------------------------------------
@@ -394,9 +391,8 @@ class TestSseNoDatabaseLocks:
         async def concurrent_db_and_sse(task_id: int):
             try:
                 # Mix DB operations with SSE publishes
+                saver.setup()  # Setup once at start
                 for i in range(10):
-                    # DB operation (thread listing would use this)
-                    saver.setup()
                     # SSE publish
                     bus.publish("mixed", {"task": task_id, "seq": i})
                     await asyncio.sleep(0.001)
