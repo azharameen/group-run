@@ -138,7 +138,7 @@ development_status:
   7-5-write-e2e-tests-for-critical-flows: done
   7-6-performance-validation: done
   7-7-update-project-documentation: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done
 
 action_items:
   - epic: 6
@@ -257,3 +257,35 @@ action_items:
     action: "Connection status polling for MCP servers in UI"
     owner: "Elena"
     status: done
+  - epic: 7
+    action: "Enhanced Spec Templates - pre-populate with CI, Docker, testing patterns checklist"
+    owner: "Amelia"
+    status: open
+  - epic: 7
+    action: "Windows-First Documentation Standards - include Windows alternatives from first draft"
+    owner: "Paige/Amelia"
+    status: open
+  - epic: 7
+    action: "SSE and Streaming Edge Case Documentation - document race conditions, event ordering, connection lifecycle"
+    owner: "Charlie"
+    status: open
+  - epic: 7
+    action: "Performance Test Design Patterns - document timing middleware, generator exhaustion, fixture isolation"
+    owner: "Dana"
+    status: open
+  - epic: 7
+    action: "Cross-Epic Deferred Work Review - triage all Epic 7 deferred items"
+    owner: "Amelia/Charlie"
+    status: open
+  - epic: 7
+    action: "E2E Test Data Isolation - address parallel Playwright test run isolation"
+    owner: "Elena"
+    status: open
+  - epic: 7
+    action: "Docker Multi-Stage Optimization - remove pytest from production image"
+    owner: "Charlie"
+    status: open
+  - epic: 7
+    action: "Config Schema Validation - implement JSON Schema for teams.yaml and mcp.json"
+    owner: "Charlie"
+    status: open
