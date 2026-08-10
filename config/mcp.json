@@ -9,6 +9,7 @@
         "-y",
         "@modelcontextprotocol/server_example"
       ],
+      "timeout": 15,
       "options": {}
     },
     {

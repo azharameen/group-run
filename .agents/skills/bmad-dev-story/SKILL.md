@@ -65,7 +65,23 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 - `date` as system-generated current datetime
 - `project_context` = `**/project-context.md` (load if exists)
 
-### Step 5: Greet the User
+### Step 4.5: Spec Verification Gate
+
+**CRITICAL: Do not proceed without a valid story spec file.**
+
+1. **Determine the story file path**: Resolve `story_file` from activation context or auto-discover it.
+2. **Check file exists**: If the story spec file does not exist, HALT with status `blocked` and blocking condition `story spec file not found: {story_file}`.
+3. **Validate frontmatter**: Read the file and verify it contains YAML frontmatter with:
+   - `status` field (must be a valid status: `ready`, `in_progress`, `done`, `blocked`)
+   - `story_key` or `id` field
+4. **Validate required sections**: Verify the file contains:
+   - Story description/title
+   - Acceptance criteria (at least one Gherkin scenario with Given/When/Then)
+   - Tasks list (at least one task with file paths and actions)
+5. **Check for TBDs**: Search the file for "TBD", "TBD-", "TODO:", "FIXME:", "PLACEHOLDER" (case-insensitive). If any are found outside of comments, HALT with status `blocked` and blocking condition `story spec contains unresolved placeholders`.
+6. **If validation passes**, log "Spec verification passed" and continue to Step 5.
+
+This gate ensures no story is attempted without a complete, actionable specification — preventing the "missing story spec" retro action from recurring.
 
 Greet `{user_name}`, speaking in `{communication_language}`.
 

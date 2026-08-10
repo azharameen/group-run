@@ -188,3 +188,109 @@ def load_knowledge_base() -> list[dict]:
     docs.extend(_load_documents_from_dir(os.path.join(KNOWLEDGE_BASE_DIR, "raw"), "raw"))
     docs.extend(_load_documents_from_dir(os.path.join(KNOWLEDGE_BASE_DIR, "processed"), "processed"))
     return docs
+
+
+def delete_knowledge_base_document(path: str) -> dict[str, Any]:
+    """Delete a knowledge base document and its sidecar files.
+
+    Args:
+        path: Knowledge-base relative path to delete.
+
+    Returns:
+        Dict with deleted file paths.
+
+    Raises:
+        ValueError: If path is outside KB, doesn't exist, or is invalid.
+    """
+    full_path = os.path.join(KNOWLEDGE_BASE_DIR, path)
+
+    # Path traversal protection
+    if not os.path.abspath(full_path).startswith(
+        os.path.abspath(KNOWLEDGE_BASE_DIR)
+    ):
+        raise ValueError("Access outside knowledge base is forbidden")
+
+    if not os.path.exists(full_path):
+        raise ValueError(f"Document not found at {path}")
+
+    # Delete the main file
+    deleted_files = [path]
+    os.remove(full_path)
+
+    # Delete sidecar files (.json, .md companions)
+    stem = os.path.splitext(full_path)[0]
+    for ext in [".json", ".md"]:
+        sidecar = stem + ext
+        if os.path.exists(sidecar) and sidecar != full_path:
+            rel = (
+                os.path.relpath(sidecar, KNOWLEDGE_BASE_DIR)
+                .replace("\\", "/")
+            )
+            os.remove(sidecar)
+            deleted_files.append(rel)
+
+    return {"deleted": deleted_files, "path": path}
+
+
+def archive_knowledge_base_document(path: str) -> dict[str, Any]:
+    """Archive a knowledge base document by moving it to the archive folder.
+
+    Args:
+        path: Knowledge-base relative path to archive.
+
+    Returns:
+        Dict with moved file mappings and archive timestamp.
+
+    Raises:
+        ValueError: If path is outside KB, doesn't exist, or is invalid.
+    """
+    full_path = os.path.join(KNOWLEDGE_BASE_DIR, path)
+
+    # Path traversal protection
+    if not os.path.abspath(full_path).startswith(
+        os.path.abspath(KNOWLEDGE_BASE_DIR)
+    ):
+        raise ValueError("Access outside knowledge base is forbidden")
+
+    if not os.path.exists(full_path):
+        raise ValueError(f"Document not found at {path}")
+
+    # Determine archive location
+    rel_dir = os.path.dirname(path)
+    archive_dir = os.path.join(KNOWLEDGE_BASE_DIR, "_archive", rel_dir)
+    os.makedirs(archive_dir, exist_ok=True)
+
+    filename = os.path.basename(path)
+    archived_path = os.path.join(archive_dir, filename)
+
+    # Move file
+    os.rename(full_path, archived_path)
+    archived_rel = (
+        os.path.relpath(archived_path, KNOWLEDGE_BASE_DIR).replace("\\", "/")
+    )
+
+    # Move sidecar files too
+    stem = os.path.splitext(full_path)[0]
+    moved_files = [{"original": path, "archived": archived_rel}]
+    for ext in [".json", ".md"]:
+        sidecar = stem + ext
+        if os.path.exists(sidecar) and sidecar != full_path:
+            archived_sidecar = os.path.join(
+                archive_dir, os.path.basename(sidecar)
+            )
+            os.rename(sidecar, archived_sidecar)
+            moved_files.append(
+                {
+                    "original": os.path.relpath(
+                        sidecar, KNOWLEDGE_BASE_DIR
+                    ).replace("\\", "/"),
+                    "archived": os.path.relpath(
+                        archived_sidecar, KNOWLEDGE_BASE_DIR
+                    ).replace("\\", "/"),
+                }
+            )
+
+    return {
+        "moved": moved_files,
+        "archived_at": datetime.now(UTC).isoformat(),
+    }

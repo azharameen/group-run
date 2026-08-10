@@ -6,7 +6,13 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 
 from ...config import KNOWLEDGE_BASE_DIR
-from ...storage.knowledge_base import load_knowledge_base, save_knowledge_base_upload, SUPPORTED_BINARY_EXTENSIONS
+from ...storage.knowledge_base import (
+    archive_knowledge_base_document,
+    delete_knowledge_base_document,
+    load_knowledge_base,
+    save_knowledge_base_upload,
+    SUPPORTED_BINARY_EXTENSIONS,
+)
 from ..schemas import KnowledgeBaseResponse, KnowledgeDocument
 
 router = APIRouter(prefix="/api/knowledge-base", tags=["knowledge"])
@@ -127,3 +133,45 @@ async def get_document_file(path: str):
         )
         
     return FileResponse(full_path)
+
+
+@router.delete("/{path:path}")
+async def delete_document(path: str):
+    """Delete a knowledge base document."""
+    try:
+        result = delete_knowledge_base_document(path)
+        return result
+    except ValueError as e:
+        message = str(e)
+        if "forbidden" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=message
+            )
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=message
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=message
+        )
+
+
+@router.patch("/{path:path}/archive")
+async def archive_document(path: str):
+    """Archive a knowledge base document."""
+    try:
+        result = archive_knowledge_base_document(path)
+        return result
+    except ValueError as e:
+        message = str(e)
+        if "forbidden" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=message
+            )
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=message
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=message
+        )

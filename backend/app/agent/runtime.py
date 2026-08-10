@@ -17,6 +17,7 @@ from ..config import (
     TEAMS_SCHEMA_VERSION,
     settings,
 )
+from ..config_schemas import validate_mcp_config, validate_teams_config
 from .backends import build_agent_backend
 from .context import DeepAgentContext
 from .permissions import build_agent_permissions
@@ -90,6 +91,13 @@ def _load_and_validate_teams() -> dict:
                     f"Team '{team_name}': subgraph.node '{node}' not found in "
                     f"agents list — available agents: {sorted(agent_names)}"
                 )
+
+    # Schema-level validation (complements manual checks above)
+    schema_errors = validate_teams_config(data, teams_path)
+    if schema_errors:
+        raise ValueError(
+            f"Teams config schema errors: {'; '.join(schema_errors)}"
+        )
 
     logger.info("Teams config loaded: teams=%s", list(teams.keys()))
     return data
@@ -230,11 +238,21 @@ def _validate_mcp_config() -> list[dict]:
     if not isinstance(servers, list):
         raise ValueError(f"MCP config 'servers' must be an array: {_config.MCP_CONFIG_PATH}")
 
+    # Schema-level validation (complements manual checks above)
+    schema_errors = validate_mcp_config(data, str(_config.MCP_CONFIG_PATH))
+    if schema_errors:
+        raise ValueError(
+            f"MCP config schema errors: {'; '.join(schema_errors)}"
+        )
+
     return servers
 
 
 def _create_mcp_tools(connections: dict[str, dict]) -> list[Any]:
     """Create MCP tool instances from connection configs.
+
+    Each server connection gets its own timeout (from config or DEFAULT_MCP_TIMEOUT).
+    Timeouts apply to both HTTP and stdio transports.
 
     NOTE: MCP tool loading is inherently async (requires network I/O).
     When called from a sync context, ``asyncio.run()`` is used.
@@ -245,9 +263,18 @@ def _create_mcp_tools(connections: dict[str, dict]) -> list[Any]:
     try:
         from langchain_mcp_adapters.client import MultiServerMCPClient
 
-        for config in connections.values():
-            if isinstance(config, dict) and config.get("transport", "").lower() == "http":
-                config.setdefault("timeout", DEFAULT_MCP_TIMEOUT)
+        # Per-server timeout with default fallback (AC: per-server settings)
+        for name, config in connections.items():
+            if not isinstance(config, dict):
+                continue
+            if "timeout" not in config:
+                config["timeout"] = DEFAULT_MCP_TIMEOUT
+            logger.debug(
+                "MCP server '%s' timeout: %ds (transport: %s)",
+                name,
+                config["timeout"],
+                config.get("transport", "http"),
+            )
 
         client = MultiServerMCPClient(connections)
         try:

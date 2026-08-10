@@ -120,7 +120,7 @@ development_status:
 
 
   # EP-6: Knowledge & Memory
-  epic-6: in-progress
+  epic-6: done
   6-1-knowledge-base-api: done
   6-2-wire-memory-backend-into-deepagents-runtime: done
   6-3-wire-skills-loading-into-deepagents-runtime: done
@@ -144,15 +144,15 @@ action_items:
   - epic: 6
     action: "Add spec-existence check to create-story skill"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 6
     action: "Implement JSON Schema validation for teams.yaml and mcp.json"
     owner: "Charlie"
-    status: open
+    status: done
   - epic: 6
     action: "Add KB Management API (Delete/Archive) to knowledge_base.py"
     owner: "Elena"
-    status: open
+    status: done
   - epic: 0
     action: "Run code review per story, not batched at epic end"
     owner: "Ameen"
@@ -160,7 +160,7 @@ action_items:
   - epic: 0
     action: "Document dead code removal review checklist for story specs"
     owner: "Amelia"
-    status: in-progress
+    status: done
   - epic: 0
     action: "Address agent/subagents.py TODO (empty list)"
     owner: "Amelia"
@@ -200,7 +200,7 @@ action_items:
   - epic: 2
     action: "Limit retro action items to 3 maximum"
     owner: "Ameen"
-    status: in-progress
+    status: done
   - epic: 2
     action: "Resolve 6 pre-existing test failures NOW before Epic 3"
     owner: "Dana/Amelia"
@@ -240,20 +240,20 @@ action_items:
   - epic: 5
     action: "Retro action verification as blocking prerequisite before new epics"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 5
     action: "Mandatory story spec before implementation starts"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 5
     action: "Config validation schema standard for all config files"
     owner: "Charlie"
-    status: open
+    status: done
   - epic: 5
     action: "MCP tool loading timeouts with per-server settings"
     owner: "Elena"
-    status: open
+    status: done
   - epic: 5
     action: "Connection status polling for MCP servers in UI"
     owner: "Elena"
-    status: open
+    status: done

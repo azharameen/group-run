@@ -13,6 +13,12 @@ services:
       # detection in app/config.py would otherwise resolve to "/" instead of
       # "/app" and silently write data outside the mounted volumes below.
       - APP_ROOT_DIR=/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
     ports:
       - "8000:8000"
     volumes:
@@ -26,11 +32,20 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     container_name: ideator-frontend
     ports:
       - "3000:80"
     environment:
       - VITE_API_URL=http://localhost:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
     restart: unless-stopped

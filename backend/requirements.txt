@@ -11,5 +11,6 @@ httpx>=0.28.0
 sse-starlette>=2.2.0
 pytest>=8.0.0
 pytest-asyncio>=0.24.0
+pytest-cov>=5.0.0
 langchain-mcp-adapters>=0.3.0
 langgraph-checkpoint-sqlite>=3.1.1

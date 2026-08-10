@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Server, Plus, Trash2, Loader2, Network } from "lucide-react";
+import { Server, Plus, Trash2, Loader2, Network, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,7 +26,9 @@ import {
   fetchMCPServers,
   addMCPServer,
   removeMCPServer,
+  pingMCPServer,
   type MCPServer,
+  type MCPServerStatus,
 } from "@/api/mcp";
 
 export function MCPManager() {
@@ -34,6 +36,8 @@ export function MCPManager() {
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, string>>({});
+  const [checking, setChecking] = useState(false);
 
   // Add form state
   const [name, setName] = useState("");
@@ -52,6 +56,7 @@ export function MCPManager() {
     try {
       const result = await fetchMCPServers();
       setServers(result);
+      await checkAllStatuses(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load MCP servers";
       setError(message);
@@ -59,6 +64,21 @@ export function MCPManager() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkAllStatuses = async (serverList: MCPServer[] = servers) => {
+    setChecking(true);
+    const newStatuses: Record<string, string> = {};
+    for (const server of serverList) {
+      try {
+        const result = await pingMCPServer(server.name);
+        newStatuses[server.name] = result.status;
+      } catch {
+        newStatuses[server.name] = "disconnected";
+      }
+    }
+    setStatuses(newStatuses);
+    setChecking(false);
   };
 
   useEffect(() => {
@@ -129,7 +149,17 @@ export function MCPManager() {
 
       {/* Server list */}
       <div>
-        <h3 className="text-sm font-medium mb-2">Configured Servers</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium">Configured Servers</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => checkAllStatuses()}
+            disabled={checking || loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${checking ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -147,6 +177,7 @@ export function MCPManager() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>URL</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Timeout</TableHead>
                 <TableHead>Transport</TableHead>
                 <TableHead className="w-[80px]">Actions</TableHead>
@@ -158,6 +189,29 @@ export function MCPManager() {
                   <TableCell className="font-medium">{server.name}</TableCell>
                   <TableCell className="max-w-[300px] truncate" title={server.url}>
                     {server.url}
+                  </TableCell>
+                  <TableCell>
+                    {checking && (
+                      <Loader2 className="h-4 w-4 animate-spin inline mr-1" />
+                    )}
+                    <Badge
+                      variant={
+                        statuses[server.name] === "connected"
+                          ? "default"
+                          : statuses[server.name] === "degraded"
+                          ? "secondary"
+                          : "destructive"
+                      }
+                      className={
+                        statuses[server.name] === "connected"
+                          ? "bg-green-500"
+                          : statuses[server.name] === "degraded"
+                          ? "bg-yellow-500"
+                          : ""
+                      }
+                    >
+                      {statuses[server.name] || "unknown"}
+                    </Badge>
                   </TableCell>
                   <TableCell>{server.timeout}s</TableCell>
                   <TableCell>

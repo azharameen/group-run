@@ -5,6 +5,15 @@ export interface MCPServer {
   transport: string;
   url: string;
   timeout: number;
+  options?: Record<string, unknown>;
+}
+
+export interface MCPServerStatus {
+  name: string;
+  transport: string;
+  status: 'connected' | 'disconnected' | 'degraded' | 'unknown' | 'error';
+  latency_ms: number | null;
+  error: string | null;
 }
 
 export interface MCPServersResponse {
@@ -44,4 +53,15 @@ export async function removeMCPServer(name: string): Promise<void> {
     const errorData = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(errorData.detail || `Failed to remove MCP server: ${res.status}`);
   }
+}
+
+export async function pingMCPServer(name: string): Promise<MCPServerStatus> {
+  const res = await fetch(`${API_BASE}/mcp/servers/${encodeURIComponent(name)}/health`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || `Failed to ping server: ${res.status}`);
+  }
+  return res.json();
 }

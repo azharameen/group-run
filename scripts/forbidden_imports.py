@@ -16,19 +16,25 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Forbidden module patterns (relative paths to scan)
 # ---------------------------------------------------------------------------
+# NOTE: app.orchestrator is a VALID module (supervisor, team_factory).
+# The OLD orchestrator dead code used specific class/function names. We flag
+# those specific imports rather than the entire module path.
 FORBIDDEN_PATTERNS = [
     # Backend app/ patterns -- these entire modules were deleted
-    # Both 'from' and direct 'import' forms
     r"from app\.state\b",
     r"import app\.state\b",
     r"from app\.scoring\b",
     r"import app\.scoring\b",
     r"from app\.research\b",
     r"import app\.research\b",
-    r"from app\.orchestrator\b",
-    r"import app\.orchestrator\b",
     r"from app\.scheduler\b",
     r"import app\.scheduler\b",
+    # Old orchestrator dead classes/functions (app.orchestrator module itself is VALID)
+    r"from app\.orchestrator\.workflow_tools\b",
+    r"import app\.orchestrator\.workflow_tools\b",
+    r"from app\.orchestrator import WorkflowOrchestrator\b",
+    r"from app\.orchestrator\.workflow\b",
+    # Old LLM dead modules
     r"from app\.llm\.execution_support\b",
     r"import app\.llm\.execution_support\b",
     r"from app\.llm\.subagent_executor\b",

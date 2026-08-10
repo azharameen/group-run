@@ -143,3 +143,57 @@ def get_server(name: str) -> MCPServerResponse:
         if "not found" in message:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
+
+
+@router.post("/{name}/health")
+def ping_server(name: str) -> dict:
+    """Ping an MCP server to check its connection status."""
+    import time
+
+    try:
+        server = _service.get_server(name)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Server '{name}' not found",
+        )
+
+    timeout = server.get("timeout", 5)
+    transport = server.get("transport", "http")
+
+    result = {
+        "name": name,
+        "transport": transport,
+        "status": "unknown",
+        "latency_ms": None,
+        "error": None,
+    }
+
+    if transport == "http":
+        url = server.get("url", "")
+        if not url:
+            result["status"] = "error"
+            result["error"] = "No URL configured"
+            return result
+        try:
+            import httpx
+
+            start = time.monotonic()
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.get(url, headers={"Accept": "application/json"})
+            latency = int((time.monotonic() - start) * 1000)
+            if resp.status_code < 500:
+                result["status"] = "connected"
+            else:
+                result["status"] = "degraded"
+            result["latency_ms"] = latency
+        except Exception as exc:
+            result["status"] = "disconnected"
+            result["error"] = str(exc)[:200]
+    else:
+        result["status"] = "unknown"
+        result["error"] = (
+            f"Health check not supported for {transport} transport"
+        )
+
+    return result
