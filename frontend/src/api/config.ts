@@ -3,6 +3,7 @@ const API_BASE = '/api';
 export interface AgentDefinition {
   name: string;
   role: string;
+  description?: string;
 }
 
 export interface TeamDefinition {

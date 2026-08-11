@@ -264,15 +264,16 @@ def _create_mcp_tools(connections: dict[str, dict]) -> list[Any]:
         from langchain_mcp_adapters.client import MultiServerMCPClient
 
         # Per-server timeout with default fallback (AC: per-server settings)
+        # Skip stdio transports — they don't support HTTP timeouts
         for name, config in connections.items():
             if not isinstance(config, dict):
                 continue
-            if "timeout" not in config:
+            if config.get("transport") != "stdio" and "timeout" not in config:
                 config["timeout"] = DEFAULT_MCP_TIMEOUT
             logger.debug(
-                "MCP server '%s' timeout: %ds (transport: %s)",
+                "MCP server '%s' timeout: %s (transport: %s)",
                 name,
-                config["timeout"],
+                config.get("timeout", "N/A for stdio"),
                 config.get("transport", "http"),
             )
 

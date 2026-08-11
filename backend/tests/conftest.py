@@ -45,6 +45,7 @@ def isolate_test_env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("app.config.settings.openai_api_key", "")
     monkeypatch.setattr("app.config.settings.openai_api_base", "")
     monkeypatch.setattr("app.config.settings.openai_model_name", "")
+    monkeypatch.setattr("app.config.settings.deepagents_model", "openai:test-model")
 
 
 @pytest.fixture

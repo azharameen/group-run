@@ -103,7 +103,7 @@ describe('HITLApprovalCard', () => {
   });
 
   test('approve button shows loading spinner during API call', async () => {
-    let resolveFn: (() => void) | undefined;
+    let resolveFn: ((value: unknown) => void) | undefined;
     vi.mocked(threadsApi.approveInterrupt).mockImplementation(
       () => new Promise((resolve) => { resolveFn = resolve; })
     );

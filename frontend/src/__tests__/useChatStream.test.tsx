@@ -672,7 +672,7 @@ describe('useChatStream', () => {
   });
 
   test('approve clears activeInterruptIdRef allowing same-ID reprocessing', async () => {
-    vi.mocked(apiClient.approveInterrupt).mockResolvedValue({ id: 'int-1', status: 'resolved' });
+    vi.mocked(apiClient.approveInterrupt).mockResolvedValue({ id: 'int-1', status: 'approved' });
 
     const { result } = renderHook(() => useChatStream(defaultOptions));
 
