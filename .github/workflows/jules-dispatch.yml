@@ -1,0 +1,249 @@
+# .github/workflows/jules-dispatch.yml
+#
+# Phase B1: Manual Jules dispatch
+# ================================
+# Trigger from the GitHub UI or `gh workflow run jules-dispatch.yml`
+# to ask Jules to implement a specific task in the repo.
+#
+# Required secrets:
+#   JULES_API_KEY  — from https://jules.google.com/settings
+#
+# Usage (CLI):
+#   gh workflow run jules-dispatch.yml \
+#     -f story_id="story-1-4" \
+#     -f prompt="Implement story 1.4: rewrite api app.py to use LangGraph supervisor" \
+#     -f auto_create_pr=true \
+#     -f require_plan_approval=true
+#
+# Usage (GitHub UI):
+#   Actions → Jules: Manual Dispatch → Run workflow
+
+name: "Jules: Manual Dispatch"
+
+on:
+  workflow_dispatch:
+    inputs:
+      story_id:
+        description: "Board item / story ID (for tracking, e.g. story-1-4)"
+        required: true
+        type: string
+      prompt:
+        description: "Task description for Jules"
+        required: true
+        type: string
+      auto_create_pr:
+        description: "Automatically create a PR when Jules finishes"
+        required: false
+        default: "true"
+        type: choice
+        options: ["true", "false"]
+      require_plan_approval:
+        description: "Pause for plan review before Jules starts coding"
+        required: false
+        default: "true"
+        type: choice
+        options: ["true", "false"]
+      branch:
+        description: "Branch for Jules to work from (leave blank for repo default)"
+        required: false
+        default: ""
+        type: string
+
+env:
+  JULES_API_BASE: "https://jules.googleapis.com/v1alpha"
+
+jobs:
+  dispatch:
+    name: "Dispatch to Jules"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: "Validate inputs"
+        env:
+          JULES_PROMPT: ${{ inputs.prompt }}
+          JULES_STORY_ID: ${{ inputs.story_id }}
+        run: |
+          if [ -z "$JULES_PROMPT" ]; then
+            echo "::error::prompt is required"
+            exit 1
+          fi
+          echo "Story ID : $JULES_STORY_ID"
+          echo "Prompt   : [provided]"
+          echo "Auto PR  : ${{ inputs.auto_create_pr }}"
+          echo "Plan gate: ${{ inputs.require_plan_approval }}"
+
+      - name: "Find Jules source for this repo"
+        id: find_source
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          JULES_SOURCE_NAME: ${{ steps.find_source.outputs.source_name }}
+          JULES_AUTOMATION_MODE: ${{ inputs.auto_create_pr == 'true' && 'AUTO_CREATE_PR' || 'AUTOMATION_MODE_UNSPECIFIED' }}
+          JULES_PROMPT: ${{ inputs.prompt }}
+          JULES_TITLE: ${{ inputs.story_id }}
+          JULES_REQUIRE_APPROVAL: ${{ inputs.require_plan_approval }}
+          JULES_BRANCH: ${{ inputs.branch }}
+        run: |
+          SOURCES=$(curl -sS \
+            -H "x-goog-api-key: $JULES_API_KEY" \
+            "$JULES_API_BASE/sources?pageSize=50")
+          REPO="${{ github.repository }}"
+          OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${REPO#*/}"
+          # Find source matching this repo
+          SOURCE_NAME=$(echo "$SOURCES" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          sources = data.get('sources', [])
+          owner = '$OWNER'.lower()
+          repo = '$REPO_NAME'.lower()
+          for s in sources:
+              gr = s.get('githubRepo', {})
+              if gr.get('owner','').lower() == owner and gr.get('name','').lower() == repo:
+                  print(s['name'])
+                  break
+          " 2>/dev/null || echo "")
+          echo "source_name=$SOURCE_NAME" >> "$GITHUB_OUTPUT"
+          if [ -z "$SOURCE_NAME" ]; then
+            echo "::warning::No Jules source found for $REPO. The session will be created without a source context (repoless mode)."
+          else
+            echo "Found Jules source: $SOURCE_NAME"
+          fi
+
+      - name: "Create Jules session"
+        id: create_session
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          SOURCE_NAME="$JULES_SOURCE_NAME"
+          AUTOMATION_MODE="$JULES_AUTOMATION_MODE"
+          REQUIRE_APPROVAL="$JULES_REQUIRE_APPROVAL"
+          BRANCH="$JULES_BRANCH"
+
+          # Build source block if source found
+          SOURCE_BLOCK=""
+          if [ -n "$SOURCE_NAME" ]; then
+            if [ -n "$BRANCH" ]; then
+              SOURCE_BLOCK='"source": {"source": "'"$SOURCE_NAME"'", "gitHubRepo": {"branch": "'"$BRANCH"'"}}'
+            else
+              SOURCE_BLOCK='"source": {"source": "'"$SOURCE_NAME"'"}'
+            fi
+          fi
+
+          PAYLOAD=$(python3 - <<'PY'
+          import json, os
+          payload = {
+              "prompt": os.environ["JULES_PROMPT"],
+              "title": f"[BMad CI] {os.environ['JULES_TITLE']} - ${{ github.workflow }}",
+              "requirePlanApproval": os.environ["JULES_REQUIRE_APPROVAL"].lower() == "true",
+              "automationMode": os.environ["JULES_AUTOMATION_MODE"],
+          }
+          print(json.dumps(payload))
+          PY
+          )
+
+          # Inject source block if present
+          if [ -n "$SOURCE_NAME" ]; then
+            PAYLOAD=$(SOURCE_NAME="$SOURCE_NAME" BRANCH="$BRANCH" PAYLOAD="$PAYLOAD" python3 - <<'PY'
+          import json, os
+          payload = json.loads(os.environ["PAYLOAD"])
+          source = {"source": os.environ["SOURCE_NAME"]}
+          if os.environ["BRANCH"]:
+              source["gitHubRepo"] = {"branch": os.environ["BRANCH"]}
+          payload["source"] = source
+          print(json.dumps(payload))
+          PY
+          )
+          fi
+
+          RESPONSE=$(curl -sS -X POST \
+            -H "x-goog-api-key: $JULES_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$JULES_API_BASE/sessions")
+
+          echo "Jules response: $RESPONSE"
+
+          SESSION_NAME=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('name',''))" 2>/dev/null || echo "")
+          SESSION_URL=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('url',''))" 2>/dev/null || echo "")
+          SESSION_STATE=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('state',''))" 2>/dev/null || echo "")
+
+          if [ -z "$SESSION_NAME" ]; then
+            ERROR_MSG=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('message', str(d)))" 2>/dev/null || echo "$RESPONSE")
+            echo "::error::Failed to create Jules session: $ERROR_MSG"
+            exit 1
+          fi
+
+          echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "session_url=$SESSION_URL" >> "$GITHUB_OUTPUT"
+          echo "session_state=$SESSION_STATE" >> "$GITHUB_OUTPUT"
+          echo "Created Jules session: $SESSION_NAME ($SESSION_STATE)"
+          echo "View at: $SESSION_URL"
+
+      - name: "Poll until Jules completes (max 50 min)"
+        id: poll
+        if: inputs.require_plan_approval == 'false'
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          SESSION_NAME="${{ steps.create_session.outputs.session_name }}"
+          TERMINAL_STATES="COMPLETED FAILED"
+          PR_URL=""
+
+          for i in $(seq 1 60); do
+            sleep 50
+            RESPONSE=$(curl -sS \
+              -H "x-goog-api-key: $JULES_API_KEY" \
+              "$JULES_API_BASE/$SESSION_NAME")
+            STATE=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('state',''))" 2>/dev/null || echo "")
+            PR_URL=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('output',{}).get('pullRequest',{}).get('url',''))" 2>/dev/null || echo "")
+            echo "Poll $i: state=$STATE pr=$PR_URL"
+            if echo "$TERMINAL_STATES" | grep -qw "$STATE"; then
+              echo "final_state=$STATE" >> "$GITHUB_OUTPUT"
+              echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+
+      - name: "Create tracking issue comment"
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JULES_PROMPT: ${{ inputs.prompt }}
+          JULES_STORY_ID: ${{ inputs.story_id }}
+        run: |
+          SESSION_NAME="${{ steps.create_session.outputs.session_name }}"
+          SESSION_URL="${{ steps.create_session.outputs.session_url }}"
+          SESSION_STATE="${{ steps.create_session.outputs.session_state }}"
+          FINAL_STATE="${{ steps.poll.outputs.final_state }}"
+          PR_URL="${{ steps.poll.outputs.pr_url }}"
+          STORY_ID="$JULES_STORY_ID"
+
+          STATUS="${FINAL_STATE:-$SESSION_STATE}"
+
+          BODY="## 🤖 Jules Dispatch: \`$STORY_ID\`
+
+          **Status:** $STATUS
+          **Session:** [$SESSION_NAME]($SESSION_URL)
+          $([ -n "$PR_URL" ] && echo "**PR:** $PR_URL")
+
+          **Prompt:**
+          \`\`\`
+          $JULES_PROMPT
+          \`\`\`
+
+          > Triggered by workflow run [\`${{ github.run_id }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          "
+
+          # Create or comment on an existing tracking issue
+          ISSUE_TITLE="Jules dispatch: $STORY_ID"
+          EXISTING=$(gh issue list --search "$ISSUE_TITLE" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body "$BODY" --label "jules-automation" 2>/dev/null || echo "Could not create issue (label may not exist)"
+          fi
