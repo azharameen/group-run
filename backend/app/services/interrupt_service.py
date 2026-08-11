@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+import threading
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -15,6 +16,7 @@ class InterruptService:
     _instance: "InterruptService | None" = None
 
     def __init__(self) -> None:
+        self._lock = threading.Lock()
         self._init_table()
 
     @classmethod
@@ -55,20 +57,21 @@ class InterruptService:
 
     def approve_interrupt(self, interrupt_id: str, decision: str, reason: str = "") -> Optional[dict[str, Any]]:
         now = datetime.now(timezone.utc).isoformat()
-        conn = self._conn()
-        conn.execute("BEGIN IMMEDIATE")
-        try:
-            cur = conn.execute(
-                "UPDATE interrupts SET status = 'approved', decision = ?, reason = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
-                (decision, reason, now, interrupt_id),
-            )
-            if cur.rowcount == 0:
+        with self._lock:
+            conn = self._conn()
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                cur = conn.execute(
+                    "UPDATE interrupts SET status = 'approved', decision = ?, reason = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
+                    (decision, reason, now, interrupt_id),
+                )
+                if cur.rowcount == 0:
+                    conn.rollback()
+                    return None
+                conn.commit()
+            except Exception:
                 conn.rollback()
-                return None
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+                raise
         interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
             _bus.publish("interrupt.approved", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
@@ -76,20 +79,21 @@ class InterruptService:
 
     def reject_interrupt(self, interrupt_id: str, reason: str) -> Optional[dict[str, Any]]:
         now = datetime.now(timezone.utc).isoformat()
-        conn = self._conn()
-        conn.execute("BEGIN IMMEDIATE")
-        try:
-            cur = conn.execute(
-                "UPDATE interrupts SET status = 'rejected', decision = 'rejected', reason = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
-                (reason, now, interrupt_id),
-            )
-            if cur.rowcount == 0:
+        with self._lock:
+            conn = self._conn()
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                cur = conn.execute(
+                    "UPDATE interrupts SET status = 'rejected', decision = 'rejected', reason = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
+                    (reason, now, interrupt_id),
+                )
+                if cur.rowcount == 0:
+                    conn.rollback()
+                    return None
+                conn.commit()
+            except Exception:
                 conn.rollback()
-                return None
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+                raise
         interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
             _bus.publish("interrupt.rejected", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})

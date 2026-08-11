@@ -14,7 +14,7 @@ def test_memory_wiring_in_runtime(monkeypatch):
     middleware_module = types.ModuleType("deepagents.middleware")
     skills_middleware_module = types.ModuleType("deepagents.middleware.skills")
     memory_middleware_module = types.ModuleType("deepagents.middleware.memory")
-    
+
     # Capture kwargs passed to create_deep_agent
     captured_kwargs = {}
     def mock_create_deep_agent(**kwargs):
@@ -23,12 +23,12 @@ def test_memory_wiring_in_runtime(monkeypatch):
 
     deepagents_module.create_deep_agent = mock_create_deep_agent
     deepagents_module.DeepAgentState = MagicMock()
-    
+
     # Mock backends
     backends_module.CompositeBackend = MagicMock()
     backends_module.FilesystemBackend = MagicMock()
     backends_module.StateBackend = MagicMock()
-    
+
     # Mock middleware
     skills_middleware_module.SkillsMiddleware = MagicMock()
     memory_middleware_module.MemoryMiddleware = MagicMock()
@@ -38,16 +38,22 @@ def test_memory_wiring_in_runtime(monkeypatch):
     monkeypatch.setitem(sys.modules, "deepagents.middleware", middleware_module)
     monkeypatch.setitem(sys.modules, "deepagents.middleware.skills", skills_middleware_module)
     monkeypatch.setitem(sys.modules, "deepagents.middleware.memory", memory_middleware_module)
-    
+
     # Mock dependencies of runtime.py
     monkeypatch.setitem(sys.modules, "langgraph.checkpoint.sqlite", MagicMock())
-    
+
     # Mock thread_manager to avoid DB and module import issues
     thread_manager_module = types.ModuleType("app.services.thread_manager")
     thread_manager_module.get_checkpointer = MagicMock(return_value=MagicMock())
     monkeypatch.setitem(sys.modules, "app.services.thread_manager", thread_manager_module)
-    
-    # Mock other sub-modules
+
+    # Mock other sub-modules - remove cached modules first so mocks take effect
+    for mod in list(sys.modules.keys()):
+        if any(mod.startswith(p) for p in [
+            "app.agent.permissions", "app.agent.backends", "app.agent.context",
+            "app.agent.runtime"
+        ]):
+            del sys.modules[mod]
     app_agent_backends = types.ModuleType("app.agent.backends")
     app_agent_backends.build_agent_backend = MagicMock()
     monkeypatch.setitem(sys.modules, "app.agent.backends", app_agent_backends)
