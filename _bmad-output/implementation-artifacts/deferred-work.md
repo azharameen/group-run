@@ -258,9 +258,33 @@
 
 - [PENDING] Duplicate import in mcp.py: rom pydantic import ValidationError appears on lines 10 and 14 — pre-existing dead code from Story 5.1 refactor (source_spec: spec-5-5-backend-tests-mcp-config-reload-team-loading.md)
 
-- source_spec: 'spec-5-5-backend-tests-mcp-config-reload-team-loading.md'
-  summary: 'Duplicate from pydantic import ValidationError import in mcp.py lines 10 and 14 — pre-existing dead code'
-  evidence: 'Grep shows two identical imports; second is dead code from ST-5.1 refactor'
+## Deferred from: CI pipeline hardening (2026-08-11)
+
+- **8 skipped backend tests** — SQLite async/sync checkpointer visibility (`backend/tests/test_threads.py:413,498,521,541,559,581,605,626`) — async checkpoint writes not visible to sync reads in test harness; product code unaffected. Planned fix: Epic 7 (SQLite Hardening).
+  - `test_thread_messages_persisted_via_real_checkpoint`
+  - `test_checkpoint_messages_persist_and_restore`
+  - `test_checkpoint_message_shape`
+  - `test_checkpoint_human_and_ai_types`
+  - `test_checkpoint_chronological_order`
+  - `test_checkpoint_multiple_streams_accumulate`
+  - `test_thread_isolation_no_message_leak`
+  - `test_thread_switch_restores_correct_messages`
+
+- **Runner.py TODO** — `backend/app/agent/runner.py:552` — "TODO: Replace with LangGraph-based workflow execution." — current workflow execution approach is a stopgap; full LangGraph migration not yet scoped.
+
+- **Frontend coverage not configured** — `@vitest/coverage-v8` and `@vitest/coverage-istanbul` present in `package-lock.json` but not in `devDependencies`; CI `--coverage` flag removed as workaround; proper coverage setup deferred.
+
+- **Fragile test/component testid coupling** — `frontend/src/__tests__/IdeaDetail.test.tsx` and `DocumentUploadCard.test.tsx` rely on mock `data-testid` attributes; when real components change testids, tests break silently until run. Consider snapshot testing or removing mock testids in favor of role/label selectors.
+
+- **bmad-cc test failures** — 5 failing tests across 3 test files (`tests/tui/m4-challenger-deep-stress.test.ts`, `tests/session/story-executor-m3.test.ts`, `tests/state/state-manager.test.ts`) — ANSI stripping defect in `src/utils/ansi-cleaner.ts` causes OSC hyperlink corruption; 4 test timeouts.
+
+- ~~**Duplicate from pydantic import ValidationError in mcp.py**~~ — **RESOLVED 2026-08-11**: mcp.py file was removed in later refactoring; duplicate import no longer exists.
+
+- **Vitest fork worker timeouts on Windows** — `vitest.config.ts` has no pool config; Vitest 3.x defaults to `forks` pool which times out on Windows due to resource constraints (140s+ worker spawn). CI on Linux unaffected. Workaround: add `pool: 'threads'` or `maxWorkers` for local Windows dev.
+
+- **Node.js 20 deprecation in CI** — GitHub Actions warns Node 20 is deprecated; workflows force Node 24. `@testing-library/jest-dom@7.0.0` requires Node 22+. Consider updating `node-version` to `22` in CI workflows.
+
+- **Recharts 2.x deprecation** — `recharts@2.15.4` shows deprecation warning; v3 migration needed but breaking changes require coordinated frontend update.
 
 ## Epic 5 Kickoff Triage (2026-08-09)
 
@@ -268,7 +292,7 @@ The following items are triaged for Epic 5 (MCP & Team Config):
 
 ### [CRITICAL] Resolve Now
 - **Circular import risk runtime/team_factory (Story 5.4)**: This is a blocker for supervisor integration in Epic 5. Must be resolved by moving the factory or using lazy imports.
-- **Duplicate from pydantic import ValidationError (Story 5.4)**: Quick cleanup in mcp.py.
+- ~~**Duplicate from pydantic import ValidationError (Story 5.4)**: Quick cleanup in mcp.py.~~ — **RESOLVED**: mcp.py removed in later refactor.
 
 ### [MEDIUM] Plan for Epic 5
 - **File locking for concurrent MCP config writes (Story 5.1)**: Medium risk of lost updates during concurrent management API calls. Plan a dedicated fix in Epic 5.
@@ -278,10 +302,58 @@ The following items are triaged for Epic 5 (MCP & Team Config):
 - **Unauthenticated config reload (Story 5.2)**: Acceptable until auth infrastructure is added in Epic 7.
 - **Monkeypatch strategy brittle (Story 5.2)**: Test infrastructure improvement.
 - **Permission errors propagate as 500 (Story 5.2)**: Improve error handling.
-- **_validate_mcp_config() lightweight (Story 5.3)**: Add full schema validation.
-- **MCP_CONFIG_PATH = None (Story 5.3)**: Robust path handling.
+- ~~**_validate_mcp_config() lightweight (Story 5.3)**: Add full schema validation.~~ — **PARTIALLY RESOLVED**: `_validate_mcp_config()` now calls `validate_mcp_config()` schema validation, but still doesn't check `schema_version` or individual server object fields.
+- ~~**MCP_CONFIG_PATH = None (Story 5.3)**: Robust path handling.~~ — **RESOLVED**: `MCP_CONFIG_PATH` is now properly set via `CONFIG_DIR` in `config.py:107`.
 - **Duplicate server names overwrite (Story 5.3)**: Add validation for uniqueness.
 - **Partial SSE frames dropped on disconnect (Story 1.9)**: Add retry/backoff logic.
 - **Concurrent send accumulator shared (Story 1.9)**: Add per-message accumulator.
 - **Global SSE events pollute active chat (Story 1.9)**: Add idea-ID filtering.
 - **Thread-scoped in-flight stream abort (Story 1.9)**: Refactor stream lifecycle.
+
+## Deferred from: Post-Epic 6 Status Audit (2026-08-11)
+
+Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline is now green.
+
+### Still Deferred — Backend
+
+- **8 skipped SQLite checkpoint tests** (`backend/tests/test_threads.py`) — async/sync checkpointer visibility in test harness; planned fix: Epic 7 (SQLite Hardening).
+- **Runner.py TODO** (`backend/app/agent/runner.py:552`) — "TODO: Replace with LangGraph-based workflow execution." — legacy stopgap code.
+- **aiosqlite deprecation warning** — `AsyncSqliteSaver` created outside async context; will break when `get_event_loop()` is deprecated.
+- **Shared SQLite connection concurrency risk** — `check_same_thread=False` with single global connection not safely concurrent under load.
+- **Unauthenticated config reload endpoint** — no auth check on POST /api/config/reload.
+- **Permission errors propagate as 500** — `Path.read_text()` raises `PermissionError` not caught.
+- **Duplicate server names silently overwrite** — no uniqueness validation in MCP server connections dict.
+- **Race condition on idea ID generation** — `load_idea_registry() → read next_id → increment → save` is not atomic.
+- **`Idea` and `IdeaRegistry` Pydantic models defined but never instantiated** — CRUD code works with raw `dict` objects.
+- **`datetime.utcnow()` deprecated in Python 3.12+** — migrate to `datetime.now(timezone.utc)`.
+
+### Still Deferred — Frontend
+
+- **Frontend coverage not configured** — `@vitest/coverage-v8` in package-lock but not in devDependencies; CI coverage flag removed.
+- **Fragile test/component testid coupling** — tests rely on mock `data-testid` attributes.
+- **O(n) transcript growth via React state** — virtualization needed if transcript exceeds 100 messages.
+- **Partial SSE frames dropped on disconnect** — no retry/backoff logic.
+- **Concurrent send accumulator shared** — rapid double-submit merges chunks.
+- **Global SSE events pollute active chat** — `agent.progress` events fire for all ideas.
+- **Thread-scoped in-flight stream abort** — switching threads during active stream doesn't cancel request.
+- **`ensureThread` returns stale thread ID** — ref checked but thread may no longer exist.
+- **Concurrent mutations cause refresh races** — no in-flight request deduplication.
+- **refreshThreads swallows fetch errors** — errors logged but not surfaced to user.
+- **Duplicate SSE subscriptions** — InterruptInbox and useChatStream create independent SSE connections.
+- **SSE reconnect doesn't reload interrupt state** — overlay may become stale on connection drop.
+- **Recharts 2.x deprecation** — v3 migration needed with breaking changes.
+
+### Still Deferred — CI/Infrastructure
+
+- **Vitest fork worker timeouts on Windows** — `forks` pool defaults to 140s timeout; use `threads` pool for Windows dev.
+- **Node.js 20 deprecation** — CI forces Node 24; `@testing-library/jest-dom@7` requires Node 22+.
+- **Security audit runs with continue-on-error** — vulnerabilities don't fail pipeline.
+- **bmad-cc submodule test failures** — 5 failing tests in submodule (ANSI stripping defect).
+
+### Resolved Since Last Audit
+
+- ~~Duplicate `from pydantic import ValidationError` in mcp.py~~ — mcp.py removed in later refactor.
+- ~~`MCP_CONFIG_PATH = None` raises TypeError~~ — properly set via `CONFIG_DIR` in config.py:107.
+- ~~`_validate_mcp_config()` has no schema validation~~ — now calls `validate_mcp_config()` schema validator.
+- ~~CI frontend type errors~~ — InterruptPayload type mismatches fixed in test files.
+- ~~CI frontend build failure~~ — resolved with type fixes.
