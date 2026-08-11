@@ -1,0 +1,214 @@
+# .github/workflows/jules-fix-ci.yml
+#
+# Phase B2: Auto-fix CI failures with Jules
+# ==========================================
+# Triggers automatically when the CI Pipeline workflow fails on main.
+# Extracts the failing job's log excerpt, builds a Jules prompt, and
+# creates a Jules session with AUTO_CREATE_PR mode.
+#
+# Humans ALWAYS review the Jules-generated PR before merging.
+# Guard: skips if the last commit message starts with "[Jules]" to
+# avoid infinite retry loops.
+#
+# Required secrets:
+#   JULES_API_KEY  — from https://jules.google.com/settings
+
+name: "Jules: Fix CI Failure"
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [main]
+
+env:
+  JULES_API_BASE: "https://jules.googleapis.com/v1alpha"
+  # Max characters of log to include in the Jules prompt
+  LOG_EXCERPT_CHARS: "3000"
+
+jobs:
+  fix-ci:
+    name: "Auto-fix with Jules"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+      pull-requests: write
+
+    # Only run when CI failed
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+
+    steps:
+      - name: "Check out repository"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+
+      - name: "Guard: skip if last commit is already a Jules fix"
+        id: guard
+        run: |
+          LAST_MSG=$(git log -1 --pretty=%s)
+          echo "Last commit: $LAST_MSG"
+          if echo "$LAST_MSG" | grep -qi "^\[jules\]"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping — last commit is already a Jules fix. No infinite loop."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Fetch failed job logs"
+        id: logs
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID="${{ github.event.workflow_run.id }}"
+          # Get failed jobs
+          FAILED_JOBS=$(gh api \
+            "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" \
+            --jq '[.jobs[] | select(.conclusion=="failure")] | .[0]')
+
+          JOB_ID=$(echo "$FAILED_JOBS" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || echo "")
+          JOB_NAME=$(echo "$FAILED_JOBS" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('name','unknown'))" 2>/dev/null || echo "unknown")
+
+          echo "job_name=$JOB_NAME" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$JOB_ID" ]; then
+            LOG=$(gh api "repos/${{ github.repository }}/actions/jobs/$JOB_ID/logs" 2>/dev/null | tail -c "$LOG_EXCERPT_CHARS" || echo "Could not fetch logs")
+          else
+            LOG="Could not identify failed job."
+          fi
+
+          # Escape for multiline output
+          {
+            echo "log_excerpt<<EOF"
+            echo "$LOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: "Find Jules source for this repo"
+        id: find_source
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          SOURCES=$(curl -sS \
+            -H "x-goog-api-key: $JULES_API_KEY" \
+            "$JULES_API_BASE/sources?pageSize=50")
+          OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          SOURCE_NAME=$(echo "$SOURCES" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          sources = data.get('sources', [])
+          owner = '$OWNER'.lower()
+          repo = '$REPO_NAME'.lower()
+          for s in sources:
+              gr = s.get('githubRepo', {})
+              if gr.get('owner','').lower() == owner and gr.get('name','').lower() == repo:
+                  print(s['name'])
+                  break
+          " 2>/dev/null || echo "")
+          echo "source_name=$SOURCE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: "Create Jules session to fix CI"
+        id: create_session
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          SOURCE_NAME="${{ steps.find_source.outputs.source_name }}"
+          JOB_NAME="${{ steps.logs.outputs.job_name }}"
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          RUN_URL="${{ github.event.workflow_run.html_url }}"
+
+          # Build prompt
+          PROMPT="Fix CI failure on commit $SHA (branch: $BRANCH).
+
+          Failed job: $JOB_NAME
+          CI run: $RUN_URL
+
+          Error log (last $LOG_EXCERPT_CHARS chars):
+          ${{ steps.logs.outputs.log_excerpt }}
+
+          Instructions:
+          1. Identify the root cause from the log excerpt above.
+          2. Fix only the code that caused this specific failure.
+          3. Do not refactor unrelated code.
+          4. Make sure existing tests still pass after your fix.
+          5. Commit with message: [Jules] fix: resolve $JOB_NAME CI failure on $SHA"
+
+          SOURCE_BLOCK=""
+          if [ -n "$SOURCE_NAME" ]; then
+            SOURCE_BLOCK='"source": {"source": "'"$SOURCE_NAME"'", "gitHubRepo": {"branch": "'"$BRANCH"'"}}'
+          fi
+
+          PAYLOAD=$(python3 -c "
+          import json
+          d = {
+            'prompt': '''$PROMPT''',
+            'title': '[Jules CI Fix] $JOB_NAME — $SHA',
+            'requirePlanApproval': False,
+            'automationMode': 'AUTO_CREATE_PR',
+          }
+          source_str = '''$SOURCE_BLOCK'''
+          if source_str.strip():
+              source_data = json.loads('{' + source_str.strip() + '}')
+              d.update(source_data)
+          print(json.dumps(d))
+          ")
+
+          RESPONSE=$(curl -sS -X POST \
+            -H "x-goog-api-key: $JULES_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$JULES_API_BASE/sessions")
+
+          SESSION_NAME=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('name',''))" 2>/dev/null || echo "")
+          SESSION_URL=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('url',''))" 2>/dev/null || echo "")
+
+          if [ -z "$SESSION_NAME" ]; then
+            ERROR_MSG=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('message', str(d)))" 2>/dev/null || echo "$RESPONSE")
+            echo "::error::Failed to create Jules session: $ERROR_MSG"
+            exit 1
+          fi
+
+          echo "session_name=$SESSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "session_url=$SESSION_URL" >> "$GITHUB_OUTPUT"
+          echo "Jules session created: $SESSION_NAME"
+          echo "View at: $SESSION_URL"
+
+      - name: "Create tracking issue"
+        if: steps.guard.outputs.skip == 'false' && always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SESSION_URL="${{ steps.create_session.outputs.session_url }}"
+          JOB_NAME="${{ steps.logs.outputs.job_name }}"
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          RUN_URL="${{ github.event.workflow_run.html_url }}"
+
+          BODY="## 🔴 CI Failure → Jules Fix Dispatched
+
+          **Failed job:** \`$JOB_NAME\`
+          **Commit:** \`$SHA\`
+          **CI run:** $RUN_URL
+          $([ -n "$SESSION_URL" ] && echo "**Jules session:** $SESSION_URL")
+
+          Jules has been asked to analyse the failure and open a PR with a fix.
+          **Please review the Jules PR before merging.**
+
+          > Auto-generated by \`jules-fix-ci.yml\` workflow run [\`${{ github.run_id }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          "
+
+          ISSUE_TITLE="[Jules CI] Fix $JOB_NAME on $SHA"
+          gh issue create \
+            --title "$ISSUE_TITLE" \
+            --body "$BODY" \
+            --label "jules-automation,ci-failure" 2>/dev/null \
+            || gh issue create --title "$ISSUE_TITLE" --body "$BODY" \
+            || echo "::warning::Could not create tracking issue"
