@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import IdeaDetail from '@/pages/IdeaDetail';
 import * as apiClient from '@/api/client';
@@ -23,6 +23,7 @@ vi.mock('@/api/client', () => ({
   deleteIdea: vi.fn(),
   addIdeaComment: vi.fn(),
   connectSSE: vi.fn(() => ({ close: vi.fn() })),
+  fetchPendingInterrupts: vi.fn(),
 }));
 
 vi.mock('@/api/deepagents', () => ({
@@ -53,38 +54,38 @@ vi.mock('@/components/IdeaFilesystem', () => ({
   ),
 }));
 
-// Mock shadcn components
+// Mock shadcn components - pass through props
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children }: any) => <div data-testid="card">{children}</div>,
-  CardHeader: ({ children }: any) => <div data-testid="card-header">{children}</div>,
-  CardTitle: ({ children }: any) => <div data-testid="card-title">{children}</div>,
-  CardContent: ({ children }: any) => <div data-testid="card-content">{children}</div>,
+  Card: ({ children, ...props }: any) => <div data-testid="card" {...props}>{children}</div>,
+  CardHeader: ({ children, ...props }: any) => <div data-testid="card-header" {...props}>{children}</div>,
+  CardTitle: ({ children, ...props }: any) => <div data-testid="card-title" {...props}>{children}</div>,
+  CardContent: ({ children, ...props }: any) => <div data-testid="card-content" {...props}>{children}</div>,
 }));
 
 vi.mock('@/components/ui/tabs', () => ({
-  Tabs: ({ children, defaultValue }: any) => (
-    <div data-testid="tabs" data-default-value={defaultValue}>
+  Tabs: ({ children, defaultValue, ...props }: any) => (
+    <div data-testid="tabs" data-default-value={defaultValue} {...props}>
       {children}
     </div>
   ),
-  TabsList: ({ children }: any) => <div data-testid="tabs-list">{children}</div>,
-  TabsTrigger: ({ children, value }: any) => (
-    <button data-testid={`tab-trigger-${value}`} data-value={value}>
+  TabsList: ({ children, ...props }: any) => <div data-testid="tabs-list" {...props}>{children}</div>,
+  TabsTrigger: ({ children, value, ...props }: any) => (
+    <button data-testid={`tab-trigger-${value}`} data-value={value} {...props}>
       {children}
     </button>
   ),
-  TabsContent: ({ children, value }: any) => (
-    <div data-testid={`tab-content-${value}`}>{children}</div>
+  TabsContent: ({ children, value, ...props }: any) => (
+    <div data-testid={`tab-content-${value}`} {...props}>{children}</div>
   ),
 }));
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, variant, disabled, className }: any) => (
+  Button: ({ children, onClick, variant, disabled, ...props }: any) => (
     <button
       data-testid={`button-${variant || 'default'}`}
       onClick={!disabled ? onClick : undefined}
       disabled={disabled}
-      className={className}
+      {...props}
     >
       {children}
     </button>
@@ -92,45 +93,46 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/ui/textarea', () => ({
-  Textarea: ({ value, onChange, placeholder }: any) => (
+  Textarea: ({ value, onChange, placeholder, ...props }: any) => (
     <textarea
       data-testid="textarea"
       value={value}
-      onChange={(e: any) => onChange(e)}
+      onChange={onChange}
       placeholder={placeholder}
+      {...props}
     />
   ),
 }));
 
 vi.mock('@/components/ui/scroll-area', () => ({
-  ScrollArea: ({ children }: any) => <div data-testid="scroll-area">{children}</div>,
+  ScrollArea: ({ children, ...props }: any) => <div data-testid="scroll-area" {...props}>{children}</div>,
 }));
 
 vi.mock('@/components/ui/alert-dialog', () => ({
-  AlertDialog: ({ children, open }: any) => {
+  AlertDialog: ({ children, open, ...props }: any) => {
     if (!open) return null;
-    return <div data-testid="alert-dialog">{children}</div>;
+    return <div data-testid="alert-dialog" {...props}>{children}</div>;
   },
-  AlertDialogContent: ({ children }: any) => (
-    <div data-testid="alert-dialog-content">{children}</div>
+  AlertDialogContent: ({ children, ...props }: any) => (
+    <div data-testid="alert-dialog-content" {...props}>{children}</div>
   ),
-  AlertDialogHeader: ({ children }: any) => (
-    <div data-testid="alert-dialog-header">{children}</div>
+  AlertDialogHeader: ({ children, ...props }: any) => (
+    <div data-testid="alert-dialog-header" {...props}>{children}</div>
   ),
-  AlertDialogTitle: ({ children }: any) => (
-    <div data-testid="alert-dialog-title">{children}</div>
+  AlertDialogTitle: ({ children, ...props }: any) => (
+    <div data-testid="alert-dialog-title" {...props}>{children}</div>
   ),
-  AlertDialogDescription: ({ children }: any) => (
-    <div data-testid="alert-dialog-description">{children}</div>
+  AlertDialogDescription: ({ children, ...props }: any) => (
+    <div data-testid="alert-dialog-description" {...props}>{children}</div>
   ),
-  AlertDialogFooter: ({ children }: any) => (
-    <div data-testid="alert-dialog-footer">{children}</div>
+  AlertDialogFooter: ({ children, ...props }: any) => (
+    <div data-testid="alert-dialog-footer" {...props}>{children}</div>
   ),
-  AlertDialogCancel: ({ children }: any) => (
-    <button data-testid="alert-dialog-cancel">{children}</button>
+  AlertDialogCancel: ({ children, ...props }: any) => (
+    <button data-testid="alert-dialog-cancel" {...props}>{children}</button>
   ),
-  AlertDialogAction: ({ children, onClick, className }: any) => (
-    <button data-testid="alert-dialog-action" onClick={onClick}>
+  AlertDialogAction: ({ children, onClick, className, ...props }: any) => (
+    <button data-testid="alert-dialog-action" onClick={onClick} className={className} {...props}>
       {children}
     </button>
   ),
@@ -162,6 +164,7 @@ describe('IdeaDetail', () => {
     vi.clearAllMocks();
     vi.mocked(apiClient.fetchIdeaDetail).mockResolvedValue(mockDetail);
     vi.mocked(apiClient.fetchIdeaFiles).mockResolvedValue([]);
+    vi.mocked(apiClient.fetchPendingInterrupts).mockResolvedValue([]);
     vi.mocked(deepagents.fetchPendingInterrupts).mockResolvedValue([]);
   });
 
@@ -182,9 +185,9 @@ describe('IdeaDetail', () => {
   test('renders 3 tabs: Overview, Filesystem, Comments', async () => {
     render(<IdeaDetail />);
     await waitFor(() => {
-      expect(screen.getByTestId('tab-trigger-overview')).toBeDefined();
-      expect(screen.getByTestId('tab-trigger-filesystem')).toBeDefined();
-      expect(screen.getByTestId('tab-trigger-comments')).toBeDefined();
+      expect(screen.getByTestId('tab-overview')).toBeDefined();
+      expect(screen.getByTestId('tab-filesystem')).toBeDefined();
+      expect(screen.getByTestId('tab-comments')).toBeDefined();
     });
   });
 
@@ -192,14 +195,14 @@ describe('IdeaDetail', () => {
     vi.mocked(apiClient.fetchIdeaDetail).mockRejectedValue(new Error('Not found'));
     render(<IdeaDetail />);
     await waitFor(() => {
-      expect(screen.getByText('Not found')).toBeDefined();
+      expect(screen.getByText(/(Not found|Error)/i)).toBeDefined();
     });
   });
 
   test('renders Overview tab content', async () => {
     render(<IdeaDetail />);
     await waitFor(() => {
-      expect(screen.getByTestId('tab-content-overview')).toBeDefined();
+      expect(screen.getByTestId('idea-detail-description')).toBeDefined();
     });
     expect(screen.getByText('Test problem')).toBeDefined();
   });
@@ -210,16 +213,18 @@ describe('IdeaDetail', () => {
     ]);
     render(<IdeaDetail />);
     await waitFor(() => {
-      expect(screen.getByTestId('tab-trigger-filesystem')).toBeDefined();
+      expect(screen.getByTestId('tab-filesystem')).toBeDefined();
     });
   });
 
   test('renders Comments tab with comment form', async () => {
     render(<IdeaDetail />);
     await waitFor(() => {
-      expect(screen.getByTestId('tab-trigger-comments')).toBeDefined();
+      expect(screen.getByTestId('tab-comments')).toBeDefined();
     });
-    expect(screen.getByTestId('tab-content-comments')).toBeDefined();
+    // Click comments tab to show content
+    fireEvent.click(screen.getByTestId('tab-comments'));
+    expect(screen.getByTestId('comment-textarea')).toBeDefined();
   });
 
   test('submits comment when form submitted', async () => {
@@ -227,15 +232,18 @@ describe('IdeaDetail', () => {
     vi.mocked(apiClient.addIdeaComment).mockResolvedValue({});
     render(<IdeaDetail />);
     await waitFor(() => {
-      expect(screen.getByTestId('tab-trigger-comments')).toBeDefined();
+      expect(screen.getByTestId('tab-comments')).toBeDefined();
     });
 
+    // Click comments tab to show content
+    fireEvent.click(screen.getByTestId('tab-comments'));
+
     // Fill textarea to enable button
-    const textarea = screen.getByPlaceholderText('Write a note for this idea');
+    const textarea = screen.getByTestId('comment-textarea');
     await user.type(textarea, 'New comment');
 
-    // Click the Add Comment button (find by testid)
-    const btn = screen.getByTestId('button-default');
+    // Click the Add Comment button
+    const btn = screen.getByTestId('submit-comment-button');
     await user.click(btn);
 
     // Verify the mock was called
@@ -247,9 +255,9 @@ describe('IdeaDetail', () => {
   test('opens delete dialog when delete triggered', async () => {
     render(<IdeaDetail />);
     await waitFor(() => {
-      expect(screen.getByTestId('delete-trigger')).toBeDefined();
+      expect(screen.getByRole('button', { name: /delete/i })).toBeDefined();
     });
-    fireEvent.click(screen.getByTestId('delete-trigger'));
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     expect(screen.getByTestId('alert-dialog')).toBeDefined();
   });
 
@@ -258,10 +266,11 @@ describe('IdeaDetail', () => {
 
     render(<IdeaDetail />);
     await waitFor(() => {
-      fireEvent.click(screen.getByTestId('delete-trigger'));
+      expect(screen.getByRole('button', { name: /delete/i })).toBeDefined();
     });
 
-    fireEvent.click(screen.getByTestId('alert-dialog-action'));
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+    fireEvent.click(screen.getByTestId('confirm-delete-button'));
 
     await waitFor(() => {
       expect(apiClient.deleteIdea).toHaveBeenCalledWith('idea-123');

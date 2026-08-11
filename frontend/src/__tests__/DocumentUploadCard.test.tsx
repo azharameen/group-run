@@ -84,8 +84,7 @@ describe('DocumentUploadCard', () => {
 
     await waitFor(() => {
       expect(client.ingestKnowledgeBaseDocument).toHaveBeenCalledWith(
-        expect.any(File),
-        'raw'
+        expect.objectContaining({ file: expect.any(File), source: 'raw' })
       );
     });
 
