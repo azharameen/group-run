@@ -64,13 +64,16 @@ jobs:
 
     steps:
       - name: "Validate inputs"
+        env:
+          JULES_PROMPT: ${{ inputs.prompt }}
+          JULES_STORY_ID: ${{ inputs.story_id }}
         run: |
-          if [ -z "${{ inputs.prompt }}" ]; then
+          if [ -z "$JULES_PROMPT" ]; then
             echo "::error::prompt is required"
             exit 1
           fi
-          echo "Story ID : ${{ inputs.story_id }}"
-          echo "Prompt   : ${{ inputs.prompt }}"
+          echo "Story ID : $JULES_STORY_ID"
+          echo "Prompt   : [provided]"
           echo "Auto PR  : ${{ inputs.auto_create_pr }}"
           echo "Plan gate: ${{ inputs.require_plan_approval }}"
 
@@ -78,6 +81,12 @@ jobs:
         id: find_source
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          JULES_SOURCE_NAME: ${{ steps.find_source.outputs.source_name }}
+          JULES_AUTOMATION_MODE: ${{ inputs.auto_create_pr == 'true' && 'AUTO_CREATE_PR' || 'AUTOMATION_MODE_UNSPECIFIED' }}
+          JULES_PROMPT: ${{ inputs.prompt }}
+          JULES_TITLE: ${{ inputs.story_id }}
+          JULES_REQUIRE_APPROVAL: ${{ inputs.require_plan_approval }}
+          JULES_BRANCH: ${{ inputs.branch }}
         run: |
           SOURCES=$(curl -sS \
             -H "x-goog-api-key: $JULES_API_KEY" \
@@ -110,10 +119,10 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          SOURCE_NAME="${{ steps.find_source.outputs.source_name }}"
-          AUTOMATION_MODE="${{ inputs.auto_create_pr == 'true' && 'AUTO_CREATE_PR' || 'AUTOMATION_MODE_UNSPECIFIED' }}"
-          REQUIRE_APPROVAL="${{ inputs.require_plan_approval }}"
-          BRANCH="${{ inputs.branch }}"
+          SOURCE_NAME="$JULES_SOURCE_NAME"
+          AUTOMATION_MODE="$JULES_AUTOMATION_MODE"
+          REQUIRE_APPROVAL="$JULES_REQUIRE_APPROVAL"
+          BRANCH="$JULES_BRANCH"
 
           # Build source block if source found
           SOURCE_BLOCK=""
@@ -125,26 +134,30 @@ jobs:
             fi
           fi
 
-          PAYLOAD=$(python3 -c "
-          import json
-          d = {
-            'prompt': '''${{ inputs.prompt }}''',
-            'title': '[BMad CI] ${{ inputs.story_id }} — ${{ github.workflow }}',
-            'requirePlanApproval': ${{ inputs.require_plan_approval == 'true' && 'True' || 'False' }},
-            'automationMode': '$AUTOMATION_MODE',
+          PAYLOAD=$(python3 - <<'PY'
+          import json, os
+          payload = {
+              "prompt": os.environ["JULES_PROMPT"],
+              "title": f"[BMad CI] {os.environ['JULES_TITLE']} - ${{ github.workflow }}",
+              "requirePlanApproval": os.environ["JULES_REQUIRE_APPROVAL"].lower() == "true",
+              "automationMode": os.environ["JULES_AUTOMATION_MODE"],
           }
-          print(json.dumps(d))
-          ")
+          print(json.dumps(payload))
+          PY
+          )
 
           # Inject source block if present
-          if [ -n "$SOURCE_BLOCK" ]; then
-            PAYLOAD=$(echo "$PAYLOAD" | python3 -c "
-          import json, sys
-          d = json.load(sys.stdin)
-          source_str = '''$SOURCE_BLOCK'''
-          source_data = json.loads('{' + source_str + '}')
-          d.update(source_data)
-          print(json.dumps(d))")
+          if [ -n "$SOURCE_NAME" ]; then
+            PAYLOAD=$(SOURCE_NAME="$SOURCE_NAME" BRANCH="$BRANCH" PAYLOAD="$PAYLOAD" python3 - <<'PY'
+          import json, os
+          payload = json.loads(os.environ["PAYLOAD"])
+          source = {"source": os.environ["SOURCE_NAME"]}
+          if os.environ["BRANCH"]:
+              source["gitHubRepo"] = {"branch": os.environ["BRANCH"]}
+          payload["source"] = source
+          print(json.dumps(payload))
+          PY
+          )
           fi
 
           RESPONSE=$(curl -sS -X POST \
@@ -200,13 +213,15 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          JULES_PROMPT: ${{ inputs.prompt }}
+          JULES_STORY_ID: ${{ inputs.story_id }}
         run: |
           SESSION_NAME="${{ steps.create_session.outputs.session_name }}"
           SESSION_URL="${{ steps.create_session.outputs.session_url }}"
           SESSION_STATE="${{ steps.create_session.outputs.session_state }}"
           FINAL_STATE="${{ steps.poll.outputs.final_state }}"
           PR_URL="${{ steps.poll.outputs.pr_url }}"
-          STORY_ID="${{ inputs.story_id }}"
+          STORY_ID="$JULES_STORY_ID"
 
           STATUS="${FINAL_STATE:-$SESSION_STATE}"
 
@@ -218,7 +233,7 @@ jobs:
 
           **Prompt:**
           \`\`\`
-          ${{ inputs.prompt }}
+          $JULES_PROMPT
           \`\`\`
 
           > Triggered by workflow run [\`${{ github.run_id }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

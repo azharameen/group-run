@@ -94,6 +94,12 @@ jobs:
         if: steps.guard.outputs.skip == 'false'
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          JULES_SOURCE_NAME: ${{ steps.find_source.outputs.source_name }}
+          JULES_JOB_NAME: ${{ steps.logs.outputs.job_name }}
+          JULES_SHA: ${{ github.event.workflow_run.head_sha }}
+          JULES_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          JULES_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          JULES_LOG_EXCERPT: ${{ steps.logs.outputs.log_excerpt }}
         run: |
           SOURCES=$(curl -sS \
             -H "x-goog-api-key: $JULES_API_KEY" \
@@ -120,47 +126,41 @@ jobs:
         env:
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         run: |
-          SOURCE_NAME="${{ steps.find_source.outputs.source_name }}"
-          JOB_NAME="${{ steps.logs.outputs.job_name }}"
-          SHA="${{ github.event.workflow_run.head_sha }}"
-          BRANCH="${{ github.event.workflow_run.head_branch }}"
-          RUN_URL="${{ github.event.workflow_run.html_url }}"
+          PAYLOAD=$(python3 - <<'PY'
+          import json, os
+          job = os.environ["JULES_JOB_NAME"]
+          sha = os.environ["JULES_SHA"]
+          branch = os.environ["JULES_BRANCH"]
+          log_excerpt = os.environ["JULES_LOG_EXCERPT"]
+          prompt = f"""Fix CI failure on commit {sha} (branch: {branch}).
 
-          # Build prompt
-          PROMPT="Fix CI failure on commit $SHA (branch: $BRANCH).
+          Failed job: {job}
+          CI run: {os.environ["JULES_RUN_URL"]}
 
-          Failed job: $JOB_NAME
-          CI run: $RUN_URL
-
-          Error log (last $LOG_EXCERPT_CHARS chars):
-          ${{ steps.logs.outputs.log_excerpt }}
+          Error log:
+          {log_excerpt}
 
           Instructions:
           1. Identify the root cause from the log excerpt above.
           2. Fix only the code that caused this specific failure.
           3. Do not refactor unrelated code.
           4. Make sure existing tests still pass after your fix.
-          5. Commit with message: [Jules] fix: resolve $JOB_NAME CI failure on $SHA"
-
-          SOURCE_BLOCK=""
-          if [ -n "$SOURCE_NAME" ]; then
-            SOURCE_BLOCK='"source": {"source": "'"$SOURCE_NAME"'", "gitHubRepo": {"branch": "'"$BRANCH"'"}}'
-          fi
-
-          PAYLOAD=$(python3 -c "
-          import json
-          d = {
-            'prompt': '''$PROMPT''',
-            'title': '[Jules CI Fix] $JOB_NAME — $SHA',
-            'requirePlanApproval': False,
-            'automationMode': 'AUTO_CREATE_PR',
+          5. Commit with message: [Jules] fix: resolve {job} CI failure on {sha}"""
+          payload = {
+              "prompt": prompt,
+              "title": f"[Jules CI Fix] {job} - {sha}",
+              "requirePlanApproval": False,
+              "automationMode": "AUTO_CREATE_PR",
           }
-          source_str = '''$SOURCE_BLOCK'''
-          if source_str.strip():
-              source_data = json.loads('{' + source_str.strip() + '}')
-              d.update(source_data)
-          print(json.dumps(d))
-          ")
+          source = os.environ["JULES_SOURCE_NAME"]
+          if source:
+              payload["source"] = {
+                  "source": source,
+                  "gitHubRepo": {"branch": branch},
+              }
+          print(json.dumps(payload))
+          PY
+          )
 
           RESPONSE=$(curl -sS -X POST \
             -H "x-goog-api-key: $JULES_API_KEY" \

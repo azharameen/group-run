@@ -66,13 +66,14 @@ async function pollJulesSessions(instanceId, entry, targetItemId = null) {
     return { updated, results };
 }
 
-async function loadJulesState() {
+async function loadJulesState(targetInstanceId = null) {
     try {
         const text = await fs.readFile(JULES_STATE_FILE, "utf8");
         const data = JSON.parse(text);
         if (Array.isArray(data)) {
             for (const { instanceId, itemId, entry } of data) {
-                getInstanceJules(instanceId).set(itemId, entry);
+                if (!itemId || !entry?.sessionName) continue;
+                getInstanceJules(targetInstanceId || instanceId).set(itemId, entry);
             }
         }
     } catch { /* first run, ignore */ }
@@ -1478,6 +1479,11 @@ function renderHtml(instanceId, initialState) {
         padding: 8px 10px;
         cursor: pointer;
       }
+      .dialog-close:hover,
+      .jules-toolbar button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
       @media (max-width: 1100px) {
         .layout { grid-template-columns: 1fr; }
         .details-panel {
@@ -1562,6 +1568,11 @@ function renderHtml(instanceId, initialState) {
         font-size: 18px;
         line-height: 1;
       }
+      .jules-icon-button img {
+        width: 20px;
+        height: 20px;
+        display: block;
+      }
       .jules-no-key {
         padding: 12px;
         border: 1px dashed var(--border);
@@ -1603,7 +1614,231 @@ function renderHtml(instanceId, initialState) {
         width: 100%;
         text-align: left;
       }
-    </style>
+      /* Command-center visual system: fewer containers, stronger hierarchy. */
+      :root {
+        --radius-control: 6px;
+        --radius-card: 8px;
+        --radius-dialog: 12px;
+        --surface-command: color-mix(in srgb, var(--surface) 92%, var(--accent) 8%);
+      }
+      body {
+        background: var(--bg);
+      }
+      header {
+        padding: 10px 18px 0;
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+        box-shadow: 0 1px 0 var(--border);
+      }
+      .topbar { align-items: center; }
+      h1 { letter-spacing: -.02em; }
+      .tab-list { margin-top: 8px; }
+      .tab-button { padding: 8px 14px 9px; }
+      main {
+        width: min(100%, 1540px);
+        margin: 0 auto;
+        padding: 16px 20px 28px;
+      }
+      .tab-view.active { gap: 16px; }
+      .tab-controls { margin-bottom: 4px; }
+      .tab-controls input, .tab-controls select, .tab-controls button,
+      .toolbar input, .toolbar select, .toolbar button {
+        border-radius: var(--radius-control);
+      }
+      .status-filters { gap: 6px; margin-top: 2px; }
+      .filter-chip {
+        border-radius: var(--radius-control);
+        padding: 5px 9px;
+        gap: 6px;
+        font-size: 12px;
+      }
+      .summary {
+        display: flex;
+        gap: 0;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        background: transparent;
+      }
+      .stat {
+        flex: 1 1 0;
+        min-width: 110px;
+        border: 0;
+        border-right: 1px solid var(--border);
+        border-radius: 0;
+        padding: 10px 14px;
+        background: transparent;
+        box-shadow: none;
+      }
+      .stat:first-child { padding-left: 0; }
+      .stat:last-child { border-right: 0; }
+      .stat .value { margin-top: 2px; font-size: 20px; }
+      .layout { display: block; }
+      .panel {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+      }
+      .panel h2 {
+        padding: 0 0 8px;
+        background: transparent;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+      }
+      .panel-body { padding: 0; }
+      .columns {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .column {
+        border: 0;
+        border-top: 2px solid var(--border);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+      }
+      .column h2 {
+        padding: 9px 0 8px;
+        border-bottom: 1px solid var(--border);
+        background: transparent;
+        font-size: 13px;
+      }
+      .cards { padding: 0; gap: 0; }
+      .card {
+        border: 0;
+        border-left: 3px solid var(--border);
+        border-bottom: 1px solid var(--border-soft);
+        border-radius: 0;
+        padding: 11px 10px;
+        background: transparent;
+      }
+      .card:hover {
+        border-color: var(--accent);
+        background: var(--surface-subtle);
+        box-shadow: none;
+      }
+      .card.selected { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: -2px; }
+      .card-meta { margin-top: 4px; }
+      .badges { margin-top: 6px; gap: 4px; }
+      .badge { border-radius: 4px; padding: 2px 6px; }
+      .roadmap-card, .jules-session-card, .jules-empty {
+        border-radius: var(--radius-card);
+        box-shadow: none;
+      }
+      .columns.list-view { grid-template-columns: 1fr; }
+      .columns.list-view .column { border-top: 1px solid var(--border); }
+      .columns.list-view .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); column-gap: 18px; }
+      @media (max-width: 900px) {
+        .columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .summary { overflow-x: auto; }
+        .stat { min-width: 120px; }
+      }
+      @media (max-width: 560px) {
+        main { padding: 12px; }
+        .columns { grid-template-columns: 1fr; }
+        .topbar { grid-template-columns: 1fr auto; }
+      }      /* Phase 3-5: distinct execution and reference surfaces. */
+      .details-grid { gap: 0; border-top: 1px solid var(--border); }
+      .details-grid .kv {
+        border: 0;
+        border-bottom: 1px solid var(--border-soft);
+        border-radius: 0;
+        padding: 9px 0;
+        background: transparent;
+      }
+      .relation-group { border-top: 1px solid var(--border); padding-top: 12px; }
+      .relation-group .list { gap: 0; }
+      .relation-group .list-item {
+        border: 0;
+        border-bottom: 1px solid var(--border-soft);
+        border-radius: 0;
+        padding-left: 0;
+        padding-right: 0;
+        background: transparent;
+      }
+      .dialog-shell { padding: 22px; }
+      dialog { border-radius: var(--radius-dialog); }
+      #automations { border-top: 1px solid var(--border); }
+      #automations .jules-toolbar { padding: 10px 0; margin: 0; }
+      .jules-session-card {
+        border: 0;
+        border-bottom: 1px solid var(--border-soft);
+        border-radius: 0;
+        padding: 12px 0;
+        margin: 0;
+        grid-template-columns: minmax(0, 1.7fr) minmax(150px, .8fr) minmax(180px, 1fr) auto;
+        align-items: center;
+        column-gap: 14px;
+        display: grid;
+        background: transparent;
+      }
+      .jules-session-card .jsc-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .jules-session-card .jsc-meta { margin: 0; }
+      .jules-session-card .jsc-actions { justify-content: flex-end; margin: 0; }
+      .jules-empty { border: 1px dashed var(--border); border-radius: var(--radius-card); margin-top: 12px; }
+      #artifacts { border-top: 1px solid var(--border); }
+      #artifacts .list-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(180px, .7fr);
+        align-items: center;
+        gap: 16px;
+        border: 0;
+        border-bottom: 1px solid var(--border-soft);
+        border-radius: 0;
+        padding: 12px 0;
+        background: transparent;
+      }
+      #artifacts .list-item small { margin: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      @media (max-width: 760px) {
+        .jules-session-card { grid-template-columns: 1fr; gap: 6px; }
+        .jules-session-card .jsc-actions { justify-content: flex-start; }
+        #artifacts .list-item { grid-template-columns: 1fr; gap: 4px; }
+        #artifacts .list-item small { text-align: left; }
+      }      /* Final accessibility and responsive hardening. */
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity: .62; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          scroll-behavior: auto !important;
+          transition-duration: .01ms !important;
+          animation-duration: .01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+      @media (max-width: 560px) {
+        .topbar { gap: 8px; }
+        .tab-list { overflow-x: auto; scrollbar-width: thin; }
+        .tab-button { flex: 0 0 auto; }
+        .tab-controls input { min-width: 0; flex-basis: 100%; }
+        .summary { margin-inline: -12px; padding-inline: 12px; }
+        .dialog-shell { padding: 16px; }
+      }
+
+      /* Filter contrast: active controls must remain readable in both themes. */
+      .filter-chip {
+        background: var(--surface-subtle);
+        color: var(--text);
+        border-color: var(--border);
+      }
+      .filter-chip.active {
+        background: var(--accent-soft);
+        color: #1e3a8a;
+        border-color: var(--accent);
+      }
+      .filter-chip.active small { color: inherit; opacity: .82; }
+      :root[data-theme="dark"] .filter-chip.active {
+        background: #1d4ed8;
+        color: #f8fafc;
+        border-color: #93c5fd;
+      }
+      :root[data-theme="dark"] .filter-chip.active small { color: #f8fafc; }
+      .filter-chip:hover { border-color: var(--accent); }    </style>
   </head>
   <body>
     <header>
@@ -1694,8 +1929,8 @@ function renderHtml(instanceId, initialState) {
             <div class="section-subtle" id="dialogSubtitle"></div>
           </div>
           <div class="dialog-actions">
-            <button class="dialog-close jules-icon-button" id="dialogDelegateJules" type="button" title="Delegate this task to Jules" aria-label="Delegate this task to Jules" hidden>🤖</button>
-            <button class="dialog-close" id="dialogClose" type="button">Close</button>
+            <button class="dialog-close jules-icon-button" id="dialogDelegateJules" type="button" title="Delegate this task to Jules" aria-label="Delegate this task to Jules" hidden><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/google-jules.svg" alt="" aria-hidden="true"></button>
+            <button class="dialog-close jules-icon-button" id="dialogClose" type="button" title="Close" aria-label="Close">&times;</button>
           </div>
         </div>
         <div id="dialogBody"></div>
@@ -1706,7 +1941,7 @@ function renderHtml(instanceId, initialState) {
       let state = ${initialJson};
       let selectedId = null;
       let themePreference = null;
-      let selectedStatuses = new Set(["Blocked", "Active", "Open", "Done"]);
+      let selectedStatuses = new Set(["Blocked", "Active", "Open"]);
       let themeMediaQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
       const availableStatuses = ["Blocked", "Active", "Open", "Done"];
       let _julesDialogItemId = null;
@@ -1864,6 +2099,7 @@ function renderHtml(instanceId, initialState) {
         const container = byId("columns");
         const items = (state.workItems || []).filter(matchesFilters);
         const boardColumns = columnOrder;
+        container.classList.add("list-view");
         const grouped = new Map(boardColumns.map((name) => [name, []]));
         for (const item of items) {
           const group = bucket(item.status);
@@ -1896,7 +2132,7 @@ function renderHtml(instanceId, initialState) {
           item.phase ? '<span class="badge">' + esc(item.phase) + '</span>' : "",
           jules_badge,
         ].filter(Boolean).join("");
-        const subtitle = item.summary || "";
+        const subtitle = item.summary && normalize(item.summary) !== normalize(item.title) ? item.summary : "";
         const relation = parent
           ? "Parent: " + parent.title
           : ((state.workLookup?.[item.id]?.children || []).length ? "Root · " + state.workLookup[item.id].children.length + " children" : "Root work item");
@@ -1904,7 +2140,7 @@ function renderHtml(instanceId, initialState) {
           '<div class="card-head">' +
             '<div class="card-title">' + esc(item.title) + '</div>' +
           '</div>' +
-          '<div class="card-meta">' + esc(subtitle) + '</div>' +
+          (subtitle ? '<div class="card-meta">' + esc(subtitle) + '</div>' : '') +
           '<div class="card-meta">' + esc(relation) + '</div>' +
           '<div class="badges">' + badges + '</div>' +
         '</div>';
@@ -2045,37 +2281,12 @@ function renderHtml(instanceId, initialState) {
             '<span>' + esc(status) + '</span>' +
             '<small>' + esc(count) + '</small>' +
           '</button>';
-        }).join("") +
-        '<button class="filter-chip" type="button" data-hide-done="true">' +
-          '<span>Hide done</span>' +
-          '<small>quick</small>' +
-        '</button>' +
-        '<button class="filter-chip" type="button" data-show-all="true">' +
-          '<span>Show all</span>' +
-          '<small>reset</small>' +
-        '</button>';
+        }).join("");
 
         container.querySelectorAll("[data-status-filter]").forEach((node) => {
           node.addEventListener("click", () => {
             const status = node.getAttribute("data-status-filter");
             toggleStatus(status);
-          });
-        });
-        container.querySelectorAll("[data-hide-done]").forEach((node) => {
-          node.addEventListener("click", () => {
-            selectedStatuses.delete("Done");
-            if (!selectedStatuses.size) {
-              selectedStatuses = new Set(["Blocked", "Active", "Open"]);
-            }
-            renderAll();
-            toast("Done items hidden", "info");
-          });
-        });
-        container.querySelectorAll("[data-show-all]").forEach((node) => {
-          node.addEventListener("click", () => {
-            selectedStatuses = new Set(availableStatuses);
-            renderAll();
-            toast("All statuses visible", "info");
           });
         });
       }
@@ -2088,7 +2299,7 @@ function renderHtml(instanceId, initialState) {
           next.add(status);
         }
         if (!next.size) {
-          selectedStatuses = new Set(availableStatuses);
+          selectedStatuses = new Set(["Blocked", "Active", "Open"]);
           toast("At least one status must remain visible", "warn");
         } else {
           selectedStatuses = next;
@@ -2558,7 +2769,9 @@ async function startServer(instanceId, state) {
 
         if (url.pathname === "/api/refresh" && req.method === "POST") {
             try {
+                const jules = currentEntry.state.jules || julesStateSnapshot(instanceId);
                 currentEntry.state = await buildBoardState(currentEntry.context);
+                currentEntry.state.jules = jules;
                 currentEntry.stateRefreshedAt = new Date().toISOString();
                 res.statusCode = 200;
                 res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -2938,7 +3151,7 @@ sessionRef = await joinSession({
                 const input = ctx.input || {};
                 const state = await buildBoardState({ workingDirectory: workspacePath, input });
                 // Load any persisted Jules sessions and attach to state
-                await loadJulesState();
+                await loadJulesState(ctx.instanceId);
                 state.jules = julesStateSnapshot(ctx.instanceId);
                 const entry = await startServer(ctx.instanceId, state);
                 entry.context = { workingDirectory: workspacePath, input };
