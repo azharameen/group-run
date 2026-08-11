@@ -1,8 +1,22 @@
-﻿import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CommandCenter from '@/pages/CommandCenter';
 import * as apiClient from '@/api/client';
 import { useChatStream } from '@/hooks/useChatStream';
+import type { InterruptPayload } from '@/api/threads';
+
+function makeInterrupt(id: string): InterruptPayload {
+  return {
+    id,
+    thread_id: 'thread-1',
+    tool_name: 'test-tool',
+    tool_input: {},
+    message: 'needs approval',
+    status: 'pending',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
 
 // Mock the hooks
 vi.mock('@/hooks/useChatStream', () => ({
@@ -331,7 +345,7 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
-      pendingInterrupt: { id: 'int-1' },
+      pendingInterrupt: makeInterrupt('int-1'),
       isInterruptActive: true,
       handleApproveInterrupt: vi.fn(),
       handleRejectInterrupt: vi.fn(),
@@ -355,7 +369,7 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
-      pendingInterrupt: { id: 'int-1' },
+      pendingInterrupt: makeInterrupt('int-1'),
       isInterruptActive: true,
       handleApproveInterrupt: vi.fn(),
       handleRejectInterrupt: vi.fn(),
@@ -386,14 +400,15 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
-      pendingInterrupt: { id: 'int-42' },
+      pendingInterrupt: makeInterrupt('int-42'),
       isInterruptActive: true,
       handleApproveInterrupt: vi.fn(),
       handleRejectInterrupt: vi.fn(),
     });
     render(<CommandCenter {...defaultProps} />);
     expect(screen.getByTestId('interrupt-data')).toHaveTextContent('int-42');
-  });
+  });
+
   test('approve button calls handleApproveInterrupt', () => {
     const mockApprove = vi.fn();
     mockUseChatStream.mockReturnValue({
@@ -410,7 +425,7 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
-      pendingInterrupt: { id: 'int-1' },
+      pendingInterrupt: makeInterrupt('int-1'),
       isInterruptActive: true,
       handleApproveInterrupt: mockApprove,
       handleRejectInterrupt: vi.fn(),
@@ -418,7 +433,8 @@ describe('CommandCenter', () => {
     render(<CommandCenter {...defaultProps} />);
     fireEvent.click(screen.getByTestId('approve-button'));
     expect(mockApprove).toHaveBeenCalledWith('int-1', 'yes', 'approved');
-  });
+  });
+
   test('reject button calls handleRejectInterrupt', () => {
     const mockReject = vi.fn();
     mockUseChatStream.mockReturnValue({
@@ -435,7 +451,7 @@ describe('CommandCenter', () => {
       setSearchQuery: vi.fn(),
       tasks: [],
       taskStats: { completed: 0, total: 0 },
-      pendingInterrupt: { id: 'int-1' },
+      pendingInterrupt: makeInterrupt('int-1'),
       isInterruptActive: true,
       handleApproveInterrupt: vi.fn(),
       handleRejectInterrupt: mockReject,

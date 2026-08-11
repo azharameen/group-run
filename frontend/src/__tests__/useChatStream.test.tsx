@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatStream } from '@/hooks/useChatStream';
 import type { UseChatStreamOptions } from '@/hooks/useChatStream';
 import type { StreamEvent } from '@/api/client';
+import type { InterruptPayload } from '@/api/threads';
 import * as apiClient from '@/api/client';
 
 // Mock EventSource for SSE (must be before vi.mock)
@@ -672,7 +673,7 @@ describe('useChatStream', () => {
   });
 
   test('approve clears activeInterruptIdRef allowing same-ID reprocessing', async () => {
-    vi.mocked(apiClient.approveInterrupt).mockResolvedValue({ id: 'int-1', status: 'approved' });
+    vi.mocked(apiClient.approveInterrupt).mockResolvedValue({ id: 'int-1', status: 'approved' } as InterruptPayload);
 
     const { result } = renderHook(() => useChatStream(defaultOptions));
 
