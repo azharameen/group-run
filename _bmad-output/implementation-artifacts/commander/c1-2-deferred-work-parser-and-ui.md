@@ -1,6 +1,6 @@
 ---
 spec_file: c1-2-deferred-work-parser-and-ui.md
-status: in-progress
+status: in-review
 baseline_revision: 37f0bdb
 ---
 
@@ -99,4 +99,27 @@ so that **I can see and track all technical debt**.
 - .github/extensions/command-center/commander.mjs
 - .github/extensions/command-center/extension.mjs
 - _bmad-output/implementation-artifacts/commander/c1-2-deferred-work-parser-and-ui.md
+
+## Review Triage Log
+
+### 2025-08-13 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 0
+- defer: 0
+- reject: 26
+- addressed_findings:
+  - none
+
+Both reviewers (Blind Hunter, Edge Case Hunter) returned 55 raw findings. After deduplication and verification against actual code:
+- XSS/innerHTML: **rejected** — `esc()` applied to all dynamic content (title, id, sourcePath, severity, emoji)
+- parseSimpleYaml validation: **rejected** — wrapped in try/catch with shape validation
+- CRLF handling: **rejected** — uses `\r?\n` split
+- [RESOLVED] case sensitivity: **rejected** — uses `/i` flag
+- Parent ID regex: **rejected** — uses `\s*` and case-insensitive matching
+- Null safety: **rejected** — `|| []`, `|| {}` defaults throughout
+- Strikethrough partial match: **rejected** — by-design heuristic, partial ~~ marks item as superseded
+- buildJulesTaskPrompt for deferred: **rejected** — deferred items have `kind`, `title`, `summary` — function works correctly
+- Severity always set: **rejected** — defaults to `"low"` before keyword scan
+- Remaining 26 findings: **rejected** as noise, out-of-scope, or pre-existing concerns not caused by this change
 
