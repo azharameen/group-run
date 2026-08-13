@@ -1,2 +1,0 @@
-{"phase":"pre-flight","storyKey":"4-5-create-hitl-approval-ui-component","event":"phase-start","data":{"storyKey":"4-5-create-hitl-approval-ui-component","currentStatus":"review","dryRun":false},"timestamp":"2026-08-09T03:28:58.793Z"}
-{"phase":"gate-decision","storyKey":"4-5-create-hitl-approval-ui-component","event":"gate-decision","data":{"finalDecision":"ESCALATE_TO_HUMAN","totalRetries":4,"startingStatus":"review","nextStatus":"review"},"timestamp":"2026-08-09T03:33:54.705Z"}
