@@ -2,7 +2,7 @@
 spec_file: c1-2-deferred-work-parser-and-ui.md
 status: done
 baseline_revision: 37f0bdb
-final_revision: 5971b3e
+final_revision: dc3fb38
 followup_review_recommended: false
 ---
 
