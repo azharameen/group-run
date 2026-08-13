@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { joinSession, createCanvas, CanvasError } from "@github/copilot-sdk/extension";
 import * as jules from "./jules-client.mjs";
 import { normalizeJulesSession } from "./services/jules-service.mjs";
-import { buildBoardState, buildNextActionSuggestion, buildJulesTaskPrompt, decorateBoardState, loadThemePreference, saveThemePreference, summarizeState, renderHtml } from "./commander.mjs";
+import { buildBoardState, buildNextActionSuggestion, buildJulesTaskPrompt, decorateBoardState, loadThemePreference, saveThemePreference, summarizeState, renderHtml, parseDeferredWork } from "./commander.mjs";
 
 const CANVAS_ID = "command-center";
 const CANVAS_NAME = "Command Center";
@@ -241,8 +241,8 @@ async function startServer(instanceId, state) {
                     || currentEntry.state.lookup?.[itemId]
                     || currentEntry.state.referenceDocuments?.find((c) => c.id === itemId);
                 if (!item) throw { code: "item_not_found", message: `No board item found for id: ${itemId}` };
-                if (!["task", "subtask"].includes(item.kind)) {
-                    throw { code: "unsupported_item", message: "Jules delegation is available only for tasks and subtasks." };
+                if (!["task", "subtask", "deferred"].includes(item.kind)) {
+                    throw { code: "unsupported_item", message: "Jules delegation is available only for tasks, subtasks, and deferred items." };
                 }
 
                 const taskPrompt = buildJulesTaskPrompt(currentEntry.state, item, prompt);
@@ -478,8 +478,8 @@ sessionRef = await joinSession({
                             || entry.state.lookup?.[itemId]
                             || entry.state.referenceDocuments?.find((c) => c.id === itemId);
                         if (!item) throw new CanvasError("item_not_found", `No board item found for id: ${itemId}`);
-                        if (!["task", "subtask"].includes(item.kind)) {
-                            throw new CanvasError("unsupported_item", "Jules delegation is available only for tasks and subtasks.");
+                        if (!["task", "subtask", "deferred"].includes(item.kind)) {
+                            throw new CanvasError("unsupported_item", "Jules delegation is available only for tasks, subtasks, and deferred items.");
                         }
 
                         const taskPrompt = buildJulesTaskPrompt(entry.state, item, prompt);

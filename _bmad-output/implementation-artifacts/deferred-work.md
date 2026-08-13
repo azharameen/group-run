@@ -296,16 +296,16 @@ The following items are triaged for Epic 5 (MCP & Team Config):
 
 ### [MEDIUM] Plan for Epic 5
 
-- **File locking for concurrent MCP config writes (Story 5.1)**: Medium risk of lost updates during concurrent management API calls. Plan a dedicated fix in Epic 5.
+- ~~**File locking for concurrent MCP config writes (Story 5.1)**~~ — **RESOLVED 2026-08-13**: `_save_config()` uses atomic write pattern (`.tmp` + `os.replace()`).
 - ~~**O(n) transcript growth via React state (Story 1.9)**~~ — **RESOLVED 2026-08-13**: `MAX_MESSAGES = 500` cap applied.
 
 ### [LOW] Defer to Epic 7 (Production Readiness)
 - **Unauthenticated config reload (Story 5.2)**: Acceptable until auth infrastructure is added in Epic 7.
 - **Monkeypatch strategy brittle (Story 5.2)**: Test infrastructure improvement.
-- **Permission errors propagate as 500 (Story 5.2)**: Improve error handling.
+- ~~**Permission errors propagate as 500 (Story 5.2)**~~ — **RESOLVED 2026-08-13**: `_load_config()` catches `PermissionError` and raises `ValueError`.
 - ~~**_validate_mcp_config() lightweight (Story 5.3)**: Add full schema validation.~~ — **PARTIALLY RESOLVED**: `_validate_mcp_config()` now calls `validate_mcp_config()` schema validation, but still doesn't check `schema_version` or individual server object fields.
 - ~~**MCP_CONFIG_PATH = None (Story 5.3)**: Robust path handling.~~ — **RESOLVED**: `MCP_CONFIG_PATH` is now properly set via `CONFIG_DIR` in `config.py:107`.
-- **Duplicate server names overwrite (Story 5.3)**: Add validation for uniqueness.
+- ~~**Duplicate server names overwrite (Story 5.3)**~~ — **RESOLVED 2026-08-13**: `_load_mcp_tools()` now warns on duplicate names.
 - **Partial SSE frames dropped on disconnect (Story 1.9)**: Add retry/backoff logic.
 - **Concurrent send accumulator shared (Story 1.9)**: Add per-message accumulator.
 - ~~**Global SSE events pollute active chat (Story 1.9)**~~ — **RESOLVED 2026-08-13**: `activeIdeaId` filtering added to SSE handler.
@@ -319,11 +319,12 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 
 - ~~**8 skipped SQLite checkpoint tests**~~ — **RESOLVED 2026-08-13**: WAL mode + dedicated InterruptService connection + graph cache reset. Tests now pass.
 - **Runner.py TODO** (`backend/app/agent/runner.py:552`) — "TODO: Replace with LangGraph-based workflow execution." — legacy stopgap code.
-- **aiosqlite deprecation warning** — `AsyncSqliteSaver` created outside async context; will break when `get_event_loop()` is deprecated.
+- ~~**aiosqlite deprecation warning**~~ — **RESOLVED 2026-08-13**: `create_async_checkpointer()` async factory creates connection within async context, avoiding `get_event_loop()` deprecation.
 - **Shared SQLite connection concurrency risk** — `check_same_thread=False` with single global connection not safely concurrent under load.
 - **Unauthenticated config reload endpoint** — no auth check on POST /api/config/reload.
-- **Permission errors propagate as 500** — `Path.read_text()` raises `PermissionError` not caught.
-- **Duplicate server names silently overwrite** — no uniqueness validation in MCP server connections dict.
+- ~~**Permission errors propagate as 500**~~ — **RESOLVED 2026-08-13**: `MCPServerManagementService._load_config()` now catches `PermissionError` and raises `ValueError` with a clear message.
+- ~~**Duplicate server names silently overwrite**~~ — **RESOLVED 2026-08-13**: `_load_mcp_tools()` now logs a warning when duplicate server names are detected.
+- ~~**File locking for concurrent MCP config writes**~~ — **RESOLVED 2026-08-13**: `_save_config()` uses atomic write pattern (write to `.tmp` + `os.replace()`).
 - ~~**Race condition on idea ID generation**~~ — **RESOLVED 2026-08-13**: `asyncio.Lock()` protects the counter.
 - **`Idea` and `IdeaRegistry` Pydantic models defined but never instantiated** — CRUD code works with raw `dict` objects.
 - ~~**`datetime.utcnow()` deprecated in Python 3.12+**~~ — **RESOLVED 2026-08-13**: all instances migrated to `datetime.now(timezone.utc)`.

@@ -1,3 +1,9 @@
+---
+spec_file: c1-2-deferred-work-parser-and-ui.md
+status: in-progress
+baseline_revision: 37f0bdb
+---
+
 # Story C1.2: Deferred Work Parser & UI
 
 Status: ready-for-dev
@@ -22,21 +28,21 @@ so that **I can see and track all technical debt**.
 
 ## Tasks / Subtasks
 
-- [ ] Implement `parseDeferredWork()` function (AC: 1)
-  - [ ] Parse `deferred-work.md` content
-  - [ ] Extract item details
-  - [ ] Assign severity levels
-  - [ ] Link to epic if possible
-- [ ] Integrate with board state (AC: 2-5)
-  - [ ] Inject deferred items into board
-  - [ ] Add severity badge rendering
-  - [ ] Add epic attribution display
-  - [ ] Implement severity filtering
-- [ ] Create deferred work UI section (AC: 6-9)
-  - [ ] Create deferred items panel
-  - [ ] Display severity counts
-  - [ ] Show item details with epic links
-  - [ ] Add dispatch actions
+- [x] Implement `parseDeferredWork()` function (AC: 1)
+  - [x] Parse `deferred-work.md` content
+  - [x] Extract item details
+  - [x] Assign severity levels
+  - [x] Link to epic if possible
+- [x] Integrate with board state (AC: 2-5)
+  - [x] Inject deferred items into board
+  - [x] Add severity badge rendering
+  - [x] Add epic attribution display
+  - [x] Implement severity filtering
+- [x] Create deferred work UI section (AC: 6-9)
+  - [x] Create deferred items panel
+  - [x] Display severity counts
+  - [x] Show item details with epic links
+  - [x] Add dispatch actions
 
 ## Dev Notes
 
@@ -75,8 +81,22 @@ so that **I can see and track all technical debt**.
 
 ### Agent Model Used
 
+- Copilot CLI assistant (local edits via commander.mjs and extension.mjs)
+
 ### Debug Log References
+
+- Edits made to `.github/extensions/command-center/commander.mjs` and `extension.mjs` implementing parser, state integration, and UI.
 
 ### Completion Notes List
 
+- parseDeferredWork() implemented: parses `implementation-artifacts/deferred-work.md`, supports both simple and structured item forms, skips resolved items, extracts title/summary, severity, and parentId heuristically.
+- Board integration: deferred items are attached to board.deferredWork and board.deferredCounts in parseBmadBoard; decorateBoardState merges deferred items into lookup so they are discoverable by UI and dispatch actions.
+- UI: added "Deferred Work" panel with severity badges (🔴 critical, 🟡 medium, 🟢 low), per-severity counts, search and severity filters, epic attribution links, and delegate buttons to dispatch to Jules.
+- Automation: extension endpoints and canvas action now permit dispatching deferred items to Jules (handlers updated to accept `deferred` kind).
+
 ### File List
+
+- .github/extensions/command-center/commander.mjs
+- .github/extensions/command-center/extension.mjs
+- _bmad-output/implementation-artifacts/commander/c1-2-deferred-work-parser-and-ui.md
+

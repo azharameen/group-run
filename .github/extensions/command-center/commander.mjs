@@ -641,7 +641,151 @@ export async function parseBmadBoard(workspacePath, artifactRootPath, themePrefe
     board.notices.push("planning-artifacts/epics.md not found; showing status ledger and documents only.");
   }
 
+  // Attempt to parse deferred-work.md under implementation-artifacts if present
+  try {
+    const deferredPath = path.join(implementationRoot, "deferred-work.md");
+    if (await fileExists(deferredPath)) {
+      try {
+        const deferredItems = await parseDeferredWork(workspacePath, deferredPath);
+        board.deferredWork = deferredItems;
+        board.deferredCounts = deferredItems.reduce((acc, item) => {
+          acc[item.severity] = (acc[item.severity] || 0) + 1;
+          return acc;
+        }, { critical: 0, medium: 0, low: 0 });
+      } catch (err) {
+        board.notices.push(`Failed to parse deferred-work.md: ${err?.message || String(err)}`);
+      }
+    }
+  } catch (err) {
+    // ignore any issues while detecting deferred-work
+  }
+
   return board;
+}
+
+/**
+ * Parse deferred work items from implementation-artifacts/deferred-work.md
+ * @param {string} workspacePath
+ * @param {string} deferredWorkPath
+ */
+export async function parseDeferredWork(workspacePath, deferredWorkPath) {
+  const text = await readTextIfExists(deferredWorkPath);
+  if (!text) return [];
+
+  const lines = String(text || "").split(/\r?\n/);
+  const sections = [];
+  let currentSource = null;
+  let currentLines = [];
+  for (const line of lines) {
+    const m = line.match(/^##\s*Deferred from:\s*(.+)$/i);
+    if (m) {
+      if (currentSource !== null) sections.push({ source: currentSource, body: currentLines.join("\n") });
+      currentSource = (m[1] || "").trim();
+      currentLines = [];
+      continue;
+    }
+    if (currentSource !== null) currentLines.push(line);
+  }
+  if (currentSource !== null) sections.push({ source: currentSource, body: currentLines.join("\n") });
+
+  const items = [];
+  const seen = new Set();
+
+  function normalizeParent(matchStr) {
+    if (!matchStr) return null;
+    let v = String(matchStr).toLowerCase().trim();
+    v = v.replace(/\s+/g, "-");
+    v = v.replace(/[^a-z0-9-]/g, "-");
+    v = v.replace(/-+/g, "-");
+    // normalize patterns like epic-7 or epic- 7
+    const epicMatch = v.match(/epic-?(\d+)/i);
+    if (epicMatch) return `epic-${epicMatch[1]}`;
+    const specMatch = v.match(/spec-?(\d+)(?:[-\.](\d+))?/i);
+    if (specMatch) return specMatch[2] ? `spec-${specMatch[1]}-${specMatch[2]}` : `spec-${specMatch[1]}`;
+    return v;
+  }
+
+  for (const section of sections) {
+    const slines = String(section.body || "").split(/\r?\n/);
+    let current = [];
+    function flushCurrent() {
+      if (!current.length) return;
+      const raw = current.join("\n").trim();
+      current = [];
+      if (!raw) return;
+      // skip resolved
+      if (/\[RESOLVED\]/i.test(raw) || /~~.*~~/.test(raw)) return;
+
+      let title = null;
+      let sourceSpec = null;
+      let summary = null;
+      let evidence = null;
+
+      // attempt structured YAML parse
+      try {
+        const yamlText = raw.replace(/^\s*-\s+/, "");
+        const parsed = parseSimpleYaml(yamlText);
+        if (parsed && Object.keys(parsed).length) {
+          summary = parsed.summary || parsed.summary || parsed.__rootArray?.[0] || null;
+          sourceSpec = parsed.source_spec || parsed.source || null;
+          evidence = parsed.evidence || null;
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      if (!summary) {
+        // fallback to simple textual parse
+        let first = raw.split(/\r?\n/)[0].trim();
+        // strip trailing em-dash context
+        first = first.replace(/\s+—.*$/u, "").replace(/\s+-\s+.*$/u, "");
+        // remove trailing (file:line)
+        first = first.replace(/\s*\([^)]*\)\s*$/u, "").trim();
+        summary = first || raw.slice(0, 120);
+      }
+
+      title = summary;
+
+      // ensure unique id
+      const base = `deferred-${slugify(title)}`;
+      let id = base;
+      let i = 1;
+      while (seen.has(id)) { id = `${base}-${i++}`; }
+      seen.add(id);
+
+      const textLower = raw.toLowerCase();
+      const criticalWords = ["security", "crash", "hang", "data loss", "break", "corrupt", "race condition"];
+      const mediumWords = ["test", "validation", "edge case", "concurrency", "missing", "no test", "incomplete"];
+      let severity = "low";
+      for (const w of criticalWords) { if (textLower.includes(w)) { severity = "critical"; break; } }
+      if (severity === "low") {
+        for (const w of mediumWords) { if (textLower.includes(w)) { severity = "medium"; break; } }
+      }
+
+      // parent id heuristics: prefer source_spec -> section.source -> inline matches
+      let parentId = null;
+      const searchSpace = [sourceSpec || "", section.source || "", raw].join(" ");
+      const pidMatch = searchSpace.match(/(epic[-\s]?\d+|spec[-\s]?\d+(?:[-\.]\d+)?|story[-\s]?[A-Za-z0-9\.-]+)/i);
+      if (pidMatch) parentId = normalizeParent(pidMatch[1]);
+
+      items.push({ id, kind: "deferred", title, severity, parentId, sourcePath: toPosix(path.relative(workspacePath, deferredWorkPath)), summary, evidence });
+    }
+
+    for (const line of slines) {
+      if (/^\s*-\s+/.test(line)) {
+        flushCurrent();
+        current.push(line.replace(/^\s*-\s+/, ""));
+      } else if (/^\s{2,}/.test(line) || line.trim() === "") {
+        if (current.length) current.push(line.replace(/^\s{2}/, ""));
+      } else {
+        // non-indented content: treat as continuation if we are in an item
+        if (current.length) current.push(line);
+      }
+    }
+    flushCurrent();
+  }
+
+  return items;
 }
 
 /**
@@ -797,12 +941,24 @@ export function buildJulesTaskPrompt(state, item, prompt) {
  */
 export function decorateBoardState(state) {
   const canonical = buildCanonicalWorkModel(state);
-  state.workItems = canonical.workItems;
-  state.workRoots = canonical.workRoots;
-  state.workLookup = canonical.workLookup;
-  state.workCounts = canonical.workCounts;
-  state.statusCounts = canonical.workStatusCounts;
+  state.workItems = canonical.workItems || [];
+  state.workRoots = canonical.workRoots || [];
+  state.workLookup = canonical.workLookup || {};
+  state.workCounts = canonical.workCounts || {};
+  state.statusCounts = canonical.workStatusCounts || {};
   state.referenceDocuments = classifyReferenceDocuments(state);
+
+  // Integrate deferred work into the board lookups so UI/actions can reference them
+  if (Array.isArray(state.deferredWork) && state.deferredWork.length) {
+    state.deferredCounts = state.deferredCounts || state.deferredWork.reduce((acc, it) => { acc[it.severity] = (acc[it.severity] || 0) + 1; return acc; }, { critical: 0, medium: 0, low: 0 });
+    state.workLookup = state.workLookup || {};
+    state.lookup = state.lookup || {};
+    for (const d of state.deferredWork) {
+      state.workLookup[d.id] = d;
+      state.lookup[d.id] = d;
+    }
+  }
+
   state.nextAction = buildNextActionSuggestion(state);
   return state;
 }
@@ -1676,6 +1832,17 @@ export function renderHtml(instanceId, initialState) {
          </div>
        </section>
        <section class="panel">
+         <h2>Deferred Work <span class="section-subtle" id="deferredCounts"></span></h2>
+         <div class="panel-body">
+           <div class="tab-controls" aria-label="Deferred filters">
+             <input id="deferredSearch" type="search" placeholder="Search deferred work..." />
+             <div class="status-filters" id="deferredSeverityFilters" style="margin-left:8px"></div>
+           </div>
+           <div class="list" id="deferredList"></div>
+           <div class="footer-note">Deferred items are read-only references parsed from <code>implementation-artifacts/deferred-work.md</code>.</div>
+         </div>
+       </section>
+       <section class="panel">
          <h2>Automation roadmap</h2>
          <div class="panel-body" id="roadmap"></div>
        </section>
@@ -1982,6 +2149,85 @@ export function renderHtml(instanceId, initialState) {
         }).join("");
       }
 
+      // Deferred work UI helpers
+      function severityEmoji(sev) {
+        if (!sev) return "";
+        if (sev === "critical") return "🔴";
+        if (sev === "medium") return "🟡";
+        if (sev === "low") return "🟢";
+        return "";
+      }
+
+      let selectedDeferredSeverities = new Set(["critical", "medium", "low"]);
+
+      function renderDeferredFilters() {
+        const container = byId("deferredSeverityFilters");
+        if (!container) return;
+        const counts = state.deferredCounts || { critical: 0, medium: 0, low: 0 };
+        const severities = ["critical", "medium", "low"];
+        container.innerHTML = severities.map((s) => {
+          const label = s[0].toUpperCase() + s.slice(1);
+          const active = selectedDeferredSeverities.has(s) ? "active" : "";
+          return `<button type="button" class="filter-chip ${active}" data-severity="${esc(s)}">${severityEmoji(s)} <small>${esc(label)}</small> ${esc(counts[s]||0)}</button>`;
+        }).join(" ");
+        container.querySelectorAll("[data-severity]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const sev = btn.getAttribute("data-severity");
+            if (selectedDeferredSeverities.has(sev)) selectedDeferredSeverities.delete(sev); else selectedDeferredSeverities.add(sev);
+            renderDeferredList();
+            btn.classList.toggle("active", selectedDeferredSeverities.has(sev));
+          });
+        });
+      }
+
+      function matchesDeferredFilters(item) {
+        const query = normalize(byId("deferredSearch")?.value.trim());
+        if (selectedDeferredSeverities.size && !selectedDeferredSeverities.has(item.severity)) return false;
+        if (!query) return true;
+        return [item.title, item.summary || "", item.sourcePath || "", item.parentId || "", item.id].join(" ").toLowerCase().includes(query);
+      }
+
+      function renderDeferredList() {
+        const container = byId("deferredList");
+        const countsEl = byId("deferredCounts");
+        if (!container) return;
+        const list = (state.deferredWork || []).filter(matchesDeferredFilters);
+        if (countsEl) {
+          const counts = state.deferredCounts || { critical: 0, medium: 0, low: 0 };
+          countsEl.innerHTML = `${severityEmoji("critical")} ${esc(counts.critical||0)} · ${severityEmoji("medium")} ${esc(counts.medium||0)} · ${severityEmoji("low")} ${esc(counts.low||0)}`;
+        }
+        if (!list.length) {
+          container.innerHTML = '<div class="notice">No deferred work matches the current filters.</div>';
+          return;
+        }
+        container.innerHTML = list.map((item) => {
+          const parent = item.parentId ? state.workLookup?.[item.parentId] || state.lookup?.[item.parentId] : null;
+          const epicLink = parent ? `<a href="#" data-relation-id="${esc(item.parentId)}">${esc(parent.title)}</a>` : '';
+          const emoji = severityEmoji(item.severity);
+          const badgeClass = item.severity === 'critical' ? 'badge bad' : item.severity === 'medium' ? 'badge warn' : 'badge good';
+          return '<div class="list-item" data-item-id="' + esc(item.id) + '"><strong>' + esc(emoji + ' ' + item.title) + '</strong>' +
+            '<small>' + esc(item.sourcePath || '') + (epicLink ? ' · Epic: ' + epicLink : '') + '</small>' +
+            '<div style="margin-top:6px"><span class="' + badgeClass + '">' + esc(item.severity) + '</span> ' +
+            '<button type="button" data-delegate="' + esc(item.id) + '">Delegate</button></div></div>';
+        }).join('');
+
+        container.querySelectorAll('[data-delegate]').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-delegate');
+            if (!id) return;
+            await dispatchToJules(id);
+          });
+        });
+        container.querySelectorAll('[data-relation-id]').forEach((node) => {
+          node.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            selectItem(node.getAttribute('data-relation-id'));
+          });
+        });
+        container.querySelectorAll('[data-item-id]').forEach(node => node.addEventListener('click', () => selectItem(node.getAttribute('data-item-id'))));
+      }
+
       function buildSkillRouting() {
         const nextAction = state.nextAction || {};
         return {
@@ -2198,7 +2444,7 @@ export function renderHtml(instanceId, initialState) {
         if (!dialog || !item) return;
         _julesDialogItemId = item.id;
         const delegateButton = byId("dialogDelegateJules");
-        const canDelegate = ["task", "subtask"].includes(item.kind);
+        const canDelegate = ["task", "subtask", "deferred"].includes(item.kind);
         if (delegateButton) {
           delegateButton.hidden = !canDelegate;
           delegateButton.setAttribute("aria-hidden", String(!canDelegate));
@@ -2260,6 +2506,8 @@ export function renderHtml(instanceId, initialState) {
         renderStatusFilters();
         renderNotices();
         renderColumns();
+        renderDeferredFilters();
+        renderDeferredList();
         renderArtifacts();
         renderRoadmap();
         renderAutomations();
@@ -2389,8 +2637,8 @@ export function renderHtml(instanceId, initialState) {
       async function dispatchToJules(itemId) {
         const item = state.workLookup?.[itemId] || (state.referenceDocuments || []).find((c) => c.id === itemId);
         if (!item) { toast("Item not found", "error"); return; }
-        if (!["task", "subtask"].includes(item.kind)) {
-          toast("Jules delegation is available only for tasks and subtasks.", "warn");
+        if (!["task", "subtask", "deferred"].includes(item.kind)) {
+          toast("Jules delegation is available only for tasks, subtasks, and deferred items.", "warn");
           return;
         }
 
@@ -2431,6 +2679,7 @@ export function renderHtml(instanceId, initialState) {
       byId("julesLifecycleFilter").addEventListener("change", renderAll);
       byId("docsSearch").addEventListener("input", renderAll);
       byId("docsTypeFilter").addEventListener("change", renderAll);
+      try { if (byId("deferredSearch")) byId("deferredSearch").addEventListener("input", renderDeferredList); } catch (e) {}
       function selectTab(tab) {
         activeTab = tab;
         renderAll();
