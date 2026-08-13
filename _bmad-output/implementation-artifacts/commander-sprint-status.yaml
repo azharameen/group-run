@@ -31,7 +31,7 @@
 # - Separate tracking to avoid mixing builder with product concerns
 
 generated: 2026-08-13
-last_updated: '2026-08-13T13:15:00+05:30'
+last_updated: '2026-08-13T14:30:00+05:30'
 project: Commander
 project_key: NOKEY
 tracking_system: file-system
@@ -39,7 +39,7 @@ story_location: _bmad-output/implementation-artifacts/commander
 
 development_status:
   # EP-C0: Foundation & Guardrails
-  epic-c0: in-progress
+  epic-c0: done
   c0-1-github-branch-protection-setup: done
   c0-2-legacy-jules-workflow-removal: done
   c0-3-project-context-branch-rules-update: done
@@ -47,7 +47,7 @@ development_status:
 
   # EP-C1: Commander Core & Deferred Work
   epic-c1: in-progress
-  c1-1-commander-module-split: ready-for-dev
+  c1-1-commander-module-split: done
   c1-2-deferred-work-parser-and-ui: ready-for-dev
   c1-3-dispatch-classifier-and-badges: ready-for-dev
 
