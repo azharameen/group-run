@@ -147,3 +147,56 @@ qwen-3.6-27b via `/bmad-dev-auto` skill
 
 - `.github/extensions/command-center/commander.mjs` (NEW, 96.8KB, 2501 lines) - Core Commander logic module
 - `.github/extensions/command-center/extension.mjs` (MODIFIED, 28KB, 599 lines) - Reduced canvas lifecycle and Jules integration
+
+## Review Triage Log
+
+### 2026-08-13 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 4: (high 1, medium 2, low 1)
+- defer: 4: (medium 3, low 1)
+- reject: 7
+
+- addressed_findings:
+  - `[high]` `[patch]` U+2028/U+2029 JSON escaping in renderHtml — added `.replaceAll("\u2028", "\\u2028").replaceAll("\u2029", "\\u2029")` to prevent JS syntax errors when embedding state in `<script>` tags
+  - `[medium]` `[patch]` TOCTOU race in readTextIfExists — wrapped fileExists + readFile in try/catch to handle file disappearing between check and read
+  - `[medium]` `[patch]` JSON.parse without try/catch in parseGenericBoard — added try/catch with CanvasError for malformed board files
+  - `[low]` `[patch]` walkFiles readdir errors unhandled — added try/catch around fs.readdir to skip inaccessible directories gracefully
+
+### Deferred Items
+
+1. XSS risk with innerHTML in renderHtml — pre-existing concern, not caused by module split
+2. Defensive input validation in parse* functions — pre-existing issue in original code
+3. OOM protection for large boards — pre-existing architectural concern
+4. UTF-8 encoding fallback for file reads — pre-existing file I/O assumption
+
+## Auto Run Result
+
+### Summary
+
+Commander module split successfully extracted ~28 core functions from extension.mjs into commander.mjs, reducing extension.mjs from 127.8KB to 28KB (77.6% reduction vs 30% target). Additional renderHtml function (65.2KB) was also moved to maximize file size reduction.
+
+### Files Changed
+
+- `commander.mjs` — NEW, 96.8KB, 2501 lines. Contains ~28 exported functions with JSDoc comments including board parsing, state building, Jules prompt building, HTML rendering, and utility functions.
+- `extension.mjs` — MODIFIED, 28KB (from 127.8KB). Retains canvas lifecycle, Jules state management, and server operations. Imports 8 functions from commander.mjs.
+- `c1-1-commander-module-split.md` — Story file updated to `done` status
+- `commander-sprint-status.yaml` — EP-C0 marked `done`, C1.1 marked `done`
+- `epic-c1-context.md` — NEW, compiled EP-C1 context
+
+### Review Findings
+
+- 4 patches applied (JSON escaping, file I/O safety, error handling)
+- 4 items deferred (pre-existing concerns not caused by this story)
+- 7 findings rejected (noise or non-issues)
+
+### Follow-up Review Recommendation
+
+`false` — patches were localized defensive improvements (try/catch wrappers, JSON escaping) with minimal behavioral impact.
+
+### Verification
+
+- Git diff verified: 2599 insertions, 2621 deletions across 5 files
+- Import chain verified: extension.mjs imports match commander.mjs exports
+- File sizes confirmed: 77.6% reduction exceeds 30% target
+- Code review completed with Blind Hunter and Edge Case Hunter passes

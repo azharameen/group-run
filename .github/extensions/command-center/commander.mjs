@@ -162,8 +162,12 @@ export async function fileExists(filePath) {
  * @param {string} filePath
  */
 export async function readTextIfExists(filePath) {
-  if (!(await fileExists(filePath))) return null;
-  return await fs.readFile(filePath, "utf8");
+  try {
+    if (!(await fileExists(filePath))) return null;
+    return await fs.readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -203,14 +207,18 @@ export async function saveThemePreference(theme, prefFilePath) {
 export async function walkFiles(rootDir) {
   const files = [];
   async function walk(currentDir) {
-    const entries = await fs.readdir(currentDir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(currentDir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(fullPath);
-        continue;
+    try {
+      const entries = await fs.readdir(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          await walk(fullPath);
+          continue;
+        }
+        if (entry.isFile()) files.push(fullPath);
       }
-      if (entry.isFile()) files.push(fullPath);
+    } catch {
+      // Skip inaccessible directories
     }
   }
   if (await fileExists(rootDir)) await walk(rootDir);
@@ -648,7 +656,11 @@ export async function parseGenericBoard(workspacePath, boardFilePath, themePrefe
     throw new CanvasError("missing_artifact", `Could not read ${toPosix(path.relative(workspacePath, boardFilePath))}.`);
   }
   let data;
-  if (/\.json$/i.test(boardFilePath)) data = JSON.parse(text); else data = parseSimpleYaml(text);
+  try {
+    if (/\.json$/i.test(boardFilePath)) data = JSON.parse(text); else data = parseSimpleYaml(text);
+  } catch (err) {
+    throw new CanvasError("invalid_board_file", `Invalid board file ${toPosix(path.relative(workspacePath, boardFilePath))}: ${err.message}`);
+  }
   return {
     title: data.title || "Kanban Board",
     mode: "generic",
@@ -806,7 +818,10 @@ function escapeHtml(value) {
 
 export function renderHtml(instanceId, initialState) {
     const CANVAS_NAME = "Command Center";
-    const initialJson = JSON.stringify(initialState ?? {}).replaceAll("<", "\\u003c");
+    const initialJson = JSON.stringify(initialState ?? {})
+        .replaceAll("<", "\\u003c")
+        .replaceAll("\u2028", "\\u2028")
+        .replaceAll("\u2029", "\\u2029");
     return `<!doctype html>
 <html lang="en">
   <head>
