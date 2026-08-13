@@ -1,8 +1,10 @@
 ---
 spec_file: c1-1-commander-module-split.md
-status: in-review
+status: done
 baseline_revision: 5e152cc70787a3a93f5911657fdee8dd950f586d
-completion_revision: ""
+completion_revision: c4220dde4a5128a159f65b0a3a443c4685ba623a
+review_loop_iteration: 0
+followup_review_recommended: false
 ---
 
 # Story C1.1: Commander Module Split
