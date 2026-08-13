@@ -25,6 +25,7 @@ export function useThreadManager({
 }: UseThreadManagerOptions) {
 	const activeThreadIdRef = useRef(activeThreadId);
 	activeThreadIdRef.current = activeThreadId;
+	const refreshingRef = useRef(false);
 
 	const activeThread = useMemo(
 		() => threads.find((t) => t.thread_id === activeThreadId) ?? null,
@@ -56,13 +57,36 @@ export function useThreadManager({
 	}, [onThreadsUpdate, activeThreadId, setActiveThreadId]);
 
 	const refreshThreads = useCallback(() => {
+		// Deduplicate in-flight requests: if a refresh is already pending, skip
+		if (refreshingRef.current) return;
+		refreshingRef.current = true;
 		listThreads()
 			.then(onThreadsUpdate)
-			.catch((err) => console.error("Error refreshing threads:", err));
+			.catch((err) => {
+				console.error("Error refreshing threads:", err);
+				// Surface error to user via a simple toast-like notification
+				if (typeof window !== "undefined" && (window as any).showToast) {
+					(window as any).showToast("Failed to refresh threads", "error");
+				}
+			})
+			.finally(() => {
+				refreshingRef.current = false;
+			});
 	}, [onThreadsUpdate]);
 
 	const ensureThread = useCallback(async (): Promise<string> => {
-		if (activeThreadIdRef.current) return activeThreadIdRef.current;
+		if (activeThreadIdRef.current) {
+			// Validate the thread still exists on the server before returning
+			try {
+				const allThreads = await listThreads();
+				const exists = allThreads.some((t) => t.thread_id === activeThreadIdRef.current);
+				if (exists) return activeThreadIdRef.current;
+				// Thread was deleted elsewhere — fall through to create new
+			} catch {
+				// If listThreads fails, trust the ref
+				return activeThreadIdRef.current;
+			}
+		}
 		const thread = await createThread({
 			title: "New Chat",
 			idea_id: null,

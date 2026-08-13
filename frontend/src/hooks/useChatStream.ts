@@ -108,7 +108,29 @@ export function useChatStream({
 						});
 				}
 			},
-			undefined, // onError
+			// onError: reconnect handler — reload interrupt state on reconnection
+			async () => {
+				// On SSE reconnect, fetch pending interrupts to reconcile state
+				try {
+					const res = await fetch("/api/interrupts/pending");
+					if (res.ok) {
+						const data = await res.json();
+						const interrupts = data.interrupts || [];
+						if (interrupts.length > 0) {
+							// Restore the most recent pending interrupt
+							const latest = interrupts[interrupts.length - 1];
+							activeInterruptIdRef.current = latest.id;
+							setPendingInterrupt(latest);
+						} else {
+							// No pending interrupts — clear stale state
+							setPendingInterrupt(null);
+							activeInterruptIdRef.current = null;
+						}
+					}
+				} catch {
+					// Silently fail — SSE will catch up with new events
+				}
+			},
 			(eventType, payload) => {
 				// interrupt.created — set pending interrupt with deduplication
 				if (eventType === "interrupt.created") {
@@ -156,6 +178,11 @@ export function useChatStream({
 
 	// Sync message loading when activeThreadId updates (with stale fetch guard)
 	useEffect(() => {
+		// Abort in-flight stream when switching threads
+		if (isGenerating && abortRef.current) {
+			abortRef.current.abort();
+		}
+
 		if (activeThreadId) {
 			setRawMessages([]);
 			const counter = ++fetchCounterRef.current;
@@ -183,7 +210,7 @@ export function useChatStream({
 		} else {
 			setRawMessages([]);
 		}
-	}, [activeThreadId]);
+	}, [activeThreadId, isGenerating]);
 
 	const handleStopGeneration = useCallback(() => {
 		abortRef.current?.abort();
