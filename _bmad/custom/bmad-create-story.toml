@@ -18,34 +18,8 @@ If output starts with "blockers:N":
   5. If user says "yes", log "User acknowledged N open action items" and continue activation"""
 ]
 
-[workflow.persistent_facts]
-story_template_sections = """
-## Intent Contract
-
-### Problem
-<What problem does this story solve?>
-
-### Approach
-<How will this story solve the problem?>
-
-### Boundaries
-<What is explicitly in scope and out of scope?>
-
-## Code Map
-
-### File Targets
-- `<file-path>` - <purpose>
-
-### Dependencies
-- <dependency> - <reason>
-
-### Integration Points
-- <integration> - <impact>
-
-## Branch Strategy
-
-- Branch: `feat/<story-key>-<description>`
-- Base: `develop`
-- PR Target: `develop`
-- Single story, single PR
-"""
+# Commander-specific story template requirements — persistent_facts under [workflow] (appends to base skill's array)
+persistent_facts = [
+  "STORY_TEMPLATE: Every new story MUST include these sections: Intent Contract (Problem, Approach, Boundaries), Code Map (File Targets, Dependencies, Integration Points), Branch Strategy (Branch name, Base branch, PR Target).",
+  "BRANCH_STRATEGY: Use 'Branch: feat/<story-key>-<desc>', 'Base: develop', 'PR Target: develop'. For hotfixes use 'Branch: hotfix/<issue>', 'Base: main', 'PR Target: main (then sync to develop)'."
+]
