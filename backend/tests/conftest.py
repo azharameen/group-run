@@ -56,24 +56,6 @@ def patch_config(temp_workspace: str, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("app.storage.registry.WORKSPACE_DIR", temp_workspace)
     monkeypatch.setattr("app.storage.idea_workspace.WORKSPACE_DIR", temp_workspace)
     monkeypatch.setattr("app.storage.recovery.WORKSPACE_DIR", temp_workspace)
-
-    # Reset thread_manager singletons so tests get fresh checkpointer connections
-    # instead of stale ones from a previous test's App lifespan.
-    try:
-        from app.services import thread_manager as tm
-        tm._ASYNC_SQLITE_SAVER = None
-        tm._SQLITE_SAVER = None
-        tm._THREAD_DB_PATH = None
-        tm._METADATA_CONN = None
-    except ImportError:
-        pass
-    try:
-        from app.orchestrator import supervisor as sup
-        sup._graph = None
-        sup._agent = None
-    except ImportError:
-        pass
-
     return temp_workspace
 
 

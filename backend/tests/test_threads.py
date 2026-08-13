@@ -28,21 +28,12 @@ def _clear_cached_modules():
 
 
 @pytest.fixture(autouse=True)
-def _cleanup_thread_state(event_loop):
+def _cleanup_thread_state():
     """Ensure clean thread/supervisor state after each checkpoint test."""
     yield
     # Clean up singletons after test to prevent cross-test pollution
     try:
         import app.services.thread_manager as tm
-        # Close the async checkpointer connection before resetting
-        if tm._ASYNC_SQLITE_SAVER is not None:
-            try:
-                conn = tm._ASYNC_SQLITE_SAVER.conn
-                if hasattr(conn, "close"):
-                    # Use the test's event_loop fixture to close the connection properly
-                    event_loop.run_until_complete(conn.close())
-            except Exception:
-                pass
         tm._ASYNC_SQLITE_SAVER = None
         tm._SQLITE_SAVER = None
         tm._THREAD_DB_PATH = None
