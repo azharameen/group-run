@@ -31,7 +31,7 @@
 # - Separate tracking to avoid mixing builder with product concerns
 
 generated: 2026-08-13
-last_updated: '2026-08-13T12:45:00+05:30'
+last_updated: '2026-08-13T13:15:00+05:30'
 project: Commander
 project_key: NOKEY
 tracking_system: file-system
@@ -43,7 +43,7 @@ development_status:
   c0-1-github-branch-protection-setup: done
   c0-2-legacy-jules-workflow-removal: done
   c0-3-project-context-branch-rules-update: done
-  c0-4-bmad-customization-setup: ready-for-dev
+  c0-4-bmad-customization-setup: done
 
   # EP-C1: Commander Core & Deferred Work
   epic-c1: in-progress

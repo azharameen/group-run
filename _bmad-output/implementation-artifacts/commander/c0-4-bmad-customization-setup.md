@@ -2,6 +2,7 @@
 spec_file: c0-4-bmad-customization-setup.md
 status: done
 baseline_revision: 257de927727510f96d345cbb3edd08626e1371af
+final_revision: b4fab965704308cf7bcd96e5f227300aa786d059
 review_loop_iteration: 1
 followup_review_recommended: false
 ---
