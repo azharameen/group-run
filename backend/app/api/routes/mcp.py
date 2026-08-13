@@ -24,7 +24,11 @@ class MCPServerManagementService:
         path = Path(MCP_CONFIG_PATH)
         if not path.exists():
             return {"schema_version": MCP_SCHEMA_VERSION, "servers": []}
-        content = path.read_text(encoding="utf-8")
+        try:
+            content = path.read_text(encoding="utf-8")
+        except PermissionError as exc:
+            logger.error("Permission denied reading %s: %s", MCP_CONFIG_PATH, exc)
+            raise ValueError(f"Permission denied reading {MCP_CONFIG_PATH}") from exc
         if not content.strip():
             return {"schema_version": MCP_SCHEMA_VERSION, "servers": []}
         try:
@@ -48,7 +52,10 @@ class MCPServerManagementService:
         path = Path(MCP_CONFIG_PATH)
         path.parent.mkdir(parents=True, exist_ok=True)
         data["schema_version"] = MCP_SCHEMA_VERSION
-        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        # Atomic write: write to temp file then rename to avoid partial writes
+        tmp_path = path.with_suffix(".tmp")
+        tmp_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        tmp_path.replace(path)
         logger.info("MCP config updated: %s", MCP_CONFIG_PATH)
 
     def list_servers(self) -> list[dict]:

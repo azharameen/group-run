@@ -180,7 +180,16 @@ def _load_mcp_tools() -> list[Any]:
             return []
         if servers:
             # Convert array format [{name: "...", ...}] to dict {"name": {...}}
-            connections = {s["name"]: {k: v for k, v in s.items() if k != "name"} for s in servers if s.get("name")}
+            seen: set[str] = set()
+            connections: dict[str, dict[str, Any]] = {}
+            for s in servers:
+                name = s.get("name")
+                if not name:
+                    continue
+                if name in seen:
+                    logger.warning("MCP config: duplicate server name '%s' — last entry wins", name)
+                seen.add(name)
+                connections[name] = {k: v for k, v in s.items() if k != "name"}
             logger.info("MCP tools loaded from file: %s", _config.MCP_CONFIG_PATH)
             return _create_mcp_tools(connections)
         # Empty servers: [] — file is authoritative (AD-14); no env var fallback

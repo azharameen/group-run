@@ -64,8 +64,35 @@ def get_checkpointer() -> SqliteSaver:
     return _SQLITE_SAVER
 
 
+async def create_async_checkpointer() -> AsyncSqliteSaver:
+    """Create and return the async checkpointer singleton within an async context.
+
+    Must be called from an async context to avoid aiosqlite's
+    ``DeprecationWarning: There is no current event loop`` when the
+    connection is created before the event loop is available.
+
+    The returned saver has already been set up (``setup()`` called) and
+    WAL mode enabled. Callers can use it directly.
+    """
+    global _ASYNC_SQLITE_SAVER
+    if _ASYNC_SQLITE_SAVER is not None:
+        return _ASYNC_SQLITE_SAVER
+    db_path = _get_db_path()
+    conn = aiosqlite.connect(str(db_path))
+    saver = AsyncSqliteSaver(conn)
+    await saver.setup()
+    await conn.execute("PRAGMA journal_mode=WAL")
+    _ASYNC_SQLITE_SAVER = saver
+    return saver
+
+
 def get_async_checkpointer() -> AsyncSqliteSaver:
-    """Return a singleton AsyncSqliteSaver — caller must ``await saver.setup()`` first."""
+    """Return the async checkpointer singleton (sync fallback for graph compilation).
+
+    Prefer ``create_async_checkpointer()`` when called from an async context.
+    This sync version is kept for backward compatibility with graph compilation
+    calls that happen outside async context.
+    """
     global _ASYNC_SQLITE_SAVER
     if _ASYNC_SQLITE_SAVER is None:
         db_path = _get_db_path()
