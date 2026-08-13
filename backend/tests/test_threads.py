@@ -28,12 +28,21 @@ def _clear_cached_modules():
 
 
 @pytest.fixture(autouse=True)
-def _cleanup_thread_state():
+def _cleanup_thread_state(event_loop):
     """Ensure clean thread/supervisor state after each checkpoint test."""
     yield
     # Clean up singletons after test to prevent cross-test pollution
     try:
         import app.services.thread_manager as tm
+        # Close the async checkpointer connection before resetting
+        if tm._ASYNC_SQLITE_SAVER is not None:
+            try:
+                conn = tm._ASYNC_SQLITE_SAVER.conn
+                if hasattr(conn, "close"):
+                    # Use the test's event_loop fixture to close the connection properly
+                    event_loop.run_until_complete(conn.close())
+            except Exception:
+                pass
         tm._ASYNC_SQLITE_SAVER = None
         tm._SQLITE_SAVER = None
         tm._THREAD_DB_PATH = None
@@ -459,6 +468,19 @@ def _reset_thread_singletons(monkeypatch):
     import app.services.thread_manager as tm
     import app.orchestrator.supervisor as sup
 
+    # Close the async checkpointer connection before resetting
+    if tm._ASYNC_SQLITE_SAVER is not None:
+        try:
+            conn = tm._ASYNC_SQLITE_SAVER.conn
+            if hasattr(conn, "cursor"):
+                # Connection is open — close it to free the event loop binding
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(conn.close())
+                loop.close()
+        except Exception:
+            pass
     tm._ASYNC_SQLITE_SAVER = None
     tm._SQLITE_SAVER = None
     tm._THREAD_DB_PATH = None
@@ -673,12 +695,14 @@ def test_messages_404_for_nonexistent_thread(monkeypatch, tmp_path, patch_config
 
 def test_stream_404_for_nonexistent_thread(monkeypatch, tmp_path, patch_config):
     _patch_thread_storage(monkeypatch, tmp_path)
+    _reset_thread_singletons(monkeypatch)
     with TestClient(create_app()) as client:
         assert client.post("/api/threads/00000000-0000-0000-0000-000000000000/stream", json={"text": "x"}).status_code == 404
 
 
 def test_stream_error_then_done_event(monkeypatch, tmp_path, patch_config):
     _patch_thread_storage(monkeypatch, tmp_path)
+    _reset_thread_singletons(monkeypatch)
     graph = MagicMock()
     graph.ainvoke = AsyncMock(side_effect=RuntimeError("boom"))
     monkeypatch.setattr("app.orchestrator.supervisor.get_supervisor_graph", lambda: graph)

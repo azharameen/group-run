@@ -546,7 +546,7 @@ def execute_deep_agent_workflow(
 ) -> Dict[str, Any]:
     """Execute a workflow step using the DeepAgents runtime.
 
-    NOTE: This function is legacy Siemens FSM-era code. The state machine
+    NOTE: This function is legacy FSM-era code. The state machine
     advancement and scoring calls have been removed. The function now only
     invokes the DeepAgents graph and drafts patent sections.
     TODO: Replace with LangGraph-based workflow execution.

@@ -130,7 +130,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -157,7 +157,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -192,7 +192,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -239,13 +239,13 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Python dependency audit
-        run: pip install pip-audit && pip-audit --dir backend/app || true
-        continue-on-error: true
+        run: pip install pip-audit && pip-audit --dir backend/app
+        continue-on-error: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -254,5 +254,5 @@ jobs:
         run: npm ci
       - name: npm audit
         working-directory: frontend
-        run: npm audit --production || true
-        continue-on-error: true
+        run: npm audit --production
+        continue-on-error: false

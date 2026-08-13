@@ -56,6 +56,7 @@ def get_checkpointer() -> SqliteSaver:
     if _SQLITE_SAVER is None:
         db_path = _get_db_path()
         conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.row_factory = sqlite3.Row
         _METADATA_CONN = conn
         _SQLITE_SAVER = SqliteSaver(conn)
@@ -71,6 +72,18 @@ def get_async_checkpointer() -> AsyncSqliteSaver:
         conn = aiosqlite.connect(str(db_path))
         _ASYNC_SQLITE_SAVER = AsyncSqliteSaver(conn)
     return _ASYNC_SQLITE_SAVER
+
+
+def _reset_async_checkpointer() -> None:
+    """Reset the async checkpointer singleton (for test isolation and hot-reload)."""
+    global _ASYNC_SQLITE_SAVER
+    _ASYNC_SQLITE_SAVER = None
+
+
+async def _ensure_async_checkpointer_wal() -> None:
+    """Enable WAL mode on the async checkpointer connection (must run inside async context)."""
+    saver = get_async_checkpointer()
+    await saver.conn.execute("PRAGMA journal_mode=WAL")
 
 
 def _init_metadata_table(conn: sqlite3.Connection) -> None:

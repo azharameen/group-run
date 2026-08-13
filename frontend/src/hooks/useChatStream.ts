@@ -13,14 +13,19 @@ import { type InterruptPayload } from "@/api/threads";
 import type { ChatMessage, TaskItem } from "@/types/chat";
 import { eventToMessage, groupMessages } from "@/lib/chat-utils";
 
+// Cap transcript size to prevent unbounded memory growth
+const MAX_MESSAGES = 500;
+
 export interface UseChatStreamOptions {
 	activeThreadId: string | null;
+	activeIdeaId?: string | null;
 	ensureThread: () => Promise<string>;
 	onThreadsUpdate: (threads: ThreadMetadata[]) => void;
 }
 
 export function useChatStream({
 	activeThreadId,
+	activeIdeaId,
 	ensureThread,
 	onThreadsUpdate,
 }: UseChatStreamOptions) {
@@ -87,17 +92,20 @@ export function useChatStream({
 		const es = connectSSE(
 			(event, data) => {
 				if (event === "agent.progress" && data) {
-					setRawMessages((prev) => [
-						...prev,
-						eventToMessage({
-							type: "transition",
-							content: data.message,
-							agent: data.agent_name || "workflow-orchestrator",
-							speaker: data.agent_name || "Workflow Orchestrator",
-							role: "orchestrator",
-							provenance: `sse:${data.idea_id || "global"}`,
-						}),
-					]);
+						// Filter: only show progress events for the active idea (or global events)
+						if (activeIdeaId && data.idea_id && data.idea_id !== activeIdeaId) return;
+						setRawMessages((prev) => {
+							const msg = eventToMessage({
+								type: "transition",
+								content: data.message,
+								agent: data.agent_name || "workflow-orchestrator",
+								speaker: data.agent_name || "Workflow Orchestrator",
+								role: "orchestrator",
+								provenance: `sse:${data.idea_id || "global"}`,
+							});
+							const next = [...prev, msg];
+							return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+						});
 				}
 			},
 			undefined, // onError
@@ -112,20 +120,21 @@ export function useChatStream({
 					activeInterruptIdRef.current = id;
 					setPendingInterrupt(interrupt);
 					// Add visual indicator message in chat
-					setRawMessages((prev) => [
-						...prev,
-						{
-							id: `interrupt_${id}`,
-							sender: "System",
-							text: `Agent requires approval: ${interrupt.message || interrupt.tool_name || "action"}`,
-							timestamp: new Date().toLocaleTimeString([], {
-								hour: "2-digit",
-								minute: "2-digit",
-							}),
-							eventType: "interrupt",
-							details: { interrupt_id: id, tool_name: interrupt.tool_name },
-						},
-					]);
+						setRawMessages((prev) => {
+							const msg = {
+								id: `interrupt_${id}`,
+								sender: "System",
+								text: `Agent requires approval: ${interrupt.message || interrupt.tool_name || "action"}`,
+								timestamp: new Date().toLocaleTimeString([], {
+									hour: "2-digit",
+									minute: "2-digit",
+								}),
+								eventType: "interrupt",
+								details: { interrupt_id: id, tool_name: interrupt.tool_name },
+							};
+							const next = [...prev, msg];
+							return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+						});
 				} else if (
 					eventType === "interrupt.approved" ||
 					eventType === "interrupt.rejected"
@@ -232,7 +241,10 @@ export function useChatStream({
 					minute: "2-digit",
 				}),
 			};
-			setRawMessages((prev) => [...prev, userMsg]);
+			setRawMessages((prev) => {
+				const next = [...prev, userMsg];
+				return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+			});
 			setIsGenerating(true);
 
 			let tid: string;
@@ -260,20 +272,21 @@ export function useChatStream({
 							if (id === activeInterruptIdRef.current) return;
 							activeInterruptIdRef.current = id;
 							setPendingInterrupt(interrupt as InterruptPayload);
-							setRawMessages((prev) => [
-								...prev,
-								{
-									id: `interrupt_${id}`,
-									sender: "System",
-									text: `Agent requires approval: ${(interrupt as any).message || (interrupt as any).tool_name || "action"}`,
-									timestamp: new Date().toLocaleTimeString([], {
-										hour: "2-digit",
-										minute: "2-digit",
-									}),
-									eventType: "interrupt",
-									details: { interrupt_id: id, tool_name: (interrupt as any).tool_name },
-								},
-							]);
+								setRawMessages((prev) => {
+									const msg = {
+										id: `interrupt_${id}`,
+										sender: "System",
+										text: `Agent requires approval: ${(interrupt as any).message || (interrupt as any).tool_name || "action"}`,
+										timestamp: new Date().toLocaleTimeString([], {
+											hour: "2-digit",
+											minute: "2-digit",
+										}),
+										eventType: "interrupt",
+										details: { interrupt_id: id, tool_name: (interrupt as any).tool_name },
+									};
+									const next = [...prev, msg];
+									return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+								});
 							return;
 						}
 

@@ -1,1 +1,1 @@
-"""DeepAgents runtime scaffold for the Siemens ideator backend."""
+"""DeepAgents runtime scaffold for the Companion agentic platform."""

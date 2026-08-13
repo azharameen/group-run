@@ -141,7 +141,7 @@ def _load_system_prompt(team_description: str = "") -> str:
     if path.exists():
         base_prompt = path.read_text(encoding="utf-8")
     else:
-        base_prompt = "You are the Siemens patent idea generation and review system."
+        base_prompt = "You are an AI assistant in the Companion agentic organization platform."
     if team_description:
         return f"{team_description}\n\n{base_prompt}"
     return base_prompt

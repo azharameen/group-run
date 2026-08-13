@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from ..infrastructure.observability import configure_langsmith_tracing
-from ..services.thread_manager import get_checkpointer, get_async_checkpointer
+from ..services.thread_manager import get_checkpointer, get_async_checkpointer, _ensure_async_checkpointer_wal
 from .routes.chat import router as chat_router
 from .routes.config import router as config_router
 from .routes.interrupts import router as interrupts_router
@@ -63,6 +63,7 @@ async def lifespan(_app: FastAPI):
     # Initialize async checkpointer for astream() compatibility
     async_checkpointer = get_async_checkpointer()
     await async_checkpointer.setup()
+    await _ensure_async_checkpointer_wal()
     print(f"[Startup] Async checkpointer initialized")
 
     yield
@@ -92,6 +93,10 @@ async def lifespan(_app: FastAPI):
     _tm._ASYNC_SQLITE_SAVER = None
     _tm._METADATA_CONN = None
     _tm._THREAD_DB_PATH = None
+
+    # Reset supervisor graph cache so it rebuilds with fresh checkpointer
+    from ..orchestrator import supervisor as _sup
+    _sup._graph = None
 
 
 def create_app() -> FastAPI:

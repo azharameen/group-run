@@ -2,7 +2,7 @@
 
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from ..config import WORKSPACE_DIR
@@ -35,7 +35,7 @@ def create_idea_folder(idea_id: str) -> str:
 
 def write_changelog_entry(idea_id: str, entry: str):
     path = os.path.join(idea_folder_path(idea_id), "revisions", "changelog.md")
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as handle:
         handle.write(f"\n## {timestamp}\n{entry}\n---\n")
@@ -97,7 +97,7 @@ def save_comment(idea_id: str, author: str, text: str) -> dict:
     entry = {
         "author": author,
         "text": text,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     comments.append(entry)
     write_yaml(os.path.join(idea_folder_path(idea_id), "comments.yaml"), comments)

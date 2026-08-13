@@ -17,7 +17,7 @@ def service(tmp_path, monkeypatch):
         def __init__(self, conn):
             self.conn = conn
 
-    monkeypatch.setattr(interrupt_module, "get_checkpointer", lambda: DummyCheckpointer(conn))
+    monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
     InterruptService._instance = None
     svc = InterruptService.instance()
     yield svc

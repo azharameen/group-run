@@ -283,12 +283,8 @@ class TestInterruptApprovalPerformance:
         conn = sqlite3.connect(str(db_path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
 
-        class DummyCheckpointer:
-            def __init__(self, conn):
-                self.conn = conn
-
-        monkeypatch.setattr(interrupt_module, "get_checkpointer", lambda: DummyCheckpointer(conn))
-        monkeypatch.setattr(interrupt_module.sqlite3, "connect", lambda *args, **kwargs: conn)
+        # Patch InterruptService to use the test connection
+        monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
 
         with TestClient(create_app()) as client:
             durations = []

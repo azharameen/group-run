@@ -1,0 +1,80 @@
+# generated: 2026-08-13
+# last_updated: 2026-08-13T10:40:00+05:30
+# project: Commander (Command Center Orchestrator)
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts/commander
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Commander epics use EP-C prefix (EP-C0 to EP-C6)
+# - Stories use C prefix (e.g., c0-1, c0-2)
+# - Commander is the builder tool for Companion product
+# - Separate tracking to avoid mixing builder with product concerns
+
+generated: 2026-08-13
+last_updated: '2026-08-13T12:45:00+05:30'
+project: Commander
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts/commander
+
+development_status:
+  # EP-C0: Foundation & Guardrails
+  epic-c0: in-progress
+  c0-1-github-branch-protection-setup: done
+  c0-2-legacy-jules-workflow-removal: done
+  c0-3-project-context-branch-rules-update: done
+  c0-4-bmad-customization-setup: ready-for-dev
+
+  # EP-C1: Commander Core & Deferred Work
+  epic-c1: in-progress
+  c1-1-commander-module-split: ready-for-dev
+  c1-2-deferred-work-parser-and-ui: ready-for-dev
+  c1-3-dispatch-classifier-and-badges: ready-for-dev
+
+  # EP-C2: Jules Session Lifecycle
+  epic-c2: backlog
+  c2-1-branch-naming-and-jules-brief-builder: backlog
+  c2-2-adaptive-polling-and-auto-approval: backlog
+
+  # EP-C3: Copilot Integration & Feedback Resolution
+  epic-c3: backlog
+  c3-1-copilot-dispatch-and-session-tracking: backlog
+  c3-2-feedback-resolution-engine: backlog
+  c3-3-multi-agent-state-tracker: backlog
+
+  # EP-C4: PR Lifecycle Management
+  epic-c4: backlog
+  c4-1-pr-validation-and-copilot-review: backlog
+  c4-2-pipeline-monitoring-and-auto-merge: backlog
+  c4-3-branch-cleanup-and-local-sync: backlog
+
+  # EP-C5: Trust & Observability
+  epic-c5: backlog
+  c5-1-jsonl-logging-and-trust-dashboard: backlog
+  c5-2-learning-loop-implementation: backlog
+  c5-3-ci-pipeline-redesign: backlog
+
+  # EP-C6: Polish & Optimization
+  epic-c6: backlog
+  c6-1-jules-quota-management: backlog
+  c6-2-edge-case-handling-and-documentation: backlog

@@ -85,44 +85,46 @@ When Jules enters `AWAITING_USER_FEEDBACK`, the orchestrator decides:
 
 ---
 
-## Auto-Resolution Engine Design
+## Feedback Resolution Engine Design
 
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      Auto-Resolution Engine                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  Input:  { julesSessionId, feedbackMessage, storySpec, projectContext }  │
-│  Output: { resolved: boolean, response: string, escalated: boolean }     │
-│                                                                         │
-│  Pipeline:                                                               │
-│                                                                         │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
-│  │  Classifier  │───▶│   Matcher   │───▶│  Generator  │                 │
-│  │             │    │             │    │             │                 │
-│  │ Determines  │    │ Finds       │    │ Builds      │                 │
-│  │ feedback    │    │ context     │    │ response    │                 │
-│  │ type        │    │ from:       │    │ for Jules   │                 │
-│  │             │    │ - story     │    │             │                 │
-│  │             │    │ - project   │    │ Falls back  │                 │
-│  │             │    │ - codebase  │    │ to human    │                 │
-│  │             │    │ - deferred  │    │ escalation  │                 │
-│  └─────────────┘    └─────────────┘    └─────────────┘                 │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                   Feedback Resolution Engine (Decision Chain)                        │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                     │
+│  Input:  { julesSessionId, feedbackMessage, storySpec, projectContext }              │
+│  Output: { resolved: boolean, resolvedBy: string }                                   │
+│                                                                                     │
+│  Decision Chain (in order):                                                          │
+│                                                                                     │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐              │
+│  │ 1. Auto-Rules    │───▶│ 2. Copilot Agent  │───▶│ 3. User Approval │              │
+│  │ (instant)        │    │ (bmad-agent-dev)  │    │ (2-min timeout)  │              │
+│  │                  │    │                  │    │                  │              │
+│  │ - File content   │    │ - Analyzes       │    │ - Stacked cards  │              │
+│  │ - Spec lookup    │    │   feedback       │    │ - Approve/Defer  │              │
+│  │ - Project rules  │    │ - Generates      │    │   /Reject        │              │
+│  │ - Error fixes    │    │   resolution     │    │ - Timeout →      │              │
+│  └──────────────────┘    └──────────────────┘    │   defer + continue│              │
+│           │                        │             └──────────────────┘              │
+│           ▼                        ▼                        │                       │
+│      Resolved ✅          Resolved ✅               Resolved ✅                    │
+│                                                                                     │
+│  Note: Copilot escalation ALWAYS uses bmad-agent-dev                                 │
+│                                                                                     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Implementation Approach
 
-**Option A: Rule-Based (Recommended for Phase 1)**
+**Layer 1: Auto-Rules (Instant, No Token Cost)**
 
 ```javascript
-// Pseudocode for extension.mjs
+// Pseudocode for extension.mjs — auto-resolution rules
 
-async function resolveJulesFeedback(julesSessionName, feedbackMessage, storyItem) {
-    // Extract Jules' question
+async function tryAutoResolve(julesSessionName, feedbackMessage, storyItem) {
     const question = extractQuestion(feedbackMessage);
 
     // Rule 1: Missing file content
@@ -132,7 +134,7 @@ async function resolveJulesFeedback(julesSessionName, feedbackMessage, storyItem
         if (content) {
             await jules.sendMessage(julesSessionName, 
                 `Here's the content of ${filePath}:\n\`\`\`\n${content}\n\`\`\``);
-            return { resolved: true, method: "file_content" };
+            return { resolved: true, resolvedBy: "auto_rule", method: "file_content" };
         }
     }
 
@@ -141,7 +143,7 @@ async function resolveJulesFeedback(julesSessionName, feedbackMessage, storyItem
         const clarification = extractFromSpec(storyItem, question);
         if (clarification) {
             await jules.sendMessage(julesSessionName, clarification);
-            return { resolved: true, method: "spec_clarification" };
+            return { resolved: true, resolvedBy: "auto_rule", method: "spec_clarification" };
         }
     }
 
@@ -149,9 +151,8 @@ async function resolveJulesFeedback(julesSessionName, feedbackMessage, storyItem
     if (isTechnicalDecision(question)) {
         const rule = findRuleInProjectContext(question);
         if (rule) {
-            await jules.sendMessage(julesSessionName, 
-                `Per project rules: ${rule}`);
-            return { resolved: true, method: "project_rule" };
+            await jules.sendMessage(julesSessionName, `Per project rules: ${rule}`);
+            return { resolved: true, resolvedBy: "auto_rule", method: "project_rule" };
         }
     }
 
@@ -160,33 +161,57 @@ async function resolveJulesFeedback(julesSessionName, feedbackMessage, storyItem
         const fix = generateFix(question, storyItem);
         if (fix) {
             await jules.sendMessage(julesSessionName, fix);
-            return { resolved: true, method: "error_fix" };
+            return { resolved: true, resolvedBy: "auto_rule", method: "error_fix" };
         }
     }
 
-    // Escalation needed
-    return { 
-        resolved: false, 
-        escalated: true, 
-        reason: "no_matching_rule",
-        question 
-    };
+    return { resolved: false };
 }
 ```
 
-**Option B: LLM-Assisted (Phase 2 Enhancement)**
+**Layer 2: Copilot Agent Decision (bmad-agent-dev)**
 
 ```
-When rule-based resolution fails:
+When auto-rules can't resolve:
 
 1. Package: { jules_feedback, story_spec, project_context }
-2. Send to Copilot session with prompt:
-   "Jules session [ID] is blocked. Here's the feedback, story spec, 
-    and project context. Provide a concise resolution message 
-    Jules needs, or explain why human input is required."
-3. Parse Copilot's response
-4. If resolution provided → send to Jules via sendMessage()
-5. If human needed → escalate to Command Center UI for manual input
+2. Create Copilot session with bmad-agent-dev:
+   "Jules session [ID] is blocked with feedback: [message].
+    Here's the story spec and project context. Decide:
+    a) What response should Jules receive?
+    b) Or should this be deferred (Jules continues best-effort)?
+    c) Or does this require human input?"
+3. Parse Copilot's decision
+4. If Copilot provides resolution → send to Jules via sendMessage()
+5. If Copilot says human needed → escalate to Layer 3 (user approval)
+
+Note: Always uses bmad-agent-dev regardless of task type.
+```
+
+**Layer 3: User Approval with 2-Minute Timeout**
+
+```
+When Copilot can't decide:
+
+1. Show approval card in Command Center:
+   - Jules session URL
+   - Jules' feedback message
+   - Copilot's analysis (why it couldn't decide)
+   - Actions: Reply / Defer (continue) / Block
+
+2. Start 2-minute countdown timer
+
+3. If user acts within 2 min:
+   - Reply → send user message to Jules
+   - Defer → tell Jules to continue best-effort
+   - Block → pause Jules session
+
+4. If 2 min expires (no user action):
+   - Default: DEFER — tell Jules to continue best-effort
+   - Log: "Auto-deferred due to timeout — Jules continuing"
+   - Jules session resumes
+
+5. Multiple pending approvals → stacked cards in row
 ```
 
 ---
@@ -663,12 +688,18 @@ class JulesQuotaManager {
 
 ## Key Design Decisions
 
-### Why Rule-Based First, LLM Second?
+### Why Three-Layer Resolution?
 
-1. **Determinism:** Rules are predictable and debuggable
-2. **Cost:** LLM calls for every feedback add up across 100 sessions/day
-3. **Latency:** Rules are instant; LLM adds 2-5s delay
-4. **Fallback:** LLM only needed for edge cases rules can't handle
+1. **Auto-rules first:** Instant, zero token cost, handles 60-70% of feedback
+2. **Copilot agent second:** Has full context, handles 25-35% of cases
+3. **Human third:** Safety net for truly ambiguous cases
+
+### Why Always `bmad-agent-dev`?
+
+1. **Simplicity:** Single agent type reduces routing complexity
+2. **Capability:** Dev agent can handle coding decisions, file analysis, and spec interpretation
+3. **Consistency:** Same agent behavior across all escalations
+4. **BMad skills:** Dev agent has access to BMad skills if needed
 
 ### Why Per-Session Polling?
 
@@ -676,10 +707,10 @@ class JulesQuotaManager {
 2. **Efficiency:** Idle sessions (COMPLETED) stop polling entirely
 3. **Scalability:** 50 concurrent sessions × adaptive intervals ≈ 15 API calls/min
 
-### Why Copilot Escalation Instead of Human?
+### Why 2-Minute Timeout?
 
-1. **Velocity:** Auto-resolution > human review for most feedback
-2. **Context:** Copilot has full story spec + project context loaded
-3. **Audit:** Escalations are logged with resolution method
-4. **Fallback:** Human still available via Command Center UI
+1. **Prevents stalls:** Jules sessions don't wait indefinitely
+2. **Defers, not blocks:** Timeout defaults to "continue best-effort"
+3. **Human available:** User can still act within the window
+4. **PR safety:** PR merge timeouts keep PR open (no auto-merge)
 

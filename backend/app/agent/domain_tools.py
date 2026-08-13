@@ -1,7 +1,7 @@
 """First-class domain tools for DeepAgents subagents and runtime graph nodes."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -15,7 +15,7 @@ def generate_invention_ideas(
     max_ideas: int = 3,
     topic_name: str = "",
     idea_category: str = "Industrial AI",
-    project_name: str = "Siemens Patent Ideator",
+    project_name: str = "Companion",
 ) -> List[Dict[str, Any]]:
     """Generate structured invention ideas using the DeepAgents research agent.
 
@@ -28,7 +28,7 @@ def generate_invention_ideas(
     runtime = get_deep_agent_runtime()
 
     prompt_parts = [
-        "You are the Siemens Patent Ideator research agent. Your job is to:",
+        "You are the Companion research agent. Your job is to:",
         "1. Read the knowledge-base/ directory to find relevant technical documents",
         "2. Extract signals, patterns, and invention opportunities",
         "3. Produce up to {max_ideas} structured invention ideas",
@@ -38,9 +38,9 @@ def generate_invention_ideas(
         "- problem_statement: The technical problem being solved",
         "- solution_concept: The core inventive concept",
         "- inventive_step: What makes this novel",
-        "- business_impact: The business value for Siemens",
+        "- business_impact: The business value",
         "- source_evidence: List of source document references",
-        "- siemens_domain: The Siemens strategic domain",
+        "- domain: The strategic domain",
         "- tags: List of relevant keywords",
         "",
     ]
@@ -143,7 +143,7 @@ def draft_patent_section(
         idea_data[f"{section_name}_data"] = {
             "summary": content[:200] + "...",
             "path": str(file_path),
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "provenance": f"artifact:{idea_id}:{section_name}",
             "trust": "generated",
             "evidence_refs": idea_data.get("source_evidence", []),
@@ -167,7 +167,7 @@ def record_approval_decision(
     reviews[reviewer_role.lower()] = {
         "status": decision,
         "comments": comments,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "provenance": f"approval:{idea_id}:{reviewer_role.lower()}",
         "trust": "trusted",
     }
@@ -197,7 +197,7 @@ def save_research_note(
         "title": title,
         "content": content,
         "source_refs": source_refs or [],
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "provenance": f"research:{note_id}",
     }
     note_path = notes_dir / f"{note_id}.json"

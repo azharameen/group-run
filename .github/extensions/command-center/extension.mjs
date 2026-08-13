@@ -2245,7 +2245,7 @@ function renderHtml(instanceId, initialState) {
               "⚠️ Review plan: implement a story (set requirePlanApproval: true).",
               "❌ Keep in Copilot: architecture, PRD, complex multi-file refactor, retro.",
               "Trigger: click 🤖 Delegate to Jules in any card dialog.",
-              "Or run: gh workflow run jules-dispatch.yml -f story_id=<id> -f prompt='...'",
+              "Use the 🤖 Delegate button in any card dialog.",
             ],
           },
           {

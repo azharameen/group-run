@@ -5,11 +5,12 @@ import sqlite3
 import threading
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from app.infrastructure.events.stream_bus import _bus
 
-from .thread_manager import get_checkpointer
+from ..config import STORAGE_DIR
 
 
 class InterruptService:
@@ -17,6 +18,8 @@ class InterruptService:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        # Connection is initialized lazily via _conn() to allow test patching
+        self._conn_obj: Optional[sqlite3.Connection] = None
         self._init_table()
 
     @classmethod
@@ -26,7 +29,13 @@ class InterruptService:
         return cls._instance
 
     def _conn(self) -> sqlite3.Connection:
-        return get_checkpointer().conn
+        if self._conn_obj is None:
+            db_path = Path(STORAGE_DIR) / "threads.sqlite"
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            self._conn_obj = sqlite3.connect(str(db_path), check_same_thread=False)
+            self._conn_obj.execute("PRAGMA journal_mode=WAL")
+            self._conn_obj.row_factory = sqlite3.Row
+        return self._conn_obj
 
     def _init_table(self) -> None:
         self._conn().execute(
@@ -37,12 +46,19 @@ class InterruptService:
     def create_interrupt(self, thread_id: str, tool_name: str, message: str, tool_input: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         interrupt_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
-        self._conn().execute(
-            "INSERT INTO interrupts (id, thread_id, tool_name, tool_input, message, status, decision, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)",
-            (interrupt_id, thread_id, tool_name, json.dumps(tool_input or {}), message, now, now),
-        )
-        self._conn().commit()
-        interrupt = self.get_interrupt(interrupt_id)
+        with self._lock:
+            conn = self._conn()
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute(
+                    "INSERT INTO interrupts (id, thread_id, tool_name, tool_input, message, status, decision, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)",
+                    (interrupt_id, thread_id, tool_name, json.dumps(tool_input or {}), message, now, now),
+                )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
             _bus.publish("interrupt.created", {"interrupt": interrupt, "thread_id": thread_id})
         return interrupt  # type: ignore[return-value]

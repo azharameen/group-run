@@ -22,7 +22,7 @@
 
 ## Deferred from: code review of EP-0 dead code cleanup (2026-08-03)
 
-- Backend Siemens strings in agent prompts and model fields (`backend/app/agent/runtime.py`, `domain_tools.py`, `context.py`, `models/idea.py`) — structural domain data changes require product decisions for replacement names and data migration
+- ~~Backend Siemens strings in agent prompts and model fields (`backend/app/agent/runtime.py`, `domain_tools.py`, `context.py`, `models/idea.py`)~~ — **RESOLVED 2026-08-13**: all Siemens references replaced with "Companion" in runtime.py, domain_tools.py, context.py, __init__.py, and runner.py
 - ~~LANGGRAPH_STRICT_MSGPACK validator breaks tests on fresh environments (`backend/app/config.py:38-43`)~~ — **RESOLVED 2026-08-09**: reads `os.environ` directly for lazy validation
 
 ## Deferred from: code review of 1-1-create-teams-yaml-and-mcp-json (2026-08-03)
@@ -107,17 +107,17 @@
 
 ## Deferred from: code review of spec-3-1-rewrite-api-routes-ideas-py.md (2026-08-07)
 
-- Race condition on idea ID generation allows duplicate IDs under concurrent requests — `load_idea_registry() → read next_id → increment → save_idea_registry()` is not atomic; no file lock or mutex protects the counter
-- Empty registry file causes `load_idea_registry` to return None, crashing list_ideas and create_idea — `yaml.safe_load("")` returns None; no None guard when file exists but is empty
-- `archive_idea_folder` copies but does not delete source folder, leaving duplicate data in workspace — `shutil.copytree` followed by return; no `shutil.rmtree(folder)` follows
-- Partial failure in delete_idea leaves inconsistent state if folder deletes but registry removal fails — idea becomes zombie-listed in registry with no filesystem data
+- ~~Race condition on idea ID generation allows duplicate IDs under concurrent requests~~ — **RESOLVED 2026-08-13**: `asyncio.Lock()` protects the read-modify-write cycle in `_generate_idea_id()`
+- ~~Empty registry file causes `load_idea_registry` to return None~~ — **RESOLVED 2026-08-09**: None guard added for `yaml.safe_load("")`
+- ~~`archive_idea_folder` copies but does not delete source folder~~ — **RESOLVED 2026-08-13**: `delete_idea_folder()` now removes source after archive copy
+- ~~Partial failure in delete_idea leaves inconsistent state~~ — **RESOLVED 2026-08-13**: registry removal happens before folder deletion; folder cleanup failure is non-fatal
 
 ## Deferred from: code review of 3-2-update-models-idea-py.md (2026-08-07)
 
 - `Idea` and `IdeaRegistry` Pydantic models defined but never instantiated — all CRUD code in `routes/ideas.py`, `storage/registry.py`, `storage/yaml_io.py` works with raw `dict` objects; models provide zero runtime validation benefit
-- `write_handover` in `idea_workspace.py:44` — orphaned dead code that generates filenames like `"{from_state}-to-{to_state}.md"`; designed for `WorkflowState` transitions no longer in codebase
-- `clear_idea_runtime_state` in `idea_workspace.py:73` — orphaned function that writes fields (`active_processing`, `active_agent`, etc.) to `idea.yaml` with no code reading them back; zero callers
-- `datetime.utcnow()` deprecated in Python 3.12+ — `Idea.created_at` and `Idea.updated_at` use naive UTC timestamps; migrate to `datetime.now(timezone.utc)`
+- ~~`write_handover` in `idea_workspace.py:44`~~ — **RESOLVED 2026-08-13**: function removed, confirmed zero callers
+- ~~`clear_idea_runtime_state` in `idea_workspace.py:73`~~ — **RESOLVED 2026-08-13**: function removed, confirmed zero callers
+- ~~`datetime.utcnow()` deprecated in Python 3.12+~~ — **RESOLVED 2026-08-13**: migrated to `datetime.now(timezone.utc)` in idea.py, domain_tools.py, health.py, transcript.py, artifacts.py, ideas.py, and idea_workspace.py
 
 ## Deferred from: code review of 3-4-backend-tests-ideas-crud-workspace-files (2026-08-07)
 
@@ -323,9 +323,9 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 - **Unauthenticated config reload endpoint** — no auth check on POST /api/config/reload.
 - **Permission errors propagate as 500** — `Path.read_text()` raises `PermissionError` not caught.
 - **Duplicate server names silently overwrite** — no uniqueness validation in MCP server connections dict.
-- **Race condition on idea ID generation** — `load_idea_registry() → read next_id → increment → save` is not atomic.
+- ~~**Race condition on idea ID generation**~~ — **RESOLVED 2026-08-13**: `asyncio.Lock()` protects the counter.
 - **`Idea` and `IdeaRegistry` Pydantic models defined but never instantiated** — CRUD code works with raw `dict` objects.
-- **`datetime.utcnow()` deprecated in Python 3.12+** — migrate to `datetime.now(timezone.utc)`.
+- ~~**`datetime.utcnow()` deprecated in Python 3.12+**~~ — **RESOLVED 2026-08-13**: all instances migrated to `datetime.now(timezone.utc)`.
 
 ### Still Deferred — Frontend
 
@@ -357,3 +357,15 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 - ~~`_validate_mcp_config()` has no schema validation~~ — now calls `validate_mcp_config()` schema validator.
 - ~~CI frontend type errors~~ — InterruptPayload type mismatches fixed in test files.
 - ~~CI frontend build failure~~ — resolved with type fixes.
+
+
+## Deferred from: code review (2026-08-13) c0-2-legacy-jules-workflow-removal.md
+
+- CI auto-fix gap: no Jules auto-repair until Commander ships (EP-C2) - accepted gap, will close in EP-C2
+
+## Deferred from: code review c0-3-project-context-branch-rules-update (2026-08-13)
+
+- Branch types efactor/ and docs/ not defined in naming convention — pre-existing line 121 lists them as valid branch types but naming convention section only covers feat/ and fix/
+- "One story = one PR" rule has no exception for multi-repo scenarios — out of scope for current monorepo project
+- Merge strategy not specified (squash vs rebase vs merge) — design choice for future refinement
+- Self-review checklist enforcement mechanism — pre-existing reference to agents.md §7.1 already covers this
