@@ -17,3 +17,35 @@ If output starts with "blockers:N":
   4. If user says "no" or "wait", HALT immediately - do not continue
   5. If user says "yes", log "User acknowledged N open action items" and continue activation"""
 ]
+
+[workflow.persistent_facts]
+story_template_sections = """
+## Intent Contract
+
+### Problem
+<What problem does this story solve?>
+
+### Approach
+<How will this story solve the problem?>
+
+### Boundaries
+<What is explicitly in scope and out of scope?>
+
+## Code Map
+
+### File Targets
+- `<file-path>` - <purpose>
+
+### Dependencies
+- <dependency> - <reason>
+
+### Integration Points
+- <integration> - <impact>
+
+## Branch Strategy
+
+- Branch: `feat/<story-key>-<description>`
+- Base: `develop`
+- PR Target: `develop`
+- Single story, single PR
+"""
