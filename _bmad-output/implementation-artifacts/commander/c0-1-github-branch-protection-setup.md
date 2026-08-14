@@ -1,6 +1,6 @@
 # Story C0.1: GitHub Branch Protection Setup
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

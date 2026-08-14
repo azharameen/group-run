@@ -165,12 +165,12 @@ Feature branches isolated until merged — no direct pushes to `main`/`develop`.
 
 | FR | Epic | Story | Status |
 |----|------|-------|--------|
-| FR1 | EP-C0 | ST-C0.1 | Planned |
-| FR2 | EP-C0 | ST-C0.2 | Planned |
-| FR3 | EP-C0 | ST-C0.3 | Planned |
-| FR4-5 | EP-C0 | ST-C0.4 | Planned |
-| FR6-7 | EP-C1 | ST-C1.1 | Planned |
-| FR8-9 | EP-C1 | ST-C1.2 | Planned |
+| FR1 | EP-C0 | ST-C0.1 | Done |
+| FR2 | EP-C0 | ST-C0.2 | Done |
+| FR3 | EP-C0 | ST-C0.3 | Done |
+| FR4-5 | EP-C0 | ST-C0.4 | Done |
+| FR6-7 | EP-C1 | ST-C1.1 | Done |
+| FR8-9 | EP-C1 | ST-C1.2 | Done |
 | FR10-11 | EP-C1 | ST-C1.3 | Done |
 | FR12-13 | EP-C2 | ST-C2.1 | Done |
 | FR14-15 | EP-C2 | ST-C2.2 | Done |
