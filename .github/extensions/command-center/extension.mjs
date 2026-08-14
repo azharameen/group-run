@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { promises as fs } from "node:fs";
+import { promises as fs, watch } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +13,8 @@ const CANVAS_NAME = "Command Center";
 const DEFAULT_ARTIFACT_ROOT = "_bmad-output";
 const THEME_PREFERENCE_FILE = path.join(os.homedir(), ".copilot", "extensions", "command-center", "theme-preference.json");
 const instances = new Map();
+// SSE clients keyed by instanceId -> Array<ServerResponse>
+const sseClients = new Map();
 // Map<instanceId, Map<itemId, { sessionName, state, url, prUrl, origin, startedAt, endedAt, lastMessage, lastPolledAt }>>
 const julesState = new Map();
 const JULES_STATE_FILE = path.join(os.homedir(), ".copilot", "extensions", "command-center", "jules-sessions.json");
@@ -184,7 +186,15 @@ async function startServer(instanceId, state) {
                 res.statusCode = 200;
                 res.setHeader("Content-Type", "application/json; charset=utf-8");
                 res.end(JSON.stringify(currentEntry.state));
-            } catch (error) {
+                        // Broadcast classification update to connected SSE clients
+                        try {
+                            const list = sseClients.get(instanceId) || [];
+                            const payload = { nextAction: currentEntry.state.nextAction, classificationCounts: currentEntry.state.classificationCounts || {}, updatedAt: new Date().toISOString() };
+                            for (const r of list) {
+                                try { r.write(`event: classification\n`); r.write(`data: ${JSON.stringify(payload)}\n\n`); } catch (e) { }
+                            }
+                        } catch (e) { }
+                    } catch (error) {
                 res.statusCode = 500;
                 res.setHeader("Content-Type", "application/json; charset=utf-8");
                 res.end(JSON.stringify({ error: error?.message || String(error) }));
@@ -298,12 +308,24 @@ async function startServer(instanceId, state) {
             });
             res.write("retry: 10000\n\n");
 
+            // register this response so other parts of the server can broadcast to all listeners
+            const clients = sseClients.get(instanceId) || [];
+            clients.push(res);
+            sseClients.set(instanceId, clients);
+
             let closed = false;
             let busy = false;
+
             const send = (eventName, payload) => {
-                if (closed) return;
-                res.write(`event: ${eventName}\n`);
-                res.write(`data: ${JSON.stringify(payload)}\n\n`);
+                const list = sseClients.get(instanceId) || [];
+                for (const r of list) {
+                    try {
+                        r.write(`event: ${eventName}\n`);
+                        r.write(`data: ${JSON.stringify(payload)}\n\n`);
+                    } catch (e) {
+                        // ignore client write errors
+                    }
+                }
             };
 
             const tick = async () => {
@@ -329,6 +351,11 @@ async function startServer(instanceId, state) {
             req.on("close", () => {
                 closed = true;
                 clearInterval(interval);
+                // remove this response from the clients list
+                const list = sseClients.get(instanceId) || [];
+                const idx = list.indexOf(res);
+                if (idx !== -1) list.splice(idx, 1);
+                if (!list.length) sseClients.delete(instanceId);
             });
             return;
         }
@@ -356,8 +383,38 @@ async function startServer(instanceId, state) {
         state,
         context: null,
         stateRefreshedAt: new Date().toISOString(),
+        watcher: null,
     };
     instances.set(instanceId, entry);
+
+    // Try to install a filesystem watcher on the artifact root so we can refresh classification
+    (async () => {
+        try {
+            const artifactRoot = entry.state?.artifactRootPath || path.resolve(process.cwd(), DEFAULT_ARTIFACT_ROOT);
+            await fs.stat(artifactRoot);
+            const w = watch(artifactRoot, { recursive: true }, async (eventType, filename) => {
+                if (!filename) return;
+                try {
+                    if (entry._refreshTimer) clearTimeout(entry._refreshTimer);
+                    entry._refreshTimer = setTimeout(async () => {
+                        try {
+                            entry.state = await buildBoardState(entry.context);
+                            entry.stateRefreshedAt = new Date().toISOString();
+                            const payload = { nextAction: entry.state.nextAction, classificationCounts: entry.state.classificationCounts || {}, updatedAt: new Date().toISOString() };
+                            const list = sseClients.get(instanceId) || [];
+                            for (const r of list) {
+                                try { r.write(`event: classification\n`); r.write(`data: ${JSON.stringify(payload)}\n\n`); } catch (e) { }
+                            }
+                        } catch (e) { }
+                    }, 240);
+                } catch (e) { }
+            });
+            entry.watcher = w;
+        } catch (e) {
+            // ignore watcher install failures
+        }
+    })();
+
     return entry;
 }
 
@@ -577,6 +634,16 @@ sessionRef = await joinSession({
                     return;
                 }
                 instances.delete(ctx.instanceId);
+                try {
+                    if (entry.watcher && typeof entry.watcher.close === 'function') {
+                        try { entry.watcher.close(); } catch (e) { }
+                    }
+                    const list = sseClients.get(ctx.instanceId) || [];
+                    for (const r of list) {
+                        try { r.end(); } catch (e) { }
+                    }
+                    sseClients.delete(ctx.instanceId);
+                } catch (e) { }
                 await new Promise((resolve) => entry.server.close(() => resolve()));
             },
         }),

@@ -1,6 +1,12 @@
+---
+spec_file: c1-3-dispatch-classifier-and-badges.md
+status: in-progress
+baseline_revision: 0405a6e
+---
+
 # Story C1.3: Dispatch Classifier & Badges
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 

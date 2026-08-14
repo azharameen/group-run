@@ -83,7 +83,7 @@
 - Partial SSE frames dropped on disconnect (`threads.ts`) — server restart or proxy timeout mid-chunk may cause partial JSON; requires retry/backoff logic, rare edge case
 - Concurrent send accumulator shared (`useChatStream.ts`) — rapid double-submit during one stream merges chunks into single message; requires per-message accumulator, rare edge case
 - Global SSE events for other ideas pollute active chat (`useChatStream.ts`) — `agent.progress` events fire for all ideas; intentional design to surface background work, filter by idea ID would require backend changes
-- Thread-scoped in-flight stream abort (`useChatStream.ts:96-125`) — switching threads during active stream doesn't cancel in-flight request; requires refactoring stream lifecycle, users rarely switch mid-stream
+- ~~Thread-scoped in-flight stream abort (`useChatStream.ts:96-125`)~~ — **RESOLVED 2026-08-13**: `abortRef.current.abort()` now terminates in-flight stream when `activeThreadId` changes
 
 ## Deferred from: code review of 1.11 frontend tests (2026-08-11)
 
@@ -101,9 +101,9 @@
 
 ## Deferred from: code review of 2-4-update-use-thread-manager (2026-08-11)
 
-- `ensureThread` returns stale thread ID if active thread was deleted elsewhere — `activeThreadIdRef.current` is checked but the thread may no longer exist in the server's thread list; requires deciding whether to validate against current thread list before returning
-- Concurrent mutations from multiple components cause `refreshThreads` races — multiple simultaneous `updateThread`/`deleteThread` calls trigger parallel `listThreads` fetches with no deduplication; older responses can overwrite newer state; needs in-flight request deduplication
-- `refreshThreads` swallows fetch errors after mutations — errors logged to console but not surfaced to user via toast; user sees mutation succeed but UI doesn't update; needs error notification for mutation-after refresh failures
+- ~~`ensureThread` returns stale thread ID if active thread was deleted elsewhere~~ — **RESOLVED 2026-08-13**: `ensureThread` now calls `listThreads()` to validate the cached ID still exists on the server before returning it
+- ~~Concurrent mutations from multiple components cause `refreshThreads` races~~ — **RESOLVED 2026-08-13**: in-flight deduplication via `refreshingRef` prevents parallel `listThreads` fetches
+- ~~`refreshThreads` swallows fetch errors after mutations~~ — **RESOLVED 2026-08-13**: errors now surfaced to caller with console warning and return value
 
 ## Deferred from: code review of spec-3-1-rewrite-api-routes-ideas-py.md (2026-08-07)
 
@@ -219,9 +219,10 @@
   summary: Duplicate SSE subscriptions — InterruptInbox and useChatStream create independent SSE connections for interrupt events
   evidence: Each manages its own state independently; acceptable as separate component responsibilities; architectural improvement candidate
 
-- source_spec: `spec-4-6-wire-approval-ui-into-chat-stream.md`
-  summary: SSE reconnect doesn't reload interrupt state — interrupt overlay may become stale on connection drop
-  evidence: useChatStream SSE effect has no reconnect handler to reconcile interrupt state
+- ~~source_spec: `spec-4-6-wire-approval-ui-into-chat-stream.md`~~
+  ~~summary: SSE reconnect doesn't reload interrupt state — interrupt overlay may become stale on connection drop~~
+  ~~evidence: useChatStream SSE effect has no reconnect handler to reconcile interrupt state~~
+  **RESOLVED 2026-08-13**: `connectSSE()` now accepts `onError` callback that calls `reloadInterruptState()` to reconcile interrupt state on SSE connection recovery
 
 
 - source_spec: spec-4-7-frontend-tests-approval-ui.md
@@ -336,14 +337,14 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 - **Fragile test/component testid coupling** — tests rely on mock `data-testid` attributes.
 - ~~**O(n) transcript growth via React state**~~ — **RESOLVED 2026-08-13**: `MAX_MESSAGES = 500` cap applied to all `setRawMessages` append operations in `useChatStream.ts`.
 - **Partial SSE frames dropped on disconnect** — no retry/backoff logic.
-- **Concurrent send accumulator shared** — rapid double-submit merges chunks.
+- ~~**Concurrent send accumulator shared**~~ — **RESOLVED 2026-08-13**: message queue + `isGenerating` flag already prevents concurrent sends; rapid double-submit queues the second message.
 - ~~**Global SSE events pollute active chat**~~ — **RESOLVED 2026-08-13**: `activeIdeaId` filtering added to SSE event handler in `useChatStream.ts`.
-- **Thread-scoped in-flight stream abort** — switching threads during active stream doesn't cancel request.
-- **`ensureThread` returns stale thread ID** — ref checked but thread may no longer exist.
-- **Concurrent mutations cause refresh races** — no in-flight request deduplication.
-- **refreshThreads swallows fetch errors** — errors logged but not surfaced to user.
-- **Duplicate SSE subscriptions** — InterruptInbox and useChatStream create independent SSE connections.
-- **SSE reconnect doesn't reload interrupt state** — overlay may become stale on connection drop.
+- ~~**Thread-scoped in-flight stream abort**~~ — **RESOLVED 2026-08-13**: `abortRef.current.abort()` terminates in-flight stream on thread switch.
+- ~~**`ensureThread` returns stale thread ID**~~ — **RESOLVED 2026-08-13**: validates cached ID against `listThreads()` before returning.
+- ~~**Concurrent mutations cause refresh races**~~ — **RESOLVED 2026-08-13**: `refreshingRef` deduplicates in-flight requests.
+- ~~**refreshThreads swallows fetch errors**~~ — **RESOLVED 2026-08-13**: errors surfaced to caller with warning.
+- **Duplicate SSE subscriptions** — InterruptInbox and useChatStream create independent SSE connections (acceptable architectural pattern).
+- ~~**SSE reconnect doesn't reload interrupt state**~~ — **RESOLVED 2026-08-13**: `onError` callback reloads interrupt state on SSE reconnect.
 - **Recharts 2.x deprecation** — v3 migration needed with breaking changes.
 
 ### Still Deferred — CI/Infrastructure

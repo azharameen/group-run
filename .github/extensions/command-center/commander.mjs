@@ -837,13 +837,13 @@ export async function buildBoardState(context) {
   const boardFileInput = input.boardFile ? path.resolve(workspacePath, input.boardFile) : null;
   const themePreference = await loadThemePreference();
 
-  if (boardFileInput && (await fileExists(boardFileInput))) return decorateBoardState(await parseGenericBoard(workspacePath, boardFileInput, themePreference));
-  if (mode === "generic") return decorateBoardState({ title: "Command Center", mode: "generic", themePreference, workspacePath, artifactRootPath, sourceFiles: {}, meta: {}, counts: { epics: 0, stories: 0, milestones: 0, actions: 0, documents: 0, tasks: 0 }, statusCounts: {}, items: [], documents: [], rawDocuments: [], lookup: {}, notices: ["Generic mode is active but no board file was provided.", "Point this canvas at a JSON/YAML board file or switch to a BMad artifact root." ], });
+  if (boardFileInput && (await fileExists(boardFileInput))) return await decorateBoardState(await parseGenericBoard(workspacePath, boardFileInput, themePreference));
+  if (mode === "generic") return await decorateBoardState({ title: "Command Center", mode: "generic", themePreference, workspacePath, artifactRootPath, sourceFiles: {}, meta: {}, counts: { epics: 0, stories: 0, milestones: 0, actions: 0, documents: 0, tasks: 0 }, statusCounts: {}, items: [], documents: [], rawDocuments: [], lookup: {}, notices: ["Generic mode is active but no board file was provided.", "Point this canvas at a JSON/YAML board file or switch to a BMad artifact root." ], });
 
   const sprintStatusPath = path.join(artifactRootPath, "implementation-artifacts", "sprint-status.yaml");
-  if (await fileExists(sprintStatusPath)) return decorateBoardState(await parseBmadBoard(workspacePath, artifactRootPath, themePreference));
+  if (await fileExists(sprintStatusPath)) return await decorateBoardState(await parseBmadBoard(workspacePath, artifactRootPath, themePreference));
 
-  return decorateBoardState({ title: "Command Center", mode: "generic", themePreference, workspacePath, artifactRootPath, sourceFiles: {}, meta: {}, counts: { epics: 0, stories: 0, milestones: 0, actions: 0, documents: 0, tasks: 0 }, statusCounts: {}, items: [], documents: [], rawDocuments: [], lookup: {}, notices: [ `No BMad artifacts found under ${toPosix(path.relative(workspacePath, artifactRootPath) || artifactRootInput)}.`, "The canvas still opens, but you need to point it at a compatible artifact root or board file." ], });
+  return await decorateBoardState({ title: "Command Center", mode: "generic", themePreference, workspacePath, artifactRootPath, sourceFiles: {}, meta: {}, counts: { epics: 0, stories: 0, milestones: 0, actions: 0, documents: 0, tasks: 0 }, statusCounts: {}, items: [], documents: [], rawDocuments: [], lookup: {}, notices: [ `No BMad artifacts found under ${toPosix(path.relative(workspacePath, artifactRootPath) || artifactRootInput)}.`, "The canvas still opens, but you need to point it at a compatible artifact root or board file." ], });
 }
 
 /**
@@ -936,10 +936,68 @@ export function buildJulesTaskPrompt(state, item, prompt) {
 }
 
 /**
+ * Classify dispatch readiness for a story or task.
+ * @param {object} story
+ * @param {object} state
+ */
+export async function classifyDispatch(story, state = {}) {
+  const resultDefault = { agent: 'copilot', level: 'story' };
+  try {
+    // attempt to locate story document body via preloaded documents or disk
+    let body = null;
+    const storyFile = story?.metadata?.storyFile || story?.sourcePath || null;
+    if (storyFile) {
+      const doc = (state.documents || []).find((d) => d.sourcePath === storyFile || d.path === storyFile);
+      if (doc && doc.body !== undefined) body = doc.body;
+      else {
+        const workspace = state.workspacePath || process.cwd();
+        const abs = path.resolve(workspace, storyFile);
+        body = await readTextIfExists(abs) || null;
+      }
+    } else if (story?.raw?.storyFile?.path) {
+      const doc2 = (state.documents || []).find((d) => d.sourcePath === story.raw.storyFile.path);
+      if (doc2 && doc2.body !== undefined) body = doc2.body;
+    }
+
+    const textForScan = [story?.summary || "", JSON.stringify(story?.metadata || {}), body || ""].join("\n");
+
+    // detect BMAD skill references (Copilot-only)
+    const skillMatch = (textForScan.match(/bmad-[a-z0-9-]+/i) || [])[0];
+    if (skillMatch) {
+      return { agent: 'copilot', level: 'story', skill: skillMatch.toLowerCase() };
+    }
+
+    // detect intent contract and code map
+    const hasIntent = !!(body && /<intent-contract\b[^>]*>/i.test(body));
+    const codeMapSnippet = body ? (extractHeadingSnippet(body, '## Code Map') || extractHeadingSnippet(body, '## Dev Notes') || "") : "";
+    const codeMapHasFiles = !!(codeMapSnippet && (/[\\/]/.test(codeMapSnippet) || /\.[a-z0-9]{1,5}\b/i.test(codeMapSnippet)));
+
+    if (hasIntent && codeMapHasFiles) return { agent: 'jules', level: 'story' };
+
+    // detect task-level file targets
+    const filePattern = /[A-Za-z0-9_\/\\-]+\.[a-z0-9]{1,5}\b/i;
+    let tasksHaveFiles = false;
+    if (Array.isArray(story.tasks) && story.tasks.length) {
+      for (const t of story.tasks) {
+        if (filePattern.test(t.title || "")) { tasksHaveFiles = true; break; }
+      }
+    }
+    if (!tasksHaveFiles && story?.metadata?.files) {
+      if (filePattern.test(String(story.metadata.files))) tasksHaveFiles = true;
+    }
+    if (tasksHaveFiles) return { agent: 'jules', level: 'task' };
+
+    return resultDefault;
+  } catch (err) {
+    return { agent: 'copilot', level: 'story' };
+  }
+}
+
+/**
  * Decorate a raw board state with canonical work model and classification.
  * @param {object} state
  */
-export function decorateBoardState(state) {
+export async function decorateBoardState(state) {
   const canonical = buildCanonicalWorkModel(state);
   state.workItems = canonical.workItems || [];
   state.workRoots = canonical.workRoots || [];
@@ -956,6 +1014,26 @@ export function decorateBoardState(state) {
     for (const d of state.deferredWork) {
       state.workLookup[d.id] = d;
       state.lookup[d.id] = d;
+    }
+  }
+
+  // classification
+  state.classificationCounts = { julesReady: 0, tasksReady: 0, copilotOnly: 0 };
+  state.classificationIndex = {};
+  for (const item of state.workItems || []) {
+    try {
+      if (item && (item.kind === 'story' || item.kind === 'task' || item.kind === 'subtask')) {
+        const cls = await classifyDispatch(item, state);
+        if (cls) {
+          item.classification = cls;
+          state.classificationIndex[item.id] = cls;
+          if (cls.agent === 'jules' && cls.level === 'story') state.classificationCounts.julesReady++;
+          else if (cls.agent === 'jules' && cls.level === 'task') state.classificationCounts.tasksReady++;
+          else if (cls.agent === 'copilot') state.classificationCounts.copilotOnly++;
+        }
+      }
+    } catch (err) {
+      // ignore per-item classification errors
     }
   }
 
@@ -1818,6 +1896,12 @@ export function renderHtml(instanceId, initialState) {
            <option value="task">Task</option>
            <option value="subtask">Subtask</option>
          </select>
+         <select id="kanbanClassificationFilter">
+           <option value="all">All</option>
+           <option value="jules">🟢 Jules-ready</option>
+           <option value="tasks">🟡 Tasks-ready</option>
+           <option value="copilot">🔴 Copilot-only</option>
+         </select>
          <button id="refreshBtn" type="button">Refresh</button>
        </div>
        <div class="status-filters" id="kanbanStatusFilters"></div>
@@ -2030,19 +2114,26 @@ export function renderHtml(instanceId, initialState) {
       function matchesFilters(item) {
         const query = normalize(byId("kanbanSearch")?.value.trim());
         const kind = byId("kanbanKindFilter")?.value;
-        if (kind && item.kind !== kind) return false;
-        if (selectedStatuses.size && !selectedStatuses.has(bucket(item.status))) return false;
-        if (!query) return true;
-        const haystack = [
-          item.title,
-          item.summary,
-          item.phase,
-          item.sourcePath,
-          item.kind,
-          JSON.stringify(item.metadata || {}),
-        ].join(" ").toLowerCase();
-        return haystack.includes(query);
-      }
+              const classificationFilter = byId("kanbanClassificationFilter")?.value;
+              if (kind && item.kind !== kind) return false;
+              if (selectedStatuses.size && !selectedStatuses.has(bucket(item.status))) return false;
+              if (classificationFilter && classificationFilter !== "all") {
+                if (!item.classification) return false;
+                if (classificationFilter === "jules" && item.classification.agent !== "jules") return false;
+                if (classificationFilter === "tasks" && item.classification.level !== "task") return false;
+                if (classificationFilter === "copilot" && item.classification.agent !== "copilot") return false;
+              }
+              if (!query) return true;
+              const haystack = [
+                item.title,
+                item.summary,
+                item.phase,
+                item.sourcePath,
+                item.kind,
+                JSON.stringify(item.metadata || {}),
+              ].join(" ").toLowerCase();
+              return haystack.includes(query);
+            }
 
       function renderSummary() {
         const counts = state.workCounts || {};
@@ -2053,12 +2144,18 @@ export function renderHtml(instanceId, initialState) {
           ["Tasks", counts.task || 0],
           ["Subtasks", counts.subtask || 0],
         ];
+        const classificationCounts = state.classificationCounts || {};
+        const classificationHtml = '<div style="margin-top:8px;">' +
+          '<span class="badge good">🟢 ' + esc(classificationCounts.julesReady || 0) + '</span> ' +
+          '<span class="badge warn">🟡 ' + esc(classificationCounts.tasksReady || 0) + '</span> ' +
+          '<span class="badge bad">🔴 ' + esc(classificationCounts.copilotOnly || 0) + '</span>' +
+        '</div>';
         container.innerHTML = cards.map(([label, value]) => {
           return '<div class="stat">' +
             '<div class="label">' + esc(label) + '</div>' +
             '<div class="value">' + esc(value) + '</div>' +
             '</div>';
-        }).join("");
+        }).join("") + classificationHtml;
       }
 
       function renderColumns() {
@@ -2092,11 +2189,17 @@ export function renderHtml(instanceId, initialState) {
         const julesEntry = state.jules && state.jules[item.id];
         const parent = item.parentId ? state.workLookup?.[item.parentId] : null;
         const jules_badge = julesEntry ? '<span class="jules-badge">' + julesEmoji(julesEntry.state) + " " + esc(julesLabel(julesEntry.state)) + '</span>' : "";
+        const classification_badge = item.classification ? (
+          item.classification.agent === 'jules' && item.classification.level === 'story' ? '<span class="badge good">🟢 ' + esc('Jules-ready') + '</span>' :
+          item.classification.agent === 'jules' && item.classification.level === 'task' ? '<span class="badge warn">🟡 ' + esc('Tasks-ready') + '</span>' :
+          item.classification.agent === 'copilot' ? '<span class="badge bad">🔴 ' + esc('Copilot-only') + '</span>' : ''
+        ) : '';
         const badges = [
           '<span class="badge">' + esc(kindLabels[item.kind] || item.kind) + '</span>',
           item.status ? '<span class="badge ' + statusClass(item.status) + '">' + esc(item.status) + '</span>' : "",
           item.phase ? '<span class="badge">' + esc(item.phase) + '</span>' : "",
           jules_badge,
+          classification_badge,
         ].filter(Boolean).join("");
         const subtitle = item.summary && normalize(item.summary) !== normalize(item.title) ? item.summary : "";
         const relation = parent
@@ -2365,10 +2468,16 @@ export function renderHtml(instanceId, initialState) {
           ["Parent", item.parentId || ""],
         ];
         const extra = Object.entries(meta).filter(([, value]) => value !== undefined && value !== null && value !== "");
+        const classificationHeaderBadge = item.classification ? (
+          item.classification.agent === 'jules' && item.classification.level === 'story' ? '<span class="badge good">🟢 ' + esc('Jules-ready') + '</span>' :
+          item.classification.agent === 'jules' && item.classification.level === 'task' ? '<span class="badge warn">🟡 ' + esc('Tasks-ready') + '</span>' :
+          item.classification.agent === 'copilot' ? '<span class="badge bad">🔴 ' + esc('Copilot-only') + '</span>' : ''
+        ) : '';
         const headerBadges = [
           '<span class="badge">' + esc(kindLabels[item.kind] || item.kind) + '</span>',
           item.status ? '<span class="badge ' + statusClass(item.status) + '">' + esc(item.status) + '</span>' : "",
           item.phase ? '<span class="badge">' + esc(item.phase) + '</span>' : "",
+          classificationHeaderBadge,
         ].filter(Boolean).join("");
         const propertiesHtml = extra.length ? (
           '<div style="margin-top:12px;">' +
@@ -2617,6 +2726,16 @@ export function renderHtml(instanceId, initialState) {
               // ignore malformed payloads
             }
           });
+          julesStream.addEventListener("classification", (event) => {
+            try {
+              const data = JSON.parse(event.data || "{}");
+              if (data.classificationCounts) state.classificationCounts = data.classificationCounts;
+              if (data.nextAction) state.nextAction = data.nextAction;
+              renderAll();
+            } catch {
+              // ignore malformed payloads
+            }
+          });
           julesStream.onmessage = (event) => {
             try {
               const data = JSON.parse(event.data || "{}");
@@ -2675,6 +2794,7 @@ export function renderHtml(instanceId, initialState) {
 
       byId("kanbanSearch").addEventListener("input", renderAll);
       byId("kanbanKindFilter").addEventListener("change", renderAll);
+      byId("kanbanClassificationFilter").addEventListener("change", renderAll);
       byId("julesSearch").addEventListener("input", renderAll);
       byId("julesLifecycleFilter").addEventListener("change", renderAll);
       byId("docsSearch").addEventListener("input", renderAll);
