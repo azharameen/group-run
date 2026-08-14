@@ -3089,7 +3089,7 @@ export function renderHtml(instanceId, initialState) {
         container.innerHTML = severities.map((s) => {
           const label = s[0].toUpperCase() + s.slice(1);
           const active = selectedDeferredSeverities.has(s) ? "active" : "";
-          return `<button type="button" class="filter-chip ${active}" data-severity="${esc(s)}">${severityEmoji(s)} <small>${esc(label)}</small> ${esc(counts[s]||0)}</button>`;
+          return '<button type="button" class="filter-chip ' + active + '" data-severity="' + esc(s) + '">' + severityEmoji(s) + ' <small>' + esc(label) + '</small> ' + esc(counts[s]||0) + '</button>';
         }).join(" ");
         container.querySelectorAll("[data-severity]").forEach(btn => {
           btn.addEventListener("click", () => {
@@ -3115,7 +3115,7 @@ export function renderHtml(instanceId, initialState) {
         const list = (state.deferredWork || []).filter(matchesDeferredFilters);
         if (countsEl) {
           const counts = state.deferredCounts || { critical: 0, medium: 0, low: 0 };
-          countsEl.innerHTML = `${severityEmoji("critical")} ${esc(counts.critical||0)} · ${severityEmoji("medium")} ${esc(counts.medium||0)} · ${severityEmoji("low")} ${esc(counts.low||0)}`;
+          countsEl.innerHTML = severityEmoji("critical") + ' ' + esc(counts.critical||0) + ' · ' + severityEmoji("medium") + ' ' + esc(counts.medium||0) + ' · ' + severityEmoji("low") + ' ' + esc(counts.low||0);
         }
         if (!list.length) {
           container.innerHTML = '<div class="notice">No deferred work matches the current filters.</div>';
@@ -3123,7 +3123,7 @@ export function renderHtml(instanceId, initialState) {
         }
         container.innerHTML = list.map((item) => {
           const parent = item.parentId ? state.workLookup?.[item.parentId] || state.lookup?.[item.parentId] : null;
-          const epicLink = parent ? `<a href="#" data-relation-id="${esc(item.parentId)}">${esc(parent.title)}</a>` : '';
+          const epicLink = parent ? '<a href="#" data-relation-id="' + esc(item.parentId) + '">' + esc(parent.title) + '</a>' : '';
           const emoji = severityEmoji(item.severity);
           const badgeClass = item.severity === 'critical' ? 'badge bad' : item.severity === 'medium' ? 'badge warn' : 'badge good';
           return '<div class="list-item" data-item-id="' + esc(item.id) + '"><strong>' + esc(emoji + ' ' + item.title) + '</strong>' +
