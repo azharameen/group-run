@@ -1236,6 +1236,105 @@ export async function buildJulesBrief(story, state = {}, options = {}) {
 }
 
 /**
+ * Try to auto-resolve feedback against known rules.
+ * @param {string} feedback - Jules feedback message
+ * @param {object} story - Story work item
+ * @returns {string|null} resolution response or null
+ */
+export function tryAutoResolve(feedback, story) {
+  const fb = String(feedback ?? "").toLowerCase();
+  const storyId = String(story?.id ?? "");
+  const storyTitle = String(story?.title ?? "");
+
+  // Known auto-resolution patterns
+  const rules = [
+    { pattern: /which branch|branch.*use/i, response: `Use branch: ${createFeatureBranch(story)}` },
+    { pattern: /should.*create.*pr|create.*pr/i, response: "yes, create PR targeting develop branch" },
+    { pattern: /confirm.*story/i, response: `confirmed: ${storyTitle} (${storyId})` },
+    { pattern: /what.*implement|what.*task/i, response: `Implement: ${storyTitle}. Follow story spec tasks.` },
+    { pattern: /commit.*format/i, response: "Use: type(scope): description" },
+  ];
+
+  for (const rule of rules) {
+    if (rule.pattern.test(feedback ?? "")) {
+      return rule.response;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Resolve Jules feedback through 3-tier process.
+ * @param {object} session - Jules session object
+ * @param {object} story - Story work item
+ * @param {string} feedback - Feedback message
+ * @returns {Promise<{tier: 'auto' | 'copilot' | 'user', response?: string, cardId?: string}>}
+ */
+export async function resolveFeedback(session, story, feedback) {
+  // Tier 1: Auto-resolution
+  const autoResponse = tryAutoResolve(feedback, story);
+  if (autoResponse !== null) {
+    await sendMessage(session?.id || session?.session_id, autoResponse);
+    return { tier: "auto", response: autoResponse };
+  }
+
+  // Tier 2: Copilot escalation
+  try {
+    const { messageId } = await escalateToCopilot(
+      session,
+      story,
+      `Jules session needs feedback resolution: ${feedback}`
+    );
+    await sendMessage(session?.id || session?.session_id, `Escalated to Copilot: ${messageId}`);
+    return { tier: "copilot", response: messageId };
+  } catch (err) {
+    console.warn("Copilot escalation failed, creating user card:", err.message);
+  }
+
+  // Tier 3: User approval card
+  const card = createFeedbackCard(session, feedback);
+  return { tier: "user", cardId: card.cardId };
+}
+
+/**
+ * Create user approval card with timer.
+ * @param {object} session - Jules session object
+ * @param {string} feedback - Feedback content
+ * @param {number} [timeout=120000] - Timeout in milliseconds (default 2 minutes)
+ * @returns {{cardId: string, timer: number, resolve: Function, reject: Function}}
+ */
+export function createFeedbackCard(session, feedback, timeout = 120000) {
+  const cardId = `card_${Date.now()}`;
+  const sessionId = session?.id || session?.session_id;
+
+  // Create timer
+  const timer = setTimeout(async () => {
+    console.log(`Feedback card ${cardId} expired, deferring feedback`);
+    try {
+      await sendMessage(sessionId, "Feedback deferred - continuing with default resolution");
+    } catch (err) {
+      console.warn("Failed to send defer message:", err.message);
+    }
+  }, timeout);
+
+  return {
+    cardId,
+    timer,
+    sessionId,
+    feedback,
+    resolve: async (response) => {
+      clearTimeout(timer);
+      await sendMessage(sessionId, response);
+    },
+    reject: async () => {
+      clearTimeout(timer);
+      await sendMessage(sessionId, "Feedback rejected - session should wait for clarification");
+    },
+  };
+}
+
+/**
  * Build Copilot prompt with story spec and branch context.
  * @param {object} story - Story work item
  * @param {object} state - Board state
