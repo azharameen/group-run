@@ -172,9 +172,9 @@ Feature branches isolated until merged — no direct pushes to `main`/`develop`.
 | FR6-7 | EP-C1 | ST-C1.1 | Planned |
 | FR8-9 | EP-C1 | ST-C1.2 | Planned |
 | FR10-11 | EP-C1 | ST-C1.3 | Done |
-| FR12-13 | EP-C2 | ST-C2.1 | Planned |
-| FR14-15 | EP-C2 | ST-C2.2 | Planned |
-| FR16-17 | EP-C3 | ST-C3.1 | Planned |
+| FR12-13 | EP-C2 | ST-C2.1 | Done |
+| FR14-15 | EP-C2 | ST-C2.2 | Done |
+| FR16-17 | EP-C3 | ST-C3.1 | Done |
 | FR18-19 | EP-C3 | ST-C3.2 | Planned |
 | FR20 | EP-C3 | ST-C3.3 | Planned |
 | FR21-22 | EP-C4 | ST-C4.1 | Planned |
