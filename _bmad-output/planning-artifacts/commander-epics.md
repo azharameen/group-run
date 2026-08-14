@@ -171,7 +171,7 @@ Feature branches isolated until merged — no direct pushes to `main`/`develop`.
 | FR4-5 | EP-C0 | ST-C0.4 | Planned |
 | FR6-7 | EP-C1 | ST-C1.1 | Planned |
 | FR8-9 | EP-C1 | ST-C1.2 | Planned |
-| FR10-11 | EP-C1 | ST-C1.3 | Planned |
+| FR10-11 | EP-C1 | ST-C1.3 | Done |
 | FR12-13 | EP-C2 | ST-C2.1 | Planned |
 | FR14-15 | EP-C2 | ST-C2.2 | Planned |
 | FR16-17 | EP-C3 | ST-C3.1 | Planned |
