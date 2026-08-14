@@ -1236,6 +1236,89 @@ export async function buildJulesBrief(story, state = {}, options = {}) {
 }
 
 /**
+ * Determine polling interval based on Jules session state.
+ * @param {string} sessionState - Jules session state
+ * @returns {number} polling interval in milliseconds (0 = stop)
+ */
+export function determinePollingInterval(sessionState) {
+  const state = String(sessionState ?? "").toUpperCase();
+  switch (state) {
+    case "AWAITING_PLAN_APPROVAL": return 5000;
+    case "AWAITING_USER_FEEDBACK": return 15000;
+    case "QUEUED": return 10000;
+    case "IN_PROGRESS": return 30000;
+    case "COMPLETED":
+    case "FAILED":
+    case "CANCELLED":
+    default: return 0;
+  }
+}
+
+/**
+ * Auto-approve plan or escalate to Copilot based on Jules-ready status.
+ * @param {object} session - Jules session object with state, id, etc.
+ * @param {object} story - Story work item
+ * @param {object} state - Board state
+ * @returns {Promise<{action: 'approved' | 'escalated', messageId?: string}>}
+ */
+export async function autoApprovePlan(session, story, state) {
+  const sessionId = session?.id || session?.session_id;
+  if (!sessionId) throw new Error("Session ID required");
+
+  // Check if story is Jules-ready using classifyDispatch
+  let julesReady = false;
+  try {
+    const classification = await classifyDispatch(story, state);
+    julesReady = classification?.julesReady || false;
+  } catch (err) {
+    // If classification fails, default to escalation
+    console.warn("classifyDispatch failed, escalating to Copilot:", err.message);
+  }
+
+  if (julesReady) {
+    // Auto-approve the plan
+    try {
+      await approvePlan(sessionId);
+      return { action: "approved" };
+    } catch (err) {
+      // If approve fails, escalate
+      console.warn("approvePlan failed, escalating:", err.message);
+    }
+  }
+
+  // Escalate to Copilot
+  const messageId = await escalateToCopilot(
+    session,
+    story,
+    `Plan approval needed for story ${story?.id || "unknown"}. Story lacks Jules-ready markers (intent-contract + code map). Please review and approve.`
+  );
+  return { action: "escalated", messageId };
+}
+
+/**
+ * Escalate feedback to Copilot via sendMessage.
+ * @param {object} session - Jules session object
+ * @param {object} story - Story work item
+ * @param {string} message - Escalation message
+ * @returns {Promise<string>} message ID
+ */
+export async function escalateToCopilot(session, story, message) {
+  const sessionId = session?.id || session?.session_id;
+  if (!sessionId) throw new Error("Session ID required");
+
+  // Build escalation payload
+  const payload = {
+    message,
+    storyId: story?.id || null,
+    storyTitle: story?.title || null,
+  };
+
+  // Send to Jules session (will be routed to Copilot)
+  await sendMessage(sessionId, payload);
+  return `msg_${Date.now()}`; // Return synthetic message ID
+}
+
+/**
  * Decorate a raw board state with canonical work model and classification.
  * @param {object} state
  */
