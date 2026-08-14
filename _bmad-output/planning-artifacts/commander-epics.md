@@ -177,14 +177,14 @@ Feature branches isolated until merged — no direct pushes to `main`/`develop`.
 | FR16-17 | EP-C3 | ST-C3.1 | Done |
 | FR18-19 | EP-C3 | ST-C3.2 | Done |
 | FR20 | EP-C3 | ST-C3.3 | Done |
-| FR21-22 | EP-C4 | ST-C4.1 | Done |
-| FR23-24 | EP-C4 | ST-C4.2 | Done |
-| FR25-26 | EP-C4 | ST-C4.3 | Done |
-| FR27-28 | EP-C5 | ST-C5.1 | Done |
-| FR29 | EP-C5 | ST-C5.2 | Done |
-| FR30 | EP-C5 | ST-C5.3 | Done |
-| FR31 | EP-C6 | ST-C6.1 | Done |
-| FR32 | EP-C6 | ST-C6.2 | Done |
+| FR21-22 | EP-C4 | ST-C4.1 | Partial | validatePR complete, reviewPR stubbed (no Copilot integration) |
+| FR23-24 | EP-C4 | ST-C4.2 | Partial | monitorPipeline works, autoMergePR crashes (missing executeCommand) |
+| FR25-26 | EP-C4 | ST-C4.3 | Partial | git logic written, crashes (missing executeCommand), no board update |
+| FR27-28 | EP-C5 | ST-C5.1 | Partial | logEvent/logDecision/getTrustMetrics done, no UI dashboard |
+| FR29 | EP-C5 | ST-C5.2 | Partial | analyzeMismatches works, no rule refinement, no UI |
+| FR30 | EP-C5 | ST-C5.3 | Done | CI pipeline fully implemented with Ruff, ESLint, coverage gates |
+| FR31 | EP-C6 | ST-C6.1 | Partial | julesQuota logic done, quota init crashes (missing loadBoardState), no UI |
+| FR32 | EP-C6 | ST-C6.2 | Partial | mergeQueue works, fixSession stubbed, no escalation timeout |
 
 ## Epic List
 

@@ -3,7 +3,7 @@
 import asyncio
 import json
 import warnings
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, Optional
 
 from .runtime import get_deep_agent_runtime
@@ -561,7 +561,7 @@ def execute_deep_agent_workflow(
             "completed": True,
             "output": f"Global agent query processed: '{user_feedback}'. System monitoring active ideas.",
             "scores": {},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
@@ -603,7 +603,7 @@ def execute_deep_agent_workflow(
     # Save state metadata
     updated = load_idea_yaml(idea_id, "idea.yaml") or {}
     updated["workflow_state"] = state_name
-    updated["updated_at"] = datetime.utcnow().isoformat()
+    updated["updated_at"] = datetime.now(timezone.utc).isoformat()
     save_idea_yaml(idea_id, "idea.yaml", updated)
 
     return {
@@ -612,7 +612,7 @@ def execute_deep_agent_workflow(
         "completed": True,
         "output": _stringify_runtime_output(runtime_output) or f"Runtime completed for {title}.",
         "scores": {},
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 

@@ -357,7 +357,7 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 
 ### Still Deferred — Frontend
 
-- **Frontend coverage not configured** — `@vitest/coverage-v8` in package-lock but not in devDependencies; CI coverage flag removed.
+- ~~**Frontend coverage not configured**~~ — **RESOLVED 2026-08-14**: coverage is now configured in `frontend/vitest.config.ts` with Istanbul, and the project uses a stable single-worker `forks` pool for Windows compatibility.
 - **Fragile test/component testid coupling** — tests rely on mock `data-testid` attributes.
 - ~~**O(n) transcript growth via React state**~~ — **RESOLVED 2026-08-13**: `MAX_MESSAGES = 500` cap applied to all `setRawMessages` append operations in `useChatStream.ts`.
 - **Partial SSE frames dropped on disconnect** — no retry/backoff logic.

@@ -43,7 +43,7 @@ class TranscriptEvent(BaseModel):
     id: str = ""
     idea_id: str = ""
     type: TranscriptEventType
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     speaker: str = ""
     role: TranscriptRole = TranscriptRole.system
     agent: str = ""
