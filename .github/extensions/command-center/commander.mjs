@@ -1236,6 +1236,97 @@ export async function buildJulesBrief(story, state = {}, options = {}) {
 }
 
 /**
+ * Build Copilot prompt with story spec and branch context.
+ * @param {object} story - Story work item
+ * @param {object} state - Board state
+ * @returns {string} Copilot prompt
+ */
+export function buildCopilotPrompt(story, state) {
+  const lines = [];
+  lines.push(`# Task: ${String(story?.title ?? "Untitled")}`);
+  lines.push("");
+
+  // Story specification
+  const body = String(story?.body ?? "");
+  if (body) {
+    lines.push("## Story Specification");
+    lines.push(body);
+    lines.push("");
+  }
+
+  // Branch context
+  const branch = createFeatureBranch(story);
+  lines.push("## Branch");
+  lines.push(branch);
+  lines.push("");
+
+  // Instructions
+  lines.push("## Instructions");
+  lines.push("- Use bmad-dev-story skill");
+  lines.push("- Execute story tasks");
+  lines.push("- Commit and push changes");
+  lines.push("- Create PR to develop");
+  lines.push("");
+
+  // Project rules
+  lines.push("## Project Rules");
+  lines.push("- Branch naming: feat/&lt;story-key&gt;-&lt;short-description&gt;");
+  lines.push("- Commit format: type(scope): description");
+  lines.push("- PR target: develop branch");
+  lines.push("- Never fabricate output");
+
+  return lines.join("\n");
+}
+
+/**
+ * Dispatch story to Copilot with bmad-agent-dev.
+ * @param {object} story - Story work item
+ * @param {object} state - Board state
+ * @param {object} [options] - Optional dispatch options
+ * @returns {Promise&lt;{sessionId: string, branch: string}&gt;}
+ */
+export async function dispatchToCopilot(story, state, options = {}) {
+  // Check if story is Copilot-only
+  const classification = await classifyDispatch(story, state);
+  if (!classification?.copilotOnly) {
+    console.warn("dispatchToCopilot called for non-Copilot-only story");
+  }
+
+  // Create branch name
+  const branch = createFeatureBranch(story);
+
+  // Build prompt
+  const prompt = buildCopilotPrompt(story, state);
+
+  // TODO: Integrate with Copilot session creation API
+  // For now, return simulated session info
+  const sessionId = `copilot_${Date.now()}`;
+
+  return { sessionId, branch };
+}
+
+/**
+ * Track Copilot session state via SSE.
+ * @param {string} sessionId - Copilot session ID
+ * @returns {object} SSE listener
+ */
+export function trackCopilotSession(sessionId) {
+  // TODO: Implement SSE listener for Copilot session state
+  // Returns event listener object
+  return {
+    sessionId,
+    on(event, callback) {
+      // Register callback for event type
+      console.log(`Tracking Copilot session ${sessionId} for ${event}`);
+    },
+    disconnect() {
+      // Clean up SSE connection
+      console.log(`Disconnected from Copilot session ${sessionId}`);
+    },
+  };
+}
+
+/**
  * Determine polling interval based on Jules session state.
  * @param {string} sessionState - Jules session state
  * @returns {number} polling interval in milliseconds (0 = stop)
