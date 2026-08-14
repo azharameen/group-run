@@ -1,7 +1,12 @@
+import { exec as rawExec, execFile as rawExecFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { buildCanonicalWorkModel, classifyReferenceDocuments } from "./services/bmad-model.mjs";
+
+const exec = promisify(rawExec);
+const execFile = promisify(rawExecFile);
 
 /**
  * Minimal CanvasError equivalent used by commander logic to signal canvas-level errors.
@@ -881,6 +886,23 @@ export async function buildBoardState(context) {
   if (await fileExists(sprintStatusPath)) return await decorateBoardState(await parseBmadBoard(workspacePath, artifactRootPath, themePreference));
 
   return await decorateBoardState({ title: "Command Center", mode: "generic", themePreference, workspacePath, artifactRootPath, sourceFiles: {}, meta: {}, counts: { epics: 0, stories: 0, milestones: 0, actions: 0, documents: 0, tasks: 0 }, statusCounts: {}, items: [], documents: [], rawDocuments: [], lookup: {}, notices: [ `No BMad artifacts found under ${toPosix(path.relative(workspacePath, artifactRootPath) || artifactRootInput)}.`, "The canvas still opens, but you need to point it at a compatible artifact root or board file." ], });
+}
+
+/**
+ * Load the current board state from the workspace.
+ * Convenience wrapper around buildBoardState with defaults.
+ * @param {{workspacePath?: string, artifactRoot?: string}} [context]
+ * @returns {Promise<object>}
+ */
+export async function loadBoardState(context = {}) {
+  const ws = context.workspacePath || context.workingDirectory || process.cwd();
+  return await buildBoardState({
+    workingDirectory: ws,
+    input: {
+      mode: "auto",
+      artifactRoot: context.artifactRoot || undefined,
+    },
+  });
 }
 
 /**
@@ -1775,6 +1797,27 @@ const mergeQueue = {
 };
 
 /**
+ * Execute a shell command and capture output.
+ * @param {string} cmd - Shell command string
+ * @param {{cwd?: string, timeout?: number}} [options] - Optional working dir and timeout
+ * @returns {Promise<{exitCode: number, stdout: string, stderr: string}>}
+ */
+export async function executeCommand(cmd, options = {}) {
+  const { cwd = process.cwd(), timeout = 30000 } = options;
+  try {
+    const { stdout, stderr } = await exec(cmd, { cwd, timeout });
+    return { exitCode: 0, stdout: stdout || "", stderr: stderr || "" };
+  } catch (err) {
+    throw Object.assign(new Error(`Command failed: ${cmd}`), {
+      exitCode: err.code || 1,
+      stdout: err.stdout || "",
+      stderr: err.stderr || "",
+      code: err.code || "EUNKNOWN",
+    });
+  }
+}
+
+/**
  * Run a git command and capture output.
  * @param {...string} args - Git command arguments
  * @returns {Promise<{exitCode: number, stdout: string, stderr: string}>}
@@ -2609,6 +2652,43 @@ export async function decorateBoardState(state) {
   }
 
   state.nextAction = buildNextActionSuggestion(state);
+
+  // Compute dashboard metrics
+  try {
+    const logPath = path.join(state.artifactRootPath || path.join(state.workspacePath || process.cwd(), "_bmad-output"), "implementation-artifacts", "commander-decisions.jsonl");
+    state.trustMetrics = await getTrustMetrics(logPath);
+    state.healthMetrics = getHealthMetrics(state);
+    state.mismatches = await analyzeMismatches(logPath);
+  } catch {
+    // Metrics are optional for dashboard
+    state.trustMetrics = { accuracy: 0, total: 0 };
+    state.healthMetrics = {};
+    state.mismatches = {};
+  }
+
+  // Quota status (computed from existing state, no recursion)
+  try {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    tomorrow.setUTCHours(0, 0, 0, 0);
+    const todaySessions = ((state.julesSessions || []).filter((s) => {
+      const created = new Date(s.createdAt || s.created);
+      return created.toISOString().startsWith(now.toISOString().slice(0, 10));
+    }));
+    const used = todaySessions.length;
+    const dailyLimit = 100;
+    state.quota = {
+      remaining: Math.max(0, dailyLimit - used),
+      used,
+      limit: dailyLimit,
+      resetTime: tomorrow.toISOString(),
+      percentage: Math.round((used / dailyLimit) * 100),
+    };
+  } catch {
+    state.quota = { remaining: 100, used: 0, limit: 100, resetTime: "", percentage: 0 };
+  }
+
   return state;
 }
 
@@ -3453,6 +3533,7 @@ export function renderHtml(instanceId, initialState) {
       <nav class="tab-list" aria-label="Command Center sections" role="tablist">
         <button class="tab-button active" id="tabKanban" type="button" role="tab" aria-selected="true" aria-controls="viewKanban">Kanban</button>
         <button class="tab-button" id="tabJules" type="button" role="tab" aria-selected="false" aria-controls="viewJules">Jules</button>
+        <button class="tab-button" id="tabDashboard" type="button" role="tab" aria-selected="false" aria-controls="viewDashboard">Dashboard</button>
         <button class="tab-button" id="tabDocs" type="button" role="tab" aria-selected="false" aria-controls="viewDocs">Docs</button>
       </nav>
     </header>
@@ -3522,6 +3603,81 @@ export function renderHtml(instanceId, initialState) {
              </select>
            </div>
            <div id="automations"></div>
+         </div>
+       </section>
+     </section>
+
+     <section class="tab-view" id="viewDashboard" role="tabpanel" aria-labelledby="tabDashboard">
+       <div class="summary" id="dashboardSummary">
+         <div class="stat">
+           <div class="label">Trust Accuracy</div>
+           <div class="value" id="dashTrustAccuracy">--</div>
+         </div>
+         <div class="stat">
+           <div class="label">Dispatch Accuracy</div>
+           <div class="value" id="dashDispatchAccuracy">--</div>
+         </div>
+         <div class="stat">
+           <div class="label">Merge Count</div>
+           <div class="value" id="dashMergeCount">--</div>
+         </div>
+         <div class="stat">
+           <div class="label">Stories Completed</div>
+           <div class="value" id="dashStoriesCompleted">--</div>
+         </div>
+       </div>
+       <section class="panel">
+         <h2>Jules Quota</h2>
+         <div class="panel-body">
+           <div class="summary" id="dashQuotaCards">
+             <div class="stat">
+               <div class="label">Used</div>
+               <div class="value" id="dashQuotaUsed">--</div>
+             </div>
+             <div class="stat">
+               <div class="label">Remaining</div>
+               <div class="value" id="dashQuotaRemaining">--</div>
+             </div>
+             <div class="stat">
+               <div class="label">Limit</div>
+               <div class="value" id="dashQuotaLimit">--</div>
+             </div>
+             <div class="stat">
+               <div class="label">Reset</div>
+               <div class="value" id="dashQuotaReset" style="font-size:14px;">--</div>
+             </div>
+           </div>
+         </div>
+       </section>
+       <section class="panel">
+         <h2>Health</h2>
+         <div class="panel-body">
+           <div class="summary" id="dashHealthCards">
+             <div class="stat">
+               <div class="label">Active Jules Sessions</div>
+               <div class="value" id="dashJulesActive">--</div>
+             </div>
+             <div class="stat">
+               <div class="label">Active Copilot Sessions</div>
+               <div class="value" id="dashCopilotActive">--</div>
+             </div>
+             <div class="stat">
+               <div class="label">Story Completion</div>
+               <div class="value" id="dashCompletionRate">--</div>
+             </div>
+             <div class="stat">
+               <div class="label">Uptime</div>
+               <div class="value" id="dashUptime" style="font-size:14px;">--</div>
+             </div>
+           </div>
+         </div>
+       </section>
+       <section class="panel">
+         <h2>Learning Loop</h2>
+         <div class="panel-body">
+           <div id="dashLearningLoop">
+             <p class="section-subtle">No mismatches detected yet. Data will appear after decisions are logged.</p>
+           </div>
          </div>
        </section>
      </section>
@@ -4222,7 +4378,7 @@ export function renderHtml(instanceId, initialState) {
         }
         applyTheme(themePreference);
         byId("board-title").textContent = "Command Center";
-        ["kanban", "jules", "docs"].forEach((tab) => {
+        ["kanban", "jules", "dashboard", "docs"].forEach((tab) => {
           const button = byId("tab" + tab[0].toUpperCase() + tab.slice(1));
           const view = byId("view" + tab[0].toUpperCase() + tab.slice(1));
           const selected = activeTab === tab;
@@ -4242,6 +4398,49 @@ export function renderHtml(instanceId, initialState) {
         renderRoadmap();
         renderAgentState();
         renderAutomations();
+        renderDashboard();
+      }
+
+      function renderDashboard() {
+        // Trust metrics (pre-computed in state.trustMetrics or derived)
+        const tm = state.trustMetrics || {};
+        try { if (byId("dashTrustAccuracy")) byId("dashTrustAccuracy").textContent = (tm.accuracy != null ? tm.accuracy + "%" : "--"); } catch(e) {}
+        try { if (byId("dashDispatchAccuracy")) byId("dashDispatchAccuracy").textContent = (tm.dispatchAccuracy != null ? tm.dispatchAccuracy + "%" : "--"); } catch(e) {}
+        try { if (byId("dashMergeCount")) byId("dashMergeCount").textContent = tm.mergeCount ?? "--"; } catch(e) {}
+
+        // Health metrics
+        const hm = state.healthMetrics || {};
+        const stories = hm.stories || {};
+        const sessions = hm.sessions || {};
+        const system = hm.system || {};
+        try { if (byId("dashStoriesCompleted")) byId("dashStoriesCompleted").textContent = (stories.completed ?? 0) + " / " + (stories.total ?? 0); } catch(e) {}
+        try { if (byId("dashJulesActive")) byId("dashJulesActive").textContent = sessions.julesActive ?? "--"; } catch(e) {}
+        try { if (byId("dashCopilotActive")) byId("dashCopilotActive").textContent = sessions.copilotActive ?? "--"; } catch(e) {}
+        try { if (byId("dashCompletionRate")) byId("dashCompletionRate").textContent = (stories.completionRate != null ? stories.completionRate + "%" : "--"); } catch(e) {}
+        try { if (byId("dashUptime")) { const secs = Math.floor(system.uptime || 0); const hrs = Math.floor(secs/3600); const mins = Math.floor((secs%3600)/60); byId("dashUptime").textContent = hrs + "h " + mins + "m"; } } catch(e) {}
+
+        // Quota
+        const quota = state.quota || {};
+        try { if (byId("dashQuotaUsed")) byId("dashQuotaUsed").textContent = quota.used ?? "--"; } catch(e) {}
+        try { if (byId("dashQuotaRemaining")) byId("dashQuotaRemaining").textContent = quota.remaining ?? "--"; } catch(e) {}
+        try { if (byId("dashQuotaLimit")) byId("dashQuotaLimit").textContent = quota.limit ?? "--"; } catch(e) {}
+        try { if (byId("dashQuotaReset")) { const d = quota.resetTime ? new Date(quota.resetTime) : null; byId("dashQuotaReset").textContent = d ? d.toLocaleString() : "--"; } } catch(e) {}
+
+        // Learning loop (mismatches)
+        const mismatches = state.mismatches || {};
+        try {
+          const el = byId("dashLearningLoop");
+          const patterns = mismatches.patterns || [];
+          if (patterns.length === 0) {
+            el.innerHTML = '<p class="section-subtle">No mismatches detected yet. Data will appear after decisions are logged.</p>';
+          } else {
+            el.innerHTML = '<table class="list" style="width:100%;border-collapse:collapse;"><thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid var(--border);">Pattern</th><th style="text-align:left;padding:6px;border-bottom:1px solid var(--border);">Count</th><th style="text-align:left;padding:6px;border-bottom:1px solid var(--border);">Suggestion</th></tr></thead><tbody>' +
+              patterns.slice(0, 5).map((p) =>
+                '<tr><td style="padding:6px;border-bottom:1px solid var(--border-soft);">' + esc(p.action + ':' + p.decision) + '</td><td style="padding:6px;border-bottom:1px solid var(--border-soft);">' + esc(String(p.count)) + '</td><td style="padding:6px;border-bottom:1px solid var(--border-soft);">' + esc(p.suggestion || "—") + '</td></tr>'
+              ).join("") +
+            '</tbody></table>';
+          }
+        } catch(e) {}
       }
 
       function renderAutomations() {
@@ -4428,6 +4627,7 @@ export function renderHtml(instanceId, initialState) {
       }
       byId("tabKanban").addEventListener("click", () => selectTab("kanban"));
       byId("tabJules").addEventListener("click", () => selectTab("jules"));
+      byId("tabDashboard").addEventListener("click", () => selectTab("dashboard"));
       byId("tabDocs").addEventListener("click", () => selectTab("docs"));
       byId("refreshBtn").addEventListener("click", async () => {
         byId("refreshBtn").disabled = true;
