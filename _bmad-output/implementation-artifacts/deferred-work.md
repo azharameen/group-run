@@ -20,6 +20,24 @@
   - Added test verifying pendingInterrupt remains when approved event has different ID
 # Deferred Work Ledger
 
+## Deferred from: spec-c3-3-multi-agent-state-tracker.md (2026-08-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-c3-3-multi-agent-state-tracker.md`
+  summary: Agent state file not instance-scoped — multiple canvas instances in same repo overwrite each other
+  evidence: getAgentStatePath derives one path from workspace, so parallel Command Center sessions share the same agent-state.json
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-c3-3-multi-agent-state-tracker.md`
+  summary: persistAgentState writes JSON non-atomically — crash mid-write leaves file truncated
+  evidence: fs.writeFile is used directly without atomic replace or temporary file swap
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-c3-3-multi-agent-state-tracker.md`
+  summary: Path traversal in getAgentStatePath — user-controlled artifactRoot can redirect writes outside workspace
+  evidence: statePath is constructed via path.resolve with user-controlled workspacePath and artifactRoot values
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-c3-3-multi-agent-state-tracker.md`
+  summary: Concurrent tracker updates in trackedCopilotSessions Map not scoped to canvas instance
+  evidence: registerCopilotSessionState uses global Map keyed by sessionId, not instance-scoped
+
 ## Deferred from: spec-c5-3-ci-pipeline-redesign.md (2026-08-14)
 
 - source_spec: `_bmad-output/implementation-artifacts/commander/spec-c5-3-ci-pipeline-redesign.md`

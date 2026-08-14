@@ -50,13 +50,13 @@ async function syncAgentState(instanceId, entry, { broadcast = true } = {}) {
         julesSessions: current.julesSessions ?? Object.values(current.jules || {}),
         copilotSessions: current.copilotSessions ?? current.copilot ?? [],
     });
-    current.julesSessions = merged.jules;
-    current.copilotSessions = merged.copilot;
-    current.agentState = merged;
-    const statePath = getAgentStatePath(current.workspacePath || entry?.context?.workingDirectory || knownWorkspacePath || process.cwd(), current.artifactRootPath || entry?.context?.artifactRootPath || null);
-    await persistAgentState(statePath, current);
+    // Avoid mutating live state during concurrent board rebuilds — create new object
+    const updated = { ...current, julesSessions: merged.jules, copilotSessions: merged.copilot, agentState: merged };
+    entry.state = updated;
+    const statePath = getAgentStatePath(updated.workspacePath || entry?.context?.workingDirectory || knownWorkspacePath || process.cwd(), updated.artifactRootPath || entry?.context?.artifactRootPath || null);
+    await persistAgentState(statePath, updated);
     if (broadcast) {
-        broadcastAgentState(instanceId, current, sseClients);
+        broadcastAgentState(instanceId, updated, sseClients);
     }
     return merged;
 }

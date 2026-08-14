@@ -1805,14 +1805,23 @@ export function tryAutoResolve(feedback, story) {
  * @param {object} state - Board state with julesSessions and copilotSessions
  * @returns {object} unified state with all sessions
  */
+function looksLikeSession(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  // Session objects have an identifier and a status/state field
+  return (raw.id || raw.sessionId || raw.session_id || raw.sessionName) &&
+    (raw.status || raw.state);
+}
+
 function normalizeAgentSessionList(value, kind) {
   const list = [];
   const source = value instanceof Map ? [...value.values()] : value;
 
   if (Array.isArray(source)) {
     for (const entry of source) {
-      const normalized = normalizeAgentSessionEntry(entry, kind);
-      if (normalized) list.push(normalized);
+      if (looksLikeSession(entry)) {
+        const normalized = normalizeAgentSessionEntry(entry, kind);
+        if (normalized) list.push(normalized);
+      }
     }
     return list;
   }
@@ -1821,10 +1830,13 @@ function normalizeAgentSessionList(value, kind) {
     if (Array.isArray(source.all)) {
       return normalizeAgentSessionList(source.all, kind);
     }
+    // Only walk object values that look like sessions, skip metadata
     const entries = Object.values(source);
     for (const entry of entries) {
-      const normalized = normalizeAgentSessionEntry(entry, kind);
-      if (normalized) list.push(normalized);
+      if (looksLikeSession(entry)) {
+        const normalized = normalizeAgentSessionEntry(entry, kind);
+        if (normalized) list.push(normalized);
+      }
     }
   }
 
@@ -1893,6 +1905,11 @@ export async function loadAgentState(statePath) {
     const text = await fs.readFile(statePath, "utf8");
     const parsed = JSON.parse(text);
     if (!parsed || typeof parsed !== "object") return emptyState;
+    // Discard stale state older than 24 hours to prevent ghost sessions
+    if (parsed.lastSaved) {
+      const age = Date.now() - new Date(parsed.lastSaved).getTime();
+      if (age > 24 * 60 * 60 * 1000) return emptyState;
+    }
     return {
       lastSaved: parsed.lastSaved || null,
       julesSessions: Array.isArray(parsed.julesSessions) ? parsed.julesSessions : [],
@@ -2278,11 +2295,14 @@ export async function decorateBoardState(state) {
     }
   }
 
-  const julesSessions = normalizeAgentSessionList(state?.julesSessions ?? state?.jules ?? [], "jules");
-  const copilotSessions = normalizeAgentSessionList(state?.copilotSessions ?? state?.copilot ?? [], "copilot");
-  state.julesSessions = julesSessions;
-  state.copilotSessions = copilotSessions;
-  state.agentState = mergeAgentState({ julesSessions, copilotSessions });
+  // Integrate multi-agent state (guard against null state)
+  if (state && typeof state === "object") {
+    const julesSessions = normalizeAgentSessionList(state?.julesSessions ?? state?.jules ?? [], "jules");
+    const copilotSessions = normalizeAgentSessionList(state?.copilotSessions ?? state?.copilot ?? [], "copilot");
+    state.julesSessions = julesSessions;
+    state.copilotSessions = copilotSessions;
+    state.agentState = mergeAgentState({ julesSessions, copilotSessions });
+  }
 
   // classification
   state.classificationCounts = { julesReady: 0, tasksReady: 0, copilotOnly: 0 };

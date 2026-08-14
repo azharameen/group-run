@@ -2,7 +2,7 @@
 title: 'C3.3: Multi-Agent State Tracker'
 type: 'feature'
 created: '2026-08-14'
-status: 'in-progress'
+status: 'in-review'
 baseline_revision: 'f9836415e92b8fb3dd81bb45f875c31990c5e085'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -83,6 +83,18 @@ warnings:
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-08-14 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 4: (high 1, medium 2, low 1)
+- defer: 4: (medium 4)
+- reject: 5
+- addressed_findings:
+  - `[high]` `[patch]` normalizeAgentSessionList walked metadata objects as sessions — added `looksLikeSession()` guard to filter non-session objects
+  - `[medium]` `[patch]` decorateBoardState dereferences null state — added null guard before agent state merge
+  - `[medium]` `[patch]` syncAgentState mutated live state concurrently — replaced with spread to create new object
+  - `[low]` `[patch]` loadAgentState resurrected stale state — added 24-hour staleness check
 
 ## Design Notes
 
