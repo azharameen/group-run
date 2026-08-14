@@ -651,6 +651,63 @@ sessionRef = await joinSession({
                         return entry.state.nextAction || buildNextActionSuggestion(entry.state);
                     },
                 },
+                {
+                    name: "run_orchestration",
+                    description: "Runs one orchestration cycle: scans board for open work, dispatches Jules and/or Copilot sessions in parallel, monitors existing sessions, and resolves completions. Returns dispatched sessions, completed items, and recommended next actions.",
+                    inputSchema: {
+                        type: "object",
+                        additionalProperties: false,
+                        properties: {
+                            maxJules: { type: "number", description: "Max parallel Jules sessions (default 2)" },
+                            maxCopilot: { type: "number", description: "Max parallel Copilot sessions (default 2)" },
+                            autoApprove: { type: "boolean", description: "Auto-approve Jules plans (default true)" },
+                            autoCreatePr: { type: "boolean", description: "Auto-create PR when Jules completes (default true)" },
+                        },
+                    },
+                    handler: async (ctx) => {
+                        const entry = instances.get(ctx.instanceId);
+                        if (!entry) throw new CanvasError("instance_not_found", `Unknown canvas instance: ${ctx.instanceId}`);
+
+                        const { maxJules, maxCopilot, autoApprove, autoCreatePr } = ctx.input || {};
+
+                        // Import orchestration functions from commander
+                        const { orchestrateOnce, getOrchestratorStatus } = await import("./commander.mjs");
+
+                        // Run orchestration cycle
+                        const result = await orchestrateOnce(entry.state, {
+                            maxJules: maxJules ?? 2,
+                            maxCopilot: maxCopilot ?? 2,
+                            autoApprove: autoApprove ?? true,
+                            autoCreatePr: autoCreatePr ?? true,
+                        });
+
+                        // Refresh board state after orchestration
+                        const jules = entry.state.jules || julesStateSnapshot(ctx.instanceId);
+                        entry.state = await buildBoardState(entry.context);
+                        entry.state.jules = jules;
+                        entry.stateRefreshedAt = new Date().toISOString();
+                        await syncAgentState(ctx.instanceId, entry, { broadcast: true });
+
+                        const status = getOrchestratorStatus();
+
+                        return {
+                            cycle: result.cycle,
+                            dispatched: result.dispatched,
+                            completed: result.completed,
+                            failed: result.failed,
+                            nextActions: result.nextActions,
+                            orchestratorStatus: status,
+                        };
+                    },
+                },
+                {
+                    name: "get_orchestrator_status",
+                    description: "Returns the current orchestrator status: active cycle count, dispatched sessions, completed/failed counts.",
+                    handler: async (ctx) => {
+                        const { getOrchestratorStatus } = await import("./commander.mjs");
+                        return getOrchestratorStatus();
+                    },
+                },
             ],
             open: async (ctx) => {
                 const workspacePath = ctx.session?.workingDirectory || sessionRef?.workspacePath || knownWorkspacePath || process.cwd();

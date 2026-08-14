@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { buildCanonicalWorkModel, classifyReferenceDocuments } from "./services/bmad-model.mjs";
+import { createSession as createJulesSession, getSession as getJulesSession, listSessions as listJulesSessions, sendMessage as sendJulesMessage, approvePlan as approveJulesPlan, isTerminal as isJulesTerminal, ACTIVE_STATES } from "./jules-client.mjs";
 
 const exec = promisify(rawExec);
 const execFile = promisify(rawExecFile);
@@ -2293,7 +2294,7 @@ export async function resolveFeedback(session, story, feedback) {
   // Tier 1: Auto-resolution
   const autoResponse = tryAutoResolve(feedback, story);
   if (autoResponse !== null) {
-    await sendMessage(session?.id || session?.session_id, autoResponse);
+    await sendJulesMessage(session?.id || session?.session_id, autoResponse);
     return { tier: "auto", response: autoResponse };
   }
 
@@ -2304,7 +2305,7 @@ export async function resolveFeedback(session, story, feedback) {
       story,
       `Jules session needs feedback resolution: ${feedback}`
     );
-    await sendMessage(session?.id || session?.session_id, `Escalated to Copilot: ${messageId}`);
+    await sendJulesMessage(session?.id || session?.session_id, `Escalated to Copilot: ${messageId}`);
     return { tier: "copilot", response: messageId };
   } catch (err) {
     console.warn("Copilot escalation failed, creating user card:", err.message);
@@ -2358,7 +2359,7 @@ export function createFeedbackCard(session, feedback, timeout = 120000) {
 
    // Send defer message
    try {
-     await sendMessage(sessionId, "Feedback deferred - timeout exceeded, continuing with default resolution");
+     await sendJulesMessage(sessionId, "Feedback deferred - timeout exceeded, continuing with default resolution");
    } catch (err) {
      console.warn("Failed to send defer message:", err.message);
    }
@@ -2371,11 +2372,11 @@ export function createFeedbackCard(session, feedback, timeout = 120000) {
    feedback,
    resolve: async (response) => {
      clearTimeout(timer);
-     await sendMessage(sessionId, response);
+     await sendJulesMessage(sessionId, response);
    },
    reject: async () => {
      clearTimeout(timer);
-     await sendMessage(sessionId, "Feedback rejected - session should wait for clarification");
+     await sendJulesMessage(sessionId, "Feedback rejected - session should wait for clarification");
    },
  };
 }
@@ -2421,33 +2422,6 @@ export function buildCopilotPrompt(story, state) {
   lines.push("- Never fabricate output");
 
   return lines.join("\n");
-}
-
-/**
- * Dispatch story to Copilot with bmad-agent-dev.
- * @param {object} story - Story work item
- * @param {object} state - Board state
- * @param {object} [options] - Optional dispatch options
- * @returns {Promise&lt;{sessionId: string, branch: string}&gt;}
- */
-export async function dispatchToCopilot(story, state, options = {}) {
-  // Check if story is Copilot-only
-  const classification = await classifyDispatch(story, state);
-  if (!classification?.copilotOnly) {
-    console.warn("dispatchToCopilot called for non-Copilot-only story");
-  }
-
-  // Create branch name
-  const branch = createFeatureBranch(story);
-
-  // Build prompt
-  const prompt = buildCopilotPrompt(story, state);
-
-  // TODO: Integrate with Copilot session creation API
-  // For now, return simulated session info
-  const sessionId = `copilot_${Date.now()}`;
-
-  return { sessionId, branch };
 }
 
 /**
@@ -2542,11 +2516,11 @@ export async function autoApprovePlan(session, story, state) {
   if (julesReady) {
     // Auto-approve the plan
     try {
-      await approvePlan(sessionId);
+      await approveJulesPlan(sessionId);
       return { action: "approved" };
     } catch (err) {
       // If approve fails, escalate
-      console.warn("approvePlan failed, escalating:", err.message);
+      console.warn("approveJulesPlan failed, escalating:", err.message);
     }
   }
 
@@ -2594,8 +2568,611 @@ export async function escalateToCopilot(session, story, message) {
  }
 
  // Send to Jules session (will be routed to Copilot)
- await sendMessage(sessionId, payload);
+ await sendJulesMessage(sessionId, JSON.stringify(payload));
  return `msg_${Date.now()}`; // Return synthetic message ID
+}
+
+// ============================================================================
+// C7.1: Orchestration Loop
+// ============================================================================
+
+/**
+ * Orchestrator state tracking — persists across cycles.
+ */
+const orchestrator = {
+  cycle: 0,
+  dispatched: new Map(), // sessionId -> { storyId, type, startTime, lastState }
+  completed: [],
+  failed: [],
+};
+
+/**
+ * Get open, dispatchable work items from board state.
+ * Filters for items that are:
+ * - Kind: story, task, or subtask
+ * - Status: open, ready, or in_progress (not done/blocked)
+ * - Not already dispatched (no active session assigned)
+ * @param {object} state - Board state
+ * @param {object} [options] - Filter options
+ * @returns {Array<{item, classification, priority}>}
+ */
+export function getOpenWorkItems(state, options = {}) {
+  const { maxItems = 10, minPriority = 0, includeStatuses = null } = options;
+  const statuses = includeStatuses || ["open", "ready", "in_progress"];
+
+  const dispatchedIds = new Set();
+  for (const entry of orchestrator.dispatched.values()) {
+    if (entry.storyId) dispatchedIds.add(entry.storyId);
+  }
+
+  const results = [];
+  const items = state.workItems || [];
+
+  for (const item of items) {
+    if (dispatchedIds.has(item.id)) continue;
+    if (!["story", "task", "subtask"].includes(item.kind)) continue;
+    if (!statuses.includes(item.status)) continue;
+    if (item.priority < minPriority) continue;
+
+    // Get classification
+    const classification = state.classificationIndex?.[item.id] || {};
+    results.push({
+      item,
+      classification,
+      priority: item.priority || 0,
+    });
+  }
+
+  // Sort by priority descending
+  results.sort((a, b) => b.priority - a.priority);
+
+  return results.slice(0, maxItems);
+}
+
+/**
+ * Classify work items into Jules-ready vs Copilot-only groups.
+ * @param {Array} openItems - Output from getOpenWorkItems
+ * @returns {{ jules: Array, copilot: Array, mixed: Array }}
+ */
+export function classifyWorkItems(openItems) {
+  const jules = [];
+  const copilot = [];
+  const mixed = [];
+
+  for (const entry of openItems) {
+    const { classification, item } = entry;
+    const agent = classification?.agent || "copilot";
+    const level = classification?.level || "task";
+
+    if (agent === "jules" && level === "story") {
+      jules.push(entry);
+    } else if (agent === "jules" && level === "task") {
+      mixed.push(entry); // Jules can handle tasks, but needs oversight
+    } else {
+      copilot.push(entry);
+    }
+  }
+
+  return { jules, copilot, mixed };
+}
+
+/**
+ * Poll a Jules session for live state updates.
+ * Fetches current state from Jules API, updates local tracking,
+ * and handles feedback/completion events.
+ * @param {string} sessionId - Jules session ID
+ * @param {object} state - Board state
+ * @param {object} [options] - Poll options
+ * @returns {Promise<{state: string, completed: boolean, output?: object}>}
+ */
+export async function pollJulesSession(sessionId, state, options = {}) {
+  const { autoApprove = false, onFeedback = null } = options;
+
+  try {
+    const session = await getJulesSession(sessionId);
+    if (!session) {
+      return { state: "UNKNOWN", completed: false };
+    }
+
+    // Update local tracking
+    const tracked = orchestrator.dispatched.get(sessionId);
+    if (tracked) {
+      tracked.lastState = session.state;
+      tracked.lastPolled = Date.now();
+    }
+
+    const stateLabel = session.state || "UNKNOWN";
+    const completed = isTerminalJulesState(stateLabel);
+
+    // Handle plan approval state
+    if (stateLabel === "AWAITING_PLAN_APPROVAL" && autoApprove) {
+      const storyId = tracked?.storyId;
+      const story = storyId ? (state.workLookup?.[storyId] || {}) : {};
+      try {
+        const result = await autoApprovePlan(session, story, state);
+        if (result.action === "approved") {
+          console.log(`[orchestrator] Auto-approved plan for session ${sessionId}`);
+        }
+      } catch (err) {
+        console.warn(`[orchestrator] Plan auto-approve failed for ${sessionId}:`, err.message);
+      }
+    }
+
+    // Handle feedback requests
+    if (stateLabel === "AWAITING_USER_FEEDBACK" && onFeedback && storyId) {
+      const story = state.workLookup?.[storyId];
+      try {
+        const resolved = await resolveFeedback(session, story, "auto-resolve");
+        if (resolved.tier === "auto" && resolved.response) {
+          await sendJulesMessage(sessionId, resolved.response);
+        }
+        onFeedback({ session, story, resolved });
+      } catch (err) {
+        console.warn(`[orchestrator] Feedback resolution failed for ${sessionId}:`, err.message);
+      }
+    }
+
+    return {
+      state: stateLabel,
+      completed,
+      output: session.output || null,
+      url: session.url,
+      prUrl: session.output?.pullRequest?.url || null,
+    };
+  } catch (err) {
+    console.warn(`[orchestrator] Poll failed for session ${sessionId}:`, err.message);
+    return { state: "ERROR", completed: false, error: err.message };
+  }
+}
+
+/**
+ * Dispatch a story to Jules for autonomous coding.
+ * Builds the Jules brief, creates the session, and tracks it.
+ * @param {object} story - Story work item
+ * @param {object} state - Board state
+ * @param {object} [options] - Dispatch options
+ * @returns {Promise<{sessionId: string, sessionName: string, url: string, branch: string}>}
+ */
+export async function dispatchToJules(story, state, options = {}) {
+  const {
+    autoCreatePr = true,
+    requirePlanApproval = false, // Auto-approve by default in orchestration mode
+    sourceId = null,
+    branch = null,
+  } = options;
+
+  // Build prompt from story
+  const prompt = buildJulesBrief(story, state);
+
+  // Create session title
+  const sessionTitle = `[Orchestrator] ${story.title || story.id}`.slice(0, 100);
+
+  // Create the Jules session
+  const session = await createJulesSession({
+    prompt,
+    title: sessionTitle,
+    sourceId: sourceId || undefined,
+    branch: branch || undefined,
+    autoCreatePr,
+    requirePlanApproval,
+  });
+
+  // Track in orchestrator
+  orchestrator.dispatched.set(session.id, {
+    storyId: story.id,
+    storyTitle: story.title,
+    type: "jules",
+    startTime: Date.now(),
+    lastState: session.state,
+    lastPolled: Date.now(),
+  });
+
+  console.log(`[orchestrator] Dispatched ${story.id} to Jules (${session.id})`);
+
+  return {
+    sessionId: session.id,
+    sessionName: session.name,
+    url: session.url,
+    branch: session.branch || null,
+  };
+}
+
+/**
+ * Dispatch a story to Copilot App session.
+ * Creates a child Copilot session with bmad-agent-dev, configured
+ * to execute the story implementation.
+ * @param {object} story - Story work item
+ * @param {object} state - Board state
+ * @param {object} [options] - Dispatch options
+ * @returns {Promise<{sessionId: string, branch: string}>}
+ */
+export async function dispatchToCopilot(story, state, options = {}) {
+  // Classify to verify this is Copilot-appropriate
+  const classification = await classifyDispatch(story, state);
+
+  // Create branch name
+  const branch = createFeatureBranch(story);
+
+  // Build the execution prompt
+  const prompt = buildCopilotPrompt(story, state);
+
+  // Track in orchestrator — Copilot sessions are tracked via session_id format
+  const sessionId = `copilot_${story.id}_${Date.now()}`;
+  orchestrator.dispatched.set(sessionId, {
+    storyId: story.id,
+    storyTitle: story.title,
+    type: "copilot",
+    startTime: Date.now(),
+    lastState: "queued",
+    lastPolled: Date.now(),
+    branch,
+    prompt,
+  });
+
+  // Register with Copilot session tracker
+  registerCopilotSessionState(sessionId, {
+    status: "queued",
+    storyId: story.id,
+    branch,
+  });
+
+  console.log(`[orchestrator] Dispatched ${story.id} to Copilot (${sessionId}) on branch ${branch}`);
+
+  return { sessionId, branch, prompt };
+}
+
+/**
+ * Main orchestration cycle: scan → classify → dispatch → monitor → resolve.
+ * This is the core loop that Commander uses to autonomously drive work.
+ * @param {object} state - Board state
+ * @param {object} [options] - Orchestration options
+ * @returns {Promise<{cycle: number, dispatched: Array, completed: Array, nextActions: Array}>}
+ */
+export async function orchestrateOnce(state, options = {}) {
+  orchestrator.cycle++;
+  const cycle = orchestrator.cycle;
+
+  console.log(`\n[orchestrator] === Cycle ${cycle} ===`);
+
+  const results = {
+    cycle,
+    dispatched: [],
+    completed: [],
+    failed: [],
+    nextActions: [],
+  };
+
+  // Phase 1: Monitor existing sessions
+  console.log("[orchestrator] Phase 1: Monitoring active sessions...");
+  const activeSessions = [...orchestrator.dispatched.entries()];
+
+  for (const [sessionId, tracked] of activeSessions) {
+    if (tracked.type === "jules") {
+      const pollResult = await pollJulesSession(sessionId, state, {
+        autoApprove: options.autoApprove ?? true,
+        onFeedback: (fb) => {
+          console.log(`[orchestrator] Feedback from ${sessionId}:`, fb.resolved);
+        },
+      });
+
+      if (pollResult.completed) {
+        // Session completed — resolve it
+        const resolution = await resolveSessionCompletion(
+          { id: sessionId, ...pollResult, type: "jules" },
+          state,
+          tracked
+        );
+
+        if (resolution.success) {
+          results.completed.push({
+            sessionId,
+            storyId: tracked.storyId,
+            prUrl: pollResult.prUrl,
+            resolution,
+          });
+        } else {
+          results.failed.push({
+            sessionId,
+            storyId: tracked.storyId,
+            error: resolution.error,
+          });
+        }
+
+        // Remove from dispatched
+        orchestrator.dispatched.delete(sessionId);
+        if (resolution.success) {
+          orchestrator.completed.push({ sessionId, storyId: tracked.storyId });
+        } else {
+          orchestrator.failed.push({ sessionId, storyId: tracked.storyId });
+        }
+      }
+    } else if (tracked.type === "copilot") {
+      // For Copilot sessions, check tracked state
+      const registry = trackedCopilotSessions.get(sessionId);
+      const currentStatus = registry?.state?.status || "unknown";
+
+      if (["completed", "failed", "idle"].includes(currentStatus)) {
+        // Copilot session done — resolve
+        const resolution = await resolveSessionCompletion(
+          { id: sessionId, status: currentStatus, type: "copilot" },
+          state,
+          tracked
+        );
+
+        if (resolution.success) {
+          results.completed.push({
+            sessionId,
+            storyId: tracked.storyId,
+            branch: tracked.branch,
+            resolution,
+          });
+        } else {
+          results.failed.push({
+            sessionId,
+            storyId: tracked.storyId,
+            error: resolution.error,
+          });
+        }
+
+        orchestrator.dispatched.delete(sessionId);
+        if (resolution.success) {
+          orchestrator.completed.push({ sessionId, storyId: tracked.storyId });
+        } else {
+          orchestrator.failed.push({ sessionId, storyId: tracked.storyId });
+        }
+      }
+    }
+  }
+
+  // Phase 2: Scan for open work
+  console.log("[orchestrator] Phase 2: Scanning for open work...");
+  const maxJules = options.maxJules ?? 2;
+  const maxCopilot = options.maxCopilot ?? 2;
+
+  // Count currently dispatched
+  const julesDispatched = [...orchestrator.dispatched.values()].filter(d => d.type === "jules").length;
+  const copilotDispatched = [...orchestrator.dispatched.values()].filter(d => d.type === "copilot").length;
+
+  // Get open items
+  const openItems = getOpenWorkItems(state, { maxItems: 10 });
+  const classified = classifyWorkItems(openItems);
+
+  console.log(`[orchestrator] Found ${classified.jules.length} Jules-ready, ${classified.copilot.length} Copilot-only, ${classified.mixed.length} mixed`);
+
+  // Phase 3: Dispatch Jules sessions
+  if (julesDispatched < maxJules && classified.jules.length > 0) {
+    const toDispatch = classified.jules.slice(0, maxJules - julesDispatched);
+    for (const { item } of toDispatch) {
+      try {
+        const result = await dispatchToJules(item, state, {
+          autoCreatePr: options.autoCreatePr ?? true,
+          requirePlanApproval: false, // Auto-approved in orchestration mode
+          sourceId: options.sourceId,
+        });
+        results.dispatched.push({
+          storyId: item.id,
+          storyTitle: item.title,
+          type: "jules",
+          sessionId: result.sessionId,
+          url: result.url,
+        });
+        console.log(`[orchestrator] Dispatched ${item.id} to Jules`);
+      } catch (err) {
+        console.warn(`[orchestrator] Failed to dispatch ${item.id} to Jules:`, err.message);
+        results.failed.push({
+          storyId: item.id,
+          type: "jules",
+          error: err.message,
+        });
+      }
+    }
+  }
+
+  // Phase 4: Dispatch Copilot sessions
+  if (copilotDispatched < maxCopilot && classified.copilot.length > 0) {
+    const toDispatch = classified.copilot.slice(0, maxCopilot - copilotDispatched);
+    for (const { item } of toDispatch) {
+      try {
+        const result = await dispatchToCopilot(item, state, options);
+        results.dispatched.push({
+          storyId: item.id,
+          storyTitle: item.title,
+          type: "copilot",
+          sessionId: result.sessionId,
+          branch: result.branch,
+        });
+        console.log(`[orchestrator] Dispatched ${item.id} to Copilot on ${result.branch}`);
+      } catch (err) {
+        console.warn(`[orchestrator] Failed to dispatch ${item.id} to Copilot:`, err.message);
+        results.failed.push({
+          storyId: item.id,
+          type: "copilot",
+          error: err.message,
+        });
+      }
+    }
+  }
+
+  // Phase 5: Generate next actions
+  results.nextActions = generateNextActions(results, state);
+
+  console.log(`[orchestrator] Cycle ${cycle} complete: ${results.dispatched.length} dispatched, ${results.completed.length} completed, ${results.failed.length} failed`);
+
+  return results;
+}
+
+/**
+ * Resolve session completion: review PR, merge, or re-dispatch.
+ * @param {object} session - Completed session object
+ * @param {object} state - Board state
+ * @param {object} tracked - Orchestrator tracking entry
+ * @returns {Promise<{success: boolean, action: string, error?: string}>}
+ */
+export async function resolveSessionCompletion(session, state, tracked) {
+  const sessionId = session.id;
+  const storyId = tracked?.storyId;
+
+  try {
+    // If Jules session has a PR, check its status
+    if (session.type === "jules" && session.prUrl) {
+      console.log(`[orchestrator] Session ${sessionId} completed with PR: ${session.prUrl}`);
+
+      // Log decision
+      const logPath = "_bmad-output/implementation-artifacts/commander-decisions.jsonl";
+      const decision = {
+        timestamp: new Date().toISOString(),
+        event: "session_completed",
+        sessionId,
+        storyId,
+        prUrl: session.prUrl,
+        action: "review_pr",
+      };
+      try { await logDecision(decision, logPath); } catch {}
+
+      return {
+        success: true,
+        action: "review_pr",
+        prUrl: session.prUrl,
+      };
+    }
+
+    // Copilot session completed — check if branch has changes
+    if (session.type === "copilot" && tracked?.branch) {
+      console.log(`[orchestrator] Session ${sessionId} completed on branch ${tracked.branch}`);
+
+      // Log decision
+      const logPath = "_bmad-output/implementation-artifacts/commander-decisions.jsonl";
+      const decision = {
+        timestamp: new Date().toISOString(),
+        event: "session_completed",
+        sessionId,
+        storyId,
+        branch: tracked.branch,
+        action: "inspect_branch",
+      };
+      try { await logDecision(decision, logPath); } catch {}
+
+      return {
+        success: true,
+        action: "inspect_branch",
+        branch: tracked.branch,
+      };
+    }
+
+    // Session failed or no output
+    return {
+      success: false,
+      action: "none",
+      error: session.state || "Session completed with no output",
+    };
+  } catch (err) {
+    console.warn(`[orchestrator] Resolution failed for ${sessionId}:`, err.message);
+    return {
+      success: false,
+      action: "none",
+      error: err.message,
+    };
+  }
+}
+
+/**
+ * Generate next actions based on orchestration results.
+ * @param {object} results - Orchestration cycle results
+ * @param {object} state - Board state
+ * @returns {Array<{action: string, priority: string, description: string, context: object}>}
+ */
+function generateNextActions(results, state) {
+  const actions = [];
+
+  // Completed sessions with PRs → review action
+  for (const completion of results.completed) {
+    if (completion.prUrl) {
+      actions.push({
+        action: "review_pr",
+        priority: "high",
+        description: `Review PR for ${completion.storyId}`,
+        context: {
+          storyId: completion.storyId,
+          prUrl: completion.prUrl,
+          sessionId: completion.sessionId,
+        },
+      });
+    } else if (completion.branch) {
+      actions.push({
+        action: "inspect_branch",
+        priority: "high",
+        description: `Inspect branch ${completion.branch} for ${completion.storyId}`,
+        context: {
+          storyId: completion.storyId,
+          branch: completion.branch,
+          sessionId: completion.sessionId,
+        },
+      });
+    }
+  }
+
+  // Failed dispatches → re-dispatch or escalate
+  for (const failure of results.failed) {
+    if (failure.storyId) {
+      actions.push({
+        action: "escalate",
+        priority: "medium",
+        description: `Investigate failure for ${failure.storyId}: ${failure.error?.slice(0, 50)}`,
+        context: {
+          storyId: failure.storyId,
+          type: failure.type,
+          error: failure.error,
+        },
+      });
+    }
+  }
+
+  // If nothing dispatched and nothing completed, suggest scanning board
+  if (results.dispatched.length === 0 && results.completed.length === 0) {
+    const openItems = getOpenWorkItems(state, { maxItems: 1 });
+    if (openItems.length > 0) {
+      actions.push({
+        action: "run_orchestration",
+        priority: "low",
+        description: "Open work available — run another orchestration cycle",
+        context: {
+          openCount: openItems.length,
+        },
+      });
+    }
+  }
+
+  return actions;
+}
+
+/**
+ * Reset orchestrator state (for testing or manual reset).
+ */
+export function resetOrchestrator() {
+  orchestrator.cycle = 0;
+  orchestrator.dispatched.clear();
+  orchestrator.completed = [];
+  orchestrator.failed = [];
+}
+
+/**
+ * Get orchestrator status summary.
+ * @returns {{ cycle: number, active: number, completed: number, failed: number }}
+ */
+export function getOrchestratorStatus() {
+  return {
+    cycle: orchestrator.cycle,
+    active: orchestrator.dispatched.size,
+    completed: orchestrator.completed.length,
+    failed: orchestrator.failed.length,
+    dispatched: [...orchestrator.dispatched.entries()].map(([id, entry]) => ({
+      sessionId: id,
+      storyId: entry.storyId,
+      storyTitle: entry.storyTitle,
+      type: entry.type,
+      lastState: entry.lastState,
+    })),
+  };
 }
 
 /**

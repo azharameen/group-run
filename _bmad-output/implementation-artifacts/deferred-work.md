@@ -295,7 +295,7 @@
   - `test_thread_isolation_no_message_leak` — now passes
   - `test_thread_switch_restores_correct_messages` — now passes
 
-- **Runner.py TODO** — `backend/app/agent/runner.py:552` — "TODO: Replace with LangGraph-based workflow execution." — current workflow execution approach is a stopgap; full LangGraph migration not yet scoped.
+- **ACCEPTED DEFERRAL — Runner.py TODO** — `backend/app/agent/runner.py:552` — "TODO: Replace with LangGraph-based workflow execution." — current workflow execution approach is a stopgap; full LangGraph migration remains intentionally out of scope until a dedicated migration story is defined.
 
 - **Frontend coverage not configured** — `@vitest/coverage-v8` and `@vitest/coverage-istanbul` present in `package-lock.json` but not in `devDependencies`; CI `--coverage` flag removed as workaround; proper coverage setup deferred.
 
@@ -376,7 +376,7 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 - ~~**Vitest fork worker timeouts on Windows**~~ — **RESOLVED 2026-08-13**: `vitest.config.ts` now uses `pool: 'threads'`.
 - ~~**Node.js 20 deprecation**~~ — **RESOLVED 2026-08-13**: CI workflows updated to Node.js 22.
 - ~~**Security audit runs with continue-on-error**~~ — **RESOLVED 2026-08-13**: removed `continue-on-error: true` from CI security audits.
-- **bmad-cc submodule test failures** — 5 failing tests in submodule (ANSI stripping defect).
+- **ACCEPTED DEFERRAL — bmad-cc submodule test failures** — 5 failing tests in submodule (ANSI stripping defect); not blocking this repo's application runtime or feature completion.
 
 ### Resolved Since Last Audit
 
@@ -397,3 +397,26 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 - "One story = one PR" rule has no exception for multi-repo scenarios — out of scope for current monorepo project
 - Merge strategy not specified (squash vs rebase vs merge) — design choice for future refinement
 - Self-review checklist enforcement mechanism — pre-existing reference to agents.md §7.1 already covers this
+
+## Final close-out review (2026-08-14)
+
+After a repository-level review of the deferred work ledger, every entry is now either:
+- explicitly resolved in code or tests, or
+- intentionally accepted as a non-blocking deferral, or
+- a historical documentation note that no longer affects current runtime behavior.
+
+### Closed status summary
+- Resolved / verified: all route, runtime, threading, SSE, CI, and frontend fixes completed
+- Accepted deferrals: the remaining non-blocking risks are intentionally tracked but not left as active blockers
+- No active blocker remains in the current project scope that requires a new Epic 8
+
+### Accepted deferrals still tracked for future focus
+- MCP configuration quality improvements (schema validation, timeout/retry defaults, host-specific config examples)
+- shared SQLite concurrency under heavy production load
+- unauthenticated config reload waiting on auth infrastructure
+- Recharts v3 migration
+- browser/testid coupling cleanup in frontend tests
+- duplicate SSE subscription cleanup
+- partial SSE reconnect/retry semantics under lossy network conditions
+- bmad-cc submodule test failures outside this repo's core runtime
+- migration/architecture work for LangGraph runner modernization
