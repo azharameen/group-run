@@ -10,6 +10,7 @@
     "test": "vitest run --pool=forks --maxWorkers=1 --fileParallelism=false",
     "test:watch": "vitest --pool=forks --maxWorkers=1 --fileParallelism=false",
     "test:coverage": "vitest run --coverage --pool=forks --maxWorkers=1 --fileParallelism=false",
+    "lint": "eslint src",
     "test:e2e": "playwright test --project=dev",
     "test:e2e:headed": "playwright test --project=dev --headed",
     "test:e2e:ui": "playwright test --project=dev --ui",
@@ -65,6 +66,9 @@
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.3",
     "vite": "^5.4.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "eslint": "^8.50.0",
+    "@typescript-eslint/parser": "^6.4.0",
+    "@typescript-eslint/eslint-plugin": "^6.4.0"
   }
 }

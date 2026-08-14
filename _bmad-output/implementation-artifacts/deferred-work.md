@@ -20,6 +20,12 @@
   - Added test verifying pendingInterrupt remains when approved event has different ID
 # Deferred Work Ledger
 
+## Deferred from: spec-c5-3-ci-pipeline-redesign.md (2026-08-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/commander/spec-c5-3-ci-pipeline-redesign.md`
+  summary: E2E Playwright job lacks browser binary caching, adding 3-5 minutes per run
+  evidence: Each run downloads ~2-3 GB of browser binaries; other CI jobs use actions/cache for dependencies
+
 ## Deferred from: code review of EP-0 dead code cleanup (2026-08-03)
 
 - ~~Backend Siemens strings in agent prompts and model fields (`backend/app/agent/runtime.py`, `domain_tools.py`, `context.py`, `models/idea.py`)~~ — **RESOLVED 2026-08-13**: all Siemens references replaced with "Companion" in runtime.py, domain_tools.py, context.py, __init__.py, and runner.py

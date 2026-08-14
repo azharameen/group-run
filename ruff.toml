@@ -1,0 +1,8 @@
+# Target Python 3.12
+target-version = "py312"
+# Allow longer lines for readability
+line-length = 120
+# Exclude common directories
+exclude = [".git", "node_modules", "frontend"]
+# Ignore formatting-only rules so the formatter (e.g. black) can handle them
+ignore = ["E203", "E231", "E501", "W503", "W291", "W293"]
