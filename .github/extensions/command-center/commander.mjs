@@ -994,6 +994,227 @@ export async function classifyDispatch(story, state = {}) {
 }
 
 /**
+ * Extract a kebab-case story key from a story object.
+ * Examples: "ST-C2.1" -> "c2-1". Falls back to story.metadata.storyFile via storyKeyFromFileName.
+ * @param {object} story
+ * @returns {string|null} kebab-case story key or null
+ */
+export function extractStoryKey(story) {
+  const sid = String(story?.id ?? "");
+  const m = sid.match(/ST-(?:C)?(\d+)\.(\d+)/i);
+  if (m) {
+    const epic = String(m[1]);
+    const num = String(m[2]);
+    return `c${epic}-${num}`;
+  }
+  // try from storyFile name
+  const file = story?.metadata?.storyFile || null;
+  if (file) {
+    try {
+      const key = storyKeyFromFileName(String(file));
+      if (key) return `c${String(key)}`;
+    } catch (err) {
+      // ignore
+    }
+  }
+  return null;
+}
+
+/**
+ * Create a feature branch name for a story and optional task.
+ * Format: feat/<story-key>-<descriptor>[-<task-slug>]
+ * Truncates to max 100 characters.
+ * @param {object} story
+ * @param {object|null} task
+ * @returns {string}
+ */
+export function createFeatureBranch(story, task = null) {
+  const storyKey = extractStoryKey(story) || slugify(story?.title ?? "feature");
+  const descriptor = slugify(story?.title ?? "work");
+  const taskSlug = task ? slugify(task.title ?? String(task)) : null;
+  const prefix = `feat/${storyKey}-`;
+  // reserve max length
+  const MAX = 100;
+
+  // start with descriptor and task if present
+  let body = descriptor + (taskSlug ? `-${taskSlug}` : "");
+  let branch = `${prefix}${body}`;
+  if (branch.length <= MAX) return branch;
+
+  // Need to truncate body to fit
+  const available = Math.max(1, MAX - prefix.length);
+  if (taskSlug) {
+    // leave room for -<taskSlug>
+    const sepForTask = 1; // the dash
+    const taskLen = Math.min(taskSlug.length, Math.max(1, Math.floor(available * 0.25)));
+    const descAvailable = available - sepForTask - taskLen;
+    const descPart = descriptor.slice(0, Math.max(1, descAvailable));
+    const taskPart = taskSlug.slice(0, Math.max(1, taskLen));
+    branch = `${prefix}${descPart}-${taskPart}`;
+    if (branch.length <= MAX) return branch;
+    // as fallback, truncate descriptor to available and drop task
+    const descFallback = descriptor.slice(0, available);
+    return `${prefix}${descFallback}`.slice(0, MAX);
+  }
+
+  // no task: truncate descriptor
+  const desc = descriptor.slice(0, available);
+  return `${prefix}${desc}`.slice(0, MAX);
+}
+
+/**
+ * Build a self-contained Jules brief string for a story suitable for dispatch.
+ * Respects token budget and caps: story body max 10KB, project context max 2KB, total < 12KB.
+ * @param {object} story
+ * @param {object} state
+ * @param {object} [options]
+ * @param {string} [options.projectContextPath]
+ * @returns {Promise<string>} brief
+ */
+export async function buildJulesBrief(story, state = {}, options = {}) {
+  const WORKSPACE = state.workspacePath || process.cwd();
+  // locate story body: prefer state.documents then disk
+  let body = null;
+  const storyFile = story?.metadata?.storyFile || story?.sourcePath || null;
+  if (storyFile) {
+    const doc = (state.documents || []).find((d) => d.sourcePath === storyFile || d.path === storyFile);
+    if (doc && doc.body !== undefined) body = String(doc.body ?? "");
+    else {
+      const abs = path.resolve(WORKSPACE, storyFile);
+      body = await readTextIfExists(abs) || null;
+    }
+  } else if (story?.raw?.storyFile?.path) {
+    const doc2 = (state.documents || []).find((d) => d.sourcePath === story.raw.storyFile.path);
+    if (doc2 && doc2.body !== undefined) body = String(doc2.body ?? "");
+  }
+  body = String(body ?? "");
+
+  // sections
+  const lines = [];
+  lines.push(`# Task: ${String(story?.title ?? "Untitled")}`);
+
+  // Context
+  const contextText = String(story?.summary ?? "");
+  lines.push(`\n## Context\n${contextText}`);
+
+  // Acceptance Criteria
+  const ac = extractHeadingSnippet(body, "Acceptance Criteria") || extractHeadingSnippet(body, "## Acceptance Criteria") || "";
+  lines.push(`\n## Acceptance Criteria\n${String(ac)}`);
+
+  // Tasks
+  let tasksList = [];
+  try { tasksList = Array.isArray(parseStoryTasks(body)) ? parseStoryTasks(body) : []; } catch (err) { tasksList = []; }
+  const taskText = tasksList.length ? tasksList.map((t) => `- ${String(t.title || t)}`).join("\n") : "- N/A";
+  lines.push(`\n## Tasks\n${taskText}`);
+
+  // Code Map
+  const codeMap = extractHeadingSnippet(body, "Code Map") || extractHeadingSnippet(body, "Dev Notes") || "";
+  lines.push(`\n## Code Map\n${String(codeMap)}`);
+
+  // Project Rules
+  let projectContext = "";
+  const defaultProjPath = options?.projectContextPath || path.join("_bmad-output", "project-context.md");
+  const absProj = path.resolve(WORKSPACE, defaultProjPath);
+  const rawProj = await readTextIfExists(absProj);
+  if (rawProj) projectContext = String(rawProj).slice(0, 2048);
+  else {
+    // fallback to known rules requested by spec
+    projectContext = [
+      "Branch naming: feat/<story-key>-<short-description>",
+      "Commit format: type(scope): description",
+      "PR target: develop branch",
+      "No BMad skills available in Jules sessions",
+      "Never fabricate output",
+      "File size limits: route < 150 lines, services < 200",
+    ].join("\n");
+  }
+  lines.push(`\n## Project Rules\n${projectContext}`);
+
+  // Constraints
+  const constraints = [
+    "No BMad skills in Jules sessions",
+    "Commit format: type(scope): description",
+    "PR target: develop",
+    `Branch name: feat/<story-key>-<short-description>`,
+    "Never fabricate output",
+    "File size limits: route < 150 lines, services < 200",
+  ].join("\n");
+  lines.push(`\n## Constraints\n${constraints}`);
+
+  // assemble with budget enforcement
+  const joiner = "\n\n";
+
+  // helper to measure bytes
+  const bytes = (s) => Buffer.byteLength(String(s ?? ""), "utf8");
+  const STORY_BODY_MAX = 10240; // 10KB
+  const PROJECT_MAX = 2048; // 2KB
+  const TOTAL_MAX = 12288; // 12KB
+
+  // enforce caps on body and projectContext
+  let storyBody = String(body ?? "").slice(0, STORY_BODY_MAX);
+  if (bytes(storyBody) > STORY_BODY_MAX) {
+    // truncate safely
+    storyBody = storyBody.slice(0, STORY_BODY_MAX);
+  }
+  // replace the Code Map and Acceptance Criteria occurrences that depend on body
+  // regenerate AC and Code Map sections to respect truncated body
+  const acTrunc = extractHeadingSnippet(storyBody, "Acceptance Criteria") || "";
+  const codeMapTrunc = extractHeadingSnippet(storyBody, "Code Map") || extractHeadingSnippet(storyBody, "Dev Notes") || "";
+
+  // rebuild sections array with truncated body-dependent pieces
+  const parts = [];
+  parts.push(`# Task: ${String(story?.title ?? "Untitled")}`);
+  parts.push(`## Context\n${contextText}`);
+  parts.push(`## Acceptance Criteria\n${String(acTrunc)}`);
+  parts.push(`## Tasks\n${taskText}`);
+  parts.push(`## Code Map\n${String(codeMapTrunc)}`);
+  parts.push(`## Project Rules\n${projectContext.slice(0, PROJECT_MAX)}`);
+  parts.push(`## Constraints\n${constraints}`);
+
+  // now assemble and ensure within TOTAL_MAX, truncate story body first if needed
+  // insert story body into Context section if content exists (alternatively include as separate section)
+  // We'll append the story specification (body) after Code Map as read-only context
+  let assembled = parts.join(joiner);
+  // append story specification
+  if (storyBody) assembled = `${assembled}${joiner}## Story Specification\n${storyBody}`;
+
+  if (bytes(assembled) <= TOTAL_MAX) return assembled;
+
+  // Need to trim storyBody further
+  const overhead = bytes(assembled) - bytes(storyBody);
+  const allowedForBody = Math.max(0, TOTAL_MAX - overhead - Buffer.byteLength("\n\n[truncated for token budget]", "utf8"));
+  // truncate storyBody to allowedForBody bytes
+  function truncateToBytes(str, maxBytes) {
+    if (bytes(str) <= maxBytes) return str;
+    // binary-safe trim: progressively reduce
+    let end = Math.min(str.length, Math.floor(maxBytes * 1.1));
+    let out = str.slice(0, end);
+    while (bytes(out) > maxBytes && end > 0) { end = Math.floor(end * 0.9); out = str.slice(0, end); }
+    return out;
+  }
+
+  const newBody = truncateToBytes(storyBody, allowedForBody);
+  const truncatedNotice = newBody.length < storyBody.length ? "\n\n[truncated for token budget]" : "";
+  assembled = parts.join(joiner) + `${joiner}## Story Specification\n${newBody}${truncatedNotice}`;
+  // final safety: if still too big, truncate projectContext as last resort
+  if (bytes(assembled) > TOTAL_MAX) {
+    const reduceNeeded = bytes(assembled) - TOTAL_MAX;
+    const proj = projectContext.slice(0, Math.max(0, PROJECT_MAX - reduceNeeded));
+    assembled = parts.slice(0, -2).join(joiner) + joiner + `## Project Rules\n${proj}` + joiner + `## Constraints\n${constraints}` + (newBody ? `${joiner}## Story Specification\n${truncateToBytes(newBody, Math.max(0, allowedForBody - Math.min(reduceNeeded, PROJECT_MAX)))}${truncatedNotice}` : "");
+  }
+
+  // final clamp
+  if (bytes(assembled) > TOTAL_MAX) {
+    // as last resort, truncate to TOTAL_MAX and add notice
+    let out = assembled.slice(0, TOTAL_MAX - 64);
+    out += "\n\n[truncated for token budget]";
+    return out;
+  }
+
+  return assembled;
+}
+
+/**
  * Decorate a raw board state with canonical work model and classification.
  * @param {object} state
  */
