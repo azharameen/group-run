@@ -184,7 +184,7 @@ Feature branches isolated until merged — no direct pushes to `main`/`develop`.
 | FR29 | EP-C5 | ST-C5.2 | Done |
 | FR30 | EP-C5 | ST-C5.3 | Done |
 | FR31 | EP-C6 | ST-C6.1 | Done |
-| FR32 | EP-C6 | ST-C6.2 | Planned |
+| FR32 | EP-C6 | ST-C6.2 | Done |
 
 ## Epic List
 

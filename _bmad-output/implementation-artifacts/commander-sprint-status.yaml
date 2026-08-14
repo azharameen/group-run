@@ -75,6 +75,6 @@ development_status:
   c5-3-ci-pipeline-redesign: done
 
   # EP-C6: Polish & Optimization
-  epic-c6: in-progress
+  epic-c6: done
   c6-1-jules-quota-management: done
-  c6-2-edge-case-handling-and-documentation: in-progress
+  c6-2-edge-case-handling-and-documentation: done

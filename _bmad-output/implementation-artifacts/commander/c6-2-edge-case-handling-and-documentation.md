@@ -1,7 +1,10 @@
 ---
 spec_file: c6-2-edge-case-handling-and-documentation.md
-status: in-progress
+status: done
 baseline_revision: e25703d
+final_revision: ac89df1a2fc979b3817b400ad736dcf38f035b5c
+review_loop_iteration: 0
+followup_review_recommended: false
 ---
 
 # Story C6.2: Edge Case Handling & Documentation
@@ -89,5 +92,43 @@ async function dispatchFixSession(failedSession, errorReason) {
 
 ## File List
 
-- `.github/extensions/command-center/commander.mjs` — merge queue, fix session dispatch
+- `.github/extensions/command-center/commander.mjs` — merge queue, fix session dispatch, escalation logging
 - `.github/extensions/command-center/extension.mjs` — failure state UI
+
+## Auto Run Result
+
+### Summary
+
+Implemented edge case handling for Commander production readiness:
+- Merge serialization queue prevents cross-branch conflicts on develop
+- Session failure detection with JSONL error logging
+- Fix session dispatch for failed Jules sessions
+- Feedback timeout deferral with logging and deferred-work.md integration
+- Escalation events logged to JSONL
+
+### Files Changed
+
+- `commander.mjs` — Added mergeQueue, serializeMerge(), handleSessionFailure(), dispatchFixSession(), checkAndHandleFailure(), appendDeferredWork()
+- `commander-sprint-status.yaml` — Updated all epics to done, C6 to in-progress
+- `commander-epics.md` — Marked C5.3 as done
+- `c6-2-edge-case-handling-and-documentation.md` — New story file
+
+### Verification
+
+- Merge queue processes items sequentially with pull-before-merge
+- Session failures logged with timestamp, session ID, error reason
+- Escalation timeout defaults to 2 minutes with deferral logging
+- Feedback timeouts append to deferred-work.md
+
+### Residual Risks
+
+- Merge queue uses Node.js `child_process` for git commands (not GitHub API)
+- Fix session dispatch is a payload builder, not actual API integration
+- Escalation logging may fail silently if JSONL path is unwritable
+
+### Review Findings
+
+- 0 intent gaps
+- 0 bad spec
+- 0 patches
+- C6.2 completes Commander EP-C0 through EP-C6 implementation
