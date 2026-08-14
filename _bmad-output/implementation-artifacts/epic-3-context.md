@@ -1,46 +1,43 @@
-# Epic 3 Context: Ideas Management 💡
+# Epic 3 Context: Copilot Integration & Feedback Resolution
 
 <!-- Generated from planning artifacts. Regenerate with compile-epic-context if planning docs change. -->
 
 ## Goal
 
-Enable users to create, view, update, and delete ideas. Each idea has a workspace folder with attached files. This epic migrates the legacy ideas CRUD from Siemens FSM dependencies to pure REST operations backed by the new LangGraph/DeepAgents runtime.
+This epic lets Commander move the right work into GitHub Copilot, keep Jules and Copilot work visible in a single operational view, and resolve blocked feedback without leaving sessions stalled. The result is a coordinated flow where dispatch, escalation, approval, and state tracking happen in real time so the Command Center can continue orchestrating work rather than waiting on manual intervention.
 
 ## Stories
 
-- Story 3.1: Rewrite `api/routes/ideas.py` — pure CRUD without FSM dependencies
-- Story 3.2: Update `models/idea.py` — remove Siemens fields (score, state, gates)
-- Story 3.3: Validate workspace filesystem management
-- Story 3.4: Backend tests: ideas CRUD, workspace files
-- Story 3.5: Update `pages/IdeaDetail.tsx` — remove scoring, update for new idea model
-- Story 3.6: Ideas list page with create/view/update/delete
-- Story 3.7: Frontend tests: ideas UI
+- Story 3.1: Copilot Dispatch & Session Tracking
+- Story 3.2: Feedback Resolution Engine
+- Story 3.3: Multi-Agent State Tracker
 
 ## Requirements & Constraints
 
-- Ideas CRUD must work without the Siemens FSM (`transitions` library, `state/`, `scoring/` modules).
-- Each idea has a workspace folder — files attached to the idea live in that folder.
-- Backend returns `snake_case` (e.g., `idea_id`); frontend must preserve this (no `camelCase` conversion).
-- File-size limits: route files < 150 lines, services/repositories < 200.
-- API route pattern: `APIRouter(prefix="/api", tags=[...])` with pydantic `RequestModel`/`ResponseModel`.
-- Workspace filesystem: `storage/idea_workspace.py` manages idea workspace folders.
-- Deprecated modules are off-limits for new code: `models/`, `state/`, `scoring/`, `orchestrator/`, `storage/` are being phased out — ST-3.3 validates `storage/idea_workspace.py` but does not rewrite it.
-- Route all file access through `CompositeBackend` — never write to hardcoded absolute paths.
+The epic must support a deterministic dispatch model: ordinary story work can be sent to Jules when it is self-contained, while BMad-skill or orchestration-heavy work is always routed to Copilot via `bmad-agent-dev`. Copilot sessions need branch context and the full story spec in the prompt, and session creation must follow a stable branch naming pattern like `feat/<story-key>-<desc>`. Once active, Copilot work must emit live session state through SSE updates so the board can refresh without blocking the user experience.
+
+Feedback handling is intentionally layered. Auto-rules should resolve straightforward questions such as missing file content, clarifying spec gaps, or project-rule lookups without human involvement. When rules fail, the system escalates to Copilot with the Jules feedback, story context, and project rules, and if Copilot still cannot decide, it presents a user approval card with a 2-minute timer and a default defer path if no response arrives. The system must avoid indefinite stalling: unhandled feedback should either resolve, be routed to a human decision, or safely continue with a deferred outcome.
+
+The unified state model must represent both Jules and Copilot work as a single operating view, with session metadata, status, last poll time, and links back to the running work. All Copilot and session-tracking behavior should be consistent with the project’s BMad hierarchy rules and the Command Center’s real-time monitoring model.
 
 ## Technical Decisions
 
-- **idea_id wiring to ainvoke**: ST-2.1 discovered `idea_id` is accepted in the stream endpoint but never passed to `ainvoke()`. Epic 3 depends on this being wired up for proper idea-scoped agent routing.
-- **Workspace filesystem**: `storage/idea_workspace.py` is the workspace manager. It's part of the deprecated `storage/` module but needs to be validated, not rewritten.
-- **Filesystem routes**: `/workspace/` is read/write via `CompositeBackend` (ADR-003). `/kb/` and `/skills/` are read-only.
-- **API client**: Frontend uses `@/api/client` for REST calls. `@/api/ideas.ts` is the ideas-specific client — existing file needs review.
-- **Thread integration**: Epic 2 thread management hooks (`useThreadManager`) are stable and may be used by idea pages for idea-scoped threads.
+- All Copilot dispatches use `bmad-agent-dev` regardless of task type so routing stays simple and escalation logic is consistent.
+- Dispatch classification is deterministic: stories with an `intent-contract` and code map are Jules-ready, while work requiring BMad skills or architectural cross-file reasoning is Copilot-only.
+- Copilot session state is surfaced through a dedicated `copilot` SSE channel, while board refresh events keep the dashboard synchronized with state changes.
+- The feedback engine uses a three-step resolution chain: auto-rules, Copilot agent, then user approval with a 2-minute timeout and deferred fallback.
+- Unified state tracking merges Jules and Copilot session data into one object with per-item status, URLs, branch values, and polling timestamps so the dashboard can render a single active-agents view.
+- Branch creation is treated as part of the dispatch workflow, with naming and traceability built into the orchestrator so each Copilot task remains linked to a story or task.
+
+## UX & Interaction Patterns
+
+The Command Center should present both active Jules sessions and Copilot sessions in a single Active Agents table, along with status, branch, and direct links to session work. When a Copilot task is blocked by feedback, the UI should surface a compact approval card that shows the relevant feedback, the reason a decision is needed, and the countdown timer. These cards can be stacked to handle multiple pending decisions without interrupting the main board view.
+
+The board should also update in real time as Copilot sessions change state from running to idle, completed, or failed. This keeps the operator informed without requiring separate manual refreshes and preserves the single-monitor workflow that the architecture describes for the orchestrator.
 
 ## Cross-Story Dependencies
 
-- **ST-3.1 → ST-3.2**: Ideas route depends on updated idea model without Siemens fields.
-- **ST-3.1 → ST-3.3**: Ideas route depends on workspace filesystem being validated.
-- **ST-3.4 → ST-3.1, 3.2, 3.3**: Backend tests cover all backend stories.
-- **ST-3.5 → ST-3.1, 3.2**: Frontend idea detail depends on new API route and model.
-- **ST-3.6 → ST-3.5**: Ideas list page depends on idea detail page.
-- **ST-3.7 → ST-3.5, 3.6**: Frontend tests cover all frontend stories.
-- **Epic 2 dependency**: `idea_id` wiring to `ainvoke()` (ST-2.1 deferred item) should be addressed early.
+- ST-C3.1 is foundational: it provides the actual Copilot dispatch flow, branch creation, and session status reporting used by the rest of the epic.
+- ST-C3.2 depends on the session-tracking and dispatch work from ST-C3.1 so it can attach feedback to the correct Jules/Copilot work item and escalate into the right Copilot session.
+- ST-C3.3 depends on both previous stories because it must merge Jules and Copilot session state into one view and must reflect the same real-time updates used during dispatch and feedback resolution.
+- Across epics, the work in EP-C3 is the operational prerequisite for PR lifecycle management in EP-C4: the same Copilot session architecture, state tracking, and approval flow are reused later for review, merge, and cleanup decisions.

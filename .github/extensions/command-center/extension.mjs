@@ -6,7 +6,21 @@ import { fileURLToPath } from "node:url";
 import { joinSession, createCanvas, CanvasError } from "@github/copilot-sdk/extension";
 import * as jules from "./jules-client.mjs";
 import { normalizeJulesSession } from "./services/jules-service.mjs";
-import { buildBoardState, buildNextActionSuggestion, buildJulesTaskPrompt, decorateBoardState, loadThemePreference, saveThemePreference, summarizeState, renderHtml, parseDeferredWork } from "./commander.mjs";
+import {
+    buildBoardState,
+    buildNextActionSuggestion,
+    buildJulesTaskPrompt,
+    decorateBoardState,
+    loadThemePreference,
+    saveThemePreference,
+    summarizeState,
+    renderHtml,
+    parseDeferredWork,
+    mergeAgentState,
+    loadAgentState,
+    persistAgentState,
+    broadcastAgentState,
+} from "./commander.mjs";
 
 const CANVAS_ID = "command-center";
 const CANVAS_NAME = "Command Center";
@@ -23,6 +37,28 @@ const JULES_TERMINAL_STATES = new Set(["COMPLETED", "FAILED", "DELETED"]);
 function getInstanceJules(instanceId) {
     if (!julesState.has(instanceId)) julesState.set(instanceId, new Map());
     return julesState.get(instanceId);
+}
+
+function getAgentStatePath(workspacePath, artifactRootPath = null) {
+    const resolvedRoot = artifactRootPath || path.resolve(workspacePath || knownWorkspacePath || process.cwd(), DEFAULT_ARTIFACT_ROOT);
+    return path.join(resolvedRoot, "implementation-artifacts", "commander", "agent-state.json");
+}
+
+async function syncAgentState(instanceId, entry, { broadcast = true } = {}) {
+    const current = entry?.state || {};
+    const merged = mergeAgentState({
+        julesSessions: current.julesSessions ?? Object.values(current.jules || {}),
+        copilotSessions: current.copilotSessions ?? current.copilot ?? [],
+    });
+    current.julesSessions = merged.jules;
+    current.copilotSessions = merged.copilot;
+    current.agentState = merged;
+    const statePath = getAgentStatePath(current.workspacePath || entry?.context?.workingDirectory || knownWorkspacePath || process.cwd(), current.artifactRootPath || entry?.context?.artifactRootPath || null);
+    await persistAgentState(statePath, current);
+    if (broadcast) {
+        broadcastAgentState(instanceId, current, sseClients);
+    }
+    return merged;
 }
 
 function sessionTimestamp(session, names) {
@@ -65,6 +101,7 @@ async function pollJulesSessions(instanceId, entry, targetItemId = null) {
     }
     entry.state.jules = julesStateSnapshot(instanceId);
     if (updated) await saveJulesState();
+    await syncAgentState(instanceId, entry, { broadcast: true });
     return { updated, results };
 }
 
@@ -122,6 +159,7 @@ async function refreshInstance(instanceId) {
     }
     entry.state = await buildBoardState(entry.context);
     entry.stateRefreshedAt = new Date().toISOString();
+    await syncAgentState(instanceId, entry, { broadcast: true });
     return entry.state;
 }
 
@@ -183,6 +221,7 @@ async function startServer(instanceId, state) {
                 currentEntry.state = await buildBoardState(currentEntry.context);
                 currentEntry.state.jules = jules;
                 currentEntry.stateRefreshedAt = new Date().toISOString();
+                await syncAgentState(instanceId, currentEntry, { broadcast: true });
                 res.statusCode = 200;
                 res.setHeader("Content-Type", "application/json; charset=utf-8");
                 res.end(JSON.stringify(currentEntry.state));
@@ -400,6 +439,7 @@ async function startServer(instanceId, state) {
                         try {
                             entry.state = await buildBoardState(entry.context);
                             entry.stateRefreshedAt = new Date().toISOString();
+                            await syncAgentState(instanceId, entry, { broadcast: true });
                             const payload = { nextAction: entry.state.nextAction, classificationCounts: entry.state.classificationCounts || {}, updatedAt: new Date().toISOString() };
                             const list = sseClients.get(instanceId) || [];
                             for (const r of list) {
@@ -425,6 +465,7 @@ async function refreshCanvasInstance(instanceId) {
     }
     entry.state = await buildBoardState(entry.context);
     entry.stateRefreshedAt = new Date().toISOString();
+    await syncAgentState(instanceId, entry, { broadcast: true });
     return entry.state;
 }
 
@@ -572,6 +613,7 @@ sessionRef = await joinSession({
                         getInstanceJules(ctx.instanceId).set(itemId, julesEntry);
                         entry.state.jules = julesStateSnapshot(ctx.instanceId);
                         await saveJulesState();
+                        await syncAgentState(ctx.instanceId, entry, { broadcast: true });
 
                         return {
                             sessionId: session.name,
@@ -614,18 +656,28 @@ sessionRef = await joinSession({
                 const workspacePath = ctx.session?.workingDirectory || sessionRef?.workspacePath || knownWorkspacePath || process.cwd();
                 knownWorkspacePath = workspacePath;
                 const input = ctx.input || {};
-                const state = await buildBoardState({ workingDirectory: workspacePath, input });
+                const baseState = await buildBoardState({ workingDirectory: workspacePath, input });
+                const artifactRootPath = baseState.artifactRootPath || path.resolve(workspacePath, DEFAULT_ARTIFACT_ROOT);
+                const persisted = await loadAgentState(getAgentStatePath(workspacePath, artifactRootPath));
+                baseState.julesSessions = Array.isArray(persisted.julesSessions) ? persisted.julesSessions : [];
+                baseState.copilotSessions = Array.isArray(persisted.copilotSessions) ? persisted.copilotSessions : [];
+                baseState.agentState = mergeAgentState({ julesSessions: baseState.julesSessions, copilotSessions: baseState.copilotSessions });
                 // Load any persisted Jules sessions and attach to state
                 await loadJulesState(ctx.instanceId);
-                state.jules = julesStateSnapshot(ctx.instanceId);
-                const entry = await startServer(ctx.instanceId, state);
-                entry.context = { workingDirectory: workspacePath, input };
-                entry.state = state;
+                baseState.jules = julesStateSnapshot(ctx.instanceId);
+                const merged = mergeAgentState({ julesSessions: baseState.julesSessions, copilotSessions: baseState.copilotSessions });
+                baseState.julesSessions = merged.jules;
+                baseState.copilotSessions = merged.copilot;
+                baseState.agentState = merged;
+                const entry = await startServer(ctx.instanceId, baseState);
+                entry.context = { workingDirectory: workspacePath, input, artifactRootPath };
+                entry.state = baseState;
                 instances.set(ctx.instanceId, entry);
+                await syncAgentState(ctx.instanceId, entry, { broadcast: false });
                 return {
-                    title: state.title || CANVAS_NAME,
+                    title: baseState.title || CANVAS_NAME,
                     url: entry.url,
-                    status: state.notices?.length ? state.notices[0] : "Ready",
+                    status: baseState.notices?.length ? baseState.notices[0] : "Ready",
                 };
             },
             onClose: async (ctx) => {

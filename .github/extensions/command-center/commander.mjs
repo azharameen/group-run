@@ -1710,8 +1710,8 @@ export async function getTrustMetrics(logPath) {
  * @returns {object} health metrics
  */
 export function getHealthMetrics(state) {
-  const activeJules = (state?.julesSessions || []).filter((s) => !isTerminal(s.state)).length;
-  const activeCopilot = (state?.copilotSessions || []).filter((s) => !["completed", "failed", "idle"].includes(s.status)).length;
+  const activeJules = (state?.julesSessions || []).filter((s) => !isTerminalJulesState(s.state || s.status)).length;
+  const activeCopilot = (state?.copilotSessions || []).filter((s) => !["completed", "failed", "idle"].includes(String(s.status || "").toLowerCase())).length;
   const totalStories = (state?.stories || []).length;
   const completedStories = (state?.stories || []).filter((s) => s.status === "done").length;
   const pendingStories = totalStories - completedStories;
@@ -1805,30 +1805,73 @@ export function tryAutoResolve(feedback, story) {
  * @param {object} state - Board state with julesSessions and copilotSessions
  * @returns {object} unified state with all sessions
  */
-export function mergeAgentState(state) {
-  const julesSessions = (state?.julesSessions || []).map((s) => ({
-    type: "jules",
-    id: s.id || s.session_id,
-    status: s.state || "unknown",
-    storyId: s.storyId || s.story_id,
-    taskId: s.taskId || s.task_id,
-    url: s.url || null,
-    prUrl: s.prUrl || s.pr_url || null,
-    lastPolled: s.lastPolled || s.last_polled || Date.now(),
-    title: s.title || null,
-  }));
+function normalizeAgentSessionList(value, kind) {
+  const list = [];
+  const source = value instanceof Map ? [...value.values()] : value;
 
-  const copilotSessions = (state?.copilotSessions || []).map((s) => ({
+  if (Array.isArray(source)) {
+    for (const entry of source) {
+      const normalized = normalizeAgentSessionEntry(entry, kind);
+      if (normalized) list.push(normalized);
+    }
+    return list;
+  }
+
+  if (source && typeof source === "object") {
+    if (Array.isArray(source.all)) {
+      return normalizeAgentSessionList(source.all, kind);
+    }
+    const entries = Object.values(source);
+    for (const entry of entries) {
+      const normalized = normalizeAgentSessionEntry(entry, kind);
+      if (normalized) list.push(normalized);
+    }
+  }
+
+  return list;
+}
+
+function normalizeAgentSessionEntry(raw, kind) {
+  if (!raw || typeof raw !== "object") return null;
+
+  if (kind === "jules") {
+    const status = String(raw.state || raw.status || "unknown").toUpperCase();
+    return {
+      type: "jules",
+      id: raw.id || raw.sessionId || raw.session_id || raw.sessionName || raw.name || null,
+      status,
+      storyId: raw.storyId || raw.story_id || null,
+      taskId: raw.taskId || raw.task_id || null,
+      url: raw.url || raw.sessionUrl || null,
+      prUrl: raw.prUrl || raw.pr_url || null,
+      lastPolled: raw.lastPolled || raw.last_polled || Date.now(),
+      title: raw.title || raw.name || raw.sessionName || raw.sessionTitle || null,
+      branch: raw.branch || null,
+    };
+  }
+
+  const status = String(raw.status || raw.state || "unknown").toLowerCase();
+  return {
     type: "copilot",
-    id: s.sessionId || s.id,
-    status: s.status || "unknown",
-    storyId: s.storyId || s.story_id,
-    taskId: s.taskId || s.task_id,
-    branch: s.branch || null,
-    url: s.url || null,
-    lastPolled: s.lastPolled || s.last_polled || Date.now(),
-    title: s.title || null,
-  }));
+    id: raw.sessionId || raw.id || raw.session_id || null,
+    status,
+    storyId: raw.storyId || raw.story_id || null,
+    taskId: raw.taskId || raw.task_id || null,
+    branch: raw.branch || null,
+    url: raw.url || null,
+    lastPolled: raw.lastPolled || raw.last_polled || Date.now(),
+    title: raw.title || raw.name || null,
+  };
+}
+
+function isTerminalJulesState(value) {
+  const state = String(value ?? "").toUpperCase();
+  return ["COMPLETED", "FAILED", "DELETED", "CANCELLED"].includes(state);
+}
+
+export function mergeAgentState(state) {
+  const julesSessions = normalizeAgentSessionList(state?.julesSessions ?? state?.jules ?? [], "jules");
+  const copilotSessions = normalizeAgentSessionList(state?.copilotSessions ?? state?.copilot ?? [], "copilot");
 
   return {
     jules: julesSessions,
@@ -1836,11 +1879,63 @@ export function mergeAgentState(state) {
     all: [...julesSessions, ...copilotSessions],
     summary: {
       total: julesSessions.length + copilotSessions.length,
-      julesRunning: julesSessions.filter((s) => !isTerminal(s.status)).length,
-      copilotRunning: copilotSessions.filter((s) => !["completed", "failed", "idle"].includes(s.status)).length,
-      totalActive: julesSessions.filter((s) => !isTerminal(s.status)).length + copilotSessions.filter((s) => !["completed", "failed", "idle"].includes(s.status)).length,
+      julesRunning: julesSessions.filter((s) => !isTerminalJulesState(String(s.status || "").toUpperCase())).length,
+      copilotRunning: copilotSessions.filter((s) => !["completed", "failed", "idle"].includes(String(s.status || "").toLowerCase())).length,
+      totalActive: julesSessions.filter((s) => !isTerminalJulesState(String(s.status || "").toUpperCase())).length + copilotSessions.filter((s) => !["completed", "failed", "idle"].includes(String(s.status || "").toLowerCase())).length,
     },
   };
+}
+
+export async function loadAgentState(statePath) {
+  const emptyState = { lastSaved: null, julesSessions: [], copilotSessions: [] };
+  if (!statePath) return emptyState;
+  try {
+    const text = await fs.readFile(statePath, "utf8");
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") return emptyState;
+    return {
+      lastSaved: parsed.lastSaved || null,
+      julesSessions: Array.isArray(parsed.julesSessions) ? parsed.julesSessions : [],
+      copilotSessions: Array.isArray(parsed.copilotSessions) ? parsed.copilotSessions : [],
+    };
+  } catch (error) {
+    return emptyState;
+  }
+}
+
+export async function persistAgentState(statePath, state) {
+  if (!statePath) return;
+  try {
+    const merged = state?.agentState || mergeAgentState(state || {});
+    const payload = {
+      lastSaved: new Date().toISOString(),
+      julesSessions: merged?.jules || [],
+      copilotSessions: merged?.copilot || [],
+    };
+    await fs.mkdir(path.dirname(statePath), { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify(payload, null, 2), "utf8");
+  } catch (error) {
+    console.warn("Failed to persist agent state:", error?.message || String(error));
+  }
+}
+
+const trackedCopilotSessions = new Map();
+
+export function registerCopilotSessionState(sessionId, nextState = {}) {
+  if (!sessionId) return null;
+  const previous = trackedCopilotSessions.get(sessionId) || { sessionId, listeners: new Set(), state: { sessionId, status: "queued" } };
+  const state = { ...previous.state, ...nextState, sessionId, lastUpdated: new Date().toISOString() };
+  previous.state = state;
+  trackedCopilotSessions.set(sessionId, previous);
+  for (const listener of previous.listeners) {
+    try { listener(state); } catch (error) { /* ignore */ }
+  }
+  return state;
+}
+
+export function deregisterCopilotSessionState(sessionId) {
+  if (!sessionId) return;
+  trackedCopilotSessions.delete(sessionId);
 }
 
 /**
@@ -2016,20 +2111,48 @@ export async function dispatchToCopilot(story, state, options = {}) {
  * @param {string} sessionId - Copilot session ID
  * @returns {object} SSE listener
  */
+export function broadcastAgentState(instanceId, state, sseClients = new Map()) {
+  const merge = state?.agentState || mergeAgentState(state || {});
+  const payload = {
+    agentState: merge,
+    updatedAt: new Date().toISOString(),
+  };
+  const list = sseClients.get ? sseClients.get(instanceId) || [] : [];
+  for (const client of list) {
+    try {
+      client.write(`event: agent-state\n`);
+      client.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch (error) {
+      // ignore client write errors
+    }
+  }
+}
+
 export function trackCopilotSession(sessionId) {
-  // TODO: Implement SSE listener for Copilot session state
-  // Returns event listener object
-  return {
+  const registry = trackedCopilotSessions.get(sessionId) || {
+    sessionId,
+    listeners: new Set(),
+    state: { sessionId, status: "queued", lastUpdated: new Date().toISOString() },
+  };
+  trackedCopilotSessions.set(sessionId, registry);
+
+  const tracker = {
     sessionId,
     on(event, callback) {
-      // Register callback for event type
-      console.log(`Tracking Copilot session ${sessionId} for ${event}`);
+      if (typeof callback !== "function") return;
+      registry.listeners.add(callback);
+      const current = registry.state;
+      if (event === "state") {
+        try { callback(current); } catch (error) { /* ignore */ }
+      }
     },
     disconnect() {
-      // Clean up SSE connection
-      console.log(`Disconnected from Copilot session ${sessionId}`);
+      registry.listeners.clear();
+      trackedCopilotSessions.delete(sessionId);
     },
   };
+
+  return tracker;
 }
 
 /**
@@ -2154,6 +2277,12 @@ export async function decorateBoardState(state) {
       state.lookup[d.id] = d;
     }
   }
+
+  const julesSessions = normalizeAgentSessionList(state?.julesSessions ?? state?.jules ?? [], "jules");
+  const copilotSessions = normalizeAgentSessionList(state?.copilotSessions ?? state?.copilot ?? [], "copilot");
+  state.julesSessions = julesSessions;
+  state.copilotSessions = copilotSessions;
+  state.agentState = mergeAgentState({ julesSessions, copilotSessions });
 
   // classification
   state.classificationCounts = { julesReady: 0, tasksReady: 0, copilotOnly: 0 };
@@ -3044,6 +3173,10 @@ export function renderHtml(instanceId, initialState) {
        </div>
        <div class="status-filters" id="kanbanStatusFilters"></div>
        <section class="summary" id="summary"></section>
+       <section class="panel" id="activeAgentsPanel" style="margin-top:14px;">
+         <h2>Active Agents <span class="section-subtle" id="agentSummaryBadge"></span></h2>
+         <div class="panel-body" id="activeAgents"></div>
+       </section>
        <section class="layout">
          <div class="panel">
            <h2>Work hierarchy</h2>
@@ -3733,6 +3866,52 @@ export function renderHtml(instanceId, initialState) {
         renderAll();
       }
 
+      function renderAgentState() {
+        const container = byId("activeAgents");
+        const badge = byId("agentSummaryBadge");
+        const agentState = state.agentState || { jules: [], copilot: [], summary: { total: 0, julesRunning: 0, copilotRunning: 0, totalActive: 0 } };
+        const jules = Array.isArray(agentState.jules) ? agentState.jules : [];
+        const copilot = Array.isArray(agentState.copilot) ? agentState.copilot : [];
+
+        if (badge) {
+          badge.textContent = (agentState.summary?.totalActive || 0) + " active";
+        }
+
+        if (!container) return;
+
+        function badgeMarkup(status, tone = "") {
+          const normalized = String(status || "unknown").toLowerCase();
+          const label = normalized === "completed" ? "Completed" : normalized === "failed" ? "Failed" : normalized === "in_progress" ? "In progress" : normalized === "queued" ? "Queued" : normalized === "awaiting_plan_approval" ? "Awaiting approval" : normalized === "awaiting_user_feedback" ? "Awaiting feedback" : normalized === "idle" ? "Idle" : normalized === "running" ? "Running" : String(status || "Unknown");
+          const className = normalized === "completed" || normalized === "idle" ? "badge good" : normalized === "failed" ? "badge bad" : normalized === "queued" || normalized === "awaiting_plan_approval" || normalized === "awaiting_user_feedback" ? "badge warn" : "badge";
+          return '<span class="' + className + '">' + esc(label) + '</span>';
+        }
+
+        function renderTable(title, rows, type) {
+          if (!rows.length) {
+            return '<div class="jules-empty">No active ' + esc(type) + ' sessions.</div>';
+          }
+          return '<div style="margin-top:10px;">' +
+            '<div class="section-subtle" style="margin-bottom:8px;">' + esc(title) + ' (' + rows.length + ')</div>' +
+            '<table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:12px;overflow:hidden;" cellpadding="8" cellspacing="0">' +
+            '<thead><tr style="background:var(--surface-subtle);text-align:left;"><th style="border-bottom:1px solid var(--border);padding:8px;">Status</th><th style="border-bottom:1px solid var(--border);padding:8px;">Session</th><th style="border-bottom:1px solid var(--border);padding:8px;">Story</th><th style="border-bottom:1px solid var(--border);padding:8px;">Links</th></tr></thead>' +
+            '<tbody>' + rows.map((row) => {
+              const storyLink = row.storyId ? '<span class="badge">' + esc(row.storyId) + '</span>' : '<span class="badge">—</span>';
+              const urlLink = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener">Open ↗</a>' : '—';
+              const prLink = row.prUrl ? ' <a href="' + esc(row.prUrl) + '" target="_blank" rel="noopener">PR ↗</a>' : '';
+              const branchLink = row.branch ? '<span class="badge">' + esc(row.branch) + '</span>' : '';
+              return '<tr><td style="border-bottom:1px solid var(--border-soft);padding:8px;">' + badgeMarkup(row.status) + '</td>' +
+                '<td style="border-bottom:1px solid var(--border-soft);padding:8px;">' + esc(row.title || row.id || row.sessionName || row.name || "Unknown") + (row.branch ? '<div style="margin-top:4px;">' + branchLink + '</div>' : '') + '</td>' +
+                '<td style="border-bottom:1px solid var(--border-soft);padding:8px;">' + storyLink + '</td>' +
+                '<td style="border-bottom:1px solid var(--border-soft);padding:8px;">' + urlLink + prLink + '</td></tr>';
+            }).join("") + '</tbody></table></div>';
+        }
+
+        container.innerHTML = '<div style="display:grid;gap:12px;">' +
+          renderTable("Jules Sessions", jules, "Jules") +
+          renderTable("Copilot Sessions", copilot, "Copilot") +
+        '</div>';
+      }
+
       function renderAll() {
         if (themePreference === null) {
           themePreference = state.themePreference || "system";
@@ -3757,6 +3936,7 @@ export function renderHtml(instanceId, initialState) {
         renderDeferredList();
         renderArtifacts();
         renderRoadmap();
+        renderAgentState();
         renderAutomations();
       }
 
