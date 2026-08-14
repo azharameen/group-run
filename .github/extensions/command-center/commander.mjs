@@ -1011,7 +1011,8 @@ export function extractStoryKey(story) {
   const file = story?.metadata?.storyFile || null;
   if (file) {
     try {
-      const key = storyKeyFromFileName(String(file));
+      const basename = path.basename(String(file));
+      const key = storyKeyFromFileName(basename);
       if (key) return `c${String(key)}`;
     } catch (err) {
       // ignore
@@ -1023,43 +1024,63 @@ export function extractStoryKey(story) {
 /**
  * Create a feature branch name for a story and optional task.
  * Format: feat/<story-key>-<descriptor>[-<task-slug>]
- * Truncates to max 100 characters.
+ * Truncates to max 100 characters. Appends "-2", "-3", etc. if branch already exists.
  * @param {object} story
  * @param {object|null} task
+ * @param {object} [options]
+ * @param {string[]} [options.existingBranches] - array of existing branch names for uniqueness check
  * @returns {string}
  */
-export function createFeatureBranch(story, task = null) {
+export function createFeatureBranch(story, task = null, options = {}) {
   const storyKey = extractStoryKey(story) || slugify(story?.title ?? "feature");
   const descriptor = slugify(story?.title ?? "work");
   const taskSlug = task ? slugify(task.title ?? String(task)) : null;
   const prefix = `feat/${storyKey}-`;
-  // reserve max length
   const MAX = 100;
 
   // start with descriptor and task if present
   let body = descriptor + (taskSlug ? `-${taskSlug}` : "");
   let branch = `${prefix}${body}`;
-  if (branch.length <= MAX) return branch;
 
-  // Need to truncate body to fit
-  const available = Math.max(1, MAX - prefix.length);
-  if (taskSlug) {
-    // leave room for -<taskSlug>
-    const sepForTask = 1; // the dash
-    const taskLen = Math.min(taskSlug.length, Math.max(1, Math.floor(available * 0.25)));
-    const descAvailable = available - sepForTask - taskLen;
-    const descPart = descriptor.slice(0, Math.max(1, descAvailable));
-    const taskPart = taskSlug.slice(0, Math.max(1, taskLen));
-    branch = `${prefix}${descPart}-${taskPart}`;
-    if (branch.length <= MAX) return branch;
-    // as fallback, truncate descriptor to available and drop task
-    const descFallback = descriptor.slice(0, available);
-    return `${prefix}${descFallback}`.slice(0, MAX);
+  // truncate to fit within MAX while preserving prefix
+  if (branch.length > MAX) {
+    const available = Math.max(1, MAX - prefix.length);
+    if (taskSlug) {
+      const taskLen = Math.min(taskSlug.length, Math.max(1, Math.floor(available * 0.25)));
+      const descAvailable = available - 1 - taskLen; // 1 for the dash
+      const descPart = descriptor.slice(0, Math.max(1, descAvailable));
+      const taskPart = taskSlug.slice(0, Math.max(1, taskLen));
+      branch = `${prefix}${descPart}-${taskPart}`;
+      if (branch.length > MAX) {
+        branch = `${prefix}${descriptor.slice(0, available)}`;
+      }
+    } else {
+      branch = `${prefix}${descriptor.slice(0, available)}`;
+    }
   }
 
-  // no task: truncate descriptor
-  const desc = descriptor.slice(0, available);
-  return `${prefix}${desc}`.slice(0, MAX);
+  // ensure branch <= MAX (hard clamp)
+  if (branch.length > MAX) branch = branch.slice(0, MAX);
+
+  // AC3: uniqueness check - append "-2", "-3", etc. if branch exists
+  const existing = options?.existingBranches || [];
+  if (existing.length > 0) {
+    let suffix = 2;
+    let candidate = branch;
+    while (existing.includes(candidate)) {
+      candidate = `${branch}-${suffix}`;
+      if (candidate.length > MAX) {
+        const suffixLen = String(suffix).length + 1; // dash + number
+        const maxDesc = MAX - prefix.length - suffixLen;
+        candidate = `${prefix}${descriptor.slice(0, Math.max(1, maxDesc))}-${suffix}`;
+      }
+      suffix++;
+      if (suffix > 100) break;
+    }
+    branch = candidate;
+  }
+
+  return branch;
 }
 
 /**
