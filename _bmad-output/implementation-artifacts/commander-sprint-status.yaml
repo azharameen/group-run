@@ -31,7 +31,7 @@
 # - Separate tracking to avoid mixing builder with product concerns
 
 generated: 2026-08-13
-last_updated: '2026-08-13T14:30:00+05:30'
+last_updated: '2026-08-14T16:00:00+05:30'
 project: Commander
 project_key: NOKEY
 tracking_system: file-system
@@ -46,35 +46,35 @@ development_status:
   c0-4-bmad-customization-setup: done
 
   # EP-C1: Commander Core & Deferred Work
-  epic-c1: in-progress
+  epic-c1: done
   c1-1-commander-module-split: done
-  c1-2-deferred-work-parser-and-ui: ready-for-dev
-  c1-3-dispatch-classifier-and-badges: ready-for-dev
+  c1-2-deferred-work-parser-and-ui: done
+  c1-3-dispatch-classifier-and-badges: done
 
   # EP-C2: Jules Session Lifecycle
-  epic-c2: backlog
-  c2-1-branch-naming-and-jules-brief-builder: backlog
-  c2-2-adaptive-polling-and-auto-approval: backlog
+  epic-c2: done
+  c2-1-branch-naming-and-jules-brief-builder: done
+  c2-2-adaptive-polling-and-auto-approval: done
 
   # EP-C3: Copilot Integration & Feedback Resolution
-  epic-c3: backlog
-  c3-1-copilot-dispatch-and-session-tracking: backlog
-  c3-2-feedback-resolution-engine: backlog
-  c3-3-multi-agent-state-tracker: backlog
+  epic-c3: done
+  c3-1-copilot-dispatch-and-session-tracking: done
+  c3-2-feedback-resolution-engine: done
+  c3-3-multi-agent-state-tracker: done
 
   # EP-C4: PR Lifecycle Management
-  epic-c4: backlog
-  c4-1-pr-validation-and-copilot-review: backlog
-  c4-2-pipeline-monitoring-and-auto-merge: backlog
-  c4-3-branch-cleanup-and-local-sync: backlog
+  epic-c4: done
+  c4-1-pr-validation-and-copilot-review: done
+  c4-2-pipeline-monitoring-and-auto-merge: done
+  c4-3-branch-cleanup-and-local-sync: done
 
   # EP-C5: Trust & Observability
-  epic-c5: backlog
-  c5-1-jsonl-logging-and-trust-dashboard: backlog
-  c5-2-learning-loop-implementation: backlog
-  c5-3-ci-pipeline-redesign: backlog
+  epic-c5: done
+  c5-1-jsonl-logging-and-trust-dashboard: done
+  c5-2-learning-loop-implementation: done
+  c5-3-ci-pipeline-redesign: done
 
   # EP-C6: Polish & Optimization
-  epic-c6: backlog
-  c6-1-jules-quota-management: backlog
-  c6-2-edge-case-handling-and-documentation: backlog
+  epic-c6: in-progress
+  c6-1-jules-quota-management: done
+  c6-2-edge-case-handling-and-documentation: in-progress

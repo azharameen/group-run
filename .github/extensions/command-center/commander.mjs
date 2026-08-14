@@ -789,6 +789,43 @@ export async function parseDeferredWork(workspacePath, deferredWorkPath) {
 }
 
 /**
+ * Append a deferred work item to the deferred-work.md file.
+ * @param {string} deferredWorkPath - Path to deferred-work.md
+ * @param {object} item - { source_spec, summary, evidence }
+ * @returns {Promise<boolean>} True if appended successfully
+ */
+export async function appendDeferredWork(deferredWorkPath, item) {
+  const { fs } = await import("fs/promises");
+  const { join } = await import("path");
+
+  const entry = [
+    "",
+    `## Deferred from: ${item.source_spec || "unknown"} (${new Date().toISOString().split("T")[0]})`,
+    "",
+    `- source_spec: \`${item.source_spec || "unknown"}\``,
+    `  summary: ${item.summary || "No summary"}`,
+    `  evidence: ${item.evidence || "No evidence"}`,
+  ].join("\n");
+
+  try {
+    // Check if file exists and append, or create new
+    let existing = "";
+    try {
+      existing = await fs.readFile(deferredWorkPath, "utf-8");
+    } catch {
+      // File doesn't exist, create header
+      existing = "# Deferred Work Ledger\n";
+    }
+
+    await fs.writeFile(deferredWorkPath, existing + entry + "\n", "utf-8");
+    return true;
+  } catch (err) {
+    console.error("Failed to append deferred work:", err.message);
+    return false;
+  }
+}
+
+/**
  * Parse a generic board JSON/YAML into the standard board shape.
  * @param {string} workspacePath
  * @param {string} boardFilePath
@@ -1372,6 +1409,245 @@ export async function cleanupAfterMerge(pr, workspacePath) {
   };
 }
 
+// ============================================================================
+// C6.2: Merge Serialization Queue
+// ============================================================================
+
+/**
+ * Global merge queue to serialize PR merges to develop.
+ * Prevents cross-branch conflicts when multiple sessions push simultaneously.
+ */
+const mergeQueue = {
+  pending: [],
+  processing: false,
+  waiting: [],
+
+  /**
+   * Enqueue a merge request.
+   * @param {object} mergeRequest - { prNumber, branch, base, onNotify }
+   * @returns {Promise<{enqueued: boolean, position: number}>}
+   */
+  async enqueue(mergeRequest) {
+    this.pending.push({
+      ...mergeRequest,
+      enqueuedAt: Date.now(),
+    });
+    const position = this.pending.length;
+    if (position === 1) await this.processNext();
+    return { enqueued: true, position };
+  },
+
+  /**
+   * Process the next merge in queue.
+   * @returns {Promise<void>}
+   */
+  async processNext() {
+    if (this.processing || this.pending.length === 0) return;
+    this.processing = true;
+
+    const request = this.pending[0];
+    try {
+      // Pull latest develop before merge
+      const pullResult = await runGitCommand("pull", "origin", "develop");
+      if (pullResult.exitCode !== 0 && !pullResult.stdout.includes("Up-to-date")) {
+        console.warn("Pull failed before merge:", pullResult.stderr);
+        // Notify waiting sessions
+        this.waiting.forEach((cb) => cb({ success: false, error: "Pull failed", prNumber: request.prNumber }));
+        return;
+      }
+
+      // Merge the branch
+      const mergeResult = await runGitCommand("merge", request.branch, "--no-ff", "-m", `Merge PR #${request.prNumber}`);
+      if (mergeResult.exitCode !== 0) {
+        console.warn("Merge conflict detected:", mergeResult.stderr);
+        // Notify waiting sessions about conflict
+        this.waiting.forEach((cb) => cb({
+          success: false,
+          conflict: true,
+          error: "Merge conflict requires resolution",
+          prNumber: request.prNumber,
+        }));
+        return;
+      }
+
+      // Push to develop
+      const pushResult = await runGitCommand("push", "origin", "develop");
+      if (pushResult.exitCode !== 0) {
+        console.warn("Push failed after merge:", pushResult.stderr);
+        this.waiting.forEach((cb) => cb({ success: false, error: "Push failed", prNumber: request.prNumber }));
+        return;
+      }
+
+      // Success - remove from queue and notify
+      this.pending.shift();
+      this.waiting.forEach((cb) => cb({ success: true, prNumber: request.prNumber }));
+      this.waiting = [];
+    } catch (err) {
+      console.error("Merge queue error:", err.message);
+      this.pending.shift();
+      this.waiting.forEach((cb) => cb({ success: false, error: err.message, prNumber: request.prNumber }));
+      this.waiting = [];
+    } finally {
+      this.processing = false;
+      // Process next item if any
+      if (this.pending.length > 0) await this.processNext();
+    }
+  },
+
+  /**
+   * Get current queue status.
+   * @returns {{pending: number, processing: boolean, queue: Array}}
+   */
+  status() {
+    return {
+      pending: this.pending.length,
+      processing: this.processing,
+      queue: this.pending.map((r) => ({ prNumber: r.prNumber, branch: r.branch, enqueuedAt: r.enqueuedAt })),
+    };
+  },
+};
+
+/**
+ * Run a git command and capture output.
+ * @param {...string} args - Git command arguments
+ * @returns {Promise<{exitCode: number, stdout: string, stderr: string}>}
+ */
+function runGitCommand(...args) {
+  return new Promise((resolve) => {
+    const { exec } = require("child_process");
+    exec(`git ${args.join(" ")}`, { timeout: 30000 }, (err, stdout, stderr) => {
+      resolve({ exitCode: err ? err.code || 1 : 0, stdout: stdout || "", stderr: stderr || "" });
+    });
+  });
+}
+
+/**
+ * Serialize a PR merge through the merge queue.
+ * @param {object} pr - PR object with head.ref and number
+ * @param {string} workspacePath - Workspace directory
+ * @returns {Promise<{merged: boolean, enqueued: boolean, status: object}>}
+ */
+export async function serializeMerge(pr, workspacePath) {
+  const headRef = pr?.head?.ref || pr?.head_ref || "";
+  const prNumber = pr?.number || pr?.pr_number || 0;
+
+  if (!headRef || !prNumber) {
+    return { merged: false, error: "Invalid PR: missing branch or number" };
+  }
+
+  // Enqueue the merge
+  const enqueued = await mergeQueue.enqueue({
+    prNumber,
+    branch: headRef,
+    base: "develop",
+  });
+
+  return {
+    merged: false, // Will be true after queue processes
+    enqueued: enqueued.enqueued,
+    position: enqueued.position,
+    status: mergeQueue.status(),
+  };
+}
+
+// ============================================================================
+// C6.2: Session Failure Handling
+// ============================================================================
+
+/**
+ * Handle a Jules session that reached terminal FAILED state.
+ * Logs the error and prepares for fix session dispatch.
+ * @param {object} session - Failed session object
+ * @param {string} errorReason - Human-readable error reason
+ * @param {string} logPath - Path to JSONL log file
+ * @returns {Promise<{logged: boolean, fixSessionId: string|null}>}
+ */
+export async function handleSessionFailure(session, errorReason, logPath) {
+  const sessionId = session?.id || session?.session_id || "unknown";
+  const storyId = session?.storyId || session?.story_id || null;
+
+  // Log the failure
+  const failureEntry = {
+    timestamp: new Date().toISOString(),
+    event: "session_failure",
+    sessionId,
+    storyId,
+    error: errorReason,
+    state: session?.state || session?.status || "FAILED",
+    lastActivity: session?.lastActivity || null,
+  };
+
+  try {
+    await logDecision(failureEntry, logPath);
+  } catch (err) {
+    console.error("Failed to log session failure:", err.message);
+  }
+
+  return {
+    logged: true,
+    sessionId,
+    errorReason,
+    fixSessionId: null, // Set after dispatchFixSession is called
+  };
+}
+
+/**
+ * Dispatch a fix session for a failed Jules session.
+ * Creates a new session to address the failure.
+ * @param {object} failedSession - The failed session object
+ * @param {string} errorReason - What went wrong
+ * @param {object} options - Dispatch options
+ * @returns {Promise<{dispatched: boolean, fixSessionId: string, prompt: string}>}
+ */
+export async function dispatchFixSession(failedSession, errorReason, options = {}) {
+  const sessionId = failedSession?.id || failedSession?.session_id || "unknown";
+  const storyId = failedSession?.storyId || failedSession?.story_id || "unknown";
+
+  // Build fix prompt from failure context
+  const fixPrompt = [
+    `Fix session for failed story ${storyId} (original session: ${sessionId}).`,
+    ``,
+    `Error: ${errorReason}`,
+    ``,
+    `Original session state:`,
+    JSON.stringify(failedSession, null, 2),
+    ``,
+    `Please diagnose the failure, apply the fix, and validate the solution works.`,
+  ].join("\n");
+
+  const fixSessionId = `fix-${sessionId}-${Date.now()}`;
+
+  // TODO: Integrate with actual session creation API
+  // For now, return the prepared dispatch payload
+  return {
+    dispatched: false, // True after API integration
+    fixSessionId,
+    prompt: fixPrompt,
+    storyId,
+    originalSession: sessionId,
+  };
+}
+
+/**
+ * Check if a session is in a terminal error state and handle it.
+ * @param {object} session - Session to check
+ * @param {string} logPath - Path to JSONL log
+ * @returns {Promise<{isTerminalError: boolean, handled: boolean}>}
+ */
+export async function checkAndHandleFailure(session, logPath) {
+  const state = String(session?.state || session?.status || "").toUpperCase();
+  const isTerminalError = state === "FAILED" || state === "ERROR" || state === "CRASHED";
+
+  if (!isTerminalError) {
+    return { isTerminalError: false, handled: false };
+  }
+
+  const errorReason = session?.error || session?.errorReason || "Session reached terminal error state";
+  await handleSessionFailure(session, errorReason, logPath);
+
+  return { isTerminalError: true, handled: true, errorReason };
+}
+
 /**
  * Log Commander decision to JSONL.
  * @param {object} decision - Decision details
@@ -1613,28 +1889,56 @@ export function createFeedbackCard(session, feedback, timeout = 120000) {
 
   // Create timer
   const timer = setTimeout(async () => {
-    console.log(`Feedback card ${cardId} expired, deferring feedback`);
-    try {
-      await sendMessage(sessionId, "Feedback deferred - continuing with default resolution");
-    } catch (err) {
-      console.warn("Failed to send defer message:", err.message);
-    }
-  }, timeout);
+   console.log(`Feedback card ${cardId} expired after ${timeout}ms, deferring feedback`);
 
-  return {
-    cardId,
-    timer,
-    sessionId,
-    feedback,
-    resolve: async (response) => {
-      clearTimeout(timer);
-      await sendMessage(sessionId, response);
-    },
-    reject: async () => {
-      clearTimeout(timer);
-      await sendMessage(sessionId, "Feedback rejected - session should wait for clarification");
-    },
-  };
+   // Log timeout event
+   try {
+     const timeoutLog = {
+       timestamp: new Date().toISOString(),
+       event: "feedback_timeout",
+       cardId,
+       sessionId,
+       timeout: timeout,
+       feedback: feedback.substring(0, 200),
+     };
+     await logDecision(timeoutLog, "_bmad-output/implementation-artifacts/commander-decisions.jsonl");
+   } catch (err) {
+     console.warn("Failed to log feedback timeout:", err.message);
+   }
+
+   // Append to deferred-work.md
+   try {
+     await appendDeferredWork("_bmad-output/implementation-artifacts/deferred-work.md", {
+       source_spec: `session/${sessionId}`,
+       summary: `Feedback timeout for ${sessionId}: ${feedback.substring(0, 100)}`,
+       evidence: `Escalation timeout (${timeout}ms) exceeded, Copilot could not resolve`,
+     });
+   } catch (err) {
+     console.warn("Failed to append deferred work:", err.message);
+   }
+
+   // Send defer message
+   try {
+     await sendMessage(sessionId, "Feedback deferred - timeout exceeded, continuing with default resolution");
+   } catch (err) {
+     console.warn("Failed to send defer message:", err.message);
+   }
+ }, timeout);
+
+ return {
+   cardId,
+   timer,
+   sessionId,
+   feedback,
+   resolve: async (response) => {
+     clearTimeout(timer);
+     await sendMessage(sessionId, response);
+   },
+   reject: async () => {
+     clearTimeout(timer);
+     await sendMessage(sessionId, "Feedback rejected - session should wait for clarification");
+   },
+ };
 }
 
 /**
@@ -1806,9 +2110,25 @@ export async function escalateToCopilot(session, story, message) {
     storyTitle: story?.title || null,
   };
 
-  // Send to Jules session (will be routed to Copilot)
-  await sendMessage(sessionId, payload);
-  return `msg_${Date.now()}`; // Return synthetic message ID
+ // Log escalation event
+ const escalationLog = {
+   timestamp: new Date().toISOString(),
+   event: "escalation_to_copilot",
+   sessionId,
+   storyId: story?.id || null,
+   message: message.substring(0, 200), // Truncate for log
+ };
+
+ try {
+   const logPath = "_bmad-output/implementation-artifacts/commander-decisions.jsonl";
+   await logDecision(escalationLog, logPath);
+ } catch (err) {
+   console.warn("Failed to log escalation:", err.message);
+ }
+
+ // Send to Jules session (will be routed to Copilot)
+ await sendMessage(sessionId, payload);
+ return `msg_${Date.now()}`; // Return synthetic message ID
 }
 
 /**
