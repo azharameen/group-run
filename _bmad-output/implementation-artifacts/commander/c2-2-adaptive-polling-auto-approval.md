@@ -2,8 +2,9 @@
 title: 'C2.2: Adaptive Polling & Auto-Approval'
 type: 'feature'
 created: '2025-08-14'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '3fff7d0'
+final_revision: 'd43e5f8'
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/commander/epic-c2-context.md'

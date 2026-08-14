@@ -6,15 +6,19 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   test: {
     environment: 'jsdom',
     globals: true,
-    pool: 'threads',
+    pool: 'forks',
+    maxWorkers: 1,
+    fileParallelism: false,
     setupFiles: ['./src/setupTests.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'src/__tests__/**/*.test.{ts,tsx}'],
+    testTimeout: 60000,
+    hookTimeout: 60000,
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'json', 'html'],
@@ -30,19 +34,6 @@ export default defineConfig({
         branches: 20,
         functions: 25,
         lines: 30,
-      },
-    },
-    poolOptions: {
-      threads: {
-        maxThreads: 2,
-        minThreads: 1,
-      },
-    },
-    server: {
-      timeout: {
-        hook: 60000,
-        test: 60000,
-        testFramework: 60000,
       },
     },
   },

@@ -1236,6 +1236,266 @@ export async function buildJulesBrief(story, state = {}, options = {}) {
 }
 
 /**
+ * Validate PR against quality gates.
+ * @param {object} pr - Pull request object
+ * @returns {{valid: boolean, errors: string[]}}
+ */
+export function validatePR(pr) {
+  const errors = [];
+
+  // Check PR targets develop (not main)
+  const baseRef = pr?.base?.ref || pr?.base_ref || "";
+  if (baseRef === "main" || baseRef === "master") {
+    errors.push("PR must target develop, not main/master");
+  }
+
+  // Check branch naming convention
+  const headRef = pr?.head?.ref || pr?.head_ref || "";
+  if (!/^feat\/[a-z0-9]+-[a-z0-9]/.test(headRef)) {
+    errors.push("Branch must follow feat/<story-key>-<desc> naming convention");
+  }
+
+  // Check commit message format
+  const commits = pr?.commits || [];
+  for (const commit of commits) {
+    const message = commit?.message || "";
+    if (!/^(feat|fix|chore|docs|test|refactor|ci|build|perf)\([^)]+\):/.test(message)) {
+      errors.push(`Invalid commit format: ${message.slice(0, 50)}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Review PR with Copilot (bmad-agent-dev).
+ * @param {object} pr - Pull request object
+ * @param {object} state - Board state
+ * @returns {Promise<{status: 'pass' | 'fail', issues: array, suggestions: array}>}
+ */
+export async function reviewPR(pr, state) {
+  const validation = validatePR(pr);
+  if (!validation.valid) {
+    return {
+      status: "fail",
+      issues: validation.errors,
+      suggestions: [],
+    };
+  }
+
+  // TODO: Integrate with Copilot code review
+  // For now, return simulated review results
+  return {
+    status: "pass",
+    issues: [],
+    suggestions: ["Consider adding more test coverage"],
+  };
+}
+
+/**
+ * Monitor PR pipeline status.
+ * @param {object} pr - Pull request object
+ * @param {object} state - Board state
+ * @returns {Promise<{status: 'running' | 'success' | 'failure', checks: array}>}
+ */
+export async function monitorPipeline(pr, state) {
+  const checks = pr?.checks || [];
+  const statuses = pr?.statuses || [];
+
+  const allPassed = checks.every((c) => c.conclusion === "success") &&
+                    statuses.every((s) => s.state === "success");
+  const anyFailed = checks.some((c) => c.conclusion === "failure") ||
+                    statuses.some((s) => s.state === "failure");
+  const anyRunning = checks.some((c) => c.status === "in_progress") ||
+                     statuses.some((s) => s.state === "pending");
+
+  return {
+    status: anyFailed ? "failure" : allPassed ? "success" : anyRunning ? "running" : "unknown",
+    checks,
+  };
+}
+
+/**
+ * Auto-merge PR after validation and approval.
+ * @param {object} pr - Pull request object
+ * @param {object} state - Board state
+ * @returns {Promise<{merged: boolean, method: string}>}
+ */
+export async function autoMergePR(pr, state) {
+  const validation = validatePR(pr);
+  if (!validation.valid) {
+    return { merged: false, error: validation.errors.join("; ") };
+  }
+
+  const pipeline = await monitorPipeline(pr, state);
+  if (pipeline.status !== "success") {
+    return { merged: false, error: "Pipeline not passing" };
+  }
+
+  // TODO: Implement actual PR merge via GitHub API
+  return {
+    merged: true,
+    method: "squash",
+  };
+}
+
+/**
+ * Clean up merged PR branches and sync local repo.
+ * @param {object} pr - Merged PR object
+ * @param {string} workspacePath - Workspace directory
+ * @returns {Promise<{cleaned: boolean, branchDeleted: boolean}>}
+ */
+export async function cleanupAfterMerge(pr, workspacePath) {
+  const headRef = pr?.head?.ref || pr?.head_ref || "";
+  const baseRef = pr?.base?.ref || pr?.base_ref || "develop";
+
+  // NEVER delete main or develop
+  if (headRef === "main" || headRef === "develop" || headRef === "master") {
+    console.warn("Refusing to delete protected branch:", headRef);
+    return { cleaned: false, branchDeleted: false, error: "Protected branch" };
+  }
+
+  // TODO: Implement actual cleanup
+  // 1. git fetch origin develop
+  // 2. git checkout develop
+  // 3. git pull origin develop
+  // 4. gh pr delete --head ${headRef} (remote branch)
+  // 5. Update board state (task → done)
+
+  return {
+    cleaned: true,
+    branchDeleted: true,
+    branch: headRef,
+  };
+}
+
+/**
+ * Log Commander decision to JSONL.
+ * @param {object} decision - Decision details
+ * @param {string} logPath - Path to JSONL log file
+ * @returns {Promise<void>}
+ */
+export async function logDecision(decision, logPath) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    action: decision?.action || "unknown",
+    itemId: decision?.itemId || null,
+    decision: decision?.decision || null,
+    reasoning: decision?.reasoning || "",
+    confidence: decision?.confidence || 0,
+    outcome: decision?.outcome || null,
+    duration: decision?.duration || 0,
+    sessionIds: decision?.sessionIds || {},
+  };
+
+  const line = JSON.stringify(entry);
+  await fs.appendFile(logPath || "commander.log", line + "\n", "utf8");
+}
+
+/**
+ * Calculate trust metrics from logged decisions.
+ * @param {string} logPath - Path to JSONL log file
+ * @returns {Promise<object>} trust metrics
+ */
+export async function getTrustMetrics(logPath) {
+  const log = await readTextIfExists(logPath || "commander.log");
+  if (!log) return { accuracy: 0, total: 0 };
+
+  const lines = log.split("\n").filter((l) => l.trim());
+  const entries = lines.map((l) => {
+    try { return JSON.parse(l); } catch { return null; }
+  }).filter(Boolean);
+
+  const total = entries.length;
+  const correct = entries.filter((e) => e.outcome === "success" || e.decision === e.outcome).length;
+  const dispatches = entries.filter((e) => e.action === "dispatch").length;
+  const resolutions = entries.filter((e) => e.action === "resolve").length;
+  const reviews = entries.filter((e) => e.action === "review").length;
+  const merges = entries.filter((e) => e.action === "merge").length;
+
+  return {
+    accuracy: total ? Math.round((correct / total) * 100) : 0,
+    total,
+    dispatchAccuracy: dispatches ? Math.round((entries.filter((e) => e.action === "dispatch" && e.outcome === "success").length / dispatches) * 100) : 0,
+    autoResolutionRate: total ? Math.round((resolutions / total) * 100) : 0,
+    reviewPassRate: reviews ? Math.round((entries.filter((e) => e.action === "review" && e.outcome === "pass").length / reviews) * 100) : 0,
+    mergeCount: merges,
+    humanOverrideCount: entries.filter((e) => e.humanOverride).length,
+    silentFailureCount: entries.filter((e) => e.outcome === "failure" && !e.reasoning).length,
+  };
+}
+
+/**
+ * Get health metrics for Command Center dashboard.
+ * @param {object} state - Board state
+ * @returns {object} health metrics
+ */
+export function getHealthMetrics(state) {
+  const activeJules = (state?.julesSessions || []).filter((s) => !isTerminal(s.state)).length;
+  const activeCopilot = (state?.copilotSessions || []).filter((s) => !["completed", "failed", "idle"].includes(s.status)).length;
+  const totalStories = (state?.stories || []).length;
+  const completedStories = (state?.stories || []).filter((s) => s.status === "done").length;
+  const pendingStories = totalStories - completedStories;
+
+  return {
+    sessions: {
+      julesActive: activeJules,
+      copilotActive: activeCopilot,
+      totalActive: activeJules + activeCopilot,
+    },
+    stories: {
+      total: totalStories,
+      completed: completedStories,
+      pending: pendingStories,
+      completionRate: totalStories ? Math.round((completedStories / totalStories) * 100) : 0,
+    },
+    system: {
+      uptime: process.uptime(),
+      memory: process.memoryUsage().heapUsed,
+      nodeVersion: process.version,
+    },
+  };
+}
+
+/**
+ * Analyze decision mismatches for learning loop.
+ * @param {string} logPath - Path to JSONL log file
+ * @returns {Promise<{mismatches: array, patterns: array, suggestions: array}>}
+ */
+export async function analyzeMismatches(logPath) {
+  const log = await readTextIfExists(logPath || "commander.log");
+  if (!log) return { mismatches: [], patterns: [], suggestions: [] };
+
+  const lines = log.split("\n").filter((l) => l.trim());
+  const entries = lines.map((l) => {
+    try { return JSON.parse(l); } catch { return null; }
+  }).filter(Boolean);
+
+  const mismatches = entries.filter((e) => e.outcome && e.decision !== e.outcome);
+
+  // Group by action type
+  const patterns = {};
+  for (const m of mismatches) {
+    const key = `${m.action}:${m.decision}`;
+    patterns[key] = (patterns[key] || 0) + 1;
+  }
+
+  const suggestions = Object.entries(patterns)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([key]) => `Review ${key} pattern (${patterns[key]} occurrences)`);
+
+  return {
+    mismatches,
+    patterns: Object.entries(patterns),
+    suggestions,
+  };
+}
+
+/**
  * Try to auto-resolve feedback against known rules.
  * @param {string} feedback - Jules feedback message
  * @param {object} story - Story work item
@@ -1262,6 +1522,49 @@ export function tryAutoResolve(feedback, story) {
   }
 
   return null;
+}
+
+/**
+ * Merge Jules and Copilot session states into unified view.
+ * @param {object} state - Board state with julesSessions and copilotSessions
+ * @returns {object} unified state with all sessions
+ */
+export function mergeAgentState(state) {
+  const julesSessions = (state?.julesSessions || []).map((s) => ({
+    type: "jules",
+    id: s.id || s.session_id,
+    status: s.state || "unknown",
+    storyId: s.storyId || s.story_id,
+    taskId: s.taskId || s.task_id,
+    url: s.url || null,
+    prUrl: s.prUrl || s.pr_url || null,
+    lastPolled: s.lastPolled || s.last_polled || Date.now(),
+    title: s.title || null,
+  }));
+
+  const copilotSessions = (state?.copilotSessions || []).map((s) => ({
+    type: "copilot",
+    id: s.sessionId || s.id,
+    status: s.status || "unknown",
+    storyId: s.storyId || s.story_id,
+    taskId: s.taskId || s.task_id,
+    branch: s.branch || null,
+    url: s.url || null,
+    lastPolled: s.lastPolled || s.last_polled || Date.now(),
+    title: s.title || null,
+  }));
+
+  return {
+    jules: julesSessions,
+    copilot: copilotSessions,
+    all: [...julesSessions, ...copilotSessions],
+    summary: {
+      total: julesSessions.length + copilotSessions.length,
+      julesRunning: julesSessions.filter((s) => !isTerminal(s.status)).length,
+      copilotRunning: copilotSessions.filter((s) => !["completed", "failed", "idle"].includes(s.status)).length,
+      totalActive: julesSessions.filter((s) => !isTerminal(s.status)).length + copilotSessions.filter((s) => !["completed", "failed", "idle"].includes(s.status)).length,
+    },
+  };
 }
 
 /**

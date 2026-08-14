@@ -2,8 +2,9 @@
 title: 'C3.1: Copilot Dispatch & Session Tracking'
 type: 'feature'
 created: '2025-08-14'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'd43e5f8'
+final_revision: '1b03482'
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/commander/c1-3-dispatch-classifier-and-badges.md'
