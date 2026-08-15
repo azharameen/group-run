@@ -6,9 +6,32 @@ no file writes persist, and concurrent tests remain isolated.
 
 import os
 import sqlite3
-import sys
 
 import pytest
+
+
+def _reset_thread_manager_in_place():
+    """Reset thread_manager singleton state in place (no sys.modules purge).
+
+    Purging the module orphans the function references already held by
+    imported app modules (routes, supervisor, app) — they keep operating on
+    the old module object's singletons while fresh imports use a new module
+    instance, so checkpoint writes and reads can hit different connections.
+    Keeping one module instance and resetting its state avoids that.
+    """
+    from app.services import thread_manager as tm
+    from app.services.thread_manager import _discard_async_saver
+
+    if tm._SQLITE_SAVER is not None:
+        try:
+            tm._SQLITE_SAVER.conn.close()
+        except Exception:
+            pass
+    _discard_async_saver(tm._ASYNC_SQLITE_SAVER)
+    tm._SQLITE_SAVER = None
+    tm._ASYNC_SQLITE_SAVER = None
+    tm._THREAD_DB_PATH = None
+    tm._METADATA_CONN = None
 
 
 # ---------------------------------------------------------------------------
@@ -17,13 +40,6 @@ import pytest
 
 def test_in_memory_db_is_fresh(monkeypatch: pytest.MonkeyPatch):
     """Each in-memory SqliteSaver is independent (AC-4)."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.services.thread_manager",
-            "app.config",
-        )):
-            del sys.modules[mod]
-
     from langgraph.checkpoint.sqlite import SqliteSaver
 
     conn1 = sqlite3.connect(":memory:", check_same_thread=False)
@@ -42,13 +58,6 @@ def test_in_memory_db_is_fresh(monkeypatch: pytest.MonkeyPatch):
 
 def test_in_memory_db_no_file_created(monkeypatch: pytest.MonkeyPatch, tmp_path):
     """In-memory checkpointer does not create files on disk (AC-4)."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.services.thread_manager",
-            "app.config",
-        )):
-            del sys.modules[mod]
-
     monkeypatch.setenv("STORAGE_DIR", str(tmp_path))
 
     from langgraph.checkpoint.sqlite import SqliteSaver
@@ -67,13 +76,6 @@ def test_in_memory_db_no_file_created(monkeypatch: pytest.MonkeyPatch, tmp_path)
 
 def test_in_memory_thread_crud(monkeypatch: pytest.MonkeyPatch):
     """Thread metadata operations work with in-memory checkpointer (AC-4)."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.services.thread_manager",
-            "app.config",
-        )):
-            del sys.modules[mod]
-
     from langgraph.checkpoint.sqlite import SqliteSaver
     from langgraph.checkpoint.base import BaseCheckpointSaver
 
@@ -89,13 +91,6 @@ def test_in_memory_thread_crud(monkeypatch: pytest.MonkeyPatch):
 
 def test_concurrent_isolation(monkeypatch: pytest.MonkeyPatch):
     """Multiple in-memory savers don't interfere (AC-4)."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.services.thread_manager",
-            "app.config",
-        )):
-            del sys.modules[mod]
-
     from langgraph.checkpoint.sqlite import SqliteSaver
 
     savers = []
@@ -116,12 +111,7 @@ def test_concurrent_isolation(monkeypatch: pytest.MonkeyPatch):
 
 def test_thread_manager_inject_in_memory(monkeypatch: pytest.MonkeyPatch):
     """Thread manager singleton can be replaced with in-memory saver (AC-4)."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.services.thread_manager",
-            "app.config",
-        )):
-            del sys.modules[mod]
+    _reset_thread_manager_in_place()
 
     from langgraph.checkpoint.sqlite import SqliteSaver
     from app.services import thread_manager as tm
@@ -146,12 +136,7 @@ def test_thread_manager_inject_in_memory(monkeypatch: pytest.MonkeyPatch):
 
 def test_thread_crud_with_in_memory(monkeypatch: pytest.MonkeyPatch):
     """Thread CRUD operations work after in-memory injection (AC-4)."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.services.thread_manager",
-            "app.config",
-        )):
-            del sys.modules[mod]
+    _reset_thread_manager_in_place()
 
     from langgraph.checkpoint.sqlite import SqliteSaver
     from app.services import thread_manager as tm

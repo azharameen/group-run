@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from ..infrastructure.observability import configure_langsmith_tracing
-from ..services.thread_manager import get_checkpointer, get_async_checkpointer
+from ..services.thread_manager import get_checkpointer
 from .routes.chat import router as chat_router
 from .routes.config import router as config_router
 from .routes.interrupts import router as interrupts_router
@@ -69,14 +69,14 @@ async def lifespan(_app: FastAPI):
 
     # Shutdown: close database connections to release file handles
     print("[Shutdown] Closing database connections...")
-    try:
-        # Close async checkpointer connection
-        async_cp = get_async_checkpointer()
-        if hasattr(async_cp, "conn") and async_cp.conn is not None:
+    from ..services import thread_manager as _tm
+    async_cp = _tm._ASYNC_SQLITE_SAVER
+    if async_cp is not None and async_cp.conn is not None:
+        try:
             await async_cp.conn.close()
             print("[Shutdown] Async checkpointer closed")
-    except Exception as exc:
-        print(f"[Shutdown] Async checkpointer close error: {exc}")
+        except Exception as exc:
+            print(f"[Shutdown] Async checkpointer close error: {exc}")
 
     try:
         # Close sync checkpointer connection
@@ -88,7 +88,6 @@ async def lifespan(_app: FastAPI):
 
     # Reset singleton references so re-initialization creates fresh connections
     # (important for hot-reload and test environments)
-    from ..services import thread_manager as _tm
     _tm._SQLITE_SAVER = None
     _tm._ASYNC_SQLITE_SAVER = None
     _tm._METADATA_CONN = None

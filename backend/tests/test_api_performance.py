@@ -42,7 +42,9 @@ def _clear_modules():
             "app.api.routes.health",
             "app.orchestrator.supervisor",
             "app.orchestrator.supervisor_graph",
-            "app.services.thread_manager",
+            # NOTE: do NOT purge app.services.thread_manager here — re-importing
+            # it orphans the singletons referenced by already-imported routes
+            # (module-identity split). Its state is reset in place by the tests.
             "app.services.interrupt_service",
             "app.config",
             "app.api.app",

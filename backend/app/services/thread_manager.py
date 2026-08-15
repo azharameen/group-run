@@ -42,6 +42,46 @@ def _is_connection_alive(conn: Optional[sqlite3.Connection]) -> bool:
         return False
 
 
+def _is_async_saver_alive(saver: Optional[AsyncSqliteSaver]) -> bool:
+    """Check whether an AsyncSqliteSaver's aiosqlite connection is still usable.
+
+    A connection becomes unusable when it was closed (``_connection`` is reset
+    to ``None``) or when its worker thread died (e.g. the event loop it was
+    reporting results to got closed).  A dead thread cannot be restarted
+    (``Thread.start()`` raises), so a saver in that state must be discarded
+    and replaced instead of being reused.
+    """
+    if saver is None:
+        return False
+    conn = getattr(saver, "conn", None)
+    if conn is None:
+        return False
+    if getattr(conn, "_connection", None) is None:
+        return False
+    thread = getattr(conn, "_thread", None)
+    if thread is not None and not thread.is_alive():
+        return False
+    return True
+
+
+def _discard_async_saver(saver: Optional[AsyncSqliteSaver]) -> None:
+    """Best-effort teardown of an unusable AsyncSqliteSaver before replacement."""
+    if saver is None:
+        return
+    conn = getattr(saver, "conn", None)
+    if conn is None:
+        return
+    thread = getattr(conn, "_thread", None)
+    # Only attempt a stop when the worker thread is still running (the
+    # connection was started but never properly closed).  Already-closed or
+    # never-started connections have nothing to reap.
+    if thread is not None and thread.is_alive():
+        try:
+            conn.stop()
+        except Exception:
+            pass
+
+
 def get_checkpointer() -> SqliteSaver:
     """Return a singleton SqliteSaver backed by threads.sqlite."""
     global _SQLITE_SAVER, _METADATA_CONN
@@ -75,8 +115,9 @@ async def create_async_checkpointer() -> AsyncSqliteSaver:
     WAL mode enabled. Callers can use it directly.
     """
     global _ASYNC_SQLITE_SAVER
-    if _ASYNC_SQLITE_SAVER is not None:
+    if _ASYNC_SQLITE_SAVER is not None and _is_async_saver_alive(_ASYNC_SQLITE_SAVER):
         return _ASYNC_SQLITE_SAVER
+    _discard_async_saver(_ASYNC_SQLITE_SAVER)
     db_path = _get_db_path()
     conn = aiosqlite.connect(str(db_path))
     saver = AsyncSqliteSaver(conn)
@@ -94,7 +135,8 @@ def get_async_checkpointer() -> AsyncSqliteSaver:
     calls that happen outside async context.
     """
     global _ASYNC_SQLITE_SAVER
-    if _ASYNC_SQLITE_SAVER is None:
+    if _ASYNC_SQLITE_SAVER is None or not _is_async_saver_alive(_ASYNC_SQLITE_SAVER):
+        _discard_async_saver(_ASYNC_SQLITE_SAVER)
         db_path = _get_db_path()
         conn = aiosqlite.connect(str(db_path))
         _ASYNC_SQLITE_SAVER = AsyncSqliteSaver(conn)

@@ -359,14 +359,20 @@ class TestSseNoDatabaseLocks:
         import sqlite3
         import sys as _sys
 
-        # Clear thread_manager to get fresh state
-        for mod in list(_sys.modules.keys()):
-            if mod.startswith("app.services.thread_manager"):
-                del _sys.modules[mod]
+        # Reset thread_manager state in place (no sys.modules purge — purging
+        # orphans the singletons referenced by already-imported modules, so
+        # checkpoint writes and reads can hit different connections).
+        from app.services import thread_manager as tm
+        from app.services.thread_manager import _discard_async_saver
+
+        _discard_async_saver(tm._ASYNC_SQLITE_SAVER)
+        if tm._SQLITE_SAVER is not None:
+            try:
+                tm._SQLITE_SAVER.conn.close()
+            except Exception:
+                pass
 
         # Set up in-memory DB
-        from app.services import thread_manager as tm
-
         tm._THREAD_DB_PATH = None
         tm._SQLITE_SAVER = None
 

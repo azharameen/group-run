@@ -20,11 +20,22 @@ def _patch_thread_storage(monkeypatch, tmp_path):
 
 
 def _clear_cached_modules():
-    """Clear thread_manager from sys.modules so it reimports with fresh STORAGE_DIR."""
-    import sys
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.services.thread_manager"):
-            del sys.modules[mod]
+    """Reset thread_manager singleton state in place (keeps module identity).
+
+    Historically this purged the module from sys.modules to force a
+    re-import with a fresh STORAGE_DIR.  That orphaned the function
+    references already held by imported app modules (lifespan + routes keep
+    pointing at the old module object's singletons), so the /messages route
+    could end up reading a dead checkpointer connection while writes went to
+    a different module's connection.  An in-place reset keeps a single module
+    instance, so every reference sees the same state.
+    """
+    import app.services.thread_manager as tm
+
+    tm._THREAD_DB_PATH = None
+    tm._SQLITE_SAVER = None
+    tm._ASYNC_SQLITE_SAVER = None
+    tm._METADATA_CONN = None
 
 
 @pytest.fixture(autouse=True)
@@ -410,7 +421,6 @@ def test_thread_messages_after_stream(monkeypatch, tmp_path, patch_config):
         assert "count" in data
 
 
-@pytest.mark.skip(reason="Test-environment artifact: SQLite async/sync checkpointers use separate connections — async checkpoint writes not visible to sync reads in test harness. Product code unaffected. Planned fix: Epic 7 (SQLite Hardening).")
 def test_thread_messages_persisted_via_real_checkpoint(monkeypatch, tmp_path, patch_config):
     """Integration test: verify messages persist through LangGraph checkpoint mechanism.
 
@@ -459,19 +469,14 @@ def _reset_thread_singletons(monkeypatch):
     import app.services.thread_manager as tm
     import app.orchestrator.supervisor as sup
 
-    # Close the async checkpointer connection before resetting
-    if tm._ASYNC_SQLITE_SAVER is not None:
-        try:
-            conn = tm._ASYNC_SQLITE_SAVER.conn
-            if hasattr(conn, "cursor"):
-                # Connection is open — close it to free the event loop binding
-                import asyncio
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(conn.close())
-                loop.close()
-        except Exception:
-            pass
+    # Best-effort reap of a still-running aiosqlite worker thread.  The
+    # TestClient lifespan shutdown normally closes the connection on the
+    # correct loop already; this only matters if a test died mid-flight.
+    # (Closing on a fresh throwaway loop — the previous approach — crashed
+    # the aiosqlite worker thread with "Event loop is closed".)
+    from app.services.thread_manager import _discard_async_saver
+    _discard_async_saver(tm._ASYNC_SQLITE_SAVER)
+
     tm._ASYNC_SQLITE_SAVER = None
     tm._SQLITE_SAVER = None
     tm._THREAD_DB_PATH = None
@@ -508,7 +513,6 @@ def _real_supervisor_with_mock_agent(response_text: str):
     return graph.compile(checkpointer=get_async_checkpointer())
 
 
-@pytest.mark.skip(reason="Test-environment artifact: SQLite async/sync checkpointers use separate connections — async checkpoint writes not visible to sync reads in test harness. Product code unaffected. Planned fix: Epic 7 (SQLite Hardening).")
 def test_checkpoint_messages_persist_and_restore(monkeypatch, tmp_path, patch_config):
     _clear_cached_modules()
     _patch_thread_storage(monkeypatch, tmp_path)
@@ -531,7 +535,6 @@ def test_checkpoint_messages_persist_and_restore(monkeypatch, tmp_path, patch_co
         assert msgs_res.json()["count"] >= 2
 
 
-@pytest.mark.skip(reason="Test-environment artifact: SQLite async/sync checkpointers use separate connections — async checkpoint writes not visible to sync reads in test harness. Product code unaffected. Planned fix: Epic 7 (SQLite Hardening).")
 def test_checkpoint_message_shape(monkeypatch, tmp_path, patch_config):
     _clear_cached_modules()
     _patch_thread_storage(monkeypatch, tmp_path)
@@ -551,7 +554,6 @@ def test_checkpoint_message_shape(monkeypatch, tmp_path, patch_config):
         assert "id" in msg and "type" in msg and "content" in msg and "role" in msg
 
 
-@pytest.mark.skip(reason="Test-environment artifact: SQLite async/sync checkpointers use separate connections — async checkpoint writes not visible to sync reads in test harness. Product code unaffected. Planned fix: Epic 7 (SQLite Hardening).")
 def test_checkpoint_human_and_ai_types(monkeypatch, tmp_path, patch_config):
     _clear_cached_modules()
     _patch_thread_storage(monkeypatch, tmp_path)
@@ -569,7 +571,6 @@ def test_checkpoint_human_and_ai_types(monkeypatch, tmp_path, patch_config):
         assert "human" in types and "ai" in types
 
 
-@pytest.mark.skip(reason="Test-environment artifact: SQLite async/sync checkpointers use separate connections — async checkpoint writes not visible to sync reads in test harness. Product code unaffected. Planned fix: Epic 7 (SQLite Hardening).")
 def test_checkpoint_chronological_order(monkeypatch, tmp_path, patch_config):
     _clear_cached_modules()
     _patch_thread_storage(monkeypatch, tmp_path)
@@ -591,7 +592,6 @@ def test_checkpoint_chronological_order(monkeypatch, tmp_path, patch_config):
         assert any(m.get("type") == "ai" for m in messages[:3])
 
 
-@pytest.mark.skip(reason="Test-environment artifact: SQLite async/sync checkpointers use separate connections — async checkpoint writes not visible to sync reads in test harness. Product code unaffected. Planned fix: Epic 7 (SQLite Hardening).")
 def test_checkpoint_multiple_streams_accumulate(monkeypatch, tmp_path, patch_config):
     _clear_cached_modules()
     _patch_thread_storage(monkeypatch, tmp_path)
@@ -615,7 +615,6 @@ def test_checkpoint_multiple_streams_accumulate(monkeypatch, tmp_path, patch_con
 # ── Thread Isolation Tests ────────────────────────────────────────────────
 
 
-@pytest.mark.skip(reason="Test-environment artifact: SQLite async/sync checkpointers use separate connections — async checkpoint writes not visible to sync reads in test harness. Product code unaffected. Planned fix: Epic 7 (SQLite Hardening).")
 def test_thread_isolation_no_message_leak(monkeypatch, tmp_path, patch_config):
     _clear_cached_modules()
     _patch_thread_storage(monkeypatch, tmp_path)
@@ -636,7 +635,6 @@ def test_thread_isolation_no_message_leak(monkeypatch, tmp_path, patch_config):
         assert msgs_b == []
 
 
-@pytest.mark.skip(reason="Test-environment artifact: SQLite async/sync checkpointers use separate connections — async checkpoint writes not visible to sync reads in test harness. Product code unaffected. Planned fix: Epic 7 (SQLite Hardening).")
 def test_thread_switch_restores_correct_messages(monkeypatch, tmp_path, patch_config):
     _clear_cached_modules()
     _patch_thread_storage(monkeypatch, tmp_path)
