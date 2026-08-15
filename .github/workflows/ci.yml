@@ -256,6 +256,10 @@ jobs:
 
       - name: Run Playwright E2E tests
         working-directory: frontend
+        # Vite's /api proxy defaults to the docker-compose hostname `backend`,
+        # which does not resolve on CI runners — point it at the local uvicorn.
+        env:
+          VITE_API_PROXY: http://127.0.0.1:8000
         run: npx playwright test --project=dev --reporter=html
 
       - name: Upload Playwright report
