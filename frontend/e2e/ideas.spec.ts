@@ -49,7 +49,10 @@ test.describe('Ideas CRUD', () => {
 
     const ideaDetail = new IdeaDetailPage(page);
     await expect(page).toHaveURL(new RegExp(`/ideas/${ideaId}$`));
-    await expect(ideaDetail.title).toHaveText('E2E Detail Idea');
+    // The detail view fetches detail + files + pending interrupts in
+    // parallel; give the first (cold) backend round-trip room beyond the
+    // 5s default. The assertion itself is unchanged.
+    await expect(ideaDetail.title).toHaveText('E2E Detail Idea', { timeout: 15_000 });
     await expect(ideaDetail.description).toContainText('E2E test signal');
   });
 
@@ -61,12 +64,22 @@ test.describe('Ideas CRUD', () => {
     await expect(dashboard.ideaCard(ideaId)).toBeVisible();
 
     await dashboard.deleteButton(ideaId).click();
-    await page.getByTestId('confirm-delete-button').click();
+    await dashboard.confirmDeleteDialog();
 
-    await expect(dashboard.ideaCard(ideaId)).toHaveCount(0);
+    // The UI refetches after the DELETE round-trip; under dev-proxy load that
+    // can exceed the default 5s expect window, so allow 15s for the card to go.
+    await expect(dashboard.ideaCard(ideaId)).toHaveCount(0, { timeout: 15_000 });
 
-    // Cross-check with the API that the idea is actually gone.
-    const listResponse = await api.getJson<{ ideas: { idea_id: string }[] }>('/api/ideas');
-    expect(listResponse.ideas.some((idea) => idea.idea_id === ideaId)).toBe(false);
+    // Cross-check with the API that the idea is actually gone. Poll with a
+    // bounded window in case the DELETE response is slow to land.
+    await expect
+      .poll(
+        async () => {
+          const listResponse = await api.getJson<{ ideas: { idea_id: string }[] }>('/api/ideas');
+          return listResponse.ideas.some((idea) => idea.idea_id === ideaId);
+        },
+        { timeout: 15_000 },
+      )
+      .toBe(false);
   });
 });

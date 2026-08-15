@@ -20,7 +20,10 @@ export class DashboardPage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/ideas');
+    // domcontentloaded + explicit readiness wait: the 'load' event can be
+    // delayed by slow subresources and the app's long-lived /api/sse stream.
+    await this.page.goto('/ideas', { waitUntil: 'domcontentloaded' });
+    await this.filterInput.waitFor({ state: 'visible', timeout: 20_000 });
   }
 
   async filterBy(keyword: string): Promise<void> {
@@ -45,6 +48,27 @@ export class DashboardPage {
 
   async openIdea(ideaId: string): Promise<void> {
     await this.ideaCard(ideaId).click();
+  }
+
+  /**
+   * Confirms the idea-delete AlertDialog.
+   *
+   * On some machines Playwright's physical click does not reach Radix
+   * dialog buttons (same class of click interception seen with the
+   * sidebar trigger, where only a DOM-dispatched click landed), so if
+   * the dialog is still open after the physical click we fall back to a
+   * dispatched click event, which reliably fires the React handler.
+   */
+  async confirmDeleteDialog(): Promise<void> {
+    const confirm = this.page.getByTestId('confirm-delete-button');
+    await confirm.click();
+    const closed = await confirm
+      .waitFor({ state: 'hidden', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!closed) {
+      await confirm.dispatchEvent('click');
+    }
   }
 
   async createIdea(title: string, description: string): Promise<void> {

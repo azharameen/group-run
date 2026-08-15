@@ -32,7 +32,9 @@ export class IdeaDetailPage {
   }
 
   async goto(ideaId: string): Promise<void> {
-    await this.page.goto(`/ideas/${ideaId}`);
+    // domcontentloaded + explicit readiness wait (see DashboardPage.goto).
+    await this.page.goto(`/ideas/${ideaId}`, { waitUntil: 'domcontentloaded' });
+    await this.title.waitFor({ state: 'visible', timeout: 20_000 });
   }
 
   fileItem(fileName: string): Locator {
