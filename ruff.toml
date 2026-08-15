@@ -5,4 +5,5 @@ line-length = 120
 # Exclude common directories
 exclude = [".git", "node_modules", "frontend"]
 # Ignore formatting-only rules so the formatter (e.g. black) can handle them
-ignore = ["E203", "E231", "E501", "W503", "W291", "W293"]
+[lint]
+ignore = ["E203", "E231", "E501", "W291", "W293"]

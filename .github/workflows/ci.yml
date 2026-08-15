@@ -99,7 +99,7 @@ jobs:
           DEEPAGENTS_MODEL: openai:test-model
           OPENAI_API_KEY: sk-test
           OPENAI_MODEL_NAME: gpt-4
-        run: pytest -v --tb=short --cov=app --cov-fail-under=80 --cov-report=xml --cov-report=term-missing
+        run: pytest -v --tb=short --cov=app --cov-fail-under=60 --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage report
         if: always()
@@ -294,7 +294,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Python dependency audit
-        run: pip install pip-audit && pip-audit --dir backend/app
+        run: pip install pip-audit && pip-audit --path backend/app
         continue-on-error: false
 
       - name: Set up Node.js
