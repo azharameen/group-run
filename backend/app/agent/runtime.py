@@ -13,6 +13,7 @@ from ..config import (
     INSTRUCTIONS_DIR,
     MCP_CONFIG_PATH,
     MCP_SCHEMA_VERSION,
+    ROOT_DIR,
     TEAMS_CONFIG_PATH,  # noqa: F401  # re-export: tests monkeypatch app.agent.runtime.TEAMS_CONFIG_PATH
     TEAMS_SCHEMA_VERSION,
     settings,
@@ -22,6 +23,7 @@ from .backends import build_agent_backend
 from .context import DeepAgentContext
 from .permissions import build_agent_permissions
 from .subagents import build_agent_subagents
+from .test_model import resolve_chat_model
 
 logger = logging.getLogger(__name__)
 
@@ -316,6 +318,46 @@ def _create_mcp_tools(connections: dict[str, dict]) -> list[Any]:
         return []
 
 
+def _memory_sources() -> list[str] | None:
+    """Enumerate memory files under ``ROOT_DIR/memories`` as virtual paths.
+
+    deepagents' MemoryMiddleware loads each configured source as an
+    individual *file* — a directory path raises ``is_directory`` — so list
+    the actual files instead of pointing at the directory. ``None`` when no
+    memory files exist (the middleware is then skipped entirely).
+    """
+    memories_dir = Path(ROOT_DIR) / "memories"
+    if not memories_dir.is_dir():
+        return None
+    sources = [
+        f"/memories/{p.relative_to(memories_dir).as_posix()}"
+        for p in sorted(memories_dir.rglob("*"))
+        if p.is_file()
+    ]
+    return sources or None
+
+
+def _graph_checkpointer(thread_manager_module):
+    """Resolve the checkpointer for the compiled deep agent graph.
+
+    The graph is invoked via ``ainvoke``/``astream``, so it needs the async
+    checkpointer (the sync ``SqliteSaver`` raises ``NotImplementedError``
+    for async checkpoint access in langgraph 0.6+). In the server the
+    lifespan pre-creates the async saver, so the sync getter simply returns
+    it. When no event loop is running (synchronous contexts such as unit
+    tests) the async saver cannot be constructed — fall back to the sync
+    saver; those contexts never actually invoke the graph.
+    """
+    try:
+        return thread_manager_module.get_async_checkpointer()
+    except (AttributeError, RuntimeError):
+        logger.warning(
+            "Async checkpointer unavailable (no running event loop?); "
+            "compiling graph with the sync checkpointer"
+        )
+        return thread_manager_module.get_checkpointer()
+
+
 def get_deep_agent_runtime(team_name: str = "general"):
     """Return a compiled DeepAgents graph for the given team.
 
@@ -349,7 +391,7 @@ def get_deep_agent_runtime(team_name: str = "general"):
 
     from deepagents import create_deep_agent
 
-    from ..services.thread_manager import get_checkpointer
+    from ..services import thread_manager
 
     interrupt_on = {
         "write_file": True,
@@ -360,17 +402,21 @@ def get_deep_agent_runtime(team_name: str = "general"):
     mcp_tools = _load_mcp_tools()
     all_tools = mcp_tools if mcp_tools else None
 
+    # ``resolve_chat_model`` substitutes the deterministic local mock when the
+    # configured model is the ``openai:test-model`` sentinel (NFR-A10) so CI /
+    # E2E runs never make a live LLM call; otherwise the string is passed
+    # through for ``create_deep_agent`` to instantiate the real provider.
     return create_deep_agent(
-        model=settings.deepagents_model,
+        model=resolve_chat_model(settings.deepagents_model),
         system_prompt=_load_system_prompt(team_description),
         backend=build_agent_backend(),
         permissions=build_agent_permissions(),
         subagents=build_agent_subagents(team_name),
         skills=["/skills/"],
-        memories=["/memories/"],
+        memory=_memory_sources(),
         context_schema=DeepAgentContext,
         interrupt_on=interrupt_on,
-        checkpointer=get_checkpointer(),
+        checkpointer=_graph_checkpointer(thread_manager),
         name=agent_name,
         tools=all_tools,
     )

@@ -171,10 +171,15 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
     for attempt in range(_MAX_RETRIES + 1):
         start_time = time.monotonic()
         try:
+            # The deep agent graph is compiled with the shared checkpointer,
+            # which requires a thread_id in the configurable config. Reuse the
+            # same thread_id as the supervisor so both graphs checkpoint the
+            # same conversation; the supervisor's own checkpoint is written
+            # last (after this node returns) and therefore wins for history.
             result = await asyncio.wait_for(
                 agent.ainvoke(
                     {"messages": input_text},
-                    config={"recursion_limit": 50},
+                    config={"recursion_limit": 50, "configurable": {"thread_id": thread_id}},
                 ),
                 timeout=timeout,
             )
@@ -225,12 +230,12 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
                 await asyncio.sleep(delay)
                 continue
 
-        except Exception as exc:  # noqa: BLE001  # retry loop must classify and handle every agent error
+        except Exception as exc:  # retry loop must classify and handle every agent error
             elapsed = time.monotonic() - start_time
             last_exc = exc
             error_code = _error_code(exc)
             is_transient = _is_transient_error(exc)
-            logger.error(
+            logger.exception(
                 "Agent invocation failed: thread_id=%s, attempt=%d/%d, error_type=%s, retryable=%s, elapsed=%.1fs",
                 thread_id,
                 attempt + 1,

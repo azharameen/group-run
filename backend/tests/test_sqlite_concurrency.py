@@ -63,16 +63,31 @@ def _build_graph(async_saver: AsyncSqliteSaver):
     return graph.compile(checkpointer=async_saver)
 
 
-async def _run_stream(graph, thread_id: str) -> list[Any]:
-    """Drive a single astream call to completion, returning collected chunks."""
+async def _run_stream(graph, thread_id: str, max_attempts: int = 3) -> list[Any]:
+    """Drive a single astream call to completion, returning collected chunks.
+
+    Shared-cache table locks (``SQLITE_LOCKED_SHARED_CACHE``) do not honor
+    ``busy_timeout``, so a stream checkpointing while the sync side is writing
+    can transiently raise ``database table is locked``. Retry the stream a
+    bounded number of times with a short backoff; a lock that persists across
+    all attempts still propagates and fails the test.
+    """
     config = {"configurable": {"thread_id": thread_id}}
-    chunks = []
-    async for chunk in graph.astream(
-        {"messages": [HumanMessage(content=f"hello from {thread_id}")]},
-        config=config,
-        stream_mode="values",
-    ):
-        chunks.append(chunk)
+    chunks: list[Any] = []
+    for attempt in range(1, max_attempts + 1):
+        chunks = []
+        try:
+            async for chunk in graph.astream(
+                {"messages": [HumanMessage(content=f"hello from {thread_id}")]},
+                config=config,
+                stream_mode="values",
+            ):
+                chunks.append(chunk)
+            return chunks
+        except sqlite3.OperationalError as exc:
+            if not _is_lock_error(exc) or attempt == max_attempts:
+                raise
+            await asyncio.sleep(0.05 * attempt)
     return chunks
 
 

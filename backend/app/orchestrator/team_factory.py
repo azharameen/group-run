@@ -32,6 +32,7 @@ from ..agent.runtime import (
     _teams_config,
 )
 from ..agent.subagents import build_agent_subagents
+from ..agent.test_model import resolve_chat_model
 from ..config import settings
 
 logger = logging.getLogger(__name__)
@@ -158,7 +159,10 @@ class TeamSubgraphFactory:
 
             try:
                 agent = create_deep_agent(
-                    model=model,
+                    # NFR-A10: swap in the deterministic local mock when the
+                    # resolved model is the test sentinel so CI runs never
+                    # depend on a live LLM; other model strings pass through.
+                    model=resolve_chat_model(model),
                     system_prompt=system_prompt,
                     backend=build_agent_backend(),
                     permissions=build_agent_permissions(),
