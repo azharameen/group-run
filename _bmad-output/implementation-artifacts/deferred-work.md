@@ -20,30 +20,6 @@
   - Added test verifying pendingInterrupt remains when approved event has different ID
 # Deferred Work Ledger
 
-## Deferred from: spec-c3-3-multi-agent-state-tracker.md (2026-08-14)
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-c3-3-multi-agent-state-tracker.md`
-  summary: Agent state file not instance-scoped — multiple canvas instances in same repo overwrite each other
-  evidence: getAgentStatePath derives one path from workspace, so parallel Command Center sessions share the same agent-state.json
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-c3-3-multi-agent-state-tracker.md`
-  summary: persistAgentState writes JSON non-atomically — crash mid-write leaves file truncated
-  evidence: fs.writeFile is used directly without atomic replace or temporary file swap
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-c3-3-multi-agent-state-tracker.md`
-  summary: Path traversal in getAgentStatePath — user-controlled artifactRoot can redirect writes outside workspace
-  evidence: statePath is constructed via path.resolve with user-controlled workspacePath and artifactRoot values
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-c3-3-multi-agent-state-tracker.md`
-  summary: Concurrent tracker updates in trackedCopilotSessions Map not scoped to canvas instance
-  evidence: registerCopilotSessionState uses global Map keyed by sessionId, not instance-scoped
-
-## Deferred from: spec-c5-3-ci-pipeline-redesign.md (2026-08-14)
-
-- source_spec: `_bmad-output/implementation-artifacts/commander/spec-c5-3-ci-pipeline-redesign.md`
-  summary: E2E Playwright job lacks browser binary caching, adding 3-5 minutes per run
-  evidence: Each run downloads ~2-3 GB of browser binaries; other CI jobs use actions/cache for dependencies
-
 ## Deferred from: code review of EP-0 dead code cleanup (2026-08-03)
 
 - ~~Backend Siemens strings in agent prompts and model fields (`backend/app/agent/runtime.py`, `domain_tools.py`, `context.py`, `models/idea.py`)~~ — **RESOLVED 2026-08-13**: all Siemens references replaced with "Companion" in runtime.py, domain_tools.py, context.py, __init__.py, and runner.py
@@ -301,8 +277,6 @@
 
 - **Fragile test/component testid coupling** — `frontend/src/__tests__/IdeaDetail.test.tsx` and `DocumentUploadCard.test.tsx` rely on mock `data-testid` attributes; when real components change testids, tests break silently until run. Consider snapshot testing or removing mock testids in favor of role/label selectors.
 
-- **bmad-cc test failures** — 5 failing tests across 3 test files (`tests/tui/m4-challenger-deep-stress.test.ts`, `tests/session/story-executor-m3.test.ts`, `tests/state/state-manager.test.ts`) — ANSI stripping defect in `src/utils/ansi-cleaner.ts` causes OSC hyperlink corruption; 4 test timeouts.
-
 - ~~**Duplicate from pydantic import ValidationError in mcp.py**~~ — **RESOLVED 2026-08-11**: mcp.py file was removed in later refactoring; duplicate import no longer exists.
 
 - ~~**Vitest fork worker timeouts on Windows**~~ — **RESOLVED 2026-08-13**: `vitest.config.ts` now uses `pool: 'threads'` for Windows compatibility.
@@ -376,7 +350,6 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 - ~~**Vitest fork worker timeouts on Windows**~~ — **RESOLVED 2026-08-13**: `vitest.config.ts` now uses `pool: 'threads'`.
 - ~~**Node.js 20 deprecation**~~ — **RESOLVED 2026-08-13**: CI workflows updated to Node.js 22.
 - ~~**Security audit runs with continue-on-error**~~ — **RESOLVED 2026-08-13**: removed `continue-on-error: true` from CI security audits.
-- **ACCEPTED DEFERRAL — bmad-cc submodule test failures** — 5 failing tests in submodule (ANSI stripping defect); not blocking this repo's application runtime or feature completion.
 
 ### Resolved Since Last Audit
 
@@ -386,17 +359,6 @@ Comprehensive audit of all deferred items after Epic 5-6 completion. CI pipeline
 - ~~CI frontend type errors~~ — InterruptPayload type mismatches fixed in test files.
 - ~~CI frontend build failure~~ — resolved with type fixes.
 
-
-## Deferred from: code review (2026-08-13) c0-2-legacy-jules-workflow-removal.md
-
-- CI auto-fix gap: no Jules auto-repair until Commander ships (EP-C2) - accepted gap, will close in EP-C2
-
-## Deferred from: code review c0-3-project-context-branch-rules-update (2026-08-13)
-
-- Branch types efactor/ and docs/ not defined in naming convention — pre-existing line 121 lists them as valid branch types but naming convention section only covers feat/ and fix/
-- "One story = one PR" rule has no exception for multi-repo scenarios — out of scope for current monorepo project
-- Merge strategy not specified (squash vs rebase vs merge) — design choice for future refinement
-- Self-review checklist enforcement mechanism — pre-existing reference to agents.md §7.1 already covers this
 
 ## Final close-out review (2026-08-14)
 
@@ -418,5 +380,4 @@ After a repository-level review of the deferred work ledger, every entry is now 
 - browser/testid coupling cleanup in frontend tests
 - duplicate SSE subscription cleanup
 - partial SSE reconnect/retry semantics under lossy network conditions
-- bmad-cc submodule test failures outside this repo's core runtime
 - migration/architecture work for LangGraph runner modernization

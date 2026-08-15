@@ -17,9 +17,3 @@ If output starts with "blockers:N":
   4. If user says "no" or "wait", HALT immediately - do not continue
   5. If user says "yes", log "User acknowledged N open action items" and continue activation"""
 ]
-
-# Commander-specific story template requirements — persistent_facts under [workflow] (appends to base skill's array)
-persistent_facts = [
-  "STORY_TEMPLATE: Every new story MUST include these sections: Intent Contract (Problem, Approach, Boundaries), Code Map (File Targets, Dependencies, Integration Points), Branch Strategy (Branch name, Base branch, PR Target).",
-  "BRANCH_STRATEGY: Use 'Branch: feat/<story-key>-<desc>', 'Base: develop', 'PR Target: develop'. For hotfixes use 'Branch: hotfix/<issue>', 'Base: main', 'PR Target: main (then sync to develop)'."
-]

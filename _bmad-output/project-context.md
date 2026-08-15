@@ -133,8 +133,8 @@ All changes MUST go through pull requests. Feature PRs target `develop` only.
 ### Branch Naming Convention
 
 - **Format:** `feat/<story-key>-<short-description>`
-- **Example:** `feat/c0-1-github-branch-protection`
-- **Story keys** use the story identifier (e.g., `c0-1`, `c1-2`, `1-2`)
+- **Example:** `feat/1-2-update-config-py`
+- **Story keys** use the story identifier (e.g., `1-2`, `2-5`)
 - For fixes: `fix/<story-key>-<short-description>`
 - For refactoring: `refactor/<story-key>-<short-description>`
 - For docs: `docs/<story-key>-<short-description>`
@@ -153,9 +153,9 @@ All changes MUST go through pull requests. Feature PRs target `develop` only.
 
 - **Format:** `type(scope): description`
 - **Types:** `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`
-- **Scope examples:** `commander`, `ci`, `backend`, `frontend`, `e2e`
+- **Scope examples:** `ci`, `backend`, `frontend`, `e2e`
 - **Examples:**
-  - `feat(commander): add Jules session polling`
+  - `feat(backend): add thread archive endpoint`
   - `fix(ci): correct workflow trigger`
   - `test(e2e): add login flow tests`
 
