@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
 import {
 	listThreads,
 	createThread,
@@ -65,8 +65,8 @@ export function useThreadManager({
 			.catch((err) => {
 				console.error("Error refreshing threads:", err);
 				// Surface error to user via a simple toast-like notification
-				if (typeof window !== "undefined" && (window as any).showToast) {
-					(window as any).showToast("Failed to refresh threads", "error");
+				if (typeof window !== "undefined" && window.showToast) {
+					window.showToast("Failed to refresh threads", "error");
 				}
 			})
 			.finally(() => {

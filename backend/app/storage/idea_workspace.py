@@ -2,19 +2,19 @@
 
 import os
 import shutil
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from ..config import WORKSPACE_DIR
 from ..models.transcript import normalize_transcript_event
-from .base import read_yaml, write_markdown, write_yaml
+from .base import read_yaml, write_yaml
 
 
 def idea_folder_path(idea_id: str) -> str:
     return os.path.join(WORKSPACE_DIR, "ideas", idea_id)
 
 
-def load_idea_yaml(idea_id: str, filename: str) -> Optional[Any]:
+def load_idea_yaml(idea_id: str, filename: str) -> Any | None:
     path = os.path.join(idea_folder_path(idea_id), filename)
     if not os.path.exists(path):
         return None
@@ -35,7 +35,7 @@ def create_idea_folder(idea_id: str) -> str:
 
 def write_changelog_entry(idea_id: str, entry: str):
     path = os.path.join(idea_folder_path(idea_id), "revisions", "changelog.md")
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as handle:
         handle.write(f"\n## {timestamp}\n{entry}\n---\n")
@@ -97,7 +97,7 @@ def save_comment(idea_id: str, author: str, text: str) -> dict:
     entry = {
         "author": author,
         "text": text,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     comments.append(entry)
     write_yaml(os.path.join(idea_folder_path(idea_id), "comments.yaml"), comments)
@@ -135,7 +135,7 @@ def get_all_idea_files(idea_id: str) -> list[dict]:
             try:
                 with open(file_path, "r", encoding="utf-8") as handle:
                     content = handle.read()
-            except Exception:
+            except Exception:  # noqa: BLE001  # binary/unreadable files are listed with a placeholder
                 content = "<binary file or unreadable content>"
 
             files.append(
@@ -144,7 +144,7 @@ def get_all_idea_files(idea_id: str) -> list[dict]:
                     "filename": filename,
                     "ext": ext,
                     "size_bytes": stat.st_size,
-                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
                     "content": content,
                 }
             )

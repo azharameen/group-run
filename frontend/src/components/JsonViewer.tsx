@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface JsonViewerProps {
-  data: any
+  data: unknown
   defaultExpanded?: boolean
 }
 
-function JsonNode({ key, value, depth = 0 }: { key?: string; value: any; depth?: number }) {
+function JsonNode({ value, depth = 0 }: { value: unknown; depth?: number }) {
   const [expanded, setExpanded] = useState(depth < 2)
 
   if (value === null || value === undefined) {
@@ -93,7 +93,7 @@ function JsonNode({ key, value, depth = 0 }: { key?: string; value: any; depth?:
   return <span>{String(value)}</span>
 }
 
-export function JsonViewer({ data, defaultExpanded = false }: JsonViewerProps) {
+export function JsonViewer({ data }: JsonViewerProps) {
   const parsed = typeof data === 'string' ? data : null
 
   if (!parsed) {

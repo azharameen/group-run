@@ -28,7 +28,7 @@ export interface TraceStep {
 	agent?: string;
 	content?: string;
 	tool?: string;
-	params?: Record<string, any>;
+	params?: Record<string, unknown>;
 	output?: string;
 	action?: string;
 	from_agent?: string;

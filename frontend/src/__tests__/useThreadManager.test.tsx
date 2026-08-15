@@ -222,7 +222,7 @@ describe('useThreadManager', () => {
 			}),
 		);
 
-		let returned: ThreadMetadata = null as any;
+		let returned: ThreadMetadata | null = null;
 		await act(async () => {
 			returned = await result.current.updateThread('thread-1', { title: 'Renamed Thread' });
 		});

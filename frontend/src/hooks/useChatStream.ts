@@ -134,13 +134,13 @@ export function useChatStream({
 			(eventType, payload) => {
 				// interrupt.created — set pending interrupt with deduplication
 				if (eventType === "interrupt.created") {
-					const interrupt = payload.interrupt || payload;
-					const id = interrupt?.id;
+					const interrupt = payload.interrupt || (payload as unknown as InterruptPayload);
+					const id = interrupt.id;
 					if (!id) return;
 					// skip if already showing this interrupt (dedup)
 					if (id === activeInterruptIdRef.current) return;
 					activeInterruptIdRef.current = id;
-					setPendingInterrupt(interrupt);
+					setPendingInterrupt(interrupt as InterruptPayload);
 					// Add visual indicator message in chat
 						setRawMessages((prev) => {
 							const msg = {
@@ -293,23 +293,23 @@ export function useChatStream({
 					(evt: StreamEvent) => {
 						// Task 3: Detect interrupt events from stream
 						if (evt.type === "interrupt") {
-							const interrupt = evt.extras?.interrupt || evt;
-							const id = (interrupt as any).id || `stream_${Date.now()}`;
+							const interrupt = (evt.extras?.interrupt ?? evt) as InterruptPayload;
+							const id = interrupt.id || `stream_${Date.now()}`;
 							// Deduplication: skip if same ID already active
 							if (id === activeInterruptIdRef.current) return;
 							activeInterruptIdRef.current = id;
-							setPendingInterrupt(interrupt as InterruptPayload);
+							setPendingInterrupt(interrupt);
 								setRawMessages((prev) => {
 									const msg = {
 										id: `interrupt_${id}`,
 										sender: "System",
-										text: `Agent requires approval: ${(interrupt as any).message || (interrupt as any).tool_name || "action"}`,
+										text: `Agent requires approval: ${interrupt.message || interrupt.tool_name || "action"}`,
 										timestamp: new Date().toLocaleTimeString([], {
 											hour: "2-digit",
 											minute: "2-digit",
 										}),
 										eventType: "interrupt",
-										details: { interrupt_id: id, tool_name: (interrupt as any).tool_name },
+										details: { interrupt_id: id, tool_name: interrupt.tool_name },
 									};
 									const next = [...prev, msg];
 									return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;

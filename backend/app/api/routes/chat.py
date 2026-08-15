@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 from fastapi import APIRouter
@@ -69,7 +69,7 @@ async def _chat_stream_generator(text: str) -> AsyncGenerator[str, None]:
                 emitted_done = True
                 break
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # stream contract: always emit an error event, never crash the SSE
         logger.error("Chat stream failed: %s", exc)
         error_event = {
             "type": "error",

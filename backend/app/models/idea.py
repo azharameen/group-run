@@ -1,6 +1,6 @@
 """Lean Pydantic models for ideas."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -15,8 +15,8 @@ class Idea(BaseModel):
     problem_statement: str = ""
     solution_concept: str = ""
     tags: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class IdeaRegistry(BaseModel):

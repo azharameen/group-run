@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from uuid import uuid4
 from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -43,7 +43,7 @@ class TranscriptEvent(BaseModel):
     id: str = ""
     idea_id: str = ""
     type: TranscriptEventType
-    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     speaker: str = ""
     role: TranscriptRole = TranscriptRole.system
     agent: str = ""
@@ -113,7 +113,7 @@ def normalize_transcript_event(idea_id: str, event: dict[str, Any]) -> dict[str,
     payload["id"] = str(payload.get("id") or f"evt_{uuid4().hex}")
     payload["idea_id"] = idea_id or str(payload.get("idea_id") or "")
     payload["type"] = event_type
-    payload["timestamp"] = str(payload.get("timestamp") or datetime.now(timezone.utc).isoformat())
+    payload["timestamp"] = str(payload.get("timestamp") or datetime.now(UTC).isoformat())
     payload["speaker"] = speaker
     payload["agent"] = str(payload.get("agent") or speaker)
     payload["role"] = _default_role(event_type, speaker, payload.get("role"))

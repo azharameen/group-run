@@ -33,8 +33,8 @@ export const HITLApprovalCard: React.FC<HITLApprovalCardProps> = ({
       await approveInterrupt(int.id, 'approved', reason);
       toast({ title: 'Approved', description: `Interrupt "${int.tool_name}" approved.` });
       onApproved?.(int.id);
-    } catch (err: any) {
-      const msg = err?.message || '';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
       if (msg.includes('409')) {
         toast({ variant: 'destructive', title: 'Already resolved', description: 'This interrupt was already handled.' });
       } else {
@@ -52,8 +52,8 @@ export const HITLApprovalCard: React.FC<HITLApprovalCardProps> = ({
       await rejectInterrupt(int.id, reason);
       toast({ title: 'Rejected', description: `Interrupt "${int.tool_name}" rejected.` });
       onRejected?.(int.id);
-    } catch (err: any) {
-      const msg = err?.message || '';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
       if (msg.includes('404')) {
         toast({ variant: 'destructive', title: 'Not found', description: 'This interrupt was not found.' });
       } else if (msg.includes('409')) {

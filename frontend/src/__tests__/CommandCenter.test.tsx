@@ -1,9 +1,12 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import CommandCenter from '@/pages/CommandCenter';
 import * as apiClient from '@/api/client';
 import { useChatStream } from '@/hooks/useChatStream';
 import type { InterruptPayload } from '@/api/threads';
+import type { HTMLAttributes, ReactNode } from 'react';
+
+type MockMessage = { id: string; sender: string; text: string };
 
 function makeInterrupt(id: string): InterruptPayload {
   return {
@@ -49,7 +52,19 @@ vi.mock('@/components/command-center/CommandCenterChatPane', () => ({
     onCreateNewThread,
     onApproveInterrupt,
     onRejectInterrupt,
-  }: any) => (
+  }: {
+    messages: MockMessage[];
+    isGenerating: boolean;
+    chatInput: string;
+    isInterruptActive: boolean;
+    pendingInterrupt: InterruptPayload | null;
+    onChatInputChange: (value: string) => void;
+    onSendOrQueue: () => void;
+    onStopGeneration: () => void;
+    onCreateNewThread: () => void;
+    onApproveInterrupt?: (id: string, decision: string, reason: string) => void;
+    onRejectInterrupt?: (id: string, reason: string) => void;
+  }) => (
     <div data-testid="chat-pane">
       {isInterruptActive && <div data-testid="interrupt-overlay">Interrupt</div>}
       <input
@@ -60,7 +75,7 @@ vi.mock('@/components/command-center/CommandCenterChatPane', () => ({
         disabled={isInterruptActive}
       />
       <div data-testid="message-list">
-        {messages.map((m: any, i: number) => (
+        {messages.map((m: MockMessage, i: number) => (
           <div key={m.id || i} data-testid={`message-${i}`}>
             {m.sender}: {m.text}
           </div>
@@ -84,10 +99,10 @@ vi.mock('@/components/command-center/CommandCenterChatPane', () => ({
       </button>
       {isInterruptActive && (
         <>
-          <button data-testid="approve-button" onClick={() => onApproveInterrupt?.(pendingInterrupt?.id, "yes", "approved")} disabled={!isInterruptActive}>
+          <button data-testid="approve-button" onClick={() => onApproveInterrupt?.(pendingInterrupt?.id ?? '', "yes", "approved")} disabled={!isInterruptActive}>
             Approve
           </button>
-          <button data-testid="reject-button" onClick={() => onRejectInterrupt?.(pendingInterrupt?.id, "rejected")} disabled={!isInterruptActive}>
+          <button data-testid="reject-button" onClick={() => onRejectInterrupt?.(pendingInterrupt?.id ?? '', "rejected")} disabled={!isInterruptActive}>
             Reject
           </button>
         </>
@@ -104,17 +119,17 @@ vi.mock('@/components/command-center/CommandCenterWorkspacePane', () => ({
 
 // Mock Resizable components
 vi.mock('@/components/ui/resizable', () => ({
-  ResizablePanelGroup: ({ children, ...props }: any) => (
+  ResizablePanelGroup: ({ children, ...props }: { children?: ReactNode } & HTMLAttributes<HTMLDivElement>) => (
     <div data-testid="resizable-group" {...props}>
       {children}
     </div>
   ),
-  ResizablePanel: ({ children, ...props }: any) => (
+  ResizablePanel: ({ children, ...props }: { children?: ReactNode } & HTMLAttributes<HTMLDivElement>) => (
     <div data-testid="resizable-panel" {...props}>
       {children}
     </div>
   ),
-  ResizableHandle: ({ withHandle }: any) => (
+  ResizableHandle: ({ withHandle }: { withHandle?: boolean }) => (
     <div data-testid="resizable-handle" data-with-handle={withHandle}>
       Handle
     </div>

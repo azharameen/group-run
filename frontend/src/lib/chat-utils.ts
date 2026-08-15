@@ -105,7 +105,7 @@ export const eventToMessage = (evt: StreamEvent): ChatMessage => {
 		}
 		return value;
 	};
-	const extractResponseText = (response: StateUpdateResponse): string => {
+	const extractResponseText = (response: string | StateUpdateResponse): string => {
 		if (typeof response === "string") return response;
 		if (response && typeof response === "object") {
 			if (typeof response.text === "string") return response.text;
@@ -117,7 +117,6 @@ export const eventToMessage = (evt: StreamEvent): ChatMessage => {
 
 	const formatToolUse = (evt: StreamEvent): string => {
 		const tool = evt.tool || evt.params?.tool || "unknown_tool";
-		const input = evt.params?.input || evt.params || {};
 		const description = evt.params?.description || `Using tool: ${tool}`;
 		return `${description}\n\`${tool}\``;
 	};

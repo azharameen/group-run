@@ -8,11 +8,12 @@ import ast
 import json
 import os
 import re
-from typing import Any, Optional
+from typing import Any
+
+from langchain_core.messages import HumanMessage, SystemMessage
 
 # Adapter for modern LangChain ChatOpenAI
 from langchain_openai import ChatOpenAI as _LCChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
 
 
 class _LLMAdapter:
@@ -61,13 +62,9 @@ class _LLMAdapter:
             resp = self._llm(msg_objs, **call_kwargs)
             # Many LangChain responses have .content attribute
             text = getattr(resp, "content", None) or str(resp)
-        except Exception:
-            # Fallback to generate() if available
-            try:
-                gen = self._llm.generate([msg_objs], **call_kwargs)
-                text = gen.generations[0][0].text
-            except Exception as e:
-                raise
+        except Exception:  # noqa: BLE001  # any call-interface failure falls back to generate()
+            gen = self._llm.generate([msg_objs], **call_kwargs)
+            text = gen.generations[0][0].text
 
         class _Resp:
             def __init__(self, text):
@@ -91,7 +88,7 @@ def _ensure_llm_settings() -> None:
         raise ValueError("OPENAI_API_BASE is not configured")
 
 # Singleton LLM instance
-_llm: Optional[ChatOpenAI] = None
+_llm: ChatOpenAI | None = None
 
 
 def get_llm(**overrides) -> ChatOpenAI:
@@ -117,7 +114,7 @@ def call_llm(
     *,
     temperature: float = 0.7,
     max_tokens: int = 4096,
-    response_format: Optional[str] = None,
+    response_format: str | None = None,
 ) -> str:
     """Call the LLM with system + user prompt and return the text response.
 
@@ -150,7 +147,6 @@ def call_llm(
     # Strip markdown code fences if present
     if content.startswith("```"):
         lines = content.split("\n")
-        fence = lines[0]
         content = "\n".join(lines[1:-1]).strip()
         # If the fence specified a language, it may have been consumed
         if not content and len(lines) > 2:

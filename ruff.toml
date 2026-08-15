@@ -7,3 +7,16 @@ exclude = [".git", "node_modules", "frontend"]
 # Ignore formatting-only rules so the formatter (e.g. black) can handle them
 [lint]
 ignore = ["E203", "E231", "E501", "W291", "W293"]
+
+# FastAPI special forms are intentional single-evaluation markers (B008 false positives)
+[lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.Query",
+    "fastapi.Body",
+    "fastapi.Security",
+]

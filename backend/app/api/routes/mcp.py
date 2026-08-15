@@ -37,7 +37,8 @@ class MCPServerManagementService:
             logger.error("Invalid JSON in %s: %s", MCP_CONFIG_PATH, exc)
             raise ValueError(f"Invalid JSON in {MCP_CONFIG_PATH}: {exc}") from exc
         if not isinstance(data, dict):
-            raise ValueError(f"Invalid MCP config structure in {MCP_CONFIG_PATH}")
+            # ValueError (not TypeError) is the documented config-error contract
+            raise ValueError(f"Invalid MCP config structure in {MCP_CONFIG_PATH}")  # noqa: TRY004
         if data.get("schema_version") not in (None, MCP_SCHEMA_VERSION):
             logger.warning(
                 "MCP schema version mismatch: expected %s, got %s",
@@ -194,7 +195,7 @@ def ping_server(name: str) -> dict:
             else:
                 result["status"] = "degraded"
             result["latency_ms"] = latency
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  # health probe: any failure means disconnected
             result["status"] = "disconnected"
             result["error"] = str(exc)[:200]
     else:

@@ -1,16 +1,17 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import type { ButtonHTMLAttributes, ChangeEvent, InputHTMLAttributes, MouseEventHandler, ReactNode } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import IdeaCard from '@/components/IdeaCard';
 import type { IdeaListItem } from '@/api/client';
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, className }: any) => (
+  Card: ({ children, className }: { children?: ReactNode; className?: string }) => (
     <div data-testid="card" className={className}>
       {children}
     </div>
   ),
-  CardHeader: ({ children }: any) => <div data-testid="card-header">{children}</div>,
-  CardTitle: ({ children, className, onDoubleClick }: any) => (
+  CardHeader: ({ children }: { children?: ReactNode }) => <div data-testid="card-header">{children}</div>,
+  CardTitle: ({ children, className, onDoubleClick }: { children?: ReactNode; className?: string; onDoubleClick?: MouseEventHandler<HTMLDivElement> }) => (
     <div
       data-testid="card-title"
       className={className}
@@ -19,15 +20,15 @@ vi.mock('@/components/ui/card', () => ({
       {children}
     </div>
   ),
-  CardContent: ({ children }: any) => <div data-testid="card-content">{children}</div>,
+  CardContent: ({ children }: { children?: ReactNode }) => <div data-testid="card-content">{children}</div>,
 }));
 
 vi.mock('@/components/ui/input', () => ({
-  Input: ({ value, onChange, onKeyDown, className, autoFocus }: any) => (
+  Input: ({ value, onChange, onKeyDown, className, autoFocus }: InputHTMLAttributes<HTMLInputElement>) => (
     <input
       data-testid="input"
       value={value}
-      onChange={(e: any) => onChange(e)}
+      onChange={(e: ChangeEvent<HTMLInputElement>) => onChange?.(e)}
       onKeyDown={onKeyDown}
       className={className}
       autoFocus={autoFocus}
@@ -36,7 +37,7 @@ vi.mock('@/components/ui/input', () => ({
 }));
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, variant, size }: any) => (
+  Button: ({ children, onClick, variant, size }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string }) => (
     <button data-testid={`button-${variant}-${size}`} onClick={onClick}>
       {children}
     </button>
@@ -54,7 +55,7 @@ vi.mock('@/hooks/use-toast', () => ({
 }));
 
 vi.mock('react-router-dom', () => ({
-  Link: ({ children, to, className }: any) => (
+  Link: ({ children, to, className }: { children?: ReactNode; to: string; className?: string }) => (
     <a href={to} data-testid="link" className={className}>
       {children}
     </a>
@@ -120,7 +121,7 @@ describe('IdeaCard', () => {
 
   test('saves title on Enter key', async () => {
     const { updateIdea } = await import('@/api/client');
-    vi.mocked(updateIdea).mockResolvedValue({} as any);
+    vi.mocked(updateIdea).mockResolvedValue({ idea_id: 'idea-123', field: 'title', updated: true });
     
     render(<IdeaCard idea={mockIdea} onDelete={vi.fn()} />);
     const title = screen.getByTestId('card-title');

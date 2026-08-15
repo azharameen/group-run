@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TeamConfig } from '@/components/TeamConfig';
 import * as configApi from '@/api/config';
@@ -11,7 +12,7 @@ vi.mock('@/api/config', () => ({
 
 // Mock shadcn components
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, className }: any) => (
+  Button: ({ children, onClick, disabled, variant, className }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string }) => (
     <button
       onClick={onClick}
       disabled={disabled}
@@ -24,7 +25,7 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, variant, className }: any) => (
+  Badge: ({ children, variant, className }: { children?: ReactNode; variant?: string; className?: string }) => (
     <span data-testid="badge" data-variant={variant} className={className}>
       {children}
     </span>
@@ -32,20 +33,20 @@ vi.mock('@/components/ui/badge', () => ({
 }));
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, className }: any) => <div data-testid="card" className={className}>{children}</div>,
-  CardHeader: ({ children, className }: any) => <div data-testid="card-header" className={className}>{children}</div>,
-  CardTitle: ({ children, className }: any) => <div data-testid="card-title" className={className}>{children}</div>,
-  CardDescription: ({ children }: any) => <div data-testid="card-description">{children}</div>,
-  CardContent: ({ children, className }: any) => <div data-testid="card-content" className={className}>{children}</div>,
+  Card: ({ children, className }: { children?: ReactNode; className?: string }) => <div data-testid="card" className={className}>{children}</div>,
+  CardHeader: ({ children, className }: { children?: ReactNode; className?: string }) => <div data-testid="card-header" className={className}>{children}</div>,
+  CardTitle: ({ children, className }: { children?: ReactNode; className?: string }) => <div data-testid="card-title" className={className}>{children}</div>,
+  CardDescription: ({ children }: { children?: ReactNode }) => <div data-testid="card-description">{children}</div>,
+  CardContent: ({ children, className }: { children?: ReactNode; className?: string }) => <div data-testid="card-content" className={className}>{children}</div>,
 }));
 
 vi.mock('@/components/ui/table', () => ({
-  Table: ({ children }: any) => <table data-testid="table">{children}</table>,
-  TableHeader: ({ children }: any) => <thead data-testid="table-header">{children}</thead>,
-  TableBody: ({ children }: any) => <tbody data-testid="table-body">{children}</tbody>,
-  TableRow: ({ children, className }: any) => <tr data-testid="table-row" className={className}>{children}</tr>,
-  TableHead: ({ children, className }: any) => <th data-testid="table-head" className={className}>{children}</th>,
-  TableCell: ({ children, className }: any) => <td data-testid="table-cell" className={className}>{children}</td>,
+  Table: ({ children }: { children?: ReactNode }) => <table data-testid="table">{children}</table>,
+  TableHeader: ({ children }: { children?: ReactNode }) => <thead data-testid="table-header">{children}</thead>,
+  TableBody: ({ children }: { children?: ReactNode }) => <tbody data-testid="table-body">{children}</tbody>,
+  TableRow: ({ children, className }: { children?: ReactNode; className?: string }) => <tr data-testid="table-row" className={className}>{children}</tr>,
+  TableHead: ({ children, className }: { children?: ReactNode; className?: string }) => <th data-testid="table-head" className={className}>{children}</th>,
+  TableCell: ({ children, className }: { children?: ReactNode; className?: string }) => <td data-testid="table-cell" className={className}>{children}</td>,
 }));
 
 vi.mock('@/hooks/use-toast', () => ({

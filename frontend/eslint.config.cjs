@@ -18,6 +18,11 @@ module.exports = [
     rules: {
       // Enable recommended TypeScript rules
       ...tsPlugin.configs.recommended.rules,
+      // Convention: underscore-prefixed parameters mark intentionally unused positional args
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
     },
   },
 ];

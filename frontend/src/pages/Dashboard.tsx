@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Search, Lightbulb, Plus, Trash2, Check, X } from 'lucide-react'
+import { Search, Lightbulb, Plus, Trash2 } from 'lucide-react'
 import {
   fetchIdeas,
   connectSSE,
   createIdea,
-  updateIdea,
   deleteIdea,
   type IdeaListItem,
 } from '../api/client'
 import IdeaCard from '../components/IdeaCard'
 
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -82,10 +81,10 @@ export default function Dashboard() {
       setNewSignalText('')
       await loadData()
       window.location.href = `/ideas/${result.idea_id}`
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error',
-        description: err.message || 'Failed to create idea',
+        description: err instanceof Error ? err.message : 'Failed to create idea',
         variant: 'destructive',
       })
     }
@@ -105,10 +104,10 @@ export default function Dashboard() {
         return next
       })
       await loadData()
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error',
-        description: err.message || 'Failed to delete idea',
+        description: err instanceof Error ? err.message : 'Failed to delete idea',
         variant: 'destructive',
       })
     }
@@ -123,7 +122,7 @@ export default function Dashboard() {
     for (const ideaId of ideasToDelete) {
       try {
         await deleteIdea(ideaId)
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(`Failed to delete ${ideaId}:`, err)
       }
     }
@@ -146,14 +145,6 @@ export default function Dashboard() {
       }
       return next
     })
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedIdeas.size === filteredIdeas.length) {
-      setSelectedIdeas(new Set())
-    } else {
-      setSelectedIdeas(new Set(filteredIdeas.map(i => i.idea_id)))
-    }
   }
 
   const filteredIdeas = ideas.filter((idea) => {

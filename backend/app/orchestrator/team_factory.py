@@ -17,9 +17,7 @@ Parallel and conditional subgraph types are deferred to future stories.
 from __future__ import annotations
 
 import logging
-from typing import Annotated
-from typing import Any
-from typing import TypedDict
+from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import StateGraph

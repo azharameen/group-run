@@ -13,7 +13,7 @@ from ..config import (
     INSTRUCTIONS_DIR,
     MCP_CONFIG_PATH,
     MCP_SCHEMA_VERSION,
-    TEAMS_CONFIG_PATH,
+    TEAMS_CONFIG_PATH,  # noqa: F401  # re-export: tests monkeypatch app.agent.runtime.TEAMS_CONFIG_PATH
     TEAMS_SCHEMA_VERSION,
     settings,
 )
@@ -52,7 +52,8 @@ def _load_and_validate_teams() -> dict:
     except yaml.YAMLError as exc:
         raise ValueError(f"Failed to parse {teams_path}: {exc}") from exc
     if not isinstance(data, dict):
-        raise ValueError(f"Teams config must be a YAML mapping: {teams_path}")
+        # ValueError (not TypeError) is the documented config-error contract
+        raise ValueError(f"Teams config must be a YAML mapping: {teams_path}")  # noqa: TRY004
     version = data.get("schema_version")
     if version != TEAMS_SCHEMA_VERSION:
         raise ValueError(
@@ -121,7 +122,6 @@ def _reload_teams_config() -> dict:
     Returns:
         The newly loaded and validated teams config dict.
     """
-    global _teams_config
     new_config = _load_and_validate_teams()  # raises ValueError on failure
     _teams_config.clear()
     _teams_config.update(new_config)
@@ -166,7 +166,7 @@ def _load_mcp_tools() -> list[Any]:
     if mcp_path.exists():
         try:
             mcp_data = json.loads(mcp_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
+        except json.JSONDecodeError:
             logger.error("MCP config invalid JSON: %s", _config.MCP_CONFIG_PATH)
             return []
 
@@ -241,11 +241,13 @@ def _validate_mcp_config() -> list[dict]:
         raise ValueError(f"Invalid JSON in {_config.MCP_CONFIG_PATH}: {exc}") from exc
 
     if not isinstance(data, dict):
-        raise ValueError(f"MCP config must be a JSON object: {_config.MCP_CONFIG_PATH}")
+        # ValueError (not TypeError) is the documented config-error contract
+        raise ValueError(f"MCP config must be a JSON object: {_config.MCP_CONFIG_PATH}")  # noqa: TRY004
 
     servers = data.get("servers", [])
     if not isinstance(servers, list):
-        raise ValueError(f"MCP config 'servers' must be an array: {_config.MCP_CONFIG_PATH}")
+        # ValueError (not TypeError) is the documented config-error contract
+        raise ValueError(f"MCP config 'servers' must be an array: {_config.MCP_CONFIG_PATH}")  # noqa: TRY004
 
     # Schema-level validation (complements manual checks above)
     schema_errors = validate_mcp_config(data, str(_config.MCP_CONFIG_PATH))
@@ -309,7 +311,7 @@ def _create_mcp_tools(connections: dict[str, dict]) -> list[Any]:
     except ImportError as exc:
         logger.error("MCP tools unavailable: langchain_mcp_adapters not installed — %s", exc)
         return []
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # degrade to no-tools rather than crash startup
         logger.error("MCP tools failed: servers=%s, error=%s", list(connections.keys()), type(exc).__name__)
         return []
 
@@ -346,6 +348,7 @@ def get_deep_agent_runtime(team_name: str = "general"):
     agent_name = f"{team_name}-agent"
 
     from deepagents import create_deep_agent
+
     from ..services.thread_manager import get_checkpointer
 
     interrupt_on = {

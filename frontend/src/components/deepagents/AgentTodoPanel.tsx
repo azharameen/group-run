@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { AgentTodoItem } from '../../types/deepagents';
-import { CheckSquare, ListTodo } from 'lucide-react';
+import { ListTodo } from 'lucide-react';
 
 interface AgentTodoPanelProps {
   todos?: AgentTodoItem[];

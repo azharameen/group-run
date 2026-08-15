@@ -24,7 +24,7 @@ export interface KBDocument {
   source: string;
   path: string;
   filename: string;
-  content: string | Record<string, any>;
+  content: string | Record<string, unknown>;
 }
 
 export interface KnowledgeBaseData {

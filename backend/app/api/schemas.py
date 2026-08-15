@@ -1,32 +1,31 @@
 """Shared request/response schemas for API routes."""
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl
-
 
 # ── Thread schemas ──────────────────────────────────────────────────────────
 
 
 class CreateThreadRequest(BaseModel):
     title: str = "New Chat"
-    idea_id: Optional[str] = None
+    idea_id: str | None = None
     tags: list[str] = []
     agent_names: list[str] = []
 
 
 class UpdateThreadRequest(BaseModel):
-    title: Optional[str] = None
-    status: Optional[str] = None
-    idea_id: Optional[str] = None
-    tags: Optional[list[str]] = None
-    agent_names: Optional[list[str]] = None
+    title: str | None = None
+    status: str | None = None
+    idea_id: str | None = None
+    tags: list[str] | None = None
+    agent_names: list[str] | None = None
 
 
 class SendMessageRequest(BaseModel):
     text: str
     sender: str = "user"
-    idea_id: Optional[str] = None
+    idea_id: str | None = None
 
 
 class Interrupt(BaseModel):
@@ -36,8 +35,8 @@ class Interrupt(BaseModel):
     tool_input: dict[str, Any]
     message: str
     status: str
-    decision: Optional[str] = None
-    reason: Optional[str] = None
+    decision: str | None = None
+    reason: str | None = None
     created_at: str
     updated_at: str
 
@@ -63,7 +62,7 @@ class MCPServer(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=64)
     transport: str = Field(default="http", pattern="^(http|stdio)$")
-    url: Optional[str] = None
+    url: str | None = None
     timeout: int = Field(default=10, ge=1, le=300)
     options: dict = Field(default_factory=dict)
 
@@ -125,7 +124,7 @@ class AgentDefinition(BaseModel):
 
     name: str
     role: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class TeamDefinition(BaseModel):

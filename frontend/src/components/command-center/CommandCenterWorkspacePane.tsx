@@ -1056,7 +1056,7 @@ export function CommandCenterWorkspacePane() {
 
 									<div className="space-y-1.5">
 										<label className="text-xs font-semibold text-foreground">Execution Status</label>
-										<Select value={sheetStatus} onValueChange={(v) => setSheetStatus(v as any)}>
+										<Select value={sheetStatus} onValueChange={(v) => setSheetStatus(v as AgentTaskItem["status"])}>
 											<SelectTrigger className="h-9 text-xs bg-background">
 												<SelectValue placeholder="Select Status" />
 											</SelectTrigger>

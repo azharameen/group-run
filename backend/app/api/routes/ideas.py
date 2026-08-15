@@ -1,8 +1,8 @@
 """Idea CRUD endpoints — pure filesystem-backed operations."""
 import asyncio
+import logging
 import re
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -10,10 +10,17 @@ from pydantic import BaseModel, Field
 from ...storage.idea_workspace import create_idea_folder
 from ...storage.registry import load_idea_registry, save_idea_registry
 from ...storage.yaml_io import (
-    archive_idea_folder, delete_idea_folder, get_all_idea_files,
-    load_comments, load_idea_yaml, remove_from_registry,
-    save_comment, save_idea_yaml,
+    archive_idea_folder,
+    delete_idea_folder,
+    get_all_idea_files,
+    load_comments,
+    load_idea_yaml,
+    remove_from_registry,
+    save_comment,
+    save_idea_yaml,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["ideas"])
 _ID_RE = re.compile(r"^[A-Z0-9-]+$")
@@ -32,11 +39,11 @@ def _idea_exists(idea_id: str) -> dict:
     return data
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 class CreateIdeaRequest(BaseModel):
-    title: Optional[str] = None
-    signal_text: Optional[str] = "Autonomous discovery"
+    title: str | None = None
+    signal_text: str | None = "Autonomous discovery"
 
 class UpdateIdeaRequest(BaseModel):
     field: str
@@ -44,7 +51,7 @@ class UpdateIdeaRequest(BaseModel):
 
 class AddCommentRequest(BaseModel):
     text: str = Field(..., min_length=1)
-    author: Optional[str] = "User"
+    author: str | None = "User"
 
 async def _generate_idea_id() -> str:
     """Generate a unique idea ID with async lock to prevent race conditions."""
@@ -124,9 +131,8 @@ async def delete_idea(idea_id: str) -> dict:
     remove_from_registry(idea_id)
     try:
         delete_idea_folder(idea_id)
-    except Exception:
-        # Registry already removed; folder cleanup failure is non-fatal
-        pass
+    except Exception:  # registry already removed; folder cleanup failure is non-fatal
+        logger.debug("Idea folder cleanup failed for %s", idea_id, exc_info=True)
     return {"idea_id": idea_id, "deleted": True, "message": f"Idea {idea_id} deleted"}
 
 @router.post("/ideas/{idea_id}/archive")
@@ -140,8 +146,8 @@ async def archive_idea(idea_id: str) -> dict:
     remove_from_registry(idea_id)
     try:
         delete_idea_folder(idea_id)
-    except Exception:
-        pass
+    except Exception:  # archive already saved; source-folder cleanup failure is non-fatal
+        logger.debug("Idea folder cleanup failed after archive for %s", idea_id, exc_info=True)
     return {"idea_id": idea_id, "archived": True, "archive_path": archive_path, "message": f"Idea {idea_id} archived"}
 
 @router.post("/ideas/{idea_id}/comment")

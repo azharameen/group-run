@@ -132,7 +132,7 @@ export function CommandCenterChatPane({
 										) : isUser || msg.eventType === "user_message" ? null : (
 											<div className="flex items-center gap-2">
 												<Badge
-													variant={messageBadgeVariant(msg.eventType) as any}
+													variant={messageBadgeVariant(msg.eventType)}
 													className="text-[10px] uppercase font-mono"
 												>
 													{label}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { IdeaListItem } from '../api/client'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { ArrowRight, Edit2, Check, X, Trash2 } from 'lucide-react'
+import { ArrowRight, Check, X, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { updateIdea } from '../api/client'
@@ -33,10 +33,10 @@ export default function IdeaCard({
       })
       setIsEditing(false)
       window.location.reload()
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error',
-        description: err.message || 'Failed to update title',
+        description: err instanceof Error ? err.message : 'Failed to update title',
         variant: 'destructive',
       })
       setEditTitle(idea.title)

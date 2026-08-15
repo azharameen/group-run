@@ -17,7 +17,7 @@ export interface ApiHelpers {
   baseUrl: string;
   /** GET a JSON resource from the backend API. */
   getJson: <T = unknown>(path: string) => Promise<T>;
-  /** Wait until the backend `/health` endpoint responds successfully. */
+  /** Wait until the backend `/api/health` endpoint responds successfully. */
   waitForHealthy: (timeoutMs?: number) => Promise<void>;
 }
 
@@ -48,7 +48,7 @@ export const test = base.extend<Fixtures>({
       let lastError: unknown;
       while (Date.now() < deadline) {
         try {
-          const response = await fetch(`${baseUrl}/health`);
+          const response = await fetch(`${baseUrl}/api/health`);
           if (response.ok) {
             return;
           }

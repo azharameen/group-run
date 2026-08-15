@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+
 from ..config import INSTRUCTIONS_DIR, KNOWLEDGE_BASE_DIR, ROOT_DIR, WORKSPACE_DIR
 
 
@@ -9,7 +10,7 @@ def build_agent_backend():
     """Build the default DeepAgents backend layout for this project."""
     try:
         from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
-    except ImportError as exc:
+    except ImportError:
         # Graceful fallback for test environments without deepagents installed
         logger = logging.getLogger(__name__)
         logger.warning("DeepAgents not found, using Mock backend for discovery")

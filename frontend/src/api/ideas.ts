@@ -19,15 +19,27 @@ export interface IdeaListItem {
   updated_at: string;
 }
 
+export interface IdeaData {
+  idea_id: string;
+  title: string;
+  signal_text?: string;
+  problem_statement?: string;
+  solution_concept?: string;
+  source_evidence?: string[];
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
 export interface IdeaDetail {
-  idea: Record<string, any>;
+  idea: IdeaData;
   comments?: Array<{
     author: string;
     text: string;
     timestamp: string;
   }>;
-  transcript_events?: Array<Record<string, any>>;
-  transcript?: Array<Record<string, any>>;
+  transcript_events?: Array<Record<string, unknown>>;
+  transcript?: Array<Record<string, unknown>>;
 }
 
 export interface IdeaFile {
@@ -71,8 +83,8 @@ export async function fetchIdeaRevisions(ideaId: string): Promise<ArtifactRevisi
   return res.revisions || [];
 }
 
-export async function fetchArtifactDiff(ideaId: string, artifactName: string): Promise<any> {
-  return request(`/ideas/${ideaId}/artifacts/${encodeURIComponent(artifactName)}/diff`);
+export async function fetchArtifactDiff(ideaId: string, artifactName: string): Promise<Record<string, unknown>> {
+  return request<Record<string, unknown>>(`/ideas/${ideaId}/artifacts/${encodeURIComponent(artifactName)}/diff`);
 }
 
 export async function createIdea(signalText: string, title?: string): Promise<{ idea_id: string; message: string }> {
@@ -86,14 +98,18 @@ export async function deleteIdea(ideaId: string): Promise<{ idea_id: string; del
   return request(`/ideas/${ideaId}`, { method: 'DELETE' });
 }
 
-export async function addIdeaComment(ideaId: string, text: string, author = 'User'): Promise<any> {
+export async function addIdeaComment(
+  ideaId: string,
+  text: string,
+  author = 'User',
+): Promise<{ idea_id: string; comment: { author: string; text: string; timestamp: string } }> {
   return request(`/ideas/${ideaId}/comment`, {
     method: 'POST',
     body: JSON.stringify({ author, text }),
   });
 }
 
-export async function updateIdea(ideaId: string, field: string, value: any): Promise<any> {
+export async function updateIdea(ideaId: string, field: string, value: unknown): Promise<{ idea_id: string; field: string; updated: boolean }> {
   return request(`/ideas/${ideaId}/update`, {
     method: 'POST',
     body: JSON.stringify({ field, value }),

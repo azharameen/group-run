@@ -1,13 +1,16 @@
 """First-class domain tools for DeepAgents subagents and runtime graph nodes."""
 
 import json
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
+
+_logger = logging.getLogger(__name__)
 
 from ..config import KNOWLEDGE_BASE_DIR, WORKSPACE_DIR
-from ..storage.yaml_io import load_idea_yaml, save_idea_yaml, write_markdown
 from ..storage.artifacts import save_artifact_revision
+from ..storage.yaml_io import load_idea_yaml, save_idea_yaml, write_markdown
 
 
 def generate_invention_ideas(
@@ -16,7 +19,7 @@ def generate_invention_ideas(
     topic_name: str = "",
     idea_category: str = "Industrial AI",
     project_name: str = "Companion",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Generate structured invention ideas using the DeepAgents research agent.
 
     Delegates to the ``research-agent`` subagent which reads the knowledge base,
@@ -67,7 +70,7 @@ def generate_invention_ideas(
     return ideas
 
 
-def _parse_ideas_from_output(output: Any, max_ideas: int) -> List[Dict[str, Any]]:
+def _parse_ideas_from_output(output: Any, max_ideas: int) -> list[dict[str, Any]]:
     """Parse structured ideas from the DeepAgents runtime output."""
     if output is None:
         return []
@@ -99,7 +102,7 @@ def _parse_ideas_from_output(output: Any, max_ideas: int) -> List[Dict[str, Any]
     return []
 
 
-def query_prior_art_taxonomy(category_code: str = "IND_AI") -> Dict[str, Any]:
+def query_prior_art_taxonomy(category_code: str = "IND_AI") -> dict[str, Any]:
     """Query knowledge base prior-art taxonomy definitions and keywords."""
     taxonomy_file = Path(KNOWLEDGE_BASE_DIR) / "prior_art_taxonomy.json"
     if taxonomy_file.exists():
@@ -109,7 +112,7 @@ def query_prior_art_taxonomy(category_code: str = "IND_AI") -> Dict[str, Any]:
                 if cat.get("code") == category_code:
                     return cat
             return data.get("categories", [{}])[0]
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  # fall back to default taxonomy on any load error
             print(f"[Tools] Taxonomy load error: {exc}")
     return {
         "code": "IND_AI",
@@ -143,14 +146,14 @@ def draft_patent_section(
         idea_data[f"{section_name}_data"] = {
             "summary": content[:200] + "...",
             "path": str(file_path),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "provenance": f"artifact:{idea_id}:{section_name}",
             "trust": "generated",
             "evidence_refs": idea_data.get("source_evidence", []),
         }
         save_idea_yaml(idea_id, "idea.yaml", idea_data)
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # report draft failure to the agent instead of raising
         print(f"[Tools] Draft patent section error for {idea_id}: {exc}")
         return False
 
@@ -160,14 +163,14 @@ def record_approval_decision(
     reviewer_role: str,
     decision: str,
     comments: str = "",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Record a human reviewer or AI counsel approval/rejection decision."""
     idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
     reviews = idea_data.get("reviews", {})
     reviews[reviewer_role.lower()] = {
         "status": decision,
         "comments": comments,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "provenance": f"approval:{idea_id}:{reviewer_role.lower()}",
         "trust": "trusted",
     }
@@ -181,7 +184,7 @@ def save_research_note(
     title: str,
     content: str,
     source_refs: list[str] | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Save a research note to the workspace for later reference by other agents.
 
     Args:
@@ -197,7 +200,7 @@ def save_research_note(
         "title": title,
         "content": content,
         "source_refs": source_refs or [],
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "provenance": f"research:{note_id}",
     }
     note_path = notes_dir / f"{note_id}.json"

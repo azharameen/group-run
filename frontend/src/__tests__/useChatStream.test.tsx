@@ -2,8 +2,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatStream } from '@/hooks/useChatStream';
 import type { UseChatStreamOptions } from '@/hooks/useChatStream';
-import type { StreamEvent } from '@/api/client';
-import type { InterruptPayload } from '@/api/threads';
+import type { InterruptPayload, SSEPayload, StreamEvent } from '@/api/threads';
 import * as apiClient from '@/api/client';
 
 // Mock EventSource for SSE (must be before vi.mock)
@@ -29,11 +28,8 @@ class MockEventSource {
   }
 }
 
-// Pending promise state for streamThreadMessage mock — reset in beforeEach/afterEach
-let pendingResolve: (() => void) | null = null;
-let pendingOnEvent: ((event: StreamEvent) => void) | undefined = undefined;
 // Interrupt callback from connectSSE 3rd parameter - reset each test
-let interruptCallback: ((eventType: string, payload: any) => void) | undefined;
+let interruptCallback: ((eventType: string, payload: SSEPayload) => void) | undefined;
 
 // Mock the API client module
 vi.mock('@/api/client', () => ({
@@ -58,9 +54,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   // Clear mockSSE handlers between tests
   mockSSE.clearHandlers();
-  // Reset pending promise state
-  pendingResolve = null;
-  pendingOnEvent = undefined;
   interruptCallback = undefined;
   // Mock EventSource globally
   globalThis.EventSource = MockEventSource as never;
@@ -83,20 +76,15 @@ beforeEach(() => {
     });
     return mockSSE as unknown as EventSource;
   });
-  // Streaming mock: returns a pending promise the test controls via pendingResolve/pendingOnEvent
-  vi.mocked(apiClient.streamThreadMessage).mockImplementation(async (_threadId, _text, _signal, onEvent) => {
-    pendingOnEvent = onEvent;
-    return new Promise<void>((resolve) => {
-      pendingResolve = resolve;
-    });
-  });
+  // Streaming mock: returns a pending promise (tests needing control override this mock)
+  vi.mocked(apiClient.streamThreadMessage).mockImplementation(
+    () => new Promise<void>(() => {})
+  );
   // Reset getThreadMessages mock
   vi.mocked(apiClient.getThreadMessages).mockResolvedValue({ messages: [], count: 0 });
 });
 
 afterEach(() => {
-  pendingResolve = null;
-  pendingOnEvent = undefined;
   vi.restoreAllMocks();
 });
 
@@ -158,11 +146,9 @@ describe('useChatStream', () => {
       json: async () => ({ tasks: [], completed: 0, total: 0 }),
     } as Response);
 
-    let streamingOnEvent: ((evt: any) => void) | undefined;
     let resolveStreaming: (() => void) | undefined;
     vi.mocked(apiClient.streamThreadMessage).mockImplementation(
-      (_tid, _text, _ideaId, onEvent) => {
-        streamingOnEvent = onEvent;
+      (_tid, _text, _ideaId, _onEvent) => {
         return new Promise<void>((resolve) => { resolveStreaming = resolve; });
       }
     );
@@ -359,11 +345,9 @@ describe('useChatStream', () => {
 
     vi.mocked(apiClient.listThreads).mockResolvedValue([]);
 
-    let streamingOnEvent: ((evt: any) => void) | undefined;
     let resolveStreaming: (() => void) | undefined;
     vi.mocked(apiClient.streamThreadMessage).mockImplementation(
-      (_tid, _text, _ideaId, onEvent) => {
-        streamingOnEvent = onEvent;
+      (_tid, _text, _ideaId, _onEvent) => {
         return new Promise<void>((resolve) => { resolveStreaming = resolve; });
       }
     );
@@ -395,11 +379,9 @@ describe('useChatStream', () => {
       json: async () => ({ tasks: [], completed: 0, total: 0 }),
     } as Response);
 
-    let streamingOnEvent: ((evt: any) => void) | undefined;
     let rejectStreaming: ((e: Error) => void) | undefined;
     vi.mocked(apiClient.streamThreadMessage).mockImplementation(
-      (_tid, _text, _ideaId, onEvent) => {
-        streamingOnEvent = onEvent;
+      (_tid, _text, _ideaId, _onEvent) => {
         return new Promise<void>((_, reject) => { rejectStreaming = reject; });
       }
     );
@@ -431,7 +413,7 @@ describe('useChatStream', () => {
       json: async () => ({ tasks: [], completed: 0, total: 0 }),
     } as Response);
 
-    let streamingOnEvent: ((evt: any) => void) | undefined;
+    let streamingOnEvent: ((evt: StreamEvent) => void) | undefined;
     vi.mocked(apiClient.streamThreadMessage).mockImplementation(
       async (_tid, _text, _ideaId, onEvent) => {
         streamingOnEvent = onEvent;
@@ -464,7 +446,7 @@ describe('useChatStream', () => {
       json: async () => ({ tasks: [], completed: 0, total: 0 }),
     } as Response);
 
-    let streamingOnEvent: ((evt: any) => void) | undefined;
+    let streamingOnEvent: ((evt: StreamEvent) => void) | undefined;
     vi.mocked(apiClient.streamThreadMessage).mockImplementation(
       async (_tid, _text, _ideaId, onEvent) => {
         streamingOnEvent = onEvent;
@@ -570,7 +552,7 @@ describe('useChatStream', () => {
       count: 2,
     });
 
-    const { result, rerender } = renderHook(
+    const { result } = renderHook(
       (props) => useChatStream(props),
       { initialProps: { ...defaultOptions, activeThreadId: 'thread-1' } as UseChatStreamOptions }
     );
@@ -733,7 +715,7 @@ describe('useChatStream', () => {
       result.current.handleSendOrQueue();
     });
 
-    const onEventCb = mockOnEvent.mock.calls[0]?.[0] as (evt: any) => void;
+    const onEventCb = mockOnEvent.mock.calls[0]?.[0] as (evt: StreamEvent) => void;
     await act(async () => {
       onEventCb?.({ type: 'interrupt', extras: { interrupt: { id: 'stream-1', tool_name: 'read_file', message: 'stream interrupt' } } });
     });

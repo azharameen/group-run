@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import KnowledgeBase from '@/pages/KnowledgeBase';
 import * as client from '@/api/client';
+import type { IdeaListItem } from '@/api/client';
 
 // Mock the API client
 vi.mock('@/api/client', async () => {
@@ -16,9 +17,9 @@ vi.mock('@/api/client', async () => {
 });
 
 describe('KnowledgeBase Page', () => {
-  const mockIdeas = [
-    { id: '1', title: 'Idea 1', state: 'draft' },
-    { id: '2', title: 'Idea 2', state: 'active' }
+  const mockIdeas: IdeaListItem[] = [
+    { idea_id: '1', title: 'Idea 1', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' },
+    { idea_id: '2', title: 'Idea 2', created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z' }
   ];
 
   const mockKbData = {
@@ -31,15 +32,15 @@ describe('KnowledgeBase Page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (client.fetchIdeas as any).mockResolvedValue(mockIdeas);
-    (client.fetchKnowledgeBase as any).mockResolvedValue(mockKbData);
-    (client.connectSSE as any).mockReturnValue(mockSSE);
+    vi.mocked(client.fetchIdeas).mockResolvedValue(mockIdeas);
+    vi.mocked(client.fetchKnowledgeBase).mockResolvedValue(mockKbData);
+    vi.mocked(client.connectSSE).mockReturnValue(mockSSE as unknown as EventSource);
   });
 
   test('renders loading state initially', async () => {
     // We don't resolve the promises immediately to see the loader
-    let resolveIdeas: any;
-    (client.fetchIdeas as any).mockReturnValue(new Promise(res => { resolveIdeas = res; }));
+    let resolveIdeas: (value: IdeaListItem[] | PromiseLike<IdeaListItem[]>) => void = () => {};
+    vi.mocked(client.fetchIdeas).mockReturnValue(new Promise<IdeaListItem[]>(res => { resolveIdeas = res; }));
     
     render(<KnowledgeBase />);
     
@@ -86,7 +87,7 @@ describe('KnowledgeBase Page', () => {
   });
 
   test('handles fetch errors gracefully', async () => {
-    (client.fetchKnowledgeBase as any).mockRejectedValue(new Error('Fetch failed'));
+    vi.mocked(client.fetchKnowledgeBase).mockRejectedValue(new Error('Fetch failed'));
     
     render(<KnowledgeBase />);
 

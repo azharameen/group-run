@@ -4,9 +4,9 @@ import json
 import sqlite3
 import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from app.infrastructure.events.stream_bus import _bus
 
@@ -19,7 +19,7 @@ class InterruptService:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         # Connection is initialized lazily via _conn() to allow test patching
-        self._conn_obj: Optional[sqlite3.Connection] = None
+        self._conn_obj: sqlite3.Connection | None = None
         self._init_table()
 
     @classmethod
@@ -43,9 +43,9 @@ class InterruptService:
         )
         self._conn().commit()
 
-    def create_interrupt(self, thread_id: str, tool_name: str, message: str, tool_input: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def create_interrupt(self, thread_id: str, tool_name: str, message: str, tool_input: dict[str, Any] | None = None) -> dict[str, Any]:
         interrupt_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock:
             conn = self._conn()
             conn.execute("BEGIN IMMEDIATE")
@@ -67,12 +67,12 @@ class InterruptService:
         rows = self._conn().execute("SELECT * FROM interrupts WHERE status = 'pending' ORDER BY created_at DESC").fetchall()
         return [self._row_dict(row) for row in rows]
 
-    def get_interrupt(self, interrupt_id: str) -> Optional[dict[str, Any]]:
+    def get_interrupt(self, interrupt_id: str) -> dict[str, Any] | None:
         row = self._conn().execute("SELECT * FROM interrupts WHERE id = ?", (interrupt_id,)).fetchone()
         return self._row_dict(row) if row else None
 
-    def approve_interrupt(self, interrupt_id: str, decision: str, reason: str = "") -> Optional[dict[str, Any]]:
-        now = datetime.now(timezone.utc).isoformat()
+    def approve_interrupt(self, interrupt_id: str, decision: str, reason: str = "") -> dict[str, Any] | None:
+        now = datetime.now(UTC).isoformat()
         with self._lock:
             conn = self._conn()
             conn.execute("BEGIN IMMEDIATE")
@@ -93,8 +93,8 @@ class InterruptService:
             _bus.publish("interrupt.approved", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
         return interrupt
 
-    def reject_interrupt(self, interrupt_id: str, reason: str) -> Optional[dict[str, Any]]:
-        now = datetime.now(timezone.utc).isoformat()
+    def reject_interrupt(self, interrupt_id: str, reason: str) -> dict[str, Any] | None:
+        now = datetime.now(UTC).isoformat()
         with self._lock:
             conn = self._conn()
             conn.execute("BEGIN IMMEDIATE")
@@ -115,7 +115,7 @@ class InterruptService:
             _bus.publish("interrupt.rejected", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
         return interrupt
 
-    def _row_dict(self, row: sqlite3.Row | None) -> Optional[dict[str, Any]]:
+    def _row_dict(self, row: sqlite3.Row | None) -> dict[str, Any] | None:
         if row is None:
             return None
         data = dict(row)
