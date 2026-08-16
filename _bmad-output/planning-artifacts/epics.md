@@ -11,8 +11,8 @@ inputDocuments:
 > Rule: `epics.md` always holds the current sprint's backlog; each completed sprint is archived as `sprint-N.md` in this folder. Epic numbers never restart.
 >
 > **Execution model:** All 17 stories below are executed by **local agents** (Copilot/BMAD workflow) in `order` sequence.
-> Small self-contained tech-debt/test/refactor items are delegated to the **Jules agent** via copy-paste task blocks in
-> `../implementation-artifacts/jules-queue.md` (runs in parallel with Epic 8; never auto-merge Jules PRs).
+> Small self-contained tech-debt/test/refactor items are delegated to the **Jules agent** and tracked as **GitHub issues**
+> (label `jules`, milestone `Sprint 2`) — copy the issue body as the Jules task prompt (runs in parallel with Epic 8; never auto-merge Jules PRs).
 > Each story carries a `<!-- meta: ... -->` line: `executor` (local-agent | jules), `order` (global execution sequence), `priority` (P0–P3), `depends` (story IDs that must land first).
 
 ## Overview
