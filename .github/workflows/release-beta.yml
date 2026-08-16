@@ -22,6 +22,9 @@ jobs:
   beta:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
     runs-on: ubuntu-latest
+    # Reserved lane (AD-17): no protection rules yet; add required reviewers
+    # here once deploy actions exist.
+    environment: beta
     steps:
       - uses: actions/checkout@v4
         with:

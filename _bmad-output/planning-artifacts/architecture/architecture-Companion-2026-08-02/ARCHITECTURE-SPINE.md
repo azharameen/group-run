@@ -178,6 +178,18 @@ Config reload merges DB overlay on top of the file base. File changes require ex
   - **Parked.** Container image build/push is deferred — reserved slot in both workflows; no image-registry answer yet.
 - **Enforcement:** workflows + merge-method table in `.github/pull_request_template.md`. Do **not** enable "Require linear history" on `main` — it forbids the merge commits this policy depends on. If an empty-changelog Release PR appears, the wrong merge method was used: close it and re-merge correctly.
 
+### AD-17 — Work-Item Hierarchy & Project-Management Model [ADOPTED]
+
+- **Binds:** how all GitHub issues, milestones, environments and board items are created and linked; how BMAD artifacts relate to the project board
+- **Prevents:** orphan work items, board↔BMAD drift, untraceable defects, milestone sprawl
+- **Rule:**
+  - **Two layers, one truth.** The GitHub repo + project board ("Group Run", project #4) is the **work-item truth**: every feature, fix, task and bug is an issue. BMAD in-repo artifacts (epics.md, story files, sprints) are the **thinking layer** — they produce issues, then the issue is the work item. No auto-sync tooling exists (BMAD↔GitHub sync module: verified absent, 2026-08); sync is done by agent/human via `gh`.
+  - **Hierarchy = GitHub sub-issues (2 layers, 1 truth).** Epic (root) → Story (sub-issue of Epic) → Task or Bug (sub-issue of Story); a Bug may be a direct child of an Epic. Defect in a shipped version = Bug under the owning Epic, milestone = the release being fixed (hotfix path per AD-16). The board renders hierarchy natively via its `Parent issue` + `Sub-issues progress` fields; the `Issue Type` field reflects the repo issue type (Epic/Story/Task/Bug) once configured repo-level — until then, `epic`/`story` labels mark type.
+  - **Milestones = production releases only** (`v0.1.0`, `v0.2.0`, …), never per beta (AD-16). Everything shipping in the first production release carries **v0.1.0**. `v1.0.0` is a **GA declaration** — human `Release-As: 1.0.0` only per AD-16; the v1.0.0 milestone tracks pre-GA polish, not an automatic target.
+  - **Environments = release lanes.** `beta` (develop lane) and `production` (main lane); the release workflows target them. Add required reviewers once the first deploy actions land (image builds parked per AD-16).
+  - **Branch protection.** Both branches already require the 5 quality checks (backend lint/tests, frontend lint/tests/build), strict mode. The Playwright e2e check (PR #14) must be added to `main`'s required checks once verified.
+- **Enforcement:** convention + PR template. Issues created outside the hierarchy get re-parented/re-milesstoned at triage; Jules-delegated issues always carry an owning Epic parent.
+
 ## Consistency Conventions
 
 | Concern | Convention |

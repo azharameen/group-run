@@ -26,6 +26,9 @@ jobs:
   release-please:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
+    # Reserved lane (AD-17): no protection rules yet; add required reviewers
+    # here once deploy actions exist.
+    environment: production
     steps:
       - uses: google-github-actions/release-please-action@v4
         with:
