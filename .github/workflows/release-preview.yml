@@ -1,0 +1,96 @@
+---
+name: release-preview
+# Pre-merge version prediction for the production lane.
+# On every develop->main PR (and label change), comments the version the
+# release machine WILL cut, the commit evidence behind it, and a mismatch
+# alarm if a release:* label disagrees with the commits.
+#
+# Law: labels are human planning tools. The machine follows commits
+# (conventional) or an explicit `Release-As: X.Y.Z` footer. Never labels.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    if: github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute predicted version
+        id: version
+        run: bash .github/scripts/beta-version.sh
+
+      - name: Comment prediction on the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          PREDICTED_VERSION: ${{ steps.version.outputs.version }}
+          LAST_PROD: ${{ steps.version.outputs.last_prod }}
+          LEVEL: ${{ steps.version.outputs.level }}
+          LEVEL_RAW: ${{ steps.version.outputs.level_raw }}
+          BREAKDOWN: ${{ steps.version.outputs.breakdown }}
+        run: |
+          set -euo pipefail
+
+          labels=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name' || true)
+          label=""
+          while IFS= read -r l; do
+            case "$l" in release:major|release:minor|release:patch) label="$l" ;; esac
+          done <<< "$labels"
+
+          warn=""
+          case "${label:-}" in
+            release:major)
+              [ "$LEVEL_RAW" = "major" ] || warn="label claims **major**, commits say **${LEVEL_RAW}**."
+              ;;
+            release:minor)
+              { [ "$LEVEL_RAW" = "major" ] || [ "$LEVEL_RAW" = "minor" ]; } || warn="label claims **minor**, commits say **patch**."
+              ;;
+            release:patch)
+              [ "$LEVEL_RAW" = "patch" ] || warn="label claims **patch**, commits say **${LEVEL_RAW}**."
+              ;;
+          esac
+
+          since_display=${LAST_PROD:-never}
+          body_file=$(mktemp)
+          {
+            echo "<!-- release-preview -->"
+            echo ""
+            echo "🔮 **Release preview** — merging this PR will cut **v${PREDICTED_VERSION}**."
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Since | \`${since_display}\` (last production tag) |"
+            echo "| Commits since | ${BREAKDOWN} |"
+            echo "| Bump level (commit-derived) | **${LEVEL}** |"
+            echo "| Release label | ${label:-none} |"
+            if [ -n "$warn" ]; then
+              echo ""
+              echo "⚠️ **Mismatch:** ${warn} The release machine follows commits — or an explicit \`Release-As: X.Y.Z\` footer on a commit in this PR. The label is a planning hint only."
+            fi
+            if [ "$LEVEL_RAW" = "major" ] && [ "$LEVEL" = "minor" ]; then
+              echo ""
+              echo "🔒 Breaking change detected — the pre-1.0 tripwire demotes major → minor. \`1.0.0\` stays a human declaration (\`Release-As\`), never an accident."
+            fi
+            echo ""
+            echo "_Labels are for humans (project board). The machine follows commits, or \`Release-As:\`._"
+          } > "$body_file"
+
+          existing=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.body | contains("<!-- release-preview -->"))] | map(.id) | last // empty')
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" \
+              -f body="$(cat "$body_file")" > /dev/null
+          else
+            gh pr comment "$PR_NUMBER" --body-file "$body_file"
+          fi

@@ -7,7 +7,7 @@ paradigm: LangGraph Supervisor + DeepAgents Teams
 scope: Companion Agentic Organization Platform — full system
 status: final
 created: 2026-08-02
-updated: 2026-08-02
+updated: 2026-08-16
 binds: [FR-01..FR-48, all capabilities]
 sources: [docs/prd.md, docs/features.md, docs/architecture-decisions.md, project-context.md]
 companions: []
@@ -162,6 +162,21 @@ Config reload merges DB overlay on top of the file base. File changes require ex
 - **Binds:** background execution, scheduling, async tasks
 - **Prevents:** overlapping background execution paths (separate workers, pollers, schedulers)
 - **Rule:** All background work runs in-process within the FastAPI backend. No separate worker processes, no Celery/RQ, no external schedulers. Async tasks use `asyncio.create_task` or FastAPI background tasks. The old `backend/app/scheduler.py` is dead code (AD-12).
+
+### AD-16 — Two-Lane Release Machine: develop = beta, main = production [ADOPTED]
+
+- **Binds:** all release automation, versioning, changelog generation, branch/merge policy
+- **Prevents:** hand-rolled version bumps, tag drift between lanes, changelog drift, version numbers that lie about what shipped
+- **Rule:**
+  - **Lanes & merge method.** `develop` = beta lane, `main` = production lane. PR-only workflow; direct pushes to develop are forbidden. Any branch → `develop`: **squash** merge with a Conventional-Commit title. `develop` → `main`: **merge commit only** (never squash/rebase — release-please reads the PR's commit range, and a squashed empty diff produces a useless Release PR). Hotfixes are cut from `main`, fixed there with a `fix:` squash, then back-merged into `develop`.
+  - **Version law (commit-derived, `bump-minor-pre-major` on).** `fix:`/`perf:` → patch · `feat:` → minor · breaking marker (`!:` / `BREAKING CHANGE:`) → **minor while base < 1.0.0** (tripwire: the machine can never auto-reach 1.0.0), major at ≥ 1.0.0. **`1.0.0` is a human declaration** via a `Release-As: 1.0.0` commit footer — never an accident. The default is always commit-derived; "no label = patch" is explicitly rejected (it would silently ship features as patches).
+  - **Beta lane (fully automated).** Every merge to `develop` auto-cuts `vX.Y.Z-beta.N` (N = count of existing beta tags for that base) plus a GitHub prerelease: `.github/workflows/release-beta.yml` + `.github/scripts/beta-version.sh` (shared version brain, branch-agnostic).
+  - **Production lane (one human act).** A `develop`→`main` merge triggers release-please (`.github/workflows/release-prod.yml`, `.release-please-config.json`, `.release-please-manifest.json`), which opens a Release PR (version tag + `CHANGELOG.md` + GitHub Release). **Merging that Release PR is the release.**
+  - **Prediction & mismatch alarm.** `.github/workflows/release-preview.yml` comments the predicted production version + commit breakdown on every `develop`→`main` PR before merge, and raises a ⚠️ mismatch alarm when a `release:major|minor|patch` label disagrees with the commit-derived level.
+  - **Labels are human-only.** `release:major` / `release:minor` / `release:patch` are project-board planning tools. The release engine never reads labels (verified against release-please source: zero label references in the versioning strategy). The only machine inputs are conventional commits and `Release-As:` footers (newest wins).
+  - **Defects & milestones.** Defects enter release notes via `Closes #N` in the fix PR. Milestones: one per production version (e.g., `v0.1.0`), never per beta.
+  - **Parked.** Container image build/push is deferred — reserved slot in both workflows; no image-registry answer yet.
+- **Enforcement:** workflows + merge-method table in `.github/pull_request_template.md`. Do **not** enable "Require linear history" on `main` — it forbids the merge commits this policy depends on. If an empty-changelog Release PR appears, the wrong merge method was used: close it and re-merge correctly.
 
 ## Consistency Conventions
 
@@ -375,4 +390,4 @@ ideator/
 | **Sandbox for agent code execution** | Security and complexity not justified yet. | User requests agent-generated code execution |
 | **Multi-tenant support** | Solo dev + small team doesn't need it. | Product requires tenant isolation |
 | **Observability stack** (OpenTelemetry, Grafana) | Console logging + FastAPI docs sufficient for now. | Production deployment with SLA requirements |
-| **CI/CD pipeline** | Docker Compose works for local + staging. | Team grows beyond 2 developers or deployment frequency increases |
+| **Deployment automation (container image build/push)** | Versioning + release automation now covered by AD-16; image registry not yet decided. | Registry/provider answer exists |
