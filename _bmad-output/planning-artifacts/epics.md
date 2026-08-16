@@ -9,6 +9,11 @@ inputDocuments:
 
 > **Sprint 2 (current active backlog).** Epic numbering continues from Sprint 1 (EP-0..EP-7, delivered — see `sprint-1.md`).
 > Rule: `epics.md` always holds the current sprint's backlog; each completed sprint is archived as `sprint-N.md` in this folder. Epic numbers never restart.
+>
+> **Execution model:** All 17 stories below are executed by **local agents** (Copilot/BMAD workflow) in `order` sequence.
+> Small self-contained tech-debt/test/refactor items are delegated to the **Jules agent** via copy-paste task blocks in
+> `../implementation-artifacts/jules-queue.md` (runs in parallel with Epic 8; never auto-merge Jules PRs).
+> Each story carries a `<!-- meta: ... -->` line: `executor` (local-agent | jules), `order` (global execution sequence), `priority` (P0–P3), `depends` (story IDs that must land first).
 
 ## Overview
 
@@ -84,6 +89,7 @@ No UX design contract was found in the planning artifacts for this specific scop
 Goal: Deliver the controllable execution backbone so a work item can move through the organization with routing, checkpoints, status visibility, and approval controls.
 
 ### Story 8.1: Create and initialize an organization structure
+<!-- meta: executor=local-agent | order=1 | priority=P0 | depends=none | note=split candidate: 8.1a org data model+API, 8.1b Command Center population -->
 
 As a founder,
 I want to create an organization with the default departments and teams,
@@ -97,6 +103,7 @@ So that I can begin running AI work immediately.
 **And** the Command Center dashboard is populated with the new organization state.
 
 ### Story 8.2: Submit and route a work item to the correct department
+<!-- meta: executor=local-agent | order=2 | priority=P0 | depends=8.1 -->
 
 As a user,
 I want to submit a new work item and have it correctly routed,
@@ -110,6 +117,7 @@ So that the system can begin executing the right work without manual coordinatio
 **And** the routing decision is understandable in the org status feed or audit log.
 
 ### Story 8.3: Manage lifecycle status and handoffs for work items
+<!-- meta: executor=local-agent | order=3 | priority=P0 | depends=8.2 -->
 
 As a user,
 I want each work item to move through a tracked lifecycle with handoff records,
@@ -123,6 +131,7 @@ So that I can understand progress and team ownership over time.
 **And** the user can view the full lifecycle history of the work item.
 
 ### Story 8.4: Enforce approval for risky filesystem changes
+<!-- meta: executor=local-agent | order=4 | priority=P0 | depends=8.3 -->
 
 As a user,
 I want risky file operations to require explicit approval,
@@ -140,6 +149,7 @@ So that the system does not mutate files silently or incorrectly.
 Goal: Make the organization feel operationally stable and practical by exposing capacity, health, and reusable execution patterns.
 
 ### Story 9.1: Surface organization health and team capacity
+<!-- meta: executor=local-agent | order=5 | priority=P1 | depends=8.1 -->
 
 As a founder,
 I want to see team health, workload, and idle capacity,
@@ -153,6 +163,7 @@ So that I can understand whether the organization is overloaded or underutilized
 **And** idle or overloaded teams are clearly highlighted.
 
 ### Story 9.2: Reassign idle agents and escalate blocked work
+<!-- meta: executor=local-agent | order=6 | priority=P1 | depends=9.1 -->
 
 As a Chief of Staff,
 I want the system to identify idle or blocked work,
@@ -166,6 +177,7 @@ So that the organization remains productive and does not stall on bottlenecks.
 **And** the decision and reason are logged in the audit trail.
 
 ### Story 9.3: Save and replay a workflow as a template
+<!-- meta: executor=local-agent | order=7 | priority=P2 | depends=8.3 -->
 
 As a user,
 I want to save a successful workflow as a reusable template,
@@ -183,6 +195,7 @@ So that similar work can be run again without recreating the same coordination p
 Goal: Make agent decisions inspectable, reliable, and ready for product evolution beyond the first orchestration slice.
 
 ### Story 10.1: Record decisions with provenance metadata
+<!-- meta: executor=local-agent | order=8 | priority=P1 | depends=8.3 -->
 
 As a user,
 I want every agent decision to include evidence and rationale,
@@ -196,6 +209,7 @@ So that I can understand why decisions were made and how trustworthy they are.
 **And** the decision can be inspected from the work item or team history.
 
 ### Story 10.2: Persist artifact provenance and review access
+<!-- meta: executor=local-agent | order=9 | priority=P1 | depends=10.1 -->
 
 As a user,
 I want artifacts to show their origin and evidence,
@@ -209,6 +223,7 @@ So that I can trace research, requirements, and deployment output back to truste
 **And** source references and trust classifications are available in the UI.
 
 ### Story 10.3: Support accuracy review and confidence flagging
+<!-- meta: executor=local-agent | order=10 | priority=P2 | depends=10.1 -->
 
 As a user,
 I want outputs to be reviewed for accuracy and confidence,
@@ -222,6 +237,7 @@ So that I can identify weak or risky work before it is acted upon.
 **And** low-confidence outputs are explicitly flagged for user review.
 
 ### Story 10.4: Introduce idea refinement and maturity stages
+<!-- meta: executor=local-agent | order=11 | priority=P2 | depends=10.2 -->
 
 As a product team,
 I want ideas to move from raw concept to refined and decision-ready status,
@@ -239,6 +255,7 @@ So that we can evaluate whether the concept should progress into planning or be 
 Goal: Convert a validated idea into a structured product definition and preparation for delivery work.
 
 ### Story 11.1: Research the concept and compile market evidence
+<!-- meta: executor=local-agent | order=12 | priority=P1 | depends=10.4 -->
 
 As an Idea Team agent,
 I want to autonomously gather research on the idea,
@@ -252,6 +269,7 @@ So that we can assess demand, competition, and feasibility with evidence.
 **And** the output is attached to the work item in a reviewable form.
 
 ### Story 11.2: Validate novelty and patentability
+<!-- meta: executor=local-agent | order=13 | priority=P1 | depends=11.1 -->
 
 As an Idea Team agent,
 I want to assess concept novelty and possible patentability,
@@ -265,6 +283,7 @@ So that the product can be prioritized based on evidence rather than intuition.
 **And** the output is stored as a formal work-item artifact.
 
 ### Story 11.3: Create product definition from validated concepts
+<!-- meta: executor=local-agent | order=14 | priority=P1 | depends=11.2 -->
 
 As a Product Team agent,
 I want to turn a validated concept into a product definition,
@@ -282,6 +301,7 @@ So that the Technology Department has clear requirements, effort estimates, and 
 Goal: Deliver the final lifecycle from implementation through quality assurance and deployment.
 
 ### Story 12.1: Autonomous development under team ownership
+<!-- meta: executor=local-agent | order=15 | priority=P2 | depends=11.3 | note=split candidate: hides a full team build workflow -->
 
 As a Development Team agent,
 I want to build the planned product within the work item lifecycle,
@@ -295,6 +315,7 @@ So that the system can create a working implementation with a clear provenance t
 **And** build output is visible and tied to the relevant work item.
 
 ### Story 12.2: Validate product quality before release
+<!-- meta: executor=local-agent | order=16 | priority=P2 | depends=12.1 -->
 
 As a Testing Team agent,
 I want to run the validation workflow on the implementation,
@@ -308,6 +329,7 @@ So that quality defects and reliability risks are identified before deployment.
 **And** critical issues are surfaced for review before deployment.
 
 ### Story 12.3: Deploy to environment and monitor operational health
+<!-- meta: executor=local-agent | order=17 | priority=P2 | depends=12.2 | note=split candidate: deploy + monitoring are two deliverables -->
 
 As a DevOps Team agent,
 I want to deploy the validated product and configure operational monitoring,
