@@ -17,28 +17,6 @@ import { CommandCenterPage } from './pages/CommandCenter';
 test.describe('HITL Interrupts', () => {
   test.beforeEach(async ({ api }) => {
     await api.waitForHealthy();
-    // The interrupt inbox is global (not scoped per thread) and earlier
-    // tests may leave interrupts pending — resolve them so each test
-    // starts from a clean slate and its overlay shows exactly its own
-    // interrupt.
-    const pending = await api.getJson<{ interrupts: { id: string }[] }>(
-      '/api/interrupts/pending'
-    );
-    for (const item of pending.interrupts) {
-      const resp = await fetch(
-        `${api.baseUrl}/api/interrupts/${item.id}/approve`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ decision: 'approved', reason: 'E2E cleanup' }),
-        }
-      );
-      // Cleanup is best-effort: 404 (gone) and 409 (already resolved) both
-      // mean the slate is clean. Never fail the suite from teardown.
-      if (!resp.ok && resp.status !== 404 && resp.status !== 409) {
-        console.warn(`[e2e] cleanup: approving ${item.id} failed: ${resp.status}`);
-      }
-    }
   });
 
   async function createInterruptViaApi(
