@@ -15,6 +15,7 @@
 | [`code-review-guidelines.md`](./code-review-guidelines.md) | Code review checklist, what to reject, and review process |
 | [`performance-testing.md`](./performance-testing.md) | Performance test design patterns, workload selection, metric collection, and runner guide |
 | [`architecture-decisions.md`](./architecture-decisions.md) | Architectural Decision Records (ADR) — context, decision, consequences |
+| [`sse-streaming.md`](./sse-streaming.md) | SSE and streaming edge cases, reconnect semantics, frame parsing, and error handling |
 | [`tasks.md`](./tasks.md) | Deep hierarchical task planning (3–5 levels) with implementation tracking |
 
 ## Quick Links
