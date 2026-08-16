@@ -37,7 +37,7 @@ def reset_test_state() -> dict[str, str]:
             if not table.startswith("sqlite_"):
                 conn.execute(f"DELETE FROM {table}")
         conn.commit()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("Error clearing thread checkpointer tables: %s", exc)
 
     # 2. Reset interrupts table
@@ -45,7 +45,7 @@ def reset_test_state() -> dict[str, str]:
         iconn = InterruptService.instance()._conn()
         iconn.execute("DELETE FROM interrupts")
         iconn.commit()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("Error clearing interrupts table: %s", exc)
 
     # 3. Reset idea registry and remove workspace/ideas subdirectories
@@ -58,7 +58,7 @@ def reset_test_state() -> dict[str, str]:
                     shutil.rmtree(item, ignore_errors=True)
                 else:
                     item.unlink(missing_ok=True)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("Error resetting idea registry/workspace: %s", exc)
 
     # 4. Reset supervisor graph cache
