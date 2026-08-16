@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, type LucideIcon } from "lucide-react";
 
 interface ResearchSectionProps {
 	title: string;
-	icon: any;
-	data: any;
+	icon: LucideIcon;
+	data: Record<string, unknown>;
 }
 
 export function ResearchSection({
@@ -17,7 +17,7 @@ export function ResearchSection({
 	if (!data) return null;
 	const [open, setOpen] = useState(false);
 
-	const renderValue = (value: any): string => {
+	const renderValue = (value: unknown): string => {
 		if (typeof value === "string") return value;
 		if (Array.isArray(value))
 			return value.map((v) => renderValue(v)).join(", ");

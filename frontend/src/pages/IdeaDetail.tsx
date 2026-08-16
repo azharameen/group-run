@@ -48,8 +48,8 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 			setFiles(filesRes);
 			setInterrupts(interruptsRes);
 			if (detailRes?.idea?.title && onIdeaLoaded) onIdeaLoaded(detailRes.idea.title);
-		} catch (err: any) {
-			setError(err.message);
+		} catch (err: unknown) {
+			setError(err instanceof Error ? err.message : "Failed to load idea.");
 		}
 		setLoading(false);
 	};
@@ -75,11 +75,11 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 				title: "Delete Request Submitted",
 				description: result.message || "Delete request submitted for approval.",
 			});
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error(err);
 			toast({
 				title: "Error",
-				description: err.message || "Failed to delete idea.",
+				description: err instanceof Error ? err.message : "Failed to delete idea.",
 				variant: "destructive",
 			});
 		} finally {
@@ -95,11 +95,11 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 			await addIdeaComment(ideaId, commentText.trim());
 			setCommentText("");
 			await loadData();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error(err);
 			toast({
 				title: "Error",
-				description: err.message || "Failed to add comment.",
+				description: err instanceof Error ? err.message : "Failed to add comment.",
 				variant: "destructive",
 			});
 		} finally {
@@ -150,7 +150,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 							<div className="lg:col-span-2 space-y-5">
 								<Card><CardHeader className="p-4 pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Target className="w-4 h-4 text-primary" />Problem Statement</CardTitle></CardHeader><CardContent className="p-4 pt-1"><p data-testid="idea-detail-description" className="text-sm">{idea?.problem_statement || idea?.signal_text || "No problem statement defined yet."}</p></CardContent></Card>
 								{idea?.solution_concept && <Card><CardHeader className="p-4 pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Lightbulb className="w-4 h-4 text-primary" />Solution Concept</CardTitle></CardHeader><CardContent className="p-4 pt-1"><p className="text-sm">{idea.solution_concept}</p></CardContent></Card>}
-								{idea?.source_evidence?.length > 0 && <Card><CardHeader className="p-4 pb-2"><CardTitle className="flex items-center gap-2 text-sm"><FileText className="w-4 h-4 text-primary" />Source Evidence &amp; References</CardTitle></CardHeader><CardContent className="p-4 pt-1"><ScrollArea className="max-h-48 pr-2"><ul className="space-y-2">{idea.source_evidence.map((ev: string, i: number) => <li key={i} className="text-xs flex items-start gap-2 border-b last:border-0 pb-1.5"><FileText className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />{ev}</li>)}</ul></ScrollArea></CardContent></Card>}
+								{idea?.source_evidence && idea.source_evidence.length > 0 && <Card><CardHeader className="p-4 pb-2"><CardTitle className="flex items-center gap-2 text-sm"><FileText className="w-4 h-4 text-primary" />Source Evidence &amp; References</CardTitle></CardHeader><CardContent className="p-4 pt-1"><ScrollArea className="max-h-48 pr-2"><ul className="space-y-2">{idea.source_evidence.map((ev: string, i: number) => <li key={i} className="text-xs flex items-start gap-2 border-b last:border-0 pb-1.5"><FileText className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />{ev}</li>)}</ul></ScrollArea></CardContent></Card>}
 							</div>
 							<div className="space-y-5">
 								<Card><CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-semibold">Idea Metadata</CardTitle></CardHeader><CardContent className="p-4 pt-1"><dl className="space-y-2 text-xs"><div className="flex justify-between border-b pb-1"><dt className="text-muted-foreground">Created</dt><dd className="font-mono">{idea?.created_at ? new Date(idea.created_at).toLocaleDateString() : "—"}</dd></div><div className="flex justify-between border-b pb-1"><dt className="text-muted-foreground">Updated</dt><dd className="font-mono">{idea?.updated_at ? new Date(idea.updated_at).toLocaleDateString() : "—"}</dd></div><div className="flex justify-between"><dt className="text-muted-foreground">Interrupts</dt><dd className="font-semibold">{interrupts.length}</dd></div></dl></CardContent></Card>

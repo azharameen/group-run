@@ -65,7 +65,7 @@ describe('DocumentUploadCard', () => {
 
   test('handles file upload successfully', async () => {
     const mockResponse = { success: true };
-    (client.ingestKnowledgeBaseDocument as any).mockResolvedValue(mockResponse);
+    vi.mocked(client.ingestKnowledgeBaseDocument).mockResolvedValue(mockResponse);
 
     render(
       <DocumentUploadCard
@@ -97,7 +97,7 @@ describe('DocumentUploadCard', () => {
 
   test('handles upload error gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    (client.ingestKnowledgeBaseDocument as any).mockRejectedValue(new Error('Upload failed'));
+    vi.mocked(client.ingestKnowledgeBaseDocument).mockRejectedValue(new Error('Upload failed'));
 
     render(
       <DocumentUploadCard

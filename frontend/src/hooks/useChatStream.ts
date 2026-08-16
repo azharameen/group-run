@@ -13,14 +13,19 @@ import { type InterruptPayload } from "@/api/threads";
 import type { ChatMessage, TaskItem } from "@/types/chat";
 import { eventToMessage, groupMessages } from "@/lib/chat-utils";
 
+// Cap transcript size to prevent unbounded memory growth
+const MAX_MESSAGES = 500;
+
 export interface UseChatStreamOptions {
 	activeThreadId: string | null;
+	activeIdeaId?: string | null;
 	ensureThread: () => Promise<string>;
 	onThreadsUpdate: (threads: ThreadMetadata[]) => void;
 }
 
 export function useChatStream({
 	activeThreadId,
+	activeIdeaId,
 	ensureThread,
 	onThreadsUpdate,
 }: UseChatStreamOptions) {
@@ -87,45 +92,71 @@ export function useChatStream({
 		const es = connectSSE(
 			(event, data) => {
 				if (event === "agent.progress" && data) {
-					setRawMessages((prev) => [
-						...prev,
-						eventToMessage({
-							type: "transition",
-							content: data.message,
-							agent: data.agent_name || "workflow-orchestrator",
-							speaker: data.agent_name || "Workflow Orchestrator",
-							role: "orchestrator",
-							provenance: `sse:${data.idea_id || "global"}`,
-						}),
-					]);
+						// Filter: only show progress events for the active idea (or global events)
+						if (activeIdeaId && data.idea_id && data.idea_id !== activeIdeaId) return;
+						setRawMessages((prev) => {
+							const msg = eventToMessage({
+								type: "transition",
+								content: data.message,
+								agent: data.agent_name || "workflow-orchestrator",
+								speaker: data.agent_name || "Workflow Orchestrator",
+								role: "orchestrator",
+								provenance: `sse:${data.idea_id || "global"}`,
+							});
+							const next = [...prev, msg];
+							return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+						});
 				}
 			},
-			undefined, // onError
+			// onError: reconnect handler — reload interrupt state on reconnection
+			async () => {
+				// On SSE reconnect, fetch pending interrupts to reconcile state
+				try {
+					const res = await fetch("/api/interrupts/pending");
+					if (res.ok) {
+						const data = await res.json();
+						const interrupts = data.interrupts || [];
+						if (interrupts.length > 0) {
+							// Restore the most recent pending interrupt
+							const latest = interrupts[interrupts.length - 1];
+							activeInterruptIdRef.current = latest.id;
+							setPendingInterrupt(latest);
+						} else {
+							// No pending interrupts — clear stale state
+							setPendingInterrupt(null);
+							activeInterruptIdRef.current = null;
+						}
+					}
+				} catch {
+					// Silently fail — SSE will catch up with new events
+				}
+			},
 			(eventType, payload) => {
 				// interrupt.created — set pending interrupt with deduplication
 				if (eventType === "interrupt.created") {
-					const interrupt = payload.interrupt || payload;
-					const id = interrupt?.id;
+					const interrupt = payload.interrupt || (payload as unknown as InterruptPayload);
+					const id = interrupt.id;
 					if (!id) return;
 					// skip if already showing this interrupt (dedup)
 					if (id === activeInterruptIdRef.current) return;
 					activeInterruptIdRef.current = id;
-					setPendingInterrupt(interrupt);
+					setPendingInterrupt(interrupt as InterruptPayload);
 					// Add visual indicator message in chat
-					setRawMessages((prev) => [
-						...prev,
-						{
-							id: `interrupt_${id}`,
-							sender: "System",
-							text: `Agent requires approval: ${interrupt.message || interrupt.tool_name || "action"}`,
-							timestamp: new Date().toLocaleTimeString([], {
-								hour: "2-digit",
-								minute: "2-digit",
-							}),
-							eventType: "interrupt",
-							details: { interrupt_id: id, tool_name: interrupt.tool_name },
-						},
-					]);
+						setRawMessages((prev) => {
+							const msg = {
+								id: `interrupt_${id}`,
+								sender: "System",
+								text: `Agent requires approval: ${interrupt.message || interrupt.tool_name || "action"}`,
+								timestamp: new Date().toLocaleTimeString([], {
+									hour: "2-digit",
+									minute: "2-digit",
+								}),
+								eventType: "interrupt",
+								details: { interrupt_id: id, tool_name: interrupt.tool_name },
+							};
+							const next = [...prev, msg];
+							return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+						});
 				} else if (
 					eventType === "interrupt.approved" ||
 					eventType === "interrupt.rejected"
@@ -147,6 +178,11 @@ export function useChatStream({
 
 	// Sync message loading when activeThreadId updates (with stale fetch guard)
 	useEffect(() => {
+		// Abort in-flight stream when switching threads
+		if (isGenerating && abortRef.current) {
+			abortRef.current.abort();
+		}
+
 		if (activeThreadId) {
 			setRawMessages([]);
 			const counter = ++fetchCounterRef.current;
@@ -174,7 +210,7 @@ export function useChatStream({
 		} else {
 			setRawMessages([]);
 		}
-	}, [activeThreadId]);
+	}, [activeThreadId, isGenerating]);
 
 	const handleStopGeneration = useCallback(() => {
 		abortRef.current?.abort();
@@ -232,7 +268,10 @@ export function useChatStream({
 					minute: "2-digit",
 				}),
 			};
-			setRawMessages((prev) => [...prev, userMsg]);
+			setRawMessages((prev) => {
+				const next = [...prev, userMsg];
+				return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+			});
 			setIsGenerating(true);
 
 			let tid: string;
@@ -254,26 +293,27 @@ export function useChatStream({
 					(evt: StreamEvent) => {
 						// Task 3: Detect interrupt events from stream
 						if (evt.type === "interrupt") {
-							const interrupt = evt.extras?.interrupt || evt;
-							const id = (interrupt as any).id || `stream_${Date.now()}`;
+							const interrupt = (evt.extras?.interrupt ?? evt) as InterruptPayload;
+							const id = interrupt.id || `stream_${Date.now()}`;
 							// Deduplication: skip if same ID already active
 							if (id === activeInterruptIdRef.current) return;
 							activeInterruptIdRef.current = id;
-							setPendingInterrupt(interrupt as InterruptPayload);
-							setRawMessages((prev) => [
-								...prev,
-								{
-									id: `interrupt_${id}`,
-									sender: "System",
-									text: `Agent requires approval: ${(interrupt as any).message || (interrupt as any).tool_name || "action"}`,
-									timestamp: new Date().toLocaleTimeString([], {
-										hour: "2-digit",
-										minute: "2-digit",
-									}),
-									eventType: "interrupt",
-									details: { interrupt_id: id, tool_name: (interrupt as any).tool_name },
-								},
-							]);
+							setPendingInterrupt(interrupt);
+								setRawMessages((prev) => {
+									const msg = {
+										id: `interrupt_${id}`,
+										sender: "System",
+										text: `Agent requires approval: ${interrupt.message || interrupt.tool_name || "action"}`,
+										timestamp: new Date().toLocaleTimeString([], {
+											hour: "2-digit",
+											minute: "2-digit",
+										}),
+										eventType: "interrupt",
+										details: { interrupt_id: id, tool_name: interrupt.tool_name },
+									};
+									const next = [...prev, msg];
+									return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+								});
 							return;
 						}
 

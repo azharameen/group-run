@@ -3,18 +3,8 @@
 import * as React from "react"
 import {
   Bell,
-  Check,
-  Globe,
-  Home,
-  Keyboard,
-  Link,
-  Lock,
-  Menu,
-  MessageCircle,
   Network,
-  Paintbrush,
   Settings,
-  Video,
   User,
   Users,
   CreditCard,

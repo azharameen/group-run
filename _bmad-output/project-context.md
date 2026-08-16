@@ -1,11 +1,11 @@
 ---
 project_name: 'Companion'
 user_name: 'Ameen'
-date: '2026-08-01'
+date: '2026-08-13'
 sections_completed:
-  ['technology_stack', 'language_specific', 'framework_specific', 'testing', 'code_quality', 'development_workflow', 'critical_dont_miss']
+  ['technology_stack', 'language_specific', 'framework_specific', 'testing', 'code_quality', 'development_workflow', 'branch_management', 'critical_dont_miss']
 status: 'complete'
-rule_count: 41
+rule_count: 47
 optimized_for_llm: true
 ---
 
@@ -121,6 +121,54 @@ _This file contains critical rules and patterns that AI agents must follow when 
 6. **Branch-based workflow** — don't commit directly to main; use `feat/`, `fix/`, `refactor/`, `docs/` branches.
 7. **Task status markers:** `[PENDING]`, `[IN PROGRESS]`, `[IMPLEMENTED]`, `[COMPLETED]`, `[DEFERRED]`.
 8. **Cross-reference rules** — when updating docs, update related cross-references (see `agents.md` §6).
+
+---
+
+## Branch Management Rules
+
+**CRITICAL: NEVER commit or push directly to `main` or `develop` branches**
+
+All changes MUST go through pull requests. Feature PRs target `develop` only.
+
+### Branch Naming Convention
+
+- **Format:** `feat/<story-key>-<short-description>`
+- **Example:** `feat/1-2-update-config-py`
+- **Story keys** use the story identifier (e.g., `1-2`, `2-5`)
+- For fixes: `fix/<story-key>-<short-description>`
+- For refactoring: `refactor/<story-key>-<short-description>`
+- For docs: `docs/<story-key>-<short-description>`
+- For production emergencies: `hotfix/<issue-description>` — can merge to both `main` and `develop`
+
+### PR Rules
+
+- **One story = one PR** (never share a PR across multiple stories)
+- **PR target:** Always `develop` branch (never `main`)
+- **Exception:** `hotfix/` branches may target `main` directly, then sync to `develop`
+- **PR title format:** `<story-key>: <description>`
+- **PR body:** Reference story file and acceptance criteria
+- **Main branch is production** — only `develop` or `hotfix/` can merge into `main`
+
+### Commit Message Format
+
+- **Format:** `type(scope): description`
+- **Types:** `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`
+- **Scope examples:** `ci`, `backend`, `frontend`, `e2e`
+- **Examples:**
+  - `feat(backend): add thread archive endpoint`
+  - `fix(ci): correct workflow trigger`
+  - `test(e2e): add login flow tests`
+
+### Self-Review Checklist (Before Creating PR)
+
+- [ ] All acceptance criteria met
+- [ ] Tests pass locally
+- [ ] No console errors or warnings
+- [ ] Code follows project conventions
+- [ ] Documentation updated if needed
+- [ ] No debugging code left behind
+- [ ] Branch naming convention followed
+- [ ] PR targets `develop` branch
 
 ### Critical Don't-Miss Rules
 

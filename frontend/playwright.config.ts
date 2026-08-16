@@ -31,6 +31,11 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
 
+  // Warm the backend's lazy agent singletons (supervisor graph + DeepAgents
+  // runtime) with one throwaway chat message before any test runs, so tests
+  // measure real response latency instead of cold-start construction cost.
+  globalSetup: './e2e/global-setup.ts',
+
   // Fail the build on CI if test.only was accidentally left in the source code.
   forbidOnly: !!process.env.CI,
 
@@ -40,8 +45,10 @@ export default defineConfig({
   // Limit parallel workers on CI, use default locally.
   workers: process.env.CI ? 1 : undefined,
 
-  // Global test timeout.
-  timeout: 30_000,
+  // Global test timeout. 60s locally (this machine can take >30s just to
+  // launch the browser under load — the first test pays that cost); 30s in
+  // CI where browser launch is fast.
+  timeout: process.env.CI ? 30_000 : 60_000,
   expect: {
     timeout: 5_000,
   },

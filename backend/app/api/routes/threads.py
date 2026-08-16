@@ -2,12 +2,12 @@
 
 import json
 import logging
-from typing import Any, AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from ..schemas import CreateThreadRequest, SendMessageRequest, UpdateThreadRequest
 from ...services.thread_manager import (
     create_thread,
     delete_thread,
@@ -17,6 +17,7 @@ from ...services.thread_manager import (
     touch_thread,
     update_thread,
 )
+from ..schemas import CreateThreadRequest, SendMessageRequest, UpdateThreadRequest
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ NO_FIELDS_TO_UPDATE = "No fields to update"
 
 @router.get("")
 async def api_list_threads(
-    status: Optional[str] = None,
+    status: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict[str, Any]:
@@ -114,11 +115,12 @@ async def api_stream_message(
 async def _thread_stream_generator(
     thread_id: str,
     text: str,
-    idea_id: Optional[str] = None,
+    idea_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Stream agent response events for a thread message via ainvoke + checkpointing."""
-    from ...orchestrator.supervisor import get_supervisor_graph
     from langchain_core.messages import HumanMessage
+
+    from ...orchestrator.supervisor import get_supervisor_graph
 
     emitted_done = False
     supervisor = get_supervisor_graph()
@@ -140,7 +142,7 @@ async def _thread_stream_generator(
         else:
             logger.warning("Agent returned empty response for thread %s", thread_id)
     except Exception as exc:
-        logger.error("Thread stream failed: %s", exc, exc_info=True)
+        logger.exception("Thread stream failed for thread %s", thread_id)
         yield f"data: {json.dumps({'type': 'error', 'error': {'code': 'streaming_failure', 'message': str(exc), 'retryable': True}})}\n\n"
     finally:
         if not emitted_done:

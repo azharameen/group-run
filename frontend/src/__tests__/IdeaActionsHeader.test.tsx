@@ -1,9 +1,19 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { MouseEventHandler, ReactNode } from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { IdeaActionsHeader } from '@/components/idea-detail/IdeaActionsHeader';
 
+type MockButtonProps = {
+  children?: ReactNode;
+  variant?: string;
+  size?: string;
+  className?: string;
+  disabled?: boolean;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+};
+
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, variant, size, className, disabled, onClick, asChild }: any) => (
+  Button: ({ children, variant, size, className, disabled, onClick }: MockButtonProps) => (
     <button
       data-testid={`button-${variant}-${size}`}
       className={className}
@@ -15,8 +25,16 @@ vi.mock('@/components/ui/button', () => ({
   ),
 }));
 
+type MockProps = {
+  children?: ReactNode;
+  asChild?: boolean;
+  onClick?: MouseEventHandler<HTMLElement>;
+  disabled?: boolean;
+  className?: string;
+};
+
 vi.mock('@/components/ui/badge', () => ({
-  Badge: ({ children }: any) => <span data-testid="badge">{children}</span>,
+  Badge: ({ children }: MockProps) => <span data-testid="badge">{children}</span>,
 }));
 
 vi.mock('@/components/ui/separator', () => ({
@@ -24,15 +42,15 @@ vi.mock('@/components/ui/separator', () => ({
 }));
 
 vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: any) => <div data-testid="dropdown-menu">{children}</div>,
-  DropdownMenuTrigger: ({ children, asChild }: any) => {
+  DropdownMenu: ({ children }: MockProps) => <div data-testid="dropdown-menu">{children}</div>,
+  DropdownMenuTrigger: ({ children, asChild }: MockProps) => {
     if (asChild) return <>{children}</>;
     return <div>{children}</div>;
   },
-  DropdownMenuContent: ({ children }: any) => (
+  DropdownMenuContent: ({ children }: MockProps) => (
     <div data-testid="dropdown-content">{children}</div>
   ),
-  DropdownMenuItem: ({ children, onClick, disabled, className }: any) => (
+  DropdownMenuItem: ({ children, onClick, disabled, className }: MockProps) => (
     <div
       data-testid="dropdown-item"
       className={className}

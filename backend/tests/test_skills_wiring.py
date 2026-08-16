@@ -42,6 +42,7 @@ def test_skills_wiring_in_runtime(monkeypatch):
     # Mock thread_manager to avoid DB and module import issues
     thread_manager_module = types.ModuleType("app.services.thread_manager")
     thread_manager_module.get_checkpointer = MagicMock(return_value=MagicMock())
+    thread_manager_module.get_async_checkpointer = MagicMock(return_value=MagicMock())
     monkeypatch.setitem(sys.modules, "app.services.thread_manager", thread_manager_module)
 
     # Mock other sub-modules - remove cached modules first so mocks take effect

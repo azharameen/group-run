@@ -108,10 +108,27 @@ def in_memory_db(monkeypatch: pytest.MonkeyPatch):
 
 
 def _clear_thread_manager():
-    """Remove thread_manager modules from sys.modules."""
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("app.services.thread_manager"):
-            del sys.modules[mod]
+    """Reset thread_manager singleton state in place (no sys.modules purge).
+
+    Purging the module orphans the function references already held by
+    imported app modules (routes, supervisor, app) — they keep operating on
+    the old module object's singletons while fresh imports use a new module
+    instance, so checkpoint writes and reads can hit different connections.
+    Keeping a single module instance and resetting its state avoids that.
+    """
+    from app.services import thread_manager as tm
+    from app.services.thread_manager import _discard_async_saver
+
+    _discard_async_saver(tm._ASYNC_SQLITE_SAVER)
+    if tm._SQLITE_SAVER is not None:
+        try:
+            tm._SQLITE_SAVER.conn.close()
+        except Exception:
+            pass
+    tm._SQLITE_SAVER = None
+    tm._ASYNC_SQLITE_SAVER = None
+    tm._THREAD_DB_PATH = None
+    tm._METADATA_CONN = None
 
 
 def _clear_supervisor():

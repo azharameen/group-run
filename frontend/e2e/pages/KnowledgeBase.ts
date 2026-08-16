@@ -18,7 +18,10 @@ export class KnowledgeBasePage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/knowledge-base');
+    // domcontentloaded: the 'load' event can be delayed by slow subresources
+    // and the app's long-lived /api/sse stream; waitForLoaded() covers the
+    // page-specific readiness below.
+    await this.page.goto('/knowledge-base', { waitUntil: 'domcontentloaded' });
   }
 
   async waitForLoaded(): Promise<void> {

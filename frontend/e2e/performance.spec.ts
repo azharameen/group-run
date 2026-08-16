@@ -87,8 +87,8 @@ test.describe('Performance Measurements', () => {
       throw new Error(`Only created ${threads.length}/${threadCount} threads`);
     }
 
-    // Navigate first, then measure render time
-    await page.goto('/');
+    // Navigate first (opens the thread sidebar), then measure render time
+    await commandCenter.goto();
     
     // Wait for thread list to render
     const startTime = Date.now();

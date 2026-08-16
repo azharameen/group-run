@@ -42,7 +42,9 @@ def _clear_modules():
             "app.api.routes.health",
             "app.orchestrator.supervisor",
             "app.orchestrator.supervisor_graph",
-            "app.services.thread_manager",
+            # NOTE: do NOT purge app.services.thread_manager here — re-importing
+            # it orphans the singletons referenced by already-imported routes
+            # (module-identity split). Its state is reset in place by the tests.
             "app.services.interrupt_service",
             "app.config",
             "app.api.app",
@@ -283,12 +285,8 @@ class TestInterruptApprovalPerformance:
         conn = sqlite3.connect(str(db_path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
 
-        class DummyCheckpointer:
-            def __init__(self, conn):
-                self.conn = conn
-
-        monkeypatch.setattr(interrupt_module, "get_checkpointer", lambda: DummyCheckpointer(conn))
-        monkeypatch.setattr(interrupt_module.sqlite3, "connect", lambda *args, **kwargs: conn)
+        # Patch InterruptService to use the test connection
+        monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
 
         with TestClient(create_app()) as client:
             durations = []

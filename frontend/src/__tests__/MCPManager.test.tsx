@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MCPManager } from '@/components/MCPManager';
@@ -13,7 +14,7 @@ vi.mock('@/api/mcp', () => ({
 
 // Mock shadcn components and lucide icons to simplify testing
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, disabled, type, variant, className }: any) => (
+  Button: ({ children, onClick, disabled, type, variant, className }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string }) => (
     <button
       onClick={onClick}
       disabled={disabled}
@@ -27,7 +28,7 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/ui/input', () => ({
-  Input: ({ value, onChange, placeholder, type, maxLength, disabled }: any) => (
+  Input: ({ value, onChange, placeholder, type, maxLength, disabled }: InputHTMLAttributes<HTMLInputElement>) => (
     <input
       value={value}
       onChange={onChange}
@@ -41,7 +42,7 @@ vi.mock('@/components/ui/input', () => ({
 }));
 
 vi.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, variant }: any) => (
+  Badge: ({ children, variant }: { children?: ReactNode; variant?: string }) => (
     <span data-testid="badge" data-variant={variant}>
       {children}
     </span>
@@ -56,14 +57,14 @@ vi.mock('@/hooks/use-toast', () => ({
 
 // Mock AlertDialog
 vi.mock('@/components/ui/alert-dialog', () => ({
-  AlertDialog: ({ children, open }: any) => (open ? <div data-testid="alert-dialog">{children}</div> : null),
-  AlertDialogContent: ({ children }: any) => <div>{children}</div>,
-  AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: any) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: any) => <div>{children}</div>,
-  AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
-  AlertDialogCancel: ({ children }: any) => <button data-testid="alert-dialog-cancel">{children}</button>,
-  AlertDialogAction: ({ children, onClick }: any) => (
+  AlertDialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (open ? <div data-testid="alert-dialog">{children}</div> : null),
+  AlertDialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  AlertDialogFooter: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  AlertDialogCancel: ({ children }: { children?: ReactNode }) => <button data-testid="alert-dialog-cancel">{children}</button>,
+  AlertDialogAction: ({ children, onClick }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button data-testid="alert-dialog-action" onClick={onClick}>
       {children}
     </button>

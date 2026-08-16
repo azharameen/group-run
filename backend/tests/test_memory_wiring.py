@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 def test_memory_wiring_in_runtime(monkeypatch):
-    """Verify that 'memories' parameter is passed to create_deep_agent in runtime factory."""
+    """Verify that 'memory' parameter is passed to create_deep_agent in runtime factory."""
     # Mock deepagents and related modules
     deepagents_module = types.ModuleType("deepagents")
     backends_module = types.ModuleType("deepagents.backends")
@@ -45,6 +45,7 @@ def test_memory_wiring_in_runtime(monkeypatch):
     # Mock thread_manager to avoid DB and module import issues
     thread_manager_module = types.ModuleType("app.services.thread_manager")
     thread_manager_module.get_checkpointer = MagicMock(return_value=MagicMock())
+    thread_manager_module.get_async_checkpointer = MagicMock(return_value=MagicMock())
     monkeypatch.setitem(sys.modules, "app.services.thread_manager", thread_manager_module)
 
     # Mock other sub-modules - remove cached modules first so mocks take effect
@@ -74,9 +75,13 @@ def test_memory_wiring_in_runtime(monkeypatch):
         
         get_deep_agent_runtime()
         
-        # Verify memories was passed
-        assert "memories" in captured_kwargs
-        assert captured_kwargs["memories"] == ["/memories/"]
+        # Verify memory was passed. deepagents expects individual *file*
+        # paths (a directory path raises is_directory), so the runtime must
+        # enumerate the memory files as /memories/... virtual paths.
+        assert "memory" in captured_kwargs
+        memory = captured_kwargs["memory"]
+        assert memory, "memory sources must be passed to create_deep_agent"
+        assert all(src.startswith("/memories/") for src in memory)
     finally:
         settings.deepagents_model = original_model
 

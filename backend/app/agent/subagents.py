@@ -1,9 +1,9 @@
 """DeepAgents subagent definitions from teams.yaml (AD-7)."""
 
+import logging
 from pathlib import Path
 from typing import Any
 
-import logging
 import yaml
 
 from ..config import TEAMS_CONFIG_PATH, settings

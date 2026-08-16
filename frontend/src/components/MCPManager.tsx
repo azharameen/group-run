@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Server, Plus, Trash2, Loader2, Network, RefreshCw } from "lucide-react";
+import { Server, Plus, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,7 +28,6 @@ import {
   removeMCPServer,
   pingMCPServer,
   type MCPServer,
-  type MCPServerStatus,
 } from "@/api/mcp";
 
 export function MCPManager() {

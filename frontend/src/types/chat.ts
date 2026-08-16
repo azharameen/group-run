@@ -12,9 +12,9 @@ export interface ChatMessage {
 	liveTrace?: TraceStep[];
 	eventType?: string;
 	provenance?: string;
-	details?: Record<string, any>;
-	params?: Record<string, any>;
-	output?: any;
+	details?: Record<string, unknown>;
+	params?: Record<string, unknown>;
+	output?: unknown;
 	from_agent?: string;
 	to_agent?: string;
 	tool?: string;

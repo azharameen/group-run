@@ -18,7 +18,7 @@ interface MessageScrollerProps extends React.HTMLAttributes<HTMLDivElement> {
  * Provides auto-scroll to bottom behavior with a scroll-to-bottom button.
  */
 const MessageScroller = React.forwardRef<HTMLDivElement, MessageScrollerProps>(
-	({ className, children, autoScroll = true, ...props }, ref) => {
+	({ className, children, autoScroll = true, ...props }, _ref) => {
 		const scrollRef = React.useRef<HTMLDivElement>(null);
 		const bottomRef = React.useRef<HTMLDivElement>(null);
 		const [showScrollButton, setShowScrollButton] = React.useState(false);

@@ -9,7 +9,7 @@ compatibility.
 import asyncio
 import json
 import logging
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 logger = logging.getLogger(__name__)
 

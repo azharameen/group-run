@@ -2,18 +2,20 @@
 
 import asyncio
 import json
+import logging
 import warnings
-from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, Optional
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from typing import Any
 
-from .runtime import get_deep_agent_runtime
+_logger = logging.getLogger(__name__)
+
+from ..models.transcript import normalize_transcript_event
+from ..storage.yaml_io import load_idea_yaml, save_idea_yaml
 from .domain_tools import (
     draft_patent_section,
-    query_prior_art_taxonomy,
-    record_approval_decision,
 )
-from ..storage.yaml_io import load_idea_yaml, save_idea_yaml
-from ..models.transcript import normalize_transcript_event
+from .runtime import get_deep_agent_runtime
 
 
 def _stringify_runtime_output(value: Any) -> str:
@@ -23,7 +25,7 @@ def _stringify_runtime_output(value: Any) -> str:
         return value.strip()
     try:
         return json.dumps(value, indent=2, default=str)
-    except Exception:
+    except Exception:  # noqa: BLE001  # fall back to str() for unserializable output
         return str(value)
 
 
@@ -84,9 +86,9 @@ def _extract_text_from_chunk(value: Any) -> str:
         if joined.strip():
             return joined.strip()
     if hasattr(value, "text"):
-        return _extract_text_from_chunk(getattr(value, "text"))
+        return _extract_text_from_chunk(value.text)
     if hasattr(value, "content"):
-        return _extract_text_from_chunk(getattr(value, "content"))
+        return _extract_text_from_chunk(value.content)
     return _stringify_runtime_output(value)
 
 
@@ -187,9 +189,10 @@ async def _consume_messages(
             async for delta in _iter_text_deltas(msg):
                 await queue.put(("token", agent_name, delta))
     except (AttributeError, TypeError, StopAsyncIteration):
-        pass
+        return
     except Exception:
-        pass
+        _logger.exception("Error while consuming messages")
+        return
 
 
 async def _consume_tool_calls(
@@ -223,9 +226,10 @@ async def _consume_tool_calls(
                             "delta": str(delta),
                         }))
             except (AttributeError, TypeError, StopAsyncIteration):
-                pass
+                return
             except Exception:
-                pass
+                _logger.exception("Error while consuming tool deltas")
+                return
 
             if completed or error is not None:
                 await queue.put(("tool_result", agent_name, {
@@ -235,8 +239,8 @@ async def _consume_tool_calls(
                 }))
     except (AttributeError, TypeError, StopAsyncIteration):
         pass
-    except Exception:
-        pass
+    except Exception:  # projection errors must not kill the stream pump
+        _logger.debug("Error while consuming tool calls", exc_info=True)
 
 
 async def _consume_subagents(
@@ -260,8 +264,8 @@ async def _consume_subagents(
             await queue.put(("subagent_complete", name, None))
     except (AttributeError, TypeError, StopAsyncIteration):
         pass
-    except Exception:
-        pass
+    except Exception:  # projection errors must not kill the stream pump
+        _logger.debug("Error while consuming subagents", exc_info=True)
 
 
 async def _extract_final_message_text(output: Any) -> str:
@@ -283,16 +287,13 @@ async def _extract_final_message_text(output: Any) -> str:
                         if isinstance(content, list):
                             parts = []
                             for block in content:
-                                if isinstance(block, dict):
-                                    if block.get("type") == "text" and block.get("text"):
-                                        parts.append(block["text"])
-                                    elif block.get("text"):
-                                        parts.append(block["text"])
+                                if isinstance(block, dict) and block.get("text"):
+                                    parts.append(block["text"])
                             joined = "".join(parts).strip()
                             if joined:
                                 return joined
                 elif hasattr(msg, "content"):
-                    content = getattr(msg, "content")
+                    content = msg.content
                     if isinstance(content, str) and content.strip():
                         return content.strip()
         for key in ("output", "content", "text"):
@@ -302,9 +303,9 @@ async def _extract_final_message_text(output: Any) -> str:
                 if extracted:
                     return extracted
     if hasattr(output, "content"):
-        return await _extract_final_message_text(getattr(output, "content"))
+        return await _extract_final_message_text(output.content)
     if hasattr(output, "text"):
-        return await _extract_final_message_text(getattr(output, "text"))
+        return await _extract_final_message_text(output.text)
     return ""
 
 
@@ -312,7 +313,7 @@ async def _consume_v3_stream(
     stream: Any,
     idea_id: str,
     provenance: str,
-) -> AsyncGenerator[Dict[str, Any], None]:
+) -> AsyncGenerator[dict[str, Any], None]:
     """Consume a v3 AsyncGraphRunStream and emit structured transcript events.
 
     Consumes the message, tool-call, and subagent projections concurrently
@@ -430,8 +431,8 @@ async def _consume_v3_stream(
                         "content": fallback_text,
                         "provenance": f"{provenance}|stream:v3:output",
                     })
-            except Exception:
-                pass
+            except Exception:  # fallback text extraction is best-effort
+                _logger.debug("Error extracting final message text", exc_info=True)
 
         # Detect a human-in-the-loop interrupt in the final state.
         try:
@@ -457,14 +458,11 @@ async def _consume_v3_stream(
                         "content": str(value or "Action requires approval"),
                         "provenance": f"{provenance}|stream:v3",
                     })
-        except Exception:
-            pass
+        except Exception:  # interrupt detection is best-effort
+            _logger.debug("Error detecting interrupts", exc_info=True)
     finally:
         pump_task.cancel()
-        try:
-            await pump_task
-        except asyncio.CancelledError:
-            raise
+        await pump_task
 
 
 def _looks_like_v3_stream(stream: Any) -> bool:
@@ -475,7 +473,7 @@ async def _consume_v2_stream(
     stream_iter: Any,
     idea_id: str,
     provenance: str,
-) -> AsyncGenerator[Dict[str, Any], None]:
+) -> AsyncGenerator[dict[str, Any], None]:
     """Fallback: consume raw v2 StreamEvent dicts from astream_events."""
     emitted_done = False
     try:
@@ -543,10 +541,10 @@ def execute_deep_agent_workflow(
     executor_func_name: str = "draft_patent_section",
     archive_filename: str = "",
     user_feedback: str = "",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute a workflow step using the DeepAgents runtime.
 
-    NOTE: This function is legacy Siemens FSM-era code. The state machine
+    NOTE: This function is legacy FSM-era code. The state machine
     advancement and scoring calls have been removed. The function now only
     invokes the DeepAgents graph and drafts patent sections.
     TODO: Replace with LangGraph-based workflow execution.
@@ -561,7 +559,7 @@ def execute_deep_agent_workflow(
             "completed": True,
             "output": f"Global agent query processed: '{user_feedback}'. System monitoring active ideas.",
             "scores": {},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
@@ -591,7 +589,7 @@ def execute_deep_agent_workflow(
             **runtime_context,
         }
         runtime_output = runtime.invoke(input_payload)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # keep drafting with context even if invoke fails
         print(f"[DeepAgents Runner] Graph invoke warning: {exc}")
 
     content_summary = _stringify_runtime_output(runtime_output)
@@ -603,7 +601,7 @@ def execute_deep_agent_workflow(
     # Save state metadata
     updated = load_idea_yaml(idea_id, "idea.yaml") or {}
     updated["workflow_state"] = state_name
-    updated["updated_at"] = datetime.utcnow().isoformat()
+    updated["updated_at"] = datetime.now(UTC).isoformat()
     save_idea_yaml(idea_id, "idea.yaml", updated)
 
     return {
@@ -612,15 +610,15 @@ def execute_deep_agent_workflow(
         "completed": True,
         "output": _stringify_runtime_output(runtime_output) or f"Runtime completed for {title}.",
         "scores": {},
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
 async def execute_deep_agent_workflow_streaming(
     idea_id: str,
     user_feedback: str,
-    thread_id: Optional[str] = None,
-) -> AsyncGenerator[Dict[str, Any], None]:
+    thread_id: str | None = None,
+) -> AsyncGenerator[dict[str, Any], None]:
     """Stream runtime-produced events through DeepAgents.
 
     Every message — global chat or idea-scoped — goes through the DeepAgents
@@ -641,7 +639,7 @@ async def execute_deep_agent_workflow_streaming(
     runtime = get_deep_agent_runtime()
 
     # Build graph config with thread_id (bound to checkpointer)
-    configurable: Dict[str, Any] = {"idea_id": idea_id, "workflow_state": state}
+    configurable: dict[str, Any] = {"idea_id": idea_id, "workflow_state": state}
     if thread_id:
         configurable["thread_id"] = thread_id
 
@@ -713,7 +711,7 @@ async def execute_deep_agent_workflow_streaming(
                 if event.get("type") == "done":
                     emitted_done = True
                 yield event
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # stream contract: always end with a failed event
         yield normalize_transcript_event(idea_id, {
             "type": "failed",
             "speaker": "workflow-orchestrator",

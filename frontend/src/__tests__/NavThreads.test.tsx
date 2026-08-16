@@ -20,7 +20,7 @@ vi.mock('@/components/ui/sidebar', () => ({
 	SidebarGroupContent: ({ children, className }: { children: React.ReactNode; className?: string }) => <div data-testid="sidebar-content" className={className}>{children}</div>,
 	SidebarMenu: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-menu">{children}</div>,
 	SidebarMenuItem: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-menu-item">{children}</div>,
-	SidebarMenuButton: ({ children, isActive, onClick, tooltip, className }: { children: React.ReactNode; isActive?: boolean; onClick?: () => void; tooltip?: string; className?: string }) => (
+	SidebarMenuButton: ({ children, isActive, onClick, className }: { children: React.ReactNode; isActive?: boolean; onClick?: () => void; tooltip?: string; className?: string }) => (
 		<button data-testid="thread-button" data-active={isActive} onClick={onClick} className={className}>
 			{children}
 		</button>
@@ -67,14 +67,14 @@ vi.mock('@/components/ui/alert-dialog', () => ({
 
 // Mock button
 vi.mock('@/components/ui/button', () => ({
-	Button: ({ children, onClick, disabled, variant, size, className }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; variant?: string; size?: string; className?: string }) => (
+	Button: ({ children, onClick, disabled, variant, className }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; variant?: string; size?: string; className?: string }) => (
 		<button data-testid={`button-${variant || 'default'}`} disabled={disabled} onClick={onClick} className={className}>{children}</button>
 	),
 }));
 
 // Mock input
 vi.mock('@/components/ui/input', () => ({
-	Input: ({ value, onChange, placeholder, type, className, autoFocus }: { value?: string; onChange?: (e: any) => void; placeholder?: string; type?: string; className?: string; autoFocus?: boolean }) => (
+	Input: ({ value, onChange, placeholder, type, className, autoFocus }: { value?: string; onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; type?: string; className?: string; autoFocus?: boolean }) => (
 		<input data-testid="input" value={value} onChange={onChange} placeholder={placeholder} type={type} className={className} autoFocus={autoFocus} />
 	),
 }));
@@ -82,8 +82,8 @@ vi.mock('@/components/ui/input', () => ({
 // Mock tooltip
 vi.mock('@/components/ui/tooltip', () => ({
 	Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-	TooltipTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) => <div>{children}</div>,
-	TooltipContent: ({ children, side, className }: { children: React.ReactNode; side?: string; className?: string }) => <div>{children}</div>,
+	TooltipTrigger: ({ children }: { children: React.ReactNode; asChild?: boolean }) => <div>{children}</div>,
+	TooltipContent: ({ children }: { children: React.ReactNode; side?: string; className?: string }) => <div>{children}</div>,
 }));
 
 // Mock toast
@@ -93,12 +93,12 @@ vi.mock('@/hooks/use-toast', () => ({
 
 // Mock lucide icons
 vi.mock('lucide-react', () => ({
-	MessageSquare: ({ className }: { className?: string }) => <svg data-testid="icon-message" />,
+	MessageSquare: () => <svg data-testid="icon-message" />,
 	MoreHorizontal: () => <svg data-testid="icon-more" />,
-	Pencil: ({ className }: { className?: string }) => <svg data-testid="icon-pencil" />,
-	Plus: ({ className }: { className?: string }) => <svg data-testid="icon-plus" />,
-	Trash2: ({ className }: { className?: string }) => <svg data-testid="icon-trash" />,
-	Search: ({ className }: { className?: string }) => <svg data-testid="icon-search" />,
+	Pencil: () => <svg data-testid="icon-pencil" />,
+	Plus: () => <svg data-testid="icon-plus" />,
+	Trash2: () => <svg data-testid="icon-trash" />,
+	Search: () => <svg data-testid="icon-search" />,
 }));
 
 function makeThreads(count: number = 1): ThreadMetadata[] {

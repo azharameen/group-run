@@ -1,5 +1,12 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import type {
+  ButtonHTMLAttributes,
+  ChangeEvent,
+  InputHTMLAttributes,
+  ReactNode,
+  TextareaHTMLAttributes,
+} from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Dashboard from '@/pages/Dashboard';
 import * as apiClient from '@/api/client';
 import type { IdeaListItem } from '@/api/client';
@@ -15,7 +22,12 @@ vi.mock('@/api/client', () => ({
 
 // Mock IdeaCard component
 vi.mock('@/components/IdeaCard', () => ({
-  default: ({ idea, isSelected, onSelect, onDelete }: any) => (
+  default: ({ idea, isSelected, onSelect, onDelete }: {
+    idea: IdeaListItem;
+    isSelected?: boolean;
+    onSelect?: (id: string) => void;
+    onDelete?: (id: string) => void;
+  }) => (
     <div data-testid={`idea-card-${idea.idea_id}`} data-selected={isSelected}>
       <span data-testid={`idea-title-${idea.idea_id}`}>{idea.title}</span>
       {onSelect && (
@@ -40,11 +52,11 @@ vi.mock('@/components/IdeaCard', () => ({
 
 // Mock shadcn components
 vi.mock('@/components/ui/input', () => ({
-  Input: ({ value, onChange, placeholder, type, className, maxLength }: any) => (
+  Input: ({ value, onChange, placeholder, type, className, maxLength }: InputHTMLAttributes<HTMLInputElement>) => (
     <input
       data-testid="input"
       value={value}
-      onChange={(e: any) => onChange(e)}
+      onChange={(e: ChangeEvent<HTMLInputElement>) => onChange?.(e)}
       placeholder={placeholder}
       type={type}
       className={className}
@@ -54,18 +66,18 @@ vi.mock('@/components/ui/input', () => ({
 }));
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, className }: any) => (
+  Card: ({ children, className }: { children?: ReactNode; className?: string }) => (
     <div data-testid="card" className={className}>{children}</div>
   ),
-  CardContent: ({ children }: any) => <div data-testid="card-content">{children}</div>,
+  CardContent: ({ children }: { children?: ReactNode }) => <div data-testid="card-content">{children}</div>,
 }));
 
 vi.mock('@/components/ui/skeleton', () => ({
-  Skeleton: ({ className }: any) => <div data-testid="skeleton" className={className} />,
+  Skeleton: ({ className }: { className?: string }) => <div data-testid="skeleton" className={className} />,
 }));
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, variant, size, disabled, className }: any) => (
+  Button: ({ children, onClick, variant, size, disabled, className }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string }) => (
     <button
       data-testid={`button-${variant || 'default'}-${size || 'default'}`}
       onClick={onClick}
@@ -78,11 +90,11 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/ui/textarea', () => ({
-  Textarea: ({ value, onChange, placeholder, rows }: any) => (
+  Textarea: ({ value, onChange, placeholder, rows }: TextareaHTMLAttributes<HTMLTextAreaElement>) => (
     <textarea
       data-testid="textarea"
       value={value}
-      onChange={(e: any) => onChange(e)}
+      onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange?.(e)}
       placeholder={placeholder}
       rows={rows}
     />
@@ -90,48 +102,48 @@ vi.mock('@/components/ui/textarea', () => ({
 }));
 
 vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open }: any) => {
+  Dialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => {
     if (!open) return null;
     return <div data-testid="dialog">{children}</div>;
   },
-  DialogContent: ({ children }: any) => (
+  DialogContent: ({ children }: { children?: ReactNode }) => (
     <div data-testid="dialog-content">{children}</div>
   ),
-  DialogHeader: ({ children }: any) => (
+  DialogHeader: ({ children }: { children?: ReactNode }) => (
     <div data-testid="dialog-header">{children}</div>
   ),
-  DialogTitle: ({ children }: any) => (
+  DialogTitle: ({ children }: { children?: ReactNode }) => (
     <div data-testid="dialog-title">{children}</div>
   ),
-  DialogFooter: ({ children }: any) => (
+  DialogFooter: ({ children }: { children?: ReactNode }) => (
     <div data-testid="dialog-footer">{children}</div>
   ),
 }));
 
 vi.mock('@/components/ui/alert-dialog', () => ({
-  AlertDialog: ({ children, open }: any) => {
+  AlertDialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => {
     if (!open) return null;
     return <div data-testid="alert-dialog">{children}</div>;
   },
-  AlertDialogContent: ({ children }: any) => (
+  AlertDialogContent: ({ children }: { children?: ReactNode }) => (
     <div data-testid="alert-dialog-content">{children}</div>
   ),
-  AlertDialogHeader: ({ children }: any) => (
+  AlertDialogHeader: ({ children }: { children?: ReactNode }) => (
     <div data-testid="alert-dialog-header">{children}</div>
   ),
-  AlertDialogTitle: ({ children }: any) => (
+  AlertDialogTitle: ({ children }: { children?: ReactNode }) => (
     <div data-testid="alert-dialog-title">{children}</div>
   ),
-  AlertDialogDescription: ({ children }: any) => (
+  AlertDialogDescription: ({ children }: { children?: ReactNode }) => (
     <div data-testid="alert-dialog-description">{children}</div>
   ),
-  AlertDialogFooter: ({ children }: any) => (
+  AlertDialogFooter: ({ children }: { children?: ReactNode }) => (
     <div data-testid="alert-dialog-footer">{children}</div>
   ),
-  AlertDialogCancel: ({ children }: any) => (
+  AlertDialogCancel: ({ children }: { children?: ReactNode }) => (
     <button data-testid="alert-dialog-cancel">{children}</button>
   ),
-  AlertDialogAction: ({ children, onClick, className }: any) => (
+  AlertDialogAction: ({ children, onClick, className }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button data-testid="alert-dialog-action" onClick={onClick} className={className}>
       {children}
     </button>

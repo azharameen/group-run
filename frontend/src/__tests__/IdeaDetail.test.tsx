@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import IdeaDetail from '@/pages/IdeaDetail';
@@ -9,7 +10,7 @@ import type { IdeaDetail as IdeaDetailType } from '@/api/client';
 // Mock useParams
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ ideaId: 'idea-123' }),
-  Link: ({ children, to }: any) => (
+  Link: ({ children, to }: { children?: ReactNode; to: string }) => (
     <a href={to} data-testid="link">
       {children}
     </a>
@@ -32,7 +33,10 @@ vi.mock('@/api/deepagents', () => ({
 
 // Mock sub-components
 vi.mock('@/components/idea-detail/IdeaActionsHeader', () => ({
-  IdeaActionsHeader: ({ title, deleting, onDelete }: any) => (
+  IdeaActionsHeader: ({ title, deleting, onDelete }: HTMLAttributes<HTMLDivElement> & {
+    deleting?: boolean;
+    onDelete?: () => void;
+  }) => (
     <div data-testid="idea-actions-header">
       <span data-testid="header-title">{title}</span>
       <button data-testid="delete-trigger" onClick={onDelete} disabled={deleting}>
@@ -43,9 +47,9 @@ vi.mock('@/components/idea-detail/IdeaActionsHeader', () => ({
 }));
 
 vi.mock('@/components/IdeaFilesystem', () => ({
-  IdeaFilesystem: ({ files }: any) => (
+  IdeaFilesystem: ({ files }: { files: Array<{ filename: string }> }) => (
     <div data-testid="idea-filesystem">
-      {files.map((f: any, i: number) => (
+      {files.map((f: { filename: string }, i: number) => (
         <div key={i} data-testid="file-item">
           {f.filename}
         </div>
@@ -56,31 +60,31 @@ vi.mock('@/components/IdeaFilesystem', () => ({
 
 // Mock shadcn components - pass through props
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, ...props }: any) => <div data-testid="card" {...props}>{children}</div>,
-  CardHeader: ({ children, ...props }: any) => <div data-testid="card-header" {...props}>{children}</div>,
-  CardTitle: ({ children, ...props }: any) => <div data-testid="card-title" {...props}>{children}</div>,
-  CardContent: ({ children, ...props }: any) => <div data-testid="card-content" {...props}>{children}</div>,
+  Card: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div data-testid="card" {...props}>{children}</div>,
+  CardHeader: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div data-testid="card-header" {...props}>{children}</div>,
+  CardTitle: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div data-testid="card-title" {...props}>{children}</div>,
+  CardContent: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div data-testid="card-content" {...props}>{children}</div>,
 }));
 
 vi.mock('@/components/ui/tabs', () => ({
-  Tabs: ({ children, defaultValue, ...props }: any) => (
+  Tabs: ({ children, defaultValue, ...props }: HTMLAttributes<HTMLDivElement> & { defaultValue?: string }) => (
     <div data-testid="tabs" data-default-value={defaultValue} {...props}>
       {children}
     </div>
   ),
-  TabsList: ({ children, ...props }: any) => <div data-testid="tabs-list" {...props}>{children}</div>,
-  TabsTrigger: ({ children, value, ...props }: any) => (
+  TabsList: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div data-testid="tabs-list" {...props}>{children}</div>,
+  TabsTrigger: ({ children, value, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { value?: string }) => (
     <button data-testid={`tab-trigger-${value}`} data-value={value} {...props}>
       {children}
     </button>
   ),
-  TabsContent: ({ children, value, ...props }: any) => (
+  TabsContent: ({ children, value, ...props }: HTMLAttributes<HTMLDivElement> & { value?: string }) => (
     <div data-testid={`tab-content-${value}`} {...props}>{children}</div>
   ),
 }));
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, variant, disabled, ...props }: any) => (
+  Button: ({ children, onClick, variant, disabled, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string }) => (
     <button
       data-testid={`button-${variant || 'default'}`}
       onClick={!disabled ? onClick : undefined}
@@ -93,7 +97,7 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/ui/textarea', () => ({
-  Textarea: ({ value, onChange, placeholder, ...props }: any) => (
+  Textarea: ({ value, onChange, placeholder, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) => (
     <textarea
       data-testid="textarea"
       value={value}
@@ -105,33 +109,33 @@ vi.mock('@/components/ui/textarea', () => ({
 }));
 
 vi.mock('@/components/ui/scroll-area', () => ({
-  ScrollArea: ({ children, ...props }: any) => <div data-testid="scroll-area" {...props}>{children}</div>,
+  ScrollArea: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => <div data-testid="scroll-area" {...props}>{children}</div>,
 }));
 
 vi.mock('@/components/ui/alert-dialog', () => ({
-  AlertDialog: ({ children, open, ...props }: any) => {
+  AlertDialog: ({ children, open, ...props }: HTMLAttributes<HTMLDivElement> & { open?: boolean }) => {
     if (!open) return null;
     return <div data-testid="alert-dialog" {...props}>{children}</div>;
   },
-  AlertDialogContent: ({ children, ...props }: any) => (
+  AlertDialogContent: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
     <div data-testid="alert-dialog-content" {...props}>{children}</div>
   ),
-  AlertDialogHeader: ({ children, ...props }: any) => (
+  AlertDialogHeader: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
     <div data-testid="alert-dialog-header" {...props}>{children}</div>
   ),
-  AlertDialogTitle: ({ children, ...props }: any) => (
+  AlertDialogTitle: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
     <div data-testid="alert-dialog-title" {...props}>{children}</div>
   ),
-  AlertDialogDescription: ({ children, ...props }: any) => (
+  AlertDialogDescription: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
     <div data-testid="alert-dialog-description" {...props}>{children}</div>
   ),
-  AlertDialogFooter: ({ children, ...props }: any) => (
+  AlertDialogFooter: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
     <div data-testid="alert-dialog-footer" {...props}>{children}</div>
   ),
-  AlertDialogCancel: ({ children, ...props }: any) => (
+  AlertDialogCancel: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button data-testid="alert-dialog-cancel" {...props}>{children}</button>
   ),
-  AlertDialogAction: ({ children, onClick, className, ...props }: any) => (
+  AlertDialogAction: ({ children, onClick, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button data-testid="alert-dialog-action" onClick={onClick} className={className} {...props}>
       {children}
     </button>
@@ -229,7 +233,10 @@ describe('IdeaDetail', () => {
 
   test('submits comment when form submitted', async () => {
     const user = userEvent.setup();
-    vi.mocked(apiClient.addIdeaComment).mockResolvedValue({});
+    vi.mocked(apiClient.addIdeaComment).mockResolvedValue({
+      idea_id: 'idea_1',
+      comment: { author: 'User', text: 'A comment', timestamp: '2024-01-01T00:00:00Z' },
+    });
     render(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByTestId('tab-comments')).toBeDefined();

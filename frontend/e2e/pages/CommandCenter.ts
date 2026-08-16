@@ -32,7 +32,47 @@ export class CommandCenterPage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/');
+    // Use domcontentloaded: the window 'load' event can be held hostage by
+    // slow subresources and long-lived connections (the app keeps
+    // /api/sse open for the lifetime of the page). App readiness is
+    // established explicitly below (sidebar trigger visible).
+    await this.page.goto('/', { waitUntil: 'domcontentloaded' });
+    await this.ensureSidebarOpen();
+  }
+
+  /**
+   * The thread sidebar starts collapsed (`SidebarProvider defaultOpen={false}`)
+   * and renders nothing in rail mode, so `thread-button-*` /
+   * `sidebar-new-thread-button` are only reachable while it is expanded.
+   *
+   * Expansion uses the app's Ctrl/Cmd+B keyboard toggle: it is a
+   * window-level handler and — unlike the header trigger button, whose
+   * click is unreliable while the collapsed rail is stacking over the
+   * header — it works deterministically. The trigger click remains as a
+   * fallback.
+   */
+  async ensureSidebarOpen(): Promise<void> {
+    const page = this.page;
+    // The header trigger renders as soon as the app shell mounts.
+    const trigger = page.locator('[data-sidebar="trigger"]');
+    await trigger.waitFor({ state: 'visible', timeout: 20_000 });
+
+    const sidebarNewThread = page.getByTestId('sidebar-new-thread-button');
+    if (await sidebarNewThread.isVisible().catch(() => false)) {
+      return;
+    }
+
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.keyboard.press(`${modifier}+b`);
+    const opened = await sidebarNewThread
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (opened) return;
+
+    // Fallback: the header trigger button.
+    await trigger.click();
+    await sidebarNewThread.waitFor({ state: 'visible', timeout: 10_000 });
   }
 
   async sendMessage(message: string): Promise<void> {

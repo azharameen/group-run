@@ -152,7 +152,8 @@ describe('useThreadManager', () => {
 	});
 
 	test('ensureThread returns existing activeThreadId without creating', async () => {
-		vi.spyOn(apiClient, 'listThreads').mockResolvedValue([]);
+		const existingThread = makeThread({ thread_id: 'existing-thread' });
+		vi.spyOn(apiClient, 'listThreads').mockResolvedValue([existingThread]);
 		const createSpy = vi.spyOn(apiClient, 'createThread');
 
 		const { result } = renderHook(() =>
@@ -161,7 +162,7 @@ describe('useThreadManager', () => {
 				setActiveThreadId: vi.fn(),
 				onActiveThreadTitleChange: vi.fn(),
 				onThreadsUpdate: vi.fn(),
-				threads: [],
+				threads: [existingThread],
 			}),
 		);
 
@@ -221,7 +222,7 @@ describe('useThreadManager', () => {
 			}),
 		);
 
-		let returned: ThreadMetadata = null as any;
+		let returned: ThreadMetadata | null = null;
 		await act(async () => {
 			returned = await result.current.updateThread('thread-1', { title: 'Renamed Thread' });
 		});

@@ -7,10 +7,12 @@ export interface SubagentStatus {
   last_active?: string;
 }
 
+import type { TaskItem } from './chat';
+
 export interface ToolCallEvent {
   id: string;
   tool_name: string;
-  arguments: Record<string, any>;
+  arguments: Record<string, unknown>;
   output?: string;
   status: 'running' | 'completed' | 'failed';
   timestamp: string;
@@ -83,8 +85,8 @@ export interface RuntimeEvent {
   speaker?: string;
   role?: string;
   tool?: string;
-  params?: Record<string, any>;
-  output?: any;
+  params?: Record<string, unknown>;
+  output?: unknown;
   action?: string;
   from_agent?: string;
   to_agent?: string;
@@ -94,7 +96,7 @@ export interface RuntimeEvent {
   provenance?: string;
   state?: string;
   status?: string;
-  tasks?: any[];
+  tasks?: TaskItem[];
   completed?: number;
   total?: number;
 }
@@ -102,5 +104,5 @@ export interface RuntimeEvent {
 export interface TranscriptEvent extends RuntimeEvent {
   idea_id?: string;
   trust?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }

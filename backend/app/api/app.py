@@ -1,9 +1,9 @@
 """FastAPI app factory."""
 
 import logging
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from time import time
-from typing import Awaitable, Callable
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,14 +12,14 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from ..infrastructure.observability import configure_langsmith_tracing
-from ..services.thread_manager import get_checkpointer, get_async_checkpointer
+from ..services.thread_manager import get_checkpointer
 from .routes.chat import router as chat_router
 from .routes.config import router as config_router
-from .routes.interrupts import router as interrupts_router
 from .routes.health import router as health_router
+from .routes.ideas import router as ideas_router
+from .routes.interrupts import router as interrupts_router
 from .routes.knowledge_base import router as knowledge_base_router
 from .routes.mcp import router as mcp_router
-from .routes.ideas import router as ideas_router
 from .routes.sse import router as sse_router
 from .routes.threads import router as threads_router
 
@@ -61,37 +61,41 @@ async def lifespan(_app: FastAPI):
     print(f"[Startup] Checkpointer initialized at {checkpointer.conn}")
 
     # Initialize async checkpointer for astream() compatibility
-    async_checkpointer = get_async_checkpointer()
-    await async_checkpointer.setup()
-    print(f"[Startup] Async checkpointer initialized")
+    from ..services.thread_manager import create_async_checkpointer
+    await create_async_checkpointer()
+    print("[Startup] Async checkpointer initialized")
 
     yield
 
     # Shutdown: close database connections to release file handles
     print("[Shutdown] Closing database connections...")
-    try:
-        # Close async checkpointer connection
-        if hasattr(async_checkpointer, "conn") and async_checkpointer.conn is not None:
-            await async_checkpointer.conn.close()
+    from ..services import thread_manager as _tm
+    async_cp = _tm._ASYNC_SQLITE_SAVER
+    if async_cp is not None and async_cp.conn is not None:
+        try:
+            await async_cp.conn.close()
             print("[Shutdown] Async checkpointer closed")
-    except Exception as exc:
-        print(f"[Shutdown] Async checkpointer close error: {exc}")
+        except Exception as exc:  # noqa: BLE001  # best-effort shutdown; never block teardown
+            print(f"[Shutdown] Async checkpointer close error: {exc}")
 
     try:
         # Close sync checkpointer connection
         if hasattr(checkpointer, "conn") and checkpointer.conn is not None:
             checkpointer.conn.close()
             print("[Shutdown] Sync checkpointer closed")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # best-effort shutdown; never block teardown
         print(f"[Shutdown] Sync checkpointer close error: {exc}")
 
     # Reset singleton references so re-initialization creates fresh connections
     # (important for hot-reload and test environments)
-    from ..services import thread_manager as _tm
     _tm._SQLITE_SAVER = None
     _tm._ASYNC_SQLITE_SAVER = None
     _tm._METADATA_CONN = None
     _tm._THREAD_DB_PATH = None
+
+    # Reset supervisor graph cache so it rebuilds with fresh checkpointer
+    from ..orchestrator import supervisor as _sup
+    _sup._graph = None
 
 
 def create_app() -> FastAPI:

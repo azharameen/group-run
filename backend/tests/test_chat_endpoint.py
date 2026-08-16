@@ -24,7 +24,9 @@ def _clear_modules(monkeypatch: pytest.MonkeyPatch):
             "app.api.routes.chat",
             "app.orchestrator.supervisor",
             "app.orchestrator.supervisor_graph",
-            "app.services.thread_manager",
+            # NOTE: do NOT purge app.services.thread_manager here — re-importing
+            # it orphans the singletons referenced by already-imported routes
+            # (module-identity split). Its state is reset in place by the tests.
             "app.config",
         )):
             del sys.modules[mod]

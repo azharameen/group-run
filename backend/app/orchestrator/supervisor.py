@@ -18,16 +18,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Annotated
-from typing import Any
-from typing import TypedDict
+from typing import Annotated, Any, TypedDict
 
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
-from langchain_core.messages import HumanMessage, AIMessage
+
 # NOTE: LangGraph 0.6.x compile() returns CompiledStateGraph internally.
 # We use Any here for version resilience — the consumer contract is astream().
-
 from ..agent.runtime import get_deep_agent_runtime
 from ..config import settings
 from ..services.thread_manager import get_async_checkpointer
@@ -57,9 +55,7 @@ def _is_transient_error(exc: Exception) -> bool:
     if any(indicator in error_str for indicator in ("rate limit", "429", "too many requests")):
         return True
     # Server error indicators
-    if any(indicator in error_str for indicator in ("500", "502", "503", "504", "internal server")):
-        return True
-    return False
+    return any(indicator in error_str for indicator in ("500", "502", "503", "504", "internal server"))
 
 
 def _error_code(exc: Exception) -> str:
@@ -165,8 +161,8 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
     try:
         configurable = state.get("configurable", {}) or {}
         thread_id = str(configurable.get("thread_id", "unknown"))
-    except Exception:
-        pass  # thread_id extraction is non-critical
+    except Exception:  # thread_id extraction is non-critical
+        logger.debug("Failed to extract thread_id from state", exc_info=True)
 
     agent = _get_agent()
     timeout = settings.agent_timeout_sec
@@ -175,10 +171,15 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
     for attempt in range(_MAX_RETRIES + 1):
         start_time = time.monotonic()
         try:
+            # The deep agent graph is compiled with the shared checkpointer,
+            # which requires a thread_id in the configurable config. Reuse the
+            # same thread_id as the supervisor so both graphs checkpoint the
+            # same conversation; the supervisor's own checkpoint is written
+            # last (after this node returns) and therefore wins for history.
             result = await asyncio.wait_for(
                 agent.ainvoke(
                     {"messages": input_text},
-                    config={"recursion_limit": 50},
+                    config={"recursion_limit": 50, "configurable": {"thread_id": thread_id}},
                 ),
                 timeout=timeout,
             )
@@ -212,7 +213,7 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
             updated_messages = list(messages) + [ai_message]
             return {"response": response, "routing_key": "general", "messages": updated_messages}
 
-        except (asyncio.TimeoutError, TimeoutError) as exc:
+        except TimeoutError as exc:
             elapsed = time.monotonic() - start_time
             last_exc = exc
             logger.error(
@@ -229,12 +230,12 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
                 await asyncio.sleep(delay)
                 continue
 
-        except Exception as exc:
+        except Exception as exc:  # retry loop must classify and handle every agent error
             elapsed = time.monotonic() - start_time
             last_exc = exc
             error_code = _error_code(exc)
             is_transient = _is_transient_error(exc)
-            logger.error(
+            logger.exception(
                 "Agent invocation failed: thread_id=%s, attempt=%d/%d, error_type=%s, retryable=%s, elapsed=%.1fs",
                 thread_id,
                 attempt + 1,

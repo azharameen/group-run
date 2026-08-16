@@ -63,8 +63,8 @@ export interface StreamEvent {
   tasks?: TaskItemShape[];
   completed?: number;
   total?: number;
-  // state_update event fields
-  response?: StateUpdateResponse;
+  // state_update event fields (flat string or object shape from the backend)
+  response?: string | StateUpdateResponse;
   // error event fields (flat shape for compatibility)
   code?: string;
   message?: string;
@@ -165,10 +165,19 @@ export async function rejectInterrupt(
   return data.interrupt;
 }
 
+export interface SSEPayload extends Record<string, unknown> {
+  type?: string;
+  id?: string;
+  idea_id?: string;
+  agent_name?: string;
+  message?: string;
+  interrupt?: Partial<InterruptPayload>;
+}
+
 export function connectSSE(
-  onEvent: (event: string, data: any) => void,
+  onEvent: (event: string, data: SSEPayload) => void,
   onError?: (err: Event) => void,
-  onInterruptEvent?: (eventType: string, payload: any) => void,
+  onInterruptEvent?: (eventType: string, payload: SSEPayload) => void,
 ): EventSource {
   const es = new EventSource(`${API_BASE}/sse`);
 
@@ -180,7 +189,7 @@ export function connectSSE(
   knownEvents.forEach((eventName) => {
     es.addEventListener(eventName, (e: MessageEvent) => {
       try {
-        const data = JSON.parse(e.data);
+        const data = JSON.parse(e.data) as SSEPayload;
         onEvent(eventName, data);
       } catch {
         // ignore parse errors
@@ -191,7 +200,7 @@ export function connectSSE(
   // StreamBus publishes generic `message` events for interrupts
   es.onmessage = (e: MessageEvent) => {
     try {
-      const data = JSON.parse(e.data);
+      const data = JSON.parse(e.data) as SSEPayload;
       const type = data?.type;
       if (type?.startsWith('interrupt.')) {
         onInterruptEvent?.(type, data);

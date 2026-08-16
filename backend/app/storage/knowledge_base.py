@@ -6,14 +6,14 @@ import json
 import mimetypes
 import os
 import re
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from ..config import KNOWLEDGE_BASE_DIR
-from .base import read_markdown, read_yaml, write_markdown
+from .base import read_markdown, write_markdown
 
 SUPPORTED_BINARY_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
 
@@ -31,7 +31,7 @@ def _load_json_if_exists(path: str) -> dict[str, Any]:
         with open(path, "r", encoding="utf-8") as handle:
             data = json.load(handle)
             return data if isinstance(data, dict) else {}
-    except Exception:
+    except Exception:  # noqa: BLE001  # corrupt/missing sidecar metadata degrades to empty
         return {}
 
 
@@ -46,7 +46,7 @@ def _extract_pdf_text(data: bytes) -> tuple[str, dict[str, Any]]:
         metadata["page_count"] = len(reader.pages)
         metadata["extracted"] = bool(text.strip())
         return text.strip(), metadata
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # unreadable PDF degrades to empty text with a warning
         metadata["extracted"] = False
         metadata["warning"] = str(exc)
         return "", metadata
@@ -66,11 +66,11 @@ def _extract_image_text(data: bytes, filename: str) -> tuple[str, dict[str, Any]
                 text = image_to_string(image).strip()
                 metadata["ocr"] = bool(text)
                 return text, metadata
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001  # OCR failure degrades to empty text with a warning
                 metadata["ocr"] = False
                 metadata["warning"] = str(exc)
                 return "", metadata
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # unreadable image degrades to empty text with a warning
         metadata["warning"] = str(exc)
         return "", metadata
 

@@ -1,0 +1,11 @@
+# Commander branch and PR policy enforcement for dev agent
+# Place: _bmad/custom/bmad-agent-dev.toml (team override, git-commit this)
+# persistent_facts is under [agent] in base skill — arrays append
+
+[agent]
+persistent_facts = [
+  "BRANCH_POLICY: Always create feature branches from develop",
+  "PR_POLICY: One story may have one or more PRs, all targeting develop branch",
+  "NEVER merge directly to main or develop",
+  "HOTFIX_EXCEPTION: hotfix/ branches may target main directly, then sync to develop",
+]

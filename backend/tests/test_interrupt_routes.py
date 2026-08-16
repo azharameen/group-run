@@ -19,7 +19,7 @@ def client(tmp_path, monkeypatch):
         def __init__(self, conn):
             self.conn = conn
 
-    monkeypatch.setattr(interrupt_module, "get_checkpointer", lambda: DummyCheckpointer(conn))
+    monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
     monkeypatch.setattr(interrupt_module.sqlite3, "connect", lambda *args, **kwargs: conn)
     InterruptService._instance = None
     client = TestClient(create_app())

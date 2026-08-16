@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from difflib import unified_diff
 import os
+from datetime import UTC, datetime
+from difflib import unified_diff
 from pathlib import Path
 from typing import Any
 
-from .base import read_yaml, write_yaml, write_markdown
+from .base import read_yaml, write_markdown, write_yaml
 from .idea_workspace import idea_folder_path, load_idea_yaml, save_idea_yaml
 
 
@@ -41,7 +41,7 @@ def save_artifact_revision(
 ) -> dict[str, Any]:
     revisions = load_artifact_revisions(idea_id)
     version = len([r for r in revisions if r.get("artifact_name") == artifact_name]) + 1
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     file_name = f"{artifact_name}-v{version:02d}.md"
     artifact_path = _artifact_dir(idea_id) / file_name
 

@@ -1,17 +1,16 @@
 import logging
 import os
-from typing import List, Optional
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 
 from ...config import KNOWLEDGE_BASE_DIR
 from ...storage.knowledge_base import (
+    SUPPORTED_BINARY_EXTENSIONS,
     archive_knowledge_base_document,
     delete_knowledge_base_document,
     load_knowledge_base,
     save_knowledge_base_upload,
-    SUPPORTED_BINARY_EXTENSIONS,
 )
 from ..schemas import KnowledgeBaseResponse, KnowledgeDocument
 
@@ -29,11 +28,11 @@ async def list_documents():
             documents=[KnowledgeDocument(**d) for d in docs],
             count=len(docs)
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001  # API boundary: any failure maps to a 500 response
         logger.error(f"Error listing KB documents: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list documents: {str(e)}"
+            detail=f"Failed to list documents: {e!s}"
         )
 
 
@@ -61,11 +60,11 @@ async def upload_document(
             source=source
         )
         return result
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001  # API boundary: any failure maps to a 500 response
         logger.error(f"Error uploading KB document: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload document: {str(e)}"
+            detail=f"Failed to upload document: {e!s}"
         )
 
 
@@ -100,11 +99,11 @@ async def search_documents(q: str = Query(..., min_length=1)):
             documents=[KnowledgeDocument(**d) for d in filtered],
             count=len(filtered)
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001  # API boundary: any failure maps to a 500 response
         logger.error(f"Error searching KB documents: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Search failed: {str(e)}"
+            detail=f"Search failed: {e!s}"
         )
 
 

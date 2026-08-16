@@ -1,5 +1,4 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, test, expect, vi } from 'vitest';
 import { DocumentViewerCard } from '@/components/knowledge-base/DocumentViewerCard';
 import type { KnowledgeBaseData } from '@/api/client';

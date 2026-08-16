@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main, '*']
+    branches: [main, develop, '*']
 
 # Cancel in-progress runs for the same branch
 concurrency:
@@ -44,9 +44,11 @@ jobs:
         working-directory: backend
         run: pip install -r requirements.txt
 
-      - name: Python syntax check
-        run: |
-          python -m compileall backend/app -q
+      - name: Install Ruff
+        run: pip install "ruff>=0.9.0,<1.0.0"
+
+      - name: Run Ruff lint
+        run: ruff check backend/app
 
       - name: Check forbidden imports (NFR-A12)
         run: python scripts/forbidden_imports.py
@@ -130,7 +132,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -141,6 +143,10 @@ jobs:
       - name: Type check
         working-directory: frontend
         run: npx tsc -b --noEmit
+
+      - name: ESLint check
+        working-directory: frontend
+        run: npx eslint src
 
   # ------------------------------------------------------------------
   # Frontend Tests
@@ -157,7 +163,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -165,9 +171,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Run Vitest with coverage
+      - name: Run Vitest
         working-directory: frontend
-        run:         npx vitest run
+        run: npx vitest run
 
       - name: Upload coverage report
         if: always()
@@ -192,7 +198,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -209,6 +215,59 @@ jobs:
         with:
           name: frontend-build
           path: frontend/dist/
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # E2E Tests (Playwright)
+  # ------------------------------------------------------------------
+  e2e-test:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Run only on push to develop or PR targeting develop
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/develop') || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'develop')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Start backend mock server
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          DEEPAGENTS_MODEL="openai:test-model" OPENAI_API_KEY="sk-test" OPENAI_MODEL_NAME="gpt-4" \
+            uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8000/api/health && break; sleep 1; done
+
+      - name: Run Playwright E2E tests
+        working-directory: frontend
+        # Vite's /api proxy defaults to the docker-compose hostname `backend`,
+        # which does not resolve on CI runners — point it at the local uvicorn.
+        env:
+          VITE_API_PROXY: http://127.0.0.1:8000
+        run: npx playwright test --project=dev --reporter=html
+
+      - name: Upload Playwright report
+        if: always() && hashFiles('frontend/playwright-report/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: frontend/playwright-report/
           retention-days: 7
 
   # ------------------------------------------------------------------
@@ -239,13 +298,13 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Python dependency audit
-        run: pip install pip-audit && pip-audit --dir backend/app || true
-        continue-on-error: true
+        run: pip install pip-audit && pip-audit -r backend/requirements.txt
+        continue-on-error: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -254,5 +313,5 @@ jobs:
         run: npm ci
       - name: npm audit
         working-directory: frontend
-        run: npm audit --production || true
-        continue-on-error: true
+        run: npm audit --production
+        continue-on-error: false
