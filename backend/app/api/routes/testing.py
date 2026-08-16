@@ -64,4 +64,8 @@ def reset_test_state() -> dict[str, str]:
     # 4. Reset supervisor graph cache
     _sup._graph = None
 
+    # 5. Clear connected SSE clients to avoid cross-test event pollution
+    from app.infrastructure.events.stream_bus import _bus
+    _bus._clients.clear()
+
     return {"status": "ok", "message": "Test state reset successfully"}
