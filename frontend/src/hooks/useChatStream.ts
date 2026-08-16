@@ -259,6 +259,7 @@ export function useChatStream({
 
 	const executeSend = useCallback(
 		async (textToSend: string) => {
+			streamMsgIdRef.current = null;
 			const userMsg: ChatMessage = {
 				id: `u_${Date.now()}`,
 				sender: "You",
