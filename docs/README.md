@@ -13,6 +13,7 @@
 | [`features.md`](./features.md) | Complete feature tree with nested capabilities, linkages, and implementation status |
 | [`coding-guidelines.md`](./coding-guidelines.md) | Coding standards, best practices, and conventions for all layers |
 | [`code-review-guidelines.md`](./code-review-guidelines.md) | Code review checklist, what to reject, and review process |
+| [`performance-testing.md`](./performance-testing.md) | Performance test design patterns, workload selection, metric collection, and runner guide |
 | [`architecture-decisions.md`](./architecture-decisions.md) | Architectural Decision Records (ADR) — context, decision, consequences |
 | [`tasks.md`](./tasks.md) | Deep hierarchical task planning (3–5 levels) with implementation tracking |
 
@@ -28,6 +29,7 @@
 | Knowledge base | `knowledge-base/` |
 | Workspace (ideas) | `workspace/` |
 | Tests | `backend/tests/` |
+| Performance Baseline | `backend/tests/performance-baseline.md` |
 
 ## Current Status
 
