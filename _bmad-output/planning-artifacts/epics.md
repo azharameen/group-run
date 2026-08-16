@@ -7,6 +7,9 @@ inputDocuments:
 
 # Companion - Epic Breakdown
 
+> **Sprint 2 (current active backlog).** Epic numbering continues from Sprint 1 (EP-0..EP-7, delivered — see `sprint-1.md`).
+> Rule: `epics.md` always holds the current sprint's backlog; each completed sprint is archived as `sprint-N.md` in this folder. Epic numbers never restart.
+
 ## Overview
 
 This document decomposes the Companion product into implementable epics and stories based on the current PRD and architecture spine. The goal is to ship a quality-first orchestration foundation before expanding the full idea-to-product maturity pipeline.
@@ -76,11 +79,11 @@ No UX design contract was found in the planning artifacts for this specific scop
 
 {{epics_list}}
 
-## Epic 1: Orchestration Core and Workflow Trust
+## Epic 8: Orchestration Core and Workflow Trust
 
 Goal: Deliver the controllable execution backbone so a work item can move through the organization with routing, checkpoints, status visibility, and approval controls.
 
-### Story 1.1: Create and initialize an organization structure
+### Story 8.1: Create and initialize an organization structure
 
 As a founder,
 I want to create an organization with the default departments and teams,
@@ -93,7 +96,7 @@ So that I can begin running AI work immediately.
 **Then** the default Chief of Staff, Ideation Department, and Technology Department are initialized with their required teams and agents.
 **And** the Command Center dashboard is populated with the new organization state.
 
-### Story 1.2: Submit and route a work item to the correct department
+### Story 8.2: Submit and route a work item to the correct department
 
 As a user,
 I want to submit a new work item and have it correctly routed,
@@ -106,7 +109,7 @@ So that the system can begin executing the right work without manual coordinatio
 **Then** it is assigned a status, routed to a department, and visible in the Command Center.
 **And** the routing decision is understandable in the org status feed or audit log.
 
-### Story 1.3: Manage lifecycle status and handoffs for work items
+### Story 8.3: Manage lifecycle status and handoffs for work items
 
 As a user,
 I want each work item to move through a tracked lifecycle with handoff records,
@@ -119,7 +122,7 @@ So that I can understand progress and team ownership over time.
 **Then** the lifecycle status updates with timestamps, owner, and provenance metadata.
 **And** the user can view the full lifecycle history of the work item.
 
-### Story 1.4: Enforce approval for risky filesystem changes
+### Story 8.4: Enforce approval for risky filesystem changes
 
 As a user,
 I want risky file operations to require explicit approval,
@@ -132,11 +135,11 @@ So that the system does not mutate files silently or incorrectly.
 **Then** the user is shown an approval or rejection decision.
 **And** the final result is persisted with provenance and visible in the audit trail.
 
-## Epic 2: Team Health, Monitoring, and Reuse
+## Epic 9: Team Health, Monitoring, and Reuse
 
 Goal: Make the organization feel operationally stable and practical by exposing capacity, health, and reusable execution patterns.
 
-### Story 2.1: Surface organization health and team capacity
+### Story 9.1: Surface organization health and team capacity
 
 As a founder,
 I want to see team health, workload, and idle capacity,
@@ -149,7 +152,7 @@ So that I can understand whether the organization is overloaded or underutilized
 **Then** each team shows capacity and workload state.
 **And** idle or overloaded teams are clearly highlighted.
 
-### Story 2.2: Reassign idle agents and escalate blocked work
+### Story 9.2: Reassign idle agents and escalate blocked work
 
 As a Chief of Staff,
 I want the system to identify idle or blocked work,
@@ -162,7 +165,7 @@ So that the organization remains productive and does not stall on bottlenecks.
 **Then** the system either reassigns work or raises a visible alert.
 **And** the decision and reason are logged in the audit trail.
 
-### Story 2.3: Save and replay a workflow as a template
+### Story 9.3: Save and replay a workflow as a template
 
 As a user,
 I want to save a successful workflow as a reusable template,
@@ -175,11 +178,11 @@ So that similar work can be run again without recreating the same coordination p
 **Then** the system persists the workflow configuration and step sequence for future reuse.
 **And** the template can be replayed in a new work item or project context.
 
-## Epic 3: Provenance, Trust, and Idea Maturity
+## Epic 10: Provenance, Trust, and Idea Maturity
 
 Goal: Make agent decisions inspectable, reliable, and ready for product evolution beyond the first orchestration slice.
 
-### Story 3.1: Record decisions with provenance metadata
+### Story 10.1: Record decisions with provenance metadata
 
 As a user,
 I want every agent decision to include evidence and rationale,
@@ -192,7 +195,7 @@ So that I can understand why decisions were made and how trustworthy they are.
 **Then** the system records agent ID, timestamp, reasoning, evidence references, confidence, and alternatives.
 **And** the decision can be inspected from the work item or team history.
 
-### Story 3.2: Persist artifact provenance and review access
+### Story 10.2: Persist artifact provenance and review access
 
 As a user,
 I want artifacts to show their origin and evidence,
@@ -205,7 +208,7 @@ So that I can trace research, requirements, and deployment output back to truste
 **Then** provenance metadata is visible alongside the artifact.
 **And** source references and trust classifications are available in the UI.
 
-### Story 3.3: Support accuracy review and confidence flagging
+### Story 10.3: Support accuracy review and confidence flagging
 
 As a user,
 I want outputs to be reviewed for accuracy and confidence,
@@ -218,7 +221,7 @@ So that I can identify weak or risky work before it is acted upon.
 **Then** an accuracy score and review summary are created for the output.
 **And** low-confidence outputs are explicitly flagged for user review.
 
-### Story 3.4: Introduce idea refinement and maturity stages
+### Story 10.4: Introduce idea refinement and maturity stages
 
 As a product team,
 I want ideas to move from raw concept to refined and decision-ready status,
@@ -231,11 +234,11 @@ So that we can evaluate whether the concept should progress into planning or be 
 **Then** the system assigns a stage such as raw, refined, validated, or ready-for-planning.
 **And** the stage has clear criteria and evidence tied to the idea artifact.
 
-## Epic 4: Idea Research and Product Definition
+## Epic 11: Idea Research and Product Definition
 
 Goal: Convert a validated idea into a structured product definition and preparation for delivery work.
 
-### Story 4.1: Research the concept and compile market evidence
+### Story 11.1: Research the concept and compile market evidence
 
 As an Idea Team agent,
 I want to autonomously gather research on the idea,
@@ -248,7 +251,7 @@ So that we can assess demand, competition, and feasibility with evidence.
 **Then** the system produces market, competitor, and feasibility research artifacts with provenance.
 **And** the output is attached to the work item in a reviewable form.
 
-### Story 4.2: Validate novelty and patentability
+### Story 11.2: Validate novelty and patentability
 
 As an Idea Team agent,
 I want to assess concept novelty and possible patentability,
@@ -261,7 +264,7 @@ So that the product can be prioritized based on evidence rather than intuition.
 **Then** the system produces a novelty and patentability assessment with references and confidence.
 **And** the output is stored as a formal work-item artifact.
 
-### Story 4.3: Create product definition from validated concepts
+### Story 11.3: Create product definition from validated concepts
 
 As a Product Team agent,
 I want to turn a validated concept into a product definition,
@@ -274,11 +277,11 @@ So that the Technology Department has clear requirements, effort estimates, and 
 **Then** it includes requirements, roadmap details, and effort estimates.
 **And** the Chief of Staff can review and approve the handoff to Technology.
 
-## Epic 5: Build, Test, and Deploy the Product
+## Epic 12: Build, Test, and Deploy the Product
 
 Goal: Deliver the final lifecycle from implementation through quality assurance and deployment.
 
-### Story 5.1: Autonomous development under team ownership
+### Story 12.1: Autonomous development under team ownership
 
 As a Development Team agent,
 I want to build the planned product within the work item lifecycle,
@@ -291,7 +294,7 @@ So that the system can create a working implementation with a clear provenance t
 **Then** implementation artifacts, commit metadata, and design rationale are captured.
 **And** build output is visible and tied to the relevant work item.
 
-### Story 5.2: Validate product quality before release
+### Story 12.2: Validate product quality before release
 
 As a Testing Team agent,
 I want to run the validation workflow on the implementation,
@@ -304,7 +307,7 @@ So that quality defects and reliability risks are identified before deployment.
 **Then** test plans and results are created with failure traceability to the relevant implementation.
 **And** critical issues are surfaced for review before deployment.
 
-### Story 5.3: Deploy to environment and monitor operational health
+### Story 12.3: Deploy to environment and monitor operational health
 
 As a DevOps Team agent,
 I want to deploy the validated product and configure operational monitoring,

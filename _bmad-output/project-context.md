@@ -121,6 +121,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 6. **Branch-based workflow** — don't commit directly to main; use `feat/`, `fix/`, `refactor/`, `docs/` branches.
 7. **Task status markers:** `[PENDING]`, `[IN PROGRESS]`, `[IMPLEMENTED]`, `[COMPLETED]`, `[DEFERRED]`.
 8. **Cross-reference rules** — when updating docs, update related cross-references (see `agents.md` §6).
+9. **Sprint numbering rule (decision 2026-07-21):** `planning-artifacts/epics.md` always holds the **current sprint's** backlog. When a sprint is delivered, its epic breakdown is archived as `planning-artifacts/sprint-N.md` (e.g., Sprint 1 = EP-0..EP-7 → `sprint-1.md`). **Epic numbers continue across sprints and never restart at 1** (Sprint 2 = EP-8..EP-12). Story IDs follow the epic number (`8-1`, `8-2`, ...). Never overwrite `epics.md` with a renumbered backlog — archive first, then continue the sequence.
 
 ---
 
