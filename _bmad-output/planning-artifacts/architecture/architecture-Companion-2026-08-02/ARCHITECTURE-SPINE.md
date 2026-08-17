@@ -215,6 +215,17 @@ Config reload merges DB overlay on top of the file base. File changes require ex
   - **Board reference:** field IDs, option IDs, iteration IDs and the item id map live in `_bmad-output/implementation-artifacts/github-board.md`; it is updated by the sync loop and loaded into the customized skills as a persistent fact.
 - **Enforcement:** the team overrides in `_bmad/custom/` (bmad-customize mechanism); the spine wins over the board on any disagreement; every sync ends with a GraphQL re-query, and unverified syncs are logged in the deferred-work ledger.
 
+### AD-20 — Agent Delegation Protocol (Jules) [ADOPTED]
+
+- **Binds:** how work is delegated to the external coding agent (Jules), how delegated items are marked, and how agent PRs get merged
+- **Prevents:** bulk delegations that lose per-task traceability, Jules issues invisible in the manual flow, stale-worktree merges that revert other merged work (incident: PR #18, commit `6aa2566`, 2026-08-17)
+- **Rule:**
+  - **One at a time:** delegate at most **one** open task to Jules at a time — never a bulk assignment. The next task is handed off only after the previous one is merged to develop and verified.
+  - **Title marker:** every issue intended for Jules carries the suffix ` - jules` in its title (e.g. `Restore SSE docs - jules`). It marks the issue as agent-delegated and separates it from manual sprint flow.
+  - **Fresh, diff-scoped branches:** agent work starts on a branch cut from the **latest** `develop`, and the PR diff is reviewed file-by-file (`git diff develop...HEAD`) before merge. Long-lived agent branches accumulate stale worktrees — this is exactly how PR #18 reverted four merged PRs.
+  - **Verification gate:** an agent issue closes only after its PR merges to develop and CI is green; board status follows AD-19.
+- **Enforcement:** recorded in `github-board.md` (Delegation protocol section) and in the deferred-work ledger (the incident is the permanent record).
+
 ## Consistency Conventions
 
 | Concern | Convention |

@@ -73,3 +73,10 @@ New sprint iterations cannot be created via the available API → the owner crea
 ```
 
 Option ids are unique across fields, so the local optionId→name map is safe for verification.
+
+## Delegation protocol (AD-20, 2026-08-17)
+
+- **One at a time:** never bulk-assign issues to Jules. Hand off one task, wait for its PR to merge to develop and verify, then hand off the next.
+- **Title marker:** issues intended for Jules get the suffix ` - jules` (e.g. `Restore SSE docs - jules`).
+- **Fresh, diff-scoped branches:** agent branches cut from latest `develop`; PR diff reviewed file-by-file (`git diff develop...HEAD`) before merge. Incident record: PR #18 / commit `6aa2566` (stale worktree reverted PRs #13–#16; restored in `6397589` on 2026-08-17).
+- **Close only after merge:** agent issues close after merge to develop + CI green; board status follows the AD-19 state machine.
