@@ -202,6 +202,19 @@ Config reload merges DB overlay on top of the file base. File changes require ex
   - **Full content is mandatory.** A work item without a body is incomplete: epics carry goal + story list with priority/dependencies and issue links; stories carry story text + acceptance criteria + meta (the body template used for #35–#51 on 2026-08-17 is the standard); story updates re-sync the issue.
 - **Enforcement:** a sync checklist step in every planning run (create-epics, create-story, sprint-planning, sprint-status, retrospective). A planning artifact is not done until its GitHub mirror is verified.
 
+### AD-19 — Work-Item Status Lifecycle & Sync Triggers [ADOPTED]
+
+- **Binds:** when the Status of every work item on the Group Run board may change, and which BMAD step triggers each transition
+- **Prevents:** premature "In Progress" epics, Done claims before retrospective, board↔reality status drift
+- **Rule:**
+  - **Vocabulary** (board Status field, read 2026-08-17): Backlog, In Progress, In Review, On Hold, Done.
+  - **Story / Task / Bug:** Backlog on creation → In Progress on dev start → In Review when its PR is opened → Done when merged to develop. Deferred work = On Hold, always with a deferred-work ledger entry.
+  - **Epic:** Backlog on planning (having stories is *not* a trigger) → In Progress when its first story starts → Done only when **all** child stories/tasks are Done **and** the sprint retrospective for that sprint is complete.
+  - **Triggers = BMAD steps**, wired through official team overrides in `_bmad/custom/*.toml` (never direct skill edits): sprint-planning (items exist, full content, Backlog, Sprint, milestone chosen at planning), create-epics-and-stories (create + full content + Backlog), create-story (story file ↔ issue body sync), dev-story (In Progress / In Review / Done transitions), retrospective (epic Done close-out, On Hold for deferrals).
+  - **Content source of truth:** epics.md and story files own the content; issue bodies are generated mirrors (one-off CLI staging files are allowed during sync, never maintained copies). Detailed implementation notes accumulate in the story file during dev and re-sync to the issue on each dev-story run.
+  - **Board reference:** field IDs, option IDs, iteration IDs and the item id map live in `_bmad-output/implementation-artifacts/github-board.md`; it is updated by the sync loop and loaded into the customized skills as a persistent fact.
+- **Enforcement:** the team overrides in `_bmad/custom/` (bmad-customize mechanism); the spine wins over the board on any disagreement; every sync ends with a GraphQL re-query, and unverified syncs are logged in the deferred-work ledger.
+
 ## Consistency Conventions
 
 | Concern | Convention |

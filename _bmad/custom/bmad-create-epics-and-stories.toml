@@ -1,0 +1,12 @@
+# AD-18/AD-19: GitHub board sync when epics/stories are created (team policy).
+# Authority: ARCHITECTURE-SPINE.md AD-18 (sync loop) and AD-19 (status lifecycle).
+# Place: _bmad/custom/bmad-create-epics-and-stories.toml (team override, git-commit this)
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad-output/implementation-artifacts/github-board.md",
+  "epics.md and story files are the source of truth for content; GitHub issue bodies are generated mirrors. Never maintain a separate copy of an issue body.",
+]
+
+on_complete = "GH-SYNC (AD-18/AD-19): for every epic and story created, create or refresh the matching GitHub issue with full content (epic: goal + story list with priority/dependencies/issue links; story: story text + acceptance criteria + meta + source + hierarchy line). Set Status = Backlog, Issue Type = Epic/Story, Sprint, milestone and parent (stories are sub-issues of their epic). Verify with a GraphQL re-query of the board; log any item that could not be synced in the deferred-work ledger."

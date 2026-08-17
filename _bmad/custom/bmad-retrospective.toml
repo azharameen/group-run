@@ -1,0 +1,11 @@
+# AD-18/AD-19: board close-out when the sprint retrospective completes (team policy).
+# Authority: ARCHITECTURE-SPINE.md AD-18 (sync loop) and AD-19 (status lifecycle).
+# Place: _bmad/custom/bmad-retrospective.toml (team override, git-commit this)
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad-output/implementation-artifacts/github-board.md",
+]
+
+on_complete = "GH-SYNC (AD-19): close out the sprint on the Group Run board. For each epic in the sprint, set the epic to Done only if all of its child stories and tasks are Done. Set incomplete or deferred items to On Hold and add an entry to _bmad-output/implementation-artifacts/deferred-work.md. Record the retro outcome in the ledger. Verify with a GraphQL re-query of the board."

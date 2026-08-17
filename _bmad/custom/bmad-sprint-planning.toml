@@ -2,3 +2,13 @@
 activation_steps_prepend = [
     "Run: `python {project-root}/_bmad/scripts/check_action_items.py --sprint-status {project-root}/_bmad-output/implementation-artifacts/sprint-status.yaml` and parse the output.\n\nIf output is \"clear\", continue activation normally.\n\nIf output starts with \"blockers:N\":\n  1. Present the blocker list to the user with this header:\n     \"⚠️ N action items from prior epics are still open:\"\n  2. List each blocker with its epic, action, and owner\n  3. Ask: \"Proceed with planning despite these open items? (yes/no)\"\n  4. If user says \"no\" or \"wait\", HALT immediately - do not continue\n  5. If user says \"yes\", log \"User acknowledged N open action items\" and continue activation"
 ]
+
+    # AD-18/AD-19: GitHub board sync for sprint planning (team policy).
+    # Authority: ARCHITECTURE-SPINE.md AD-18 (sync loop) and AD-19 (status lifecycle).
+
+    persistent_facts = [
+        "file:{project-root}/_bmad-output/implementation-artifacts/github-board.md",
+        "Sprints are exactly one week each and run as a 'Sprint N' iteration on the Group Run board (AD-18). The milestone for the sprint is chosen at planning time (default v1.0.0). A new iteration is created by the owner in the board UI at planning; the agent then reads its iterationId before assigning items."
+    ]
+
+    on_complete = "GH-SYNC (AD-18/AD-19): ensure every epic, story and task of this sprint exists as a GitHub issue with full content (no title-only items). Set Sprint = this sprint's iteration, Status = Backlog, Issue Type, milestone and parent links on every item. Verify with a GraphQL re-query of the board; log any item that could not be synced in the deferred-work ledger."
