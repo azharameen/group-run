@@ -256,6 +256,20 @@ def function_name(param1: str, param2: int) -> bool:
 - Keep comments up to date with code changes
 - Use TODO comments for planned work: `# TODO: implement retry logic`
 
+### 6.3 Windows-First Documentation
+
+The team develops on Windows with PowerShell. Every shell command in documentation (README, `docs/`, runbooks, PR descriptions) must work on Windows, or include a Windows alternative **from the first draft** — never as an afterthought patch:
+
+- Python: `python`, not `python3` (Windows has no `python3` by default)
+- Virtualenv activation: `.venv\Scripts\activate` (PowerShell); Unix `source ...` examples need a Windows alternative
+- Paths: backslash form in filesystem examples, or slash form both shells accept — never document paths that only work on one platform
+- Shell HTTP: `curl.exe` (or `Invoke-RestMethod`) — bare `curl` in PowerShell is an alias for `Invoke-WebRequest` with different flag syntax
+- Line endings: CRLF in text files (`core.autocrlf true`); don't mix
+
+**Docs PR gate:** a doc PR containing shell commands fails review if any command lacks a Windows equivalent (or is not cross-platform safe). Canonical setup examples live in `docs/GETTING_STARTED.md` ("Windows-Specific Notes").
+
+Rationale (2026-08-16, Sprint 2): Epic 7 retrospective item #2 — Windows notes were appended as afterthoughts (e.g., inline notes in `GETTING_STARTED.md`); the standard makes the expectation explicit up front.
+
 ## 7. Git Workflow
 
 ### 7.1 Commit Messages
