@@ -6,6 +6,7 @@ temp_workspace : Temporary workspace with ideas.yaml
 isolate_test_env : Autouse — clears OpenAI credentials
 patch_config : Points WORKSPACE_DIR at the temp workspace
 in_memory_db : In-memory SqliteSaver for thread_manager tests (AC-4)
+org_db : In-memory sqlite connection for the organization repository (8.1)
 mock_agent : AsyncMock agent returned by get_deep_agent_runtime() (AC-1)
 mock_supervisor : Stubbed supervisor graph for chat endpoint tests (AC-2)
 """
@@ -136,6 +137,31 @@ def _clear_supervisor():
     for mod in list(sys.modules.keys()):
         if mod.startswith("app.orchestrator.supervisor"):
             del sys.modules[mod]
+
+
+@pytest.fixture
+def org_db():
+    """Yield an in-memory organization DB injected into the repository.
+
+    Resets the organization repository singleton in place (same
+    rationale as :func:`_clear_thread_manager` — never purge
+    ``sys.modules``) and points it at a fresh ``:memory:`` connection
+    with the org schema initialized, so every test gets an isolated,
+    empty organization database.
+
+    Usage
+    -----
+    def test_something(org_db):
+        from app.organization import service  # operates on the in-memory DB
+    """
+    from app.organization import repository as org_repo
+
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    org_repo._reset_organization_db(conn)
+
+    yield conn
+
+    conn.close()
 
 
 # ---------------------------------------------------------------------------
