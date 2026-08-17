@@ -21,6 +21,7 @@ from .routes.interrupts import router as interrupts_router
 from .routes.knowledge_base import router as knowledge_base_router
 from .routes.mcp import router as mcp_router
 from .routes.sse import router as sse_router
+from .routes.testing import router as testing_router
 from .routes.threads import router as threads_router
 
 logger = logging.getLogger(__name__)
@@ -125,5 +126,6 @@ def create_app() -> FastAPI:
     app.include_router(config_router)
     app.include_router(sse_router)
     app.include_router(threads_router)
+    app.include_router(testing_router)
 
     return app

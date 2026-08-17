@@ -1,30 +1,15 @@
-# Stage 1: Build dependencies in a virtual environment
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-
-# Stage 2: Final runtime image
-FROM python:3.12-slim AS runtime
-
-WORKDIR /app
-
-ENV PATH="/opt/venv/bin:$PATH"
 ENV LANGGRAPH_STRICT_MSGPACK=true
 ENV APP_ROOT_DIR=/app
-ENV PYTHONUNBUFFERED=1
 
-COPY --from=builder /opt/venv /opt/venv
-
+COPY requirements.txt .
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
 

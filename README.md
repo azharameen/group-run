@@ -30,7 +30,6 @@ For a step-by-step local development setup (without Docker), see [Getting Starte
 | [Getting Started](docs/GETTING_STARTED.md) | 15-minute developer onboarding |
 | [Deployment](docs/DEPLOYMENT.md) | Docker Compose deployment guide |
 | [Architecture](docs/architecture.md) | System architecture and design |
-| [SSE & Streaming](docs/sse-streaming.md) | SSE and streaming edge cases, reconnect semantics, and error propagation |
 | [Features](docs/features.md) | Feature inventory and status |
 | [Architecture Decisions](docs/architecture-decisions.md) | ADR log |
 | [Coding Guidelines](docs/coding-guidelines.md) | Code style and conventions |

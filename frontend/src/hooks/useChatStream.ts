@@ -176,41 +176,51 @@ export function useChatStream({
 		return () => es.close();
 	}, []);
 
+	const prevThreadIdRef = useRef<string | null>(activeThreadId);
+
 	// Sync message loading when activeThreadId updates (with stale fetch guard)
 	useEffect(() => {
-		// Abort in-flight stream when switching threads
-		if (isGenerating && abortRef.current) {
+		const prevThreadId = prevThreadIdRef.current;
+		prevThreadIdRef.current = activeThreadId;
+
+		// Abort in-flight stream when switching threads (only if switching from an existing thread)
+		if (prevThreadId && activeThreadId !== prevThreadId && isGenerating && abortRef.current) {
 			abortRef.current.abort();
 		}
 
 		if (activeThreadId) {
-			setRawMessages([]);
+			// Only clear raw messages when explicitly switching from one existing thread to another
+			if (prevThreadId && prevThreadId !== activeThreadId) {
+				setRawMessages([]);
+			}
 			const counter = ++fetchCounterRef.current;
 			getThreadMessages(activeThreadId)
 				.then(({ messages: msgs }) => {
 					if (counter !== fetchCounterRef.current) return;
-					const chatMessages = msgs.map((m) => ({
-						id: m.id,
-						sender: m.type === "human" ? "You" : m.name || "Assistant",
-						text: m.content,
-						timestamp: m.timestamp
-							? new Date(m.timestamp).toLocaleTimeString([], {
-									hour: "2-digit",
-									minute: "2-digit",
-								})
-							: new Date().toLocaleTimeString([], {
-									hour: "2-digit",
-									minute: "2-digit",
-								}),
-						eventType: m.type === "human" ? "user_message" : "message",
-					}));
-					setRawMessages(chatMessages);
+					if (msgs.length > 0) {
+						const chatMessages = msgs.map((m) => ({
+							id: m.id,
+							sender: m.type === "human" ? "You" : m.name || "Assistant",
+							text: m.content,
+							timestamp: m.timestamp
+								? new Date(m.timestamp).toLocaleTimeString([], {
+										hour: "2-digit",
+										minute: "2-digit",
+									})
+								: new Date().toLocaleTimeString([], {
+										hour: "2-digit",
+										minute: "2-digit",
+									}),
+							eventType: m.type === "human" ? "user_message" : "message",
+						}));
+						setRawMessages(chatMessages);
+					}
 				})
 				.catch((err) => console.error("Error fetching thread messages:", err));
 		} else {
 			setRawMessages([]);
 		}
-	}, [activeThreadId, isGenerating]);
+	}, [activeThreadId]);
 
 	const handleStopGeneration = useCallback(() => {
 		abortRef.current?.abort();
@@ -259,6 +269,7 @@ export function useChatStream({
 
 	const executeSend = useCallback(
 		async (textToSend: string) => {
+			streamMsgIdRef.current = null;
 			const userMsg: ChatMessage = {
 				id: `u_${Date.now()}`,
 				sender: "You",

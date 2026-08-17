@@ -19,11 +19,15 @@ export interface ApiHelpers {
   getJson: <T = unknown>(path: string) => Promise<T>;
   /** Wait until the backend `/api/health` endpoint responds successfully. */
   waitForHealthy: (timeoutMs?: number) => Promise<void>;
+  /** Reset backend application state to a clean, deterministic baseline. */
+  resetState: () => Promise<void>;
 }
 
 type Fixtures = {
   /** Helpers for talking directly to the backend REST API from a test. */
   api: ApiHelpers;
+  /** Auto-use fixture that resets application state before every test. */
+  autoResetState: void;
 };
 
 export const test = base.extend<Fixtures>({
@@ -62,8 +66,26 @@ export const test = base.extend<Fixtures>({
       );
     };
 
-    await use({ baseUrl, getJson, waitForHealthy });
+    const resetState = async (): Promise<void> => {
+      const response = await fetch(`${baseUrl}/api/testing/reset`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error(`POST /api/testing/reset failed with status ${response.status}`);
+      }
+    };
+
+    await use({ baseUrl, getJson, waitForHealthy, resetState });
   },
+
+  autoResetState: [
+    async ({ api }, use) => {
+      await api.waitForHealthy();
+      await api.resetState();
+      await use();
+    },
+    { auto: true },
+  ],
 });
 
 export { expect };
