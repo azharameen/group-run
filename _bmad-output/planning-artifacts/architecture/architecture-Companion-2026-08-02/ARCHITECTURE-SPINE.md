@@ -191,6 +191,17 @@ Config reload merges DB overlay on top of the file base. File changes require ex
   - **Branch protection.** Both branches already require the 5 quality checks (backend lint/tests, frontend lint/tests/build), strict mode. The Playwright e2e check (PR #14) must be added to `main`'s required checks once verified.
 - **Enforcement:** convention + PR template. Issues created outside the hierarchy get re-parented/re-milesstoned at triage; Jules-delegated issues always carry an owning Epic parent.
 
+### AD-18 — Planning→GitHub Sync Loop & Permanent Record [ADOPTED]
+
+- **Binds:** how BMAD planning output (sprint planning, epic/story/task creation, story updates, deferrals) reaches GitHub; what "captured forever" means
+- **Prevents:** local-only decisions, board↔artifact drift, title-only work items, lost deferral context
+- **Rule:**
+  - **GitHub + repo is the permanent record.** Every planning decision, thought process and deferral lands in the repo (spine, ledger, sprint files) and/or on GitHub (issue bodies, comments, project fields) **before the planning session ends**. A note that exists only locally is treated as not captured.
+  - **One-week sprints.** Every sprint is exactly one week and is represented on the board as an iteration value (`Sprint N`). The sprint's milestone is chosen at planning time (default `v1.0.0` until the next production version is declared per AD-16/AD-17).
+  - **Sync loop = agent procedure, no external module.** On every BMAD planning event: (a) **planning done** → create/refresh Epic, Story and Task issues with full content (goal, outcome, story text, acceptance criteria, meta, source, hierarchy line) and set fields (Status, Issue Type, Sprint, milestone, parent); (b) **story file created/updated** (`create-story`, dev edits) → re-sync the linked issue body + fields in the same step; (c) **deferral** → entry in the deferred-work ledger + a comment on the affected issue. Apply via `gh` as a delta: read board state → compute diff → edit only what changed → re-query to verify.
+  - **Full content is mandatory.** A work item without a body is incomplete: epics carry goal + story list with priority/dependencies and issue links; stories carry story text + acceptance criteria + meta (the body template used for #35–#51 on 2026-08-17 is the standard); story updates re-sync the issue.
+- **Enforcement:** a sync checklist step in every planning run (create-epics, create-story, sprint-planning, sprint-status, retrospective). A planning artifact is not done until its GitHub mirror is verified.
+
 ## Consistency Conventions
 
 | Concern | Convention |
