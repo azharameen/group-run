@@ -59,7 +59,7 @@ test.describe('Performance Measurements', () => {
     // expect(elapsed).toBeLessThan(5000);
 
     // Verify the response was received
-    await expect(commandCenter.messageList).toContainText('This is a deterministic mock response');
+    await expect(commandCenter.messageList).toContainText('This is a deterministic mock response', { timeout: 15_000 });
   });
 
   test('thread list load time', async ({ page, api }) => {

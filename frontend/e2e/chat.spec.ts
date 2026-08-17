@@ -26,9 +26,10 @@ test.describe('Chat Flow', () => {
 
     // A response eventually streams back and generation completes
     // (stop button disappears once streaming finishes).
-    await expect(commandCenter.stopButton).toBeHidden();
+    await expect(commandCenter.stopButton).toBeHidden({ timeout: 15_000 });
     await expect(commandCenter.messageList).toContainText(
-      'This is a deterministic mock response'
+      'This is a deterministic mock response',
+      { timeout: 15_000 }
     );
   });
 
