@@ -7,7 +7,7 @@ paradigm: LangGraph Supervisor + DeepAgents Teams
 scope: Companion Agentic Organization Platform — full system
 status: final
 created: 2026-08-02
-updated: 2026-08-02
+updated: 2026-08-16
 binds: [FR-01..FR-48, all capabilities]
 sources: [docs/prd.md, docs/features.md, docs/architecture-decisions.md, project-context.md]
 companions: []
@@ -162,6 +162,69 @@ Config reload merges DB overlay on top of the file base. File changes require ex
 - **Binds:** background execution, scheduling, async tasks
 - **Prevents:** overlapping background execution paths (separate workers, pollers, schedulers)
 - **Rule:** All background work runs in-process within the FastAPI backend. No separate worker processes, no Celery/RQ, no external schedulers. Async tasks use `asyncio.create_task` or FastAPI background tasks. The old `backend/app/scheduler.py` is dead code (AD-12).
+
+### AD-16 — Two-Lane Release Machine: develop = beta, main = production [ADOPTED]
+
+- **Binds:** all release automation, versioning, changelog generation, branch/merge policy
+- **Prevents:** hand-rolled version bumps, tag drift between lanes, changelog drift, version numbers that lie about what shipped
+- **Rule:**
+  - **Lanes & merge method.** `develop` = beta lane, `main` = production lane. PR-only workflow; direct pushes to develop are forbidden. Any branch → `develop`: **squash** merge with a Conventional-Commit title. `develop` → `main`: **merge commit only** (never squash/rebase — release-please reads the PR's commit range, and a squashed empty diff produces a useless Release PR). Hotfixes are cut from `main`, fixed there with a `fix:` squash, then back-merged into `develop`.
+  - **Version law (commit-derived, `bump-minor-pre-major` on).** `fix:`/`perf:` → patch · `feat:` → minor · breaking marker (`!:` / `BREAKING CHANGE:`) → **minor while base < 1.0.0**, major at ≥ 1.0.0. The default is always commit-derived; "no label = patch" is explicitly rejected (it would silently ship features as patches).
+  - **First-release declaration (owner, 2026-08-16).** The first production release is declared **v1.0.0**, carried by a `chore(release)` commit with the `Release-As: 1.0.0` footer (the only machine override; newest wins). Pre-declaration betas on develop compute from base 0.0.0 (v0.1.0-beta.N) and are the honest pre-release state; once v1.0.0 tags on main, betas continue as 1.x. Flip side to live with: at ≥ 1.0.0 a `!:`/`BREAKING CHANGE:` commit auto-bumps **major** (2.0.0) — breaking changes must be deliberate from day one.
+  - **Beta lane (fully automated).** Every merge to `develop` auto-cuts `vX.Y.Z-beta.N` (N = count of existing beta tags for that base) plus a GitHub prerelease: `.github/workflows/release-beta.yml` + `.github/scripts/beta-version.sh` (shared version brain, branch-agnostic).
+  - **Production lane (one human act).** A `develop`→`main` merge triggers release-please (`.github/workflows/release-prod.yml`, `.release-please-config.json`, `.release-please-manifest.json`), which opens a Release PR (version tag + `CHANGELOG.md` + GitHub Release). **Merging that Release PR is the release.**
+  - **Prediction & mismatch alarm.** `.github/workflows/release-preview.yml` comments the predicted production version + commit breakdown on every `develop`→`main` PR before merge, and raises a ⚠️ mismatch alarm when a `release:major|minor|patch` label disagrees with the commit-derived level.
+  - **Labels are human-only.** `release:major` / `release:minor` / `release:patch` are project-board planning tools. The release engine never reads labels (verified against release-please source: zero label references in the versioning strategy). The only machine inputs are conventional commits and `Release-As:` footers (newest wins).
+  - **Defects & milestones.** Defects enter release notes via `Closes #N` in the fix PR. Milestones: one per production version (the first is `v1.0.0`), never per beta.
+  - **Parked.** Container image build/push is deferred — reserved slot in both workflows; no image-registry answer yet.
+- **Enforcement:** workflows + merge-method table in `.github/pull_request_template.md`. Do **not** enable "Require linear history" on `main` — it forbids the merge commits this policy depends on. If an empty-changelog Release PR appears, the wrong merge method was used: close it and re-merge correctly.
+
+### AD-17 — Work-Item Hierarchy & Project-Management Model [ADOPTED]
+
+- **Binds:** how all GitHub issues, milestones, environments and board items are created and linked; how BMAD artifacts relate to the project board
+- **Prevents:** orphan work items, board↔BMAD drift, untraceable defects, milestone sprawl
+- **Rule:**
+  - **Two layers, one truth.** The GitHub repo + project board ("Group Run", project #4) is the **work-item truth**: every feature, fix, task and bug is an issue. BMAD in-repo artifacts (epics.md, story files, sprints) are the **thinking layer** — they produce issues, then the issue is the work item. No auto-sync tooling exists (BMAD↔GitHub sync module: verified absent, 2026-08); sync is done by agent/human via `gh`.
+  - **Hierarchy = GitHub sub-issues (2 layers, 1 truth).** Epic (root) → Story (sub-issue of Epic) → Task or Bug (sub-issue of Story); a Bug may be a direct child of an Epic. Defect in a shipped version = Bug under the owning Epic, milestone = the release being fixed (hotfix path per AD-16). The board renders hierarchy natively via its `Parent issue` + `Sub-issues progress` fields; the `Issue Type` field reflects the repo issue type (Epic/Story/Task/Bug) once configured repo-level — until then, `epic`/`story` labels mark type.
+  - **Milestones = production releases only**, never per beta (AD-16). Owner decision 2026-08-16: **v1.0.0 is the first release and the only milestone** — every Sprint-1 + Sprint-2 work item carries v1.0.0; the v0.1.0 and v0.2.0 milestones were deleted. Betas are tag-only (`vX.Y.Z-beta.N`) and never get milestones.
+  - **Environments = release lanes.** `beta` (develop lane) and `production` (main lane); the release workflows target them. Add required reviewers once the first deploy actions land (image builds parked per AD-16).
+  - **Branch protection.** Both branches already require the 5 quality checks (backend lint/tests, frontend lint/tests/build), strict mode. The Playwright e2e check (PR #14) must be added to `main`'s required checks once verified.
+- **Enforcement:** convention + PR template. Issues created outside the hierarchy get re-parented/re-milesstoned at triage; Jules-delegated issues always carry an owning Epic parent.
+
+### AD-18 — Planning→GitHub Sync Loop & Permanent Record [ADOPTED]
+
+- **Binds:** how BMAD planning output (sprint planning, epic/story/task creation, story updates, deferrals) reaches GitHub; what "captured forever" means
+- **Prevents:** local-only decisions, board↔artifact drift, title-only work items, lost deferral context
+- **Rule:**
+  - **GitHub + repo is the permanent record.** Every planning decision, thought process and deferral lands in the repo (spine, ledger, sprint files) and/or on GitHub (issue bodies, comments, project fields) **before the planning session ends**. A note that exists only locally is treated as not captured.
+  - **One-week sprints.** Every sprint is exactly one week and is represented on the board as an iteration value (`Sprint N`). The sprint's milestone is chosen at planning time (default `v1.0.0` until the next production version is declared per AD-16/AD-17).
+  - **Sync loop = agent procedure, no external module.** On every BMAD planning event: (a) **planning done** → create/refresh Epic, Story and Task issues with full content (goal, outcome, story text, acceptance criteria, meta, source, hierarchy line) and set fields (Status, Issue Type, Sprint, milestone, parent); (b) **story file created/updated** (`create-story`, dev edits) → re-sync the linked issue body + fields in the same step; (c) **deferral** → entry in the deferred-work ledger + a comment on the affected issue. Apply via `gh` as a delta: read board state → compute diff → edit only what changed → re-query to verify.
+  - **Full content is mandatory.** A work item without a body is incomplete: epics carry goal + story list with priority/dependencies and issue links; stories carry story text + acceptance criteria + meta (the body template used for #35–#51 on 2026-08-17 is the standard); story updates re-sync the issue.
+- **Enforcement:** a sync checklist step in every planning run (create-epics, create-story, sprint-planning, sprint-status, retrospective). A planning artifact is not done until its GitHub mirror is verified.
+
+### AD-19 — Work-Item Status Lifecycle & Sync Triggers [ADOPTED]
+
+- **Binds:** when the Status of every work item on the Group Run board may change, and which BMAD step triggers each transition
+- **Prevents:** premature "In Progress" epics, Done claims before retrospective, board↔reality status drift
+- **Rule:**
+  - **Vocabulary** (board Status field, read 2026-08-17): Backlog, In Progress, In Review, On Hold, Done.
+  - **Story / Task / Bug:** Backlog on creation → In Progress on dev start → In Review when its PR is opened → Done when merged to develop. Deferred work = On Hold, always with a deferred-work ledger entry.
+  - **Epic:** Backlog on planning (having stories is *not* a trigger) → In Progress when its first story starts → Done only when **all** child stories/tasks are Done **and** the sprint retrospective for that sprint is complete.
+  - **Triggers = BMAD steps**, wired through official team overrides in `_bmad/custom/*.toml` (never direct skill edits): sprint-planning (items exist, full content, Backlog, Sprint, milestone chosen at planning), create-epics-and-stories (create + full content + Backlog), create-story (story file ↔ issue body sync), dev-story (In Progress / In Review / Done transitions), retrospective (epic Done close-out, On Hold for deferrals).
+  - **Content source of truth:** epics.md and story files own the content; issue bodies are generated mirrors (one-off CLI staging files are allowed during sync, never maintained copies). Detailed implementation notes accumulate in the story file during dev and re-sync to the issue on each dev-story run.
+  - **Board reference:** field IDs, option IDs, iteration IDs and the item id map live in `_bmad-output/implementation-artifacts/github-board.md`; it is updated by the sync loop and loaded into the customized skills as a persistent fact.
+- **Enforcement:** the team overrides in `_bmad/custom/` (bmad-customize mechanism); the spine wins over the board on any disagreement; every sync ends with a GraphQL re-query, and unverified syncs are logged in the deferred-work ledger.
+
+### AD-20 — Agent Delegation Protocol (Jules) [ADOPTED]
+
+- **Binds:** how work is delegated to the external coding agent (Jules), how delegated items are marked, and how agent PRs get merged
+- **Prevents:** bulk delegations that lose per-task traceability, Jules issues invisible in the manual flow, stale-worktree merges that revert other merged work (incident: PR #18, commit `6aa2566`, 2026-08-17)
+- **Rule:**
+  - **One at a time:** delegate at most **one** open task to Jules at a time — never a bulk assignment. The next task is handed off only after the previous one is merged to develop and verified.
+  - **Title marker:** every issue intended for Jules carries the suffix ` - jules` in its title (e.g. `Restore SSE docs - jules`). It marks the issue as agent-delegated and separates it from manual sprint flow.
+  - **Fresh, diff-scoped branches:** agent work starts on a branch cut from the **latest** `develop`, and the PR diff is reviewed file-by-file (`git diff develop...HEAD`) before merge. Long-lived agent branches accumulate stale worktrees — this is exactly how PR #18 reverted four merged PRs.
+  - **Verification gate:** an agent issue closes only after its PR merges to develop and CI is green; board status follows AD-19.
+- **Enforcement:** recorded in `github-board.md` (Delegation protocol section) and in the deferred-work ledger (the incident is the permanent record).
 
 ## Consistency Conventions
 
@@ -375,4 +438,4 @@ ideator/
 | **Sandbox for agent code execution** | Security and complexity not justified yet. | User requests agent-generated code execution |
 | **Multi-tenant support** | Solo dev + small team doesn't need it. | Product requires tenant isolation |
 | **Observability stack** (OpenTelemetry, Grafana) | Console logging + FastAPI docs sufficient for now. | Production deployment with SLA requirements |
-| **CI/CD pipeline** | Docker Compose works for local + staging. | Team grows beyond 2 developers or deployment frequency increases |
+| **Deployment automation (container image build/push)** | Versioning + release automation now covered by AD-16; image registry not yet decided. | Registry/provider answer exists |

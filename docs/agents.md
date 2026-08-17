@@ -144,6 +144,7 @@ Before marking a task as `[COMPLETED]`:
 - [ ] Do all existing tests pass?
 - [ ] Are new features covered by tests?
 - [ ] Is the documentation updated?
+- [ ] Do all shell commands in touched docs include a working Windows alternative (`docs/coding-guidelines.md` §6.3)?
 - [ ] Are cross-references maintained?
 - [ ] Is there any fabricated or simulated output?
 - [ ] Are error states handled explicitly?

@@ -1,0 +1,52 @@
+# Beta lane: develop.
+#
+# Flow: any PR merged into develop -> this workflow computes the next beta
+# version using the SAME bump rules as the prod lane (release-please config),
+# tags vX.Y.Z-beta.N and creates a prerelease GitHub Release with notes
+# since the last tag. No PR, no human step: every merge is a beta.
+#
+# Images are parked: when the registry decision lands, build the images
+# inside this workflow (not tag-triggered), so no extra token is needed.
+name: Release - Beta
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+  issues: read
+
+jobs:
+  beta:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
+    runs-on: ubuntu-latest
+    # Reserved lane (AD-17): no protection rules yet; add required reviewers
+    # here once deploy actions exist.
+    environment: beta
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          # Full history: the version script needs all tags and the full
+          # commit range back to the last production tag.
+          fetch-depth: 0
+
+      - name: Compute beta version
+        id: version
+        run: bash .github/scripts/beta-version.sh
+
+      - name: Tag and create prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.com"
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+          args=(--prerelease --title "${{ steps.version.outputs.tag }}" --target develop --generate-notes)
+          if [ -n "${{ steps.version.outputs.previous_tag }}" ]; then
+            args+=(--notes-start-from "${{ steps.version.outputs.previous_tag }}")
+          fi
+          gh release create "${{ steps.version.outputs.tag }}" "${args[@]}"

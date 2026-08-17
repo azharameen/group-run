@@ -1,0 +1,35 @@
+# Production lane: main only.
+#
+# Flow: any PR merged into main -> release-please opens (or updates) the
+# "chore(main): release x.y.z" PR. MERGING THAT PR IS THE RELEASE:
+# tag vX.Y.Z + CHANGELOG.md + GitHub Release. There is no second manual step.
+#
+# Version law (see .release-please-config.json):
+#   fix:/perf: -> patch | feat: -> minor | breaking -> minor while < 1.0.0
+#   1.0.0 is a human declaration (Release-As: 1.0.0), never an accident.
+#
+# Images are parked: when the registry decision lands, add a tag-triggered
+# docker workflow and uncomment the repository_dispatch_token below
+# (needs a PAT with repo+workflow; GITHUB_TOKEN cannot trigger workflows).
+name: Release - Production
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-please:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    # Reserved lane (AD-17): no protection rules yet; add required reviewers
+    # here once deploy actions exist.
+    environment: production
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        with:
+          # repository_dispatch_token: ${{ secrets.RELEASE_PLEASE_TOKEN }}

@@ -381,3 +381,48 @@ After a repository-level review of the deferred work ledger, every entry is now 
 - duplicate SSE subscription cleanup
 - partial SSE reconnect/retry semantics under lossy network conditions
 - migration/architecture work for LangGraph runner modernization
+
+## Sprint 2 triage of Epic 7 retrospective items (2026-08-16)
+
+All 8 open Epic 7 retrospective action items (sprint-status.yaml) were triaged:
+
+- **Enhanced Spec Templates** — RESOLVED locally: pre-populated "Delivery Patterns Checklist" (CI / Docker / Testing) added to the spec templates in `bmad-dev-auto` and `bmad-quick-dev`, so every future spec carries the checklist pruned to the story.
+- **Windows-First Documentation Standards** — RESOLVED locally: `docs/coding-guidelines.md` §6.3 (standard + docs PR gate), `docs/agents.md` §7.1 self-review item, `project-context.md` workflow rule #11.
+- **Cross-Epic Deferred Work Review** — DONE (this triage).
+- **Config Schema Validation** — DONE (verified already implemented: `backend/app/config_schemas.py`, wired into runtime + config API, covered by tests).
+- **SSE and Streaming Edge Case Documentation** — open; Jules-eligible (docs, P3), not issued per user decision 2026-08-16.
+- **Performance Test Design Patterns** — open; Jules-eligible (docs, P3), not issued per user decision 2026-08-16.
+- **E2E Test Data Isolation** — open; Jules-eligible (test-gap, P2), not issued per user decision 2026-08-16.
+- **Docker Multi-Stage Optimization** — open; Jules-eligible (tech-debt, P2), not issued per user decision 2026-08-16.
+
+## Issue sync — Jules delegation (2026-08-16)
+
+User reversed the "not issued" decision: the four triaged items, plus one release-audit finding, are now GitHub issues labeled `jules` on the "Group Run" project board (project #4), ready for Jules delegation:
+
+- **#8** `test(e2e): run Playwright e2e suite on main branch` — testing, P1 launch blocker, milestone `v1.0.0` (renamed from v0.1.0 on 2026-08-17; source: release audit 2026-08-16 — production lane not e2e-gated per AD-16)
+- **#9** `test(e2e): isolate E2E test data between Playwright runs` — testing, P2 (Sprint 2 triage item)
+- **#10** `chore(docker): multi-stage optimization of backend and frontend Dockerfiles` — tech debt, P2 (Sprint 2 triage item)
+- **#11** `docs(sse): document SSE and streaming edge cases` — documentation, P3 (Sprint 2 triage item)
+- **#12** `docs(perf): document performance test design patterns` — documentation, P3 (Sprint 2 triage item)
+
+These ledger lines stay open until the work lands via a PR containing `Closes #N` (Jules or human), which also feeds the release-please changelog.
+
+## Project-management setup (2026-08-17)
+
+Setup executed and logged as AD-17 in the architecture spine.
+
+- Issue hierarchy (AD-17): Epic (root) -> Story -> Task or Bug; Bug may hang directly off an Epic. Implemented with GitHub sub-issues (gh issue create --parent); the Group Run board already exposes Parent issue and Sub-issues progress fields.
+- OPEN - repo issue types missing: Epic/Story/Task/Bug do not exist at repo level (gh reports zero available types) even though they were believed created. Fix in the GitHub UI (repo issue-type settings); until then epic/story labels mark type. Once created, bulk retag the 13 epics via gh issue edit N --type Epic.
+- Milestones (UPDATED 2026-08-17, owner decision): first production release is **v1.0.0**; it is now the only milestone (v0.1.0 and v0.2.0 deleted). All 35 work items (#8-#12, #21-#33, #35-#51) carry v1.0.0. Declaration carried by a `chore(release)` commit with `Release-As: 1.0.0` footer per AD-16.
+- Environments beta + production created and wired into release-beta.yml / release-prod.yml.
+- 13 epics synced as issues #21-#33: Sprint 1 (Epic 0-7, #21-#28) CLOSED as delivered; Sprint 2 (Epic 8-12, #29-#33) OPEN; all on project Group Run #4.
+- 17 Sprint-2 stories created 2026-08-17 as sub-issues: #35-#38 (Epic 8), #39-#41 (Epic 9), #42-#45 (Epic 10), #46-#48 (Epic 11), #49-#51 (Epic 12); all label story, milestone v1.0.0, on the board.
+- Board field sync (2026-08-17): Status + Issue Type set on all 35 items via gh project item-edit (Sprint-1 epics + closed Jules issues = Done/Epic|Task; open epics + #9 = In Progress; all 17 stories = Todo/Story). RESOLVED (2026-08-17) - Sprint (iteration) field: the trimmed GraphQL surface DOES expose iteration values once seeded (owner set Sprint 1 on Epic 0 and Sprint 2 on Epic 8 in the UI); gh project item-edit --field-id <Sprint field> --iteration-id <raw iterationId> works. Bulk-applied: Sprint 1 (e876806a) on E0-E7; Sprint 2 (5712f32c) on E8-E12 + all 17 stories + 5 Jules tasks; verified 35/35 via GraphQL re-query.
+- Epic bodies enriched (2026-08-17): all 13 epic issues #21-#33 had empty bodies ("None"); now carry outcome/goal, story list with priority + dependencies + issue links (Sprint 2) or delivered status (Sprint 1), source, and the AD-17 hierarchy line. Stories #35-#51 already carried full AC bodies from creation.
+- AD-18 (planning→GitHub sync loop & permanent record) adopted in the spine: GitHub + repo is the permanent record; one-week sprints; milestone chosen at planning; every planning event (planning done, story create/update, deferral) syncs full content + fields to the board via gh delta-apply; full content mandatory (title-only work item = incomplete).
+- DEFERRED: add the Playwright e2e check (job from PR #14) to main required checks once verified.
+- Jules progress: 4 of 5 delegated issues closed via merged PRs #13-#16; only #9 (e2e data isolation) still open.
+- AD-19 (work-item status lifecycle) adopted 2026-08-17: Status vocabulary = Backlog / In Progress / In Review / On Hold / Done (owner renamed Todo to Backlog, added In Review + On Hold). Story/Task/Bug: Backlog -> In Progress (dev start) -> In Review (PR) -> Done (merged); Epic: Backlog (planning) -> In Progress (first story starts) -> Done (all children Done + retro complete); deferrals = On Hold + ledger entry. Board corrected same day: open epics #29-#33 moved In Progress -> Backlog (no story had started).
+- BMAD team overrides created via the bmad-customize mechanism in _bmad/custom/ (no direct skill edits): bmad-sprint-planning, bmad-create-epics-and-stories, bmad-create-story, bmad-dev-story (persistent_facts + on_complete GH-SYNC hooks appended alongside the existing retro action-item gates) and bmad-retrospective (new). Verified through resolve_customization.py (all five merge cleanly). Board field/option/iteration IDs + item map + sync procedure reference: _bmad-output/implementation-artifacts/github-board.md, loaded as a persistent fact by all five skills.
+- 2026-08-17 Jules audit: PR #18 (e2e isolation, #9) merged with a stale worktree - commit 6aa2566 deleted docs/performance-testing.md + docs/sse-streaming.md (PR #13/#15 work), reverted both Dockerfiles (PR #16) and the ci.yml main-branch e2e trigger (PR #14), and weakened the chat.spec.ts stop-generation test (no longer clicks stop). Issues #8, #9, #10, #11, #12 REOPENED with restoration instructions + acceptance criteria (fresh branch from latest develop, diff-scoped). Board: all 5 items Done -> Backlog (verified). The #9 isolation mechanism itself (POST /api/testing/reset incl. interrupts table, autoResetState fixture, workers:1) is approved and stays. OPEN: Jules restoration PRs for #8/#9/#10/#11/#12; production changes in useChatStream.ts/CommandCenter.tsx from PR #18 need justification in the #9 follow-up PR.
+- 2026-08-17 RESOLVED - Jules did not pick up the reopened comments; Ameen decided the project session adapts the changes here. Commit 6397589 on feat/project-management-discussions (pushed) restores: perf docs + docs/README link (from f6ed4ff), SSE docs + README links (from 1f7fbbd), both Dockerfiles (from 92f4e92), ci.yml main-branch e2e trigger (from e55770c), and the chat.spec.ts stop-generation test (original assertions, PR #18 test-1 improvements kept). Verified byte-identical to the original commits. useChatStream.ts prevThreadIdRef guard + CommandCenter.tsx ensureThread refactor KEPT with justification (thread-switch abort leak fix; behavior-preserving refactor). Issues #8, #9, #10, #11, #12 commented + CLOSED. Board: 5 items Backlog -> Done (verified via GraphQL). New rule AD-20 recorded in spine + this file: Jules delegation ONE AT A TIME (no bulk), Jules-bound issue titles carry suffix " - jules", agent branches fresh from latest develop + diff-scoped before merge.

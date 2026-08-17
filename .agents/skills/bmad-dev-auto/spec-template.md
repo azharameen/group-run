@@ -65,6 +65,32 @@ warnings: [] # optional: machine-readable warnings for orchestration, e.g. overs
 **Acceptance Criteria:**
 - Given PRECONDITION, when ACTION, then EXPECTED_RESULT
 
+## Delivery Patterns Checklist
+
+<!-- Pre-populated with the project's standard delivery patterns. Prune ruthlessly: keep and
+     fill in only the items that apply to this story; delete the rest. Delete a whole group if
+     none of its items apply. If no group applies at all, delete this entire section and state
+     under Verification how the work is checked instead. -->
+
+**CI** (`.github/workflows/ci.yml`) — which jobs this story affects or extends:
+- [ ] Backend: `ruff check` clean, `scripts/forbidden_imports.py` passes, coverage stays at/above `--cov-fail-under=60`
+- [ ] Frontend: `tsc -b --noEmit`, `eslint src`, `vitest run`, `npm run build` all pass
+- [ ] Dependency changes: `pip-audit` / `npm audit --production` clean, lockfiles updated
+- [ ] User-visible flow changed: Playwright E2E spec added/updated (runs on develop + PRs to develop)
+- [ ] New CI job needed: {name + what it does} — or "none"
+
+**Docker / Deploy** — container and deployment impact:
+- [ ] Image/compose changes needed: {what} — or "none". If changed: keep slim base + `HEALTHCHECK` on `/health`; never add test-only deps to the production image
+- [ ] Filesystem paths only via `ROOT_DIR`/`WORKSPACE_DIR`/`CONFIG_DIR` from `config.py`; verify under `APP_ROOT_DIR` set (Docker path depth differs from local)
+- [ ] New env vars: added to `Settings`, propagated to `os.environ`, documented in `architecture.md` + `coding-guidelines.md` (4-step credential chain)
+
+**Testing** — how this story's tests honor project rules:
+- [ ] LLM/MCP boundaries mocked — no test depends on a live model or live MCP server
+- [ ] Separate test DB (never the dev `checkpoints.db`); async tests use `pytest.mark.asyncio`
+- [ ] New shared fixtures go in `backend/tests/conftest.py`; class-based `TestFeature` structure
+- [ ] No new tests in deprecated modules (`models/`, `state/`, `scoring/`, `orchestrator/`, `storage/`)
+- [ ] Playwright specs key created data by unique IDs, not names or list positions
+
 ## Spec Change Log
 
 <!-- Append-only. Populated by step-04 during review loops. Do not modify or delete existing entries.

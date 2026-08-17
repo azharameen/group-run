@@ -17,3 +17,13 @@ If output starts with "blockers:N":
   4. If user says "no" or "wait", HALT immediately - do not continue
   5. If user says "yes", log "User acknowledged N open action items" and continue activation"""
 ]
+
+# AD-18/AD-19: status transitions during story development (team policy).
+# Authority: ARCHITECTURE-SPINE.md AD-18 (sync loop) and AD-19 (status lifecycle).
+
+persistent_facts = [
+  "file:{project-root}/_bmad-output/implementation-artifacts/github-board.md",
+  "AD-19 transitions: at story start set the story AND its parent epic to In Progress; when the PR is opened set the story to In Review; when merged to develop set the story to Done. An epic only becomes Done at retrospective (all children Done + retro complete). Deferred work is On Hold plus a deferred-work ledger entry."
+]
+
+on_complete = "GH-SYNC (AD-19): apply this story's status transition on the Group Run board (start: story + parent epic In Progress; PR opened: story In Review; merged: story Done). Re-sync the issue body with the final implementation notes. Verify with a GraphQL re-query; log any item that could not be synced in the deferred-work ledger."
