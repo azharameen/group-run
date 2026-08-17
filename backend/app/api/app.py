@@ -20,6 +20,7 @@ from .routes.ideas import router as ideas_router
 from .routes.interrupts import router as interrupts_router
 from .routes.knowledge_base import router as knowledge_base_router
 from .routes.mcp import router as mcp_router
+from .routes.organizations import router as organizations_router
 from .routes.sse import router as sse_router
 from .routes.testing import router as testing_router
 from .routes.threads import router as threads_router
@@ -123,6 +124,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router)
     app.include_router(interrupts_router)
     app.include_router(mcp_router)
+    app.include_router(organizations_router)
     app.include_router(config_router)
     app.include_router(sse_router)
     app.include_router(threads_router)
