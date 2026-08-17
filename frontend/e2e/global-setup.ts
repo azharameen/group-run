@@ -167,7 +167,13 @@ export default async function globalSetup(): Promise<void> {
     throw new Error(`Frontend warm-up failed: ${String(error)}`);
   }
 
+  // Reset application state after warm-up so the test run starts from a completely clean slate
+  const resetResp = await fetch(`${API_BASE_URL}/api/testing/reset`, { method: 'POST' });
+  if (!resetResp.ok) {
+    console.warn(`[global-setup] Post-warmup reset failed: ${resetResp.status}`);
+  }
+
   console.log(
-    `[global-setup] Backend agent + frontend warm-up complete in ${Date.now() - startedAt}ms`
+    `[global-setup] Backend agent + frontend warm-up & state reset complete in ${Date.now() - startedAt}ms`
   );
 }

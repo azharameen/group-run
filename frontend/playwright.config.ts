@@ -42,8 +42,8 @@ export default defineConfig({
   // Retry on CI only.
   retries: process.env.CI ? 2 : 0,
 
-  // Limit parallel workers on CI, use default locally.
-  workers: process.env.CI ? 1 : undefined,
+  // Run E2E tests sequentially in single worker to ensure deterministic state isolation
+  workers: 1,
 
   // Global test timeout. 60s locally (this machine can take >30s just to
   // launch the browser under load — the first test pays that cost); 30s in

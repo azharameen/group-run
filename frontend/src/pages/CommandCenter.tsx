@@ -38,6 +38,25 @@ export default function CommandCenter({
 		threads,
 	});
 
+	const threadManager = useThreadManager({
+		activeThreadId,
+		setActiveThreadId,
+		onActiveThreadTitleChange,
+		onThreadsUpdate,
+		threads,
+	});
+
+	const ensureThread = useCallback(async (): Promise<string> => {
+		if (threadManager?.ensureThread) {
+			return threadManager.ensureThread();
+		}
+		if (activeThreadId) return activeThreadId;
+		const thread = await createThread({ title: "New Chat", idea_id: null });
+		onThreadsUpdate([...threads, thread]);
+		setActiveThreadId(thread.thread_id);
+		return thread.thread_id;
+	}, [threadManager, activeThreadId, threads, onThreadsUpdate, setActiveThreadId]);
+
 	const {
 		chatInput,
 		setChatInput,
@@ -54,13 +73,7 @@ export default function CommandCenter({
 		handleRejectInterrupt,
 	} = useChatStream({
 		activeThreadId,
-		ensureThread: async () => {
-			if (activeThreadId) return activeThreadId;
-			const thread = await createThread({ title: "New Chat", idea_id: null });
-			onThreadsUpdate([...threads, thread]);
-			setActiveThreadId(thread.thread_id);
-			return thread.thread_id;
-		},
+		ensureThread,
 		onThreadsUpdate,
 	});
 
