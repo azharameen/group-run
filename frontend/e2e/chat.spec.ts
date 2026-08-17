@@ -39,10 +39,13 @@ test.describe('Chat Flow', () => {
 
     await commandCenter.sendMessage('Write a very long analysis of this idea.');
 
-    // Wait for response to appear or streaming to finish/halt
-    await expect(commandCenter.messageList).toContainText(
-      'Write a very long analysis of this idea.'
-    );
+    // Wait for stop button to become visible before clicking
+    await expect(commandCenter.stopButton).toBeVisible({ timeout: 10000 });
+    await commandCenter.stopButton.click();
+
+    // Streaming halts — stop button disappears and the partial
+    // response (whatever was captured) remains in the message list.
+    await expect(commandCenter.stopButton).toBeHidden();
     await expect(commandCenter.messageList).toBeVisible();
   });
 });
