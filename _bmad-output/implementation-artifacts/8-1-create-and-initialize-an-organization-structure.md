@@ -4,7 +4,7 @@ baseline_commit: 7ac13491871fccc12723254c3d80a481b75e9a70
 
 # Story 8.1: Create and Initialize an Organization Structure
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -33,7 +33,7 @@ so that **I can begin running AI work immediately**.
    **then** the org state is fetched with a single API call and renders within 2 seconds (NFR1).
 6. **Given** an unknown `org_id`,
    **when** it is requested,
-   **then** the API returns `404`; given a missing/blank name on create, **when** submitted, **then** the API returns `400` with a detail message.
+   **then** the API returns `404`; given a blank/too-long name on create, **when** submitted, **then** the API returns `400` with a detail message; given a request body missing the `name` field, **when** submitted, **then** the API returns `422` (required field) — amended 2026-08-17 per code-review decision D2 (422 is the correct FastAPI contract for a missing required field).
 7. **Given** the change is deployed,
    **when** the existing test suites run,
    **then** chat/threads, ideas, config, SSE, supervisor and team-factory tests all remain green (no regressions).
@@ -68,6 +68,36 @@ so that **I can begin running AI work immediately**.
   - [x] 8.2 `frontend/src/components/app-sidebar.tsx` (UPDATE) — `navMain` entry "Organization" (`Building2` lucide icon)
 - [x] Task 9 (AC: #4, #7): Frontend tests
   - [x] 9.1 `frontend/src/__tests__/Organization.test.tsx` — empty state, create (mocked API), populated tree render (departments, teams, capacity, CoS `active` badge), 404 error state
+
+### Review Findings
+
+_Code review 2026-08-17 (bmad-code-review, 3 layers: adversarial, edge-case, acceptance audit). 2 decision-needed, 12 patch, 3 defer, 1 dismissed (out-of-vocabulary stored status — unreachable: only the pinned structure writes statuses)._
+
+**Decision needed**
+
+- [x] [Review][Decision] D1: UI can only show the most recent org — no way to select or delete — API fully supports multiple organizations (`GET /api/organizations` with counts) but `Organization.tsx` `loadData` silently renders `organizations[0]`. Once a second org is created, the first is permanently unreachable from the UI; orgs accumulate invisibly (no DELETE endpoint by design). **Resolved 2026-08-17 → deferred:** "show most recent" accepted for this story (ACs only require viewing one populated org); multi-org selection tracked in deferred-work as a follow-up story. [frontend/src/pages/Organization.tsx:50-57]
+- [x] [Review][Decision] D2: Missing `name` in POST body returns 422, not the 400 AC #6 requires — `CreateOrganizationRequest.name` is required with no default (models.py:160), so a body lacking `name` hits FastAPI's stock 422 `RequestValidationError`; the route only raises 400 for present-but-blank/over-long names (organizations.py:21-29). **Resolved 2026-08-17 → dismissed (AC amended):** 422 is the correct FastAPI contract for a missing required field; AC #6 wording amended to "400 for blank/too-long names, 422 for missing field". [backend/app/organization/models.py:160, backend/app/api/routes/organizations.py]
+
+**Patch**
+
+- [x] [Review][Patch] P1: Organization creation is not atomic — 24 separate commits [backend/app/organization/service.py:86-93] — `create_organization` commits the org row, then each of the 23 structure rows commits individually (repository insert_* functions each call `conn.commit()`). A failure mid-creation (disk full, locked DB, crash) leaves a partial org with no repair path (no DELETE endpoint). Fix: wrap the org + all structure inserts in a single transaction (commit once, rollback on exception).
+- [x] [Review][Patch] P2: Unguarded `next()`/`[0]` in `get_organization` → unhandled 500 on inconsistent rows [backend/app/organization/service.py:104-125] — CoS lookup (104-106) and dept-chief lookup (115) use `next(...)` without a default; team captain fallback (123-125) indexes `team_agents[0]` on a possibly-empty list. Any partial org (see P1) or hand-edited row makes every fetch of that org crash with StopIteration/IndexError instead of a typed error. Fix: default-sentinel + raise a typed error (mapped to 500 by P5).
+- [x] [Review][Patch] P3: No tie-break in most-recent list order [backend/app/organization/repository.py:175] — `ORDER BY o.updated_at DESC` alone; `updated_at` is an ISO string set at create and never updated, so same-timestamp orgs sort non-deterministically (the list test asserts with `>=` partly to paper over this). Fix: `ORDER BY o.updated_at DESC, o.created_at DESC, o.org_id`.
+- [x] [Review][Patch] P4: `org_db` fixture teardown leaves the repository singleton on a closed connection [backend/tests/conftest.py:142-164] — teardown closes `conn` but never calls `_reset_organization_db()`, so `_ORG_CONN` points at a closed `:memory:` DB after any org test; the next test touching the org repo without the fixture gets "cannot operate on a closed database". Fix: reset the singleton after closing.
+- [x] [Review][Patch] P5: Routes don't convert `sqlite3.Error` to HTTP 500 [backend/app/api/routes/organizations.py:14-50] — locked-DB/disk-full errors surface as uncontrolled 500s on all three routes. Fix: try/except `sqlite3.Error` around service calls → `HTTPException(500, detail=...)`.
+- [x] [Review][Patch] P6: Singleton connection init is not thread-safe [backend/app/organization/repository.py:71-80] — check-then-set on `_ORG_CONN` with no lock; harmless while all access stays on the event-loop thread (see W1) but `check_same_thread=False` invites cross-thread use. Fix: module-level `threading.Lock` around the open-and-init block.
+- [x] [Review][Patch] P7: `repository.py` is 201 lines — 1 over the hard 200-line repository limit [backend/app/organization/repository.py] — project-context FastAPI rule 1 / Dev Notes §3. Fix: trim ≥2 lines (e.g. compress the `_reset_organization_db` docstring or move the test hook).
+- [x] [Review][Patch] P8: `from __future__ import annotations` in all three new backend files [backend/app/organization/models.py:8, repository.py:9, service.py:8] — violates project-context Python rule 2 ("No backports or `from __future__` workarounds"); `X | None`/`list[...]` work natively on 3.13. (11 pre-existing files use it — codebase debt, but new code should follow the rule.) Fix: remove the import.
+- [x] [Review][Patch] P9: Team "cards" are hand-rolled bordered divs instead of shadcn `Card` [frontend/src/pages/Organization.tsx:235] — the same page uses shadcn `Card` for org/CoS/department cards; a nested `Card` inside the department `CardContent` is the rule-compliant choice (project-context React rule 1).
+- [x] [Review][Patch] P10: Two lines exceed the 100-char limit [frontend/src/pages/Organization.tsx:24,248] — 104 and 105 chars; Dev Notes §6 page convention.
+- [x] [Review][Patch] P11: `DEFAULT_ORG_STRUCTURE` is an untyped bare `dict` [backend/app/organization/models.py:28] — the story's core pinned structure is string-keyed; a typo'd key fails at runtime (KeyError), not type-check time. Fix: `TypedDict` shapes for the structure.
+- [x] [Review][Patch] P12: 200-char name limit duplicated as magic numbers [backend/app/api/routes/organizations.py:10, frontend/src/pages/Organization.tsx:151] — backend `_NAME_MAX_LENGTH = 200` and frontend `maxLength={200}` will drift silently. Fix: named constant in the page (or derive from a shared source).
+
+**Deferred**
+
+- [x] [Review][Defer] W1: Blocking SQLite I/O in `async def` routes blocks the event loop [backend/app/api/routes/organizations.py:14-50] — deferred, pre-existing — matches the established `ideas.py`/`threads.py` pattern the story docstring explicitly mirrors; org create does up to 24 sqlite round-trips on the loop thread, but fixing one route file in isolation breaks codebase consistency — needs a codebase-wide pass.
+- [x] [Review][Defer] W2: Raw JSON in user-facing error messages [frontend/src/api/organizations.ts:10] — deferred, pre-existing — `throw new Error(\`API ${res.status}: ${text}\`)` is byte-identical to the `ideas.ts`/`knowledge.ts` convention; the new error card/toasts just make it more visible.
+- [x] [Review][Defer] W3: No fetch timeout — hung request leaves the loading skeleton forever [frontend/src/api/organizations.ts:3-13] — deferred, pre-existing — no `AbortController`/timeout in any API module (same pattern); interaction with W1 makes a stall more likely on this page specifically.
 
 ## Dev Notes
 
@@ -263,3 +293,4 @@ CREATE TABLE IF NOT EXISTS agents (
 
 - 2026-08-17: Implemented Tasks 1–4 (backend organization package: models, repository, service, API routes + app wiring). Validated via smoke tests and ruff; full backend test suite to follow in Task 5.
 - 2026-08-17: Implemented Tasks 5–9 (backend tests with `org_db` fixture — 16 new tests, full backend suite 277 passed; frontend API module + barrel, Organization dashboard page, `/organization` route + sidebar nav, 5 frontend tests — full frontend suite 186 passed, `tsc --noEmit` clean, ruff + forbidden-imports green). Story complete; status → review.
+- 2026-08-18: Code review (bmad-code-review) complete. D1 resolved → deferred (multi-org selection is a follow-up story); D2 resolved → dismissed with AC #6 amended (422 for missing field is the correct FastAPI contract). All 12 patch findings applied: P1 transactional `insert_organization_tree` (single commit, rollback on failure), P2 `OrganizationIntegrityError` guards replacing unguarded `next()`/`[0]`, P3 deterministic list ordering tie-break, P4 `org_db` fixture singleton reset in teardown, P5 `sqlite3.Error` → HTTP 500 mapping on all three routes, P6 `threading.Lock` around connection init, P7 repository back under the 200-line limit, P8 `__future__` imports removed, P9 team divs → shadcn `Card`, P10 line lengths fixed, P11 `TypedDict` structure shapes, P12 `NAME_MAX_LENGTH` named constant. Added 2 regression tests (mid-tree rollback, missing-CoS integrity error). All gates green: 279 backend tests, 186 frontend tests, ruff clean, `tsc --noEmit` clean. Status → done.

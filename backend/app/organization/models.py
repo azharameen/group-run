@@ -5,9 +5,7 @@ Chief of Staff, Departments, Teams, and Agents — plus the request model
 served by the /api/organizations endpoints.
 """
 
-from __future__ import annotations
-
-from typing import Literal
+from typing import Literal, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -15,7 +13,45 @@ from pydantic import BaseModel, Field
 AgentStatus = Literal["active", "idle", "overloaded"]
 
 
-def _agent(agent_id: str, name: str, role: str, status: AgentStatus = "idle") -> dict:
+class AgentRow(TypedDict):
+    """Raw agent row shape in the pinned default structure."""
+
+    agent_id: str
+    name: str
+    role: str
+    status: AgentStatus
+
+
+class TeamRow(TypedDict):
+    """Raw team row shape with its captain and specialist members."""
+
+    team_id: str
+    name: str
+    status: AgentStatus
+    captain: AgentRow
+    members: list[AgentRow]
+
+
+class DepartmentRow(TypedDict):
+    """Raw department row shape with its chief and teams."""
+
+    department_id: str
+    name: str
+    status: AgentStatus
+    chief: AgentRow
+    teams: list[TeamRow]
+
+
+class OrgStructureRow(TypedDict):
+    """Raw pinned default organization structure (Dev Notes §2)."""
+
+    chief_of_staff: AgentRow
+    departments: list[DepartmentRow]
+
+
+def _agent(
+    agent_id: str, name: str, role: str, status: AgentStatus = "idle"
+) -> AgentRow:
     """Build a raw agent row dict for the default structure."""
     return {"agent_id": agent_id, "name": name, "role": role, "status": status}
 
@@ -25,7 +61,7 @@ def _agent(agent_id: str, name: str, role: str, status: AgentStatus = "idle") ->
 #: Raw row shapes consumed by :mod:`app.organization.repository` when an
 #: organization is created. Totals: 1 Chief of Staff, 2 departments,
 #: 5 teams, 18 agents (1 CoS + 2 chiefs + 5 captains + 10 specialists).
-DEFAULT_ORG_STRUCTURE: dict = {
+DEFAULT_ORG_STRUCTURE: OrgStructureRow = {
     "chief_of_staff": _agent("chief_of_staff", "Chief of Staff", "chief_of_staff", "active"),
     "departments": [
         {

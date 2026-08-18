@@ -21,7 +21,11 @@ const STATUS_VARIANT: Record<OrgStatus, 'default' | 'secondary' | 'destructive'>
   overloaded: 'destructive',
 }
 
-function StatusBadge({ status, 'data-testid': testId }: { status: OrgStatus; 'data-testid'?: string }) {
+const NAME_MAX_LENGTH = 200
+
+type StatusBadgeProps = { status: OrgStatus; 'data-testid'?: string }
+
+function StatusBadge({ status, 'data-testid': testId }: StatusBadgeProps) {
   return (
     <Badge variant={STATUS_VARIANT[status]} data-testid={testId}>
       {status}
@@ -148,7 +152,7 @@ export default function Organization() {
                   if (nameError) setNameError(null)
                 }}
                 placeholder="Enter organization name"
-                maxLength={200}
+                maxLength={NAME_MAX_LENGTH}
               />
               {nameError && (
                 <p className="text-sm text-destructive" data-testid="org-name-error">
@@ -232,7 +236,7 @@ export default function Organization() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dept.teams.map((team) => (
-              <div key={team.team_id} className="rounded-lg border p-4 space-y-3">
+              <Card key={team.team_id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium text-sm" data-testid="org-team-name">
                     {team.name}
@@ -245,7 +249,10 @@ export default function Organization() {
                 </p>
                 <ul className="space-y-1.5">
                   {team.agents.map((agent) => (
-                    <li key={agent.agent_id} className="flex items-center justify-between gap-2 text-sm">
+                    <li
+                      key={agent.agent_id}
+                      className="flex items-center justify-between gap-2 text-sm"
+                    >
                       <span>
                         {agent.name}
                         <span className="text-muted-foreground"> — {roleLabel(agent.role)}</span>
@@ -254,7 +261,7 @@ export default function Organization() {
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Card>
             ))}
           </CardContent>
         </Card>

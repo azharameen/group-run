@@ -7,6 +7,9 @@ Covers acceptance criteria:
 - AC #6: 404 for unknown org_id, 400 for blank/over-long names
 """
 
+import sqlite3
+from datetime import UTC, datetime
+
 import pytest
 from app.api.app import create_app
 from app.organization import repository as org_repo
@@ -138,6 +141,30 @@ class TestService:
         assert (tmp_path / "organizations.sqlite").exists()
 
         org_repo._reset_organization_db()  # release the file handle for tmp cleanup
+
+    def test_create_rolls_back_on_mid_structure_failure(self, org_db, monkeypatch):
+        """A storage failure mid-tree rolls back: no partial org remains (P1)."""
+
+        def boom(conn, org_id, department_id, team_id, agent):
+            raise sqlite3.OperationalError("simulated storage failure")
+
+        monkeypatch.setattr(org_repo, "_insert_agent_row", boom)
+        with pytest.raises(sqlite3.OperationalError):
+            org_service.create_organization("Acme")
+        assert org_service.list_organizations() == []
+
+    def test_get_missing_chief_of_staff_raises_integrity_error(self, org_db):
+        """An org row without its CoS row raises, not StopIteration (P2)."""
+        now = datetime.now(UTC).isoformat()
+        org_id = "org-incomplete"
+        org_db.execute(
+            "INSERT INTO organizations (org_id, name, description, created_at, updated_at)"
+            " VALUES (?, 'P', '', ?, ?)",
+            (org_id, now, now),
+        )
+        org_db.commit()
+        with pytest.raises(org_service.OrganizationIntegrityError):
+            org_service.get_organization(org_id)
 
     def test_list_organizations_shape_and_order(self, org_db):
         first = org_service.create_organization("First")

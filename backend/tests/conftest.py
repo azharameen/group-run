@@ -162,6 +162,9 @@ def org_db():
     yield conn
 
     conn.close()
+    # Clear the singleton so the closed in-memory connection is never served
+    # to a later test that skips this fixture (review P4).
+    org_repo._reset_organization_db()
 
 
 # ---------------------------------------------------------------------------

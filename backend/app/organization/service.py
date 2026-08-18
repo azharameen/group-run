@@ -5,8 +5,6 @@ the API tree (OrgTree) from stored rows. Synchronous by design — the
 routes call it directly, matching the ideas/threads storage pattern.
 """
 
-from __future__ import annotations
-
 import uuid
 from datetime import UTC, datetime
 
@@ -47,6 +45,10 @@ TEAM_ORDER = {
 AGENT_ORDER = _build_agent_order()
 
 
+class OrganizationIntegrityError(RuntimeError):
+    """Raised when stored organization rows are inconsistent (review P2)."""
+
+
 def _agent_from_row(row) -> OrgAgent:
     """Build an OrgAgent from a stored agents row."""
     return OrgAgent(
@@ -54,39 +56,17 @@ def _agent_from_row(row) -> OrgAgent:
     )
 
 
-def _insert_default_structure(org_id: str) -> None:
-    """Insert the pinned default structure rows for a new organization."""
-    structure = DEFAULT_ORG_STRUCTURE
-    repository.insert_agent(org_id, None, None, **structure["chief_of_staff"])
-    for dept in structure["departments"]:
-        repository.insert_department(
-            org_id, dept["department_id"], dept["name"], dept["status"]
-        )
-        repository.insert_agent(
-            org_id, dept["department_id"], None, **dept["chief"]
-        )
-        for team in dept["teams"]:
-            repository.insert_team(
-                org_id, dept["department_id"], team["team_id"], team["name"], team["status"]
-            )
-            repository.insert_agent(
-                org_id, dept["department_id"], team["team_id"], **team["captain"]
-            )
-            for member in team["members"]:
-                repository.insert_agent(
-                    org_id, dept["department_id"], team["team_id"], **member
-                )
-
-
 def create_organization(name: str, description: str = "") -> Organization:
     """Create an organization initialized with the pinned default structure.
 
-    Returns the full organization tree for the new organization.
+    The org row and all 24 structure rows persist as a single transaction
+    (review P1). Returns the full organization tree for the new org.
     """
     org_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
-    repository.insert_organization(org_id, name, description, now, now)
-    _insert_default_structure(org_id)
+    repository.insert_organization_tree(
+        org_id, name, description, now, DEFAULT_ORG_STRUCTURE
+    )
     created = get_organization(org_id)
     if created is None:
         raise RuntimeError(f"Organization {org_id} vanished after creation")
@@ -94,16 +74,25 @@ def create_organization(name: str, description: str = "") -> Organization:
 
 
 def get_organization(org_id: str) -> Organization | None:
-    """Assemble the full organization tree, or None if the org is unknown."""
+    """Assemble the full organization tree, or None if the org is unknown.
+
+    Raises :class:`OrganizationIntegrityError` when the stored rows are
+    inconsistent (review P2) instead of crashing with StopIteration.
+    """
     rows = repository.get_organization_rows(org_id)
     if rows is None:
         return None
     org_row = rows["org"]
     agent_rows = rows["agents"]
 
-    chief_of_staff = next(
-        a for a in agent_rows if a["department_id"] is None and a["team_id"] is None
+    cos_row = next(
+        (a for a in agent_rows if a["department_id"] is None and a["team_id"] is None),
+        None,
     )
+    if cos_row is None:
+        raise OrganizationIntegrityError(
+            f"Organization {org_id} has no chief-of-staff row"
+        )
 
     departments: list[OrgDepartment] = []
     dept_rows = sorted(
@@ -112,7 +101,11 @@ def get_organization(org_id: str) -> Organization | None:
     )
     for dept_row in dept_rows:
         dept_agents = [a for a in agent_rows if a["department_id"] == dept_row["department_id"]]
-        chief = next(a for a in dept_agents if a["team_id"] is None)
+        chief = next((a for a in dept_agents if a["team_id"] is None), None)
+        if chief is None:
+            raise OrganizationIntegrityError(
+                f"Department {dept_row['department_id']} has no chief row"
+            )
         teams: list[OrgTeam] = []
         team_rows = sorted(
             (t for t in rows["teams"] if t["department_id"] == dept_row["department_id"]),
@@ -121,8 +114,12 @@ def get_organization(org_id: str) -> Organization | None:
         for team_row in team_rows:
             team_agents = [a for a in dept_agents if a["team_id"] == team_row["team_id"]]
             captain_row = next(
-                (a for a in team_agents if a["role"] == "team_captain"), team_agents[0]
+                (a for a in team_agents if a["role"] == "team_captain"), None
             )
+            if captain_row is None:
+                raise OrganizationIntegrityError(
+                    f"Team {team_row['team_id']} has no captain or any agent rows"
+                )
             ordered = sorted(
                 team_agents, key=lambda a: AGENT_ORDER.get(a["agent_id"], len(AGENT_ORDER))
             )
@@ -154,7 +151,7 @@ def get_organization(org_id: str) -> Organization | None:
         description=org_row["description"],
         created_at=org_row["created_at"],
         updated_at=org_row["updated_at"],
-        chief_of_staff=_agent_from_row(chief_of_staff),
+        chief_of_staff=_agent_from_row(cos_row),
         departments=departments,
     )
 

@@ -1,14 +1,11 @@
 """SQLite repository for the organization structure (Story 8.1).
 
-Dedicated storage file ``storage/organizations.sqlite`` — intentionally
-separate from ``threads.sqlite``, which belongs to the LangGraph
-checkpointer. Follows the module-singleton connection pattern of
-:mod:`app.services.thread_manager`.
+Dedicated ``storage/organizations.sqlite`` file, module-singleton
+connection per the :mod:`app.services.thread_manager` pattern.
 """
 
-from __future__ import annotations
-
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +13,7 @@ from ..config import STORAGE_DIR
 
 _ORG_DB_PATH: Path | None = None
 _ORG_CONN: sqlite3.Connection | None = None
+_CONN_LOCK = threading.Lock()
 
 
 def _get_db_path() -> Path:
@@ -71,68 +69,69 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 def _get_conn() -> sqlite3.Connection:
     """Return the singleton connection, lazily opening it with WAL mode."""
     global _ORG_CONN
-    if _ORG_CONN is None:
-        db_path = _get_db_path()
-        _ORG_CONN = sqlite3.connect(str(db_path), check_same_thread=False)
-        _ORG_CONN.execute("PRAGMA journal_mode=WAL")
-        _ORG_CONN.row_factory = sqlite3.Row
-        _init_schema(_ORG_CONN)
+    with _CONN_LOCK:
+        if _ORG_CONN is None:
+            db_path = _get_db_path()
+            _ORG_CONN = sqlite3.connect(str(db_path), check_same_thread=False)
+            _ORG_CONN.execute("PRAGMA journal_mode=WAL")
+            _ORG_CONN.row_factory = sqlite3.Row
+            _init_schema(_ORG_CONN)
     return _ORG_CONN
 
 
-def insert_organization(
-    org_id: str, name: str, description: str, created_at: str, updated_at: str
-) -> None:
-    """Insert an organization row."""
-    conn = _get_conn()
-    conn.execute(
-        "INSERT INTO organizations (org_id, name, description, created_at, updated_at)"
-        " VALUES (?, ?, ?, ?, ?)",
-        (org_id, name, description, created_at, updated_at),
-    )
-    conn.commit()
-
-
-def insert_department(org_id: str, department_id: str, name: str, status: str) -> None:
-    """Insert a department row."""
-    conn = _get_conn()
-    conn.execute(
-        "INSERT INTO departments (org_id, department_id, name, status) VALUES (?, ?, ?, ?)",
-        (org_id, department_id, name, status),
-    )
-    conn.commit()
-
-
-def insert_team(
-    org_id: str, department_id: str, team_id: str, name: str, status: str
-) -> None:
-    """Insert a team row."""
-    conn = _get_conn()
-    conn.execute(
-        "INSERT INTO teams (org_id, department_id, team_id, name, status)"
-        " VALUES (?, ?, ?, ?, ?)",
-        (org_id, department_id, team_id, name, status),
-    )
-    conn.commit()
-
-
-def insert_agent(
+def _insert_agent_row(
+    conn: sqlite3.Connection,
     org_id: str,
     department_id: str | None,
     team_id: str | None,
-    agent_id: str,
-    name: str,
-    role: str,
-    status: str,
+    agent: dict[str, Any],
 ) -> None:
-    """Insert an agent row (department_id/team_id NULL for org-level agents)."""
-    conn = _get_conn()
+    """Insert one agents row (department_id/team_id NULL for org-level)."""
+    values = (org_id, department_id, team_id)
     conn.execute(
         "INSERT INTO agents (org_id, department_id, team_id, agent_id, name, role, status)"
         " VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (org_id, department_id, team_id, agent_id, name, role, status),
+        values + (agent["agent_id"], agent["name"], agent["role"], agent["status"]),
     )
-    conn.commit()
+
+
+def insert_organization_tree(
+    org_id: str, name: str, description: str, now: str, structure: dict[str, Any]
+) -> None:
+    """Insert an organization and all its structure rows in one transaction.
+
+    Rolls back on any error so a failed create never leaves a partial
+    organization behind (review P1).
+    """
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO organizations (org_id, name, description, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (org_id, name, description, now, now),
+        )
+        _insert_agent_row(conn, org_id, None, None, structure["chief_of_staff"])
+        for dept in structure["departments"]:
+            conn.execute(
+                "INSERT INTO departments (org_id, department_id, name, status)"
+                " VALUES (?, ?, ?, ?)",
+                (org_id, dept["department_id"], dept["name"], dept["status"]),
+            )
+            _insert_agent_row(conn, org_id, dept["department_id"], None, dept["chief"])
+            for team in dept["teams"]:
+                conn.execute(
+                    "INSERT INTO teams (org_id, department_id, team_id, name, status)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (org_id, dept["department_id"], team["team_id"], team["name"], team["status"]),
+                )
+                for agent in [team["captain"], *team["members"]]:
+                    _insert_agent_row(
+                        conn, org_id, dept["department_id"], team["team_id"], agent
+                    )
+        conn.commit()
+    except sqlite3.Error:
+        conn.rollback()
+        raise
 
 
 def get_organization_rows(org_id: str) -> dict[str, Any] | None:
@@ -172,7 +171,7 @@ def list_organizations() -> list[sqlite3.Row]:
                (SELECT COUNT(*) FROM agents a WHERE a.org_id = o.org_id)
                    AS agent_count
         FROM organizations o
-        ORDER BY o.updated_at DESC
+        ORDER BY o.updated_at DESC, o.created_at DESC, o.org_id
         """
     ).fetchall()
 
