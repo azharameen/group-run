@@ -132,6 +132,28 @@ class TestWorkItemListing:
         assert work_items_service.get_work_item("nope") is None
 
 
+class TestTestingResetRoute:
+    """Prerequisite for fresh state isolation: POST /api/testing/reset clears work items and orgs."""
+
+    def test_reset_route_clears_organizations_and_work_items(self, client, organization):
+        # Seed work item
+        work_items_service.submit_work_item(
+            "Item to be reset", org_id=organization.org_id
+        )
+
+        # Verify items and org exist
+        assert client.get("/api/organizations").json()["count"] > 0
+        assert client.get("/api/work-items").json()["count"] > 0
+
+        # Call reset route
+        reset_res = client.post("/api/testing/reset")
+        assert reset_res.status_code == 200
+
+        # Assert work items and orgs are empty
+        assert client.get("/api/organizations").json()["count"] == 0
+        assert client.get("/api/work-items").json()["count"] == 0
+
+
 class TestWorkItemsApi:
     """AC #1 + AC #4 — the /api/work-items endpoints."""
 

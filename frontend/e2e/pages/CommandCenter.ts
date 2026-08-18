@@ -17,6 +17,7 @@ export class CommandCenterPage {
   readonly approveButton: Locator;
   readonly rejectButton: Locator;
   readonly workspacePane: Locator;
+  readonly workItemsTabTrigger: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -29,6 +30,7 @@ export class CommandCenterPage {
     this.approveButton = page.getByTestId('approve-button');
     this.rejectButton = page.getByTestId('reject-button');
     this.workspacePane = page.getByTestId('workspace-pane');
+    this.workItemsTabTrigger = page.getByTestId('work-items-tab-trigger').first();
   }
 
   async goto(): Promise<void> {

@@ -336,7 +336,7 @@ export function CommandCenterWorkspacePane() {
 							<ListTodo className="w-3.5 h-3.5" />
 							Tasks
 						</TabsTrigger>
-						<TabsTrigger value="work-items" className="text-xs gap-1.5 px-3">
+						<TabsTrigger data-testid="work-items-tab-trigger" value="work-items" className="text-xs gap-1.5 px-3">
 							<ListChecks className="w-3.5 h-3.5" />
 							Work Items
 						</TabsTrigger>

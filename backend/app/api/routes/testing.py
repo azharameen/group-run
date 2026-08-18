@@ -78,4 +78,14 @@ def reset_test_state() -> dict[str, str]:
     except Exception as exc:  # noqa: BLE001
         logger.warning("Error resetting organization tables: %s", exc)
 
+    # 7. Reset work items DB tables
+    try:
+        from app.work_items import repository as work_items_repo
+        wconn = work_items_repo._get_conn()
+        for table in ("routing_decisions", "work_items"):
+            wconn.execute(f"DELETE FROM {table}")
+        wconn.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Error resetting work items tables: %s", exc)
+
     return {"status": "ok", "message": "Test state reset successfully"}
