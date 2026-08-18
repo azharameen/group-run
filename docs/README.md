@@ -14,6 +14,7 @@
 | [`coding-guidelines.md`](./coding-guidelines.md) | Coding standards, best practices, and conventions for all layers |
 | [`code-review-guidelines.md`](./code-review-guidelines.md) | Code review checklist, what to reject, and review process |
 | [`performance-testing.md`](./performance-testing.md) | Performance test design patterns, workload selection, metric collection, and runner guide |
+| [`testing.md`](./testing.md) | E2E testing strategy contract, state isolation architecture, authoring guidelines, and CI policies |
 | [`sse-streaming.md`](./sse-streaming.md) | SSE and streaming edge cases, reconnect semantics, frame parsing, and error handling |
 | [`architecture-decisions.md`](./architecture-decisions.md) | Architectural Decision Records (ADR) — context, decision, consequences |
 | [`tasks.md`](./tasks.md) | Deep hierarchical task planning (3–5 levels) with implementation tracking |
@@ -29,7 +30,9 @@
 | Configuration | `config/` |
 | Knowledge base | `knowledge-base/` |
 | Workspace (ideas) | `workspace/` |
-| Tests | `backend/tests/` |
+| Backend Tests | `backend/tests/` |
+| E2E Tests | `frontend/e2e/` |
+| E2E Strategy Contract | `docs/testing.md` |
 | Performance Baseline | `backend/tests/performance-baseline.md` |
 
 ## Current Status
