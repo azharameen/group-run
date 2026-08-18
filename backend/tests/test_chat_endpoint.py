@@ -29,7 +29,10 @@ def _clear_modules(monkeypatch: pytest.MonkeyPatch):
             # (module-identity split). Its state is reset in place by the tests.
             "app.config",
         )):
-            del sys.modules[mod]
+            # monkeypatch.delitem (not bare del) so the purge reverts at
+            # teardown — a permanent purge leaves cached modules referencing
+            # the old settings object (module-identity split).
+            monkeypatch.delitem(sys.modules, mod, raising=False)
 
 
 def _stub_deepagents(monkeypatch: pytest.MonkeyPatch):

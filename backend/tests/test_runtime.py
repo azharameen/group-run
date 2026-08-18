@@ -18,7 +18,10 @@ def _clear_runtime_modules(monkeypatch):
     """Clear cached runtime and config modules so env vars are picked up fresh."""
     for mod in list(sys.modules.keys()):
         if mod.startswith("app.agent.runtime") or mod.startswith("app.config"):
-            del sys.modules[mod]
+            # monkeypatch.delitem (not bare del) so the purge reverts at
+            # teardown — a permanent purge leaves cached modules referencing
+            # the old settings object (module-identity split).
+            monkeypatch.delitem(sys.modules, mod, raising=False)
 
 
 @pytest.fixture
