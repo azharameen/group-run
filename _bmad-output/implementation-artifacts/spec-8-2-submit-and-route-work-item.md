@@ -94,7 +94,7 @@ Submit a Work Item (idea/task/feature) via chat (Chief of Staff calls a `submit_
 ## Delivery Patterns
 
 - **CI**: `ruff check backend/app` (100-char), `python scripts/forbidden_imports.py` (no new forbidden imports — `app.work_items` is clean), full pytest + vitest green.
-- **Testing**: in-memory DB fixtures; `create_deep_agent` mocked in wiring test; tool tested by direct invocation; no live model (NFR-A10); no new Playwright specs (issue #9 open; org e2e already deferred to #54).
+- **Testing**: in-memory DB fixtures; `create_deep_agent` mocked in wiring test; tool tested by direct invocation; no live model (NFR-A10); no Playwright specs in this story — e2e follow-up tracked in issue #60 (org dashboard e2e: #54; shared prerequisite: extend `POST /api/testing/reset` to clear organizations/work_items storage).
 - **Docker**: no new runtime dependencies (`langchain_core.tools` ships with the existing deepagents/langgraph stack); new storage file `work_items.sqlite` lands in the existing `STORAGE_DIR` volume.
 
 ## Spec Change Log
