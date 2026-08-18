@@ -50,6 +50,7 @@ import {
 	Clock,
 	Cpu,
 	ListTodo,
+	ListChecks,
 	Search,
 	Folder,
 	FileText,
@@ -77,6 +78,7 @@ import {
 	DEFAULT_ACTIVITY_LOG,
 	TASK_AGENTS,
 } from "@/data/mockWorkspaceData";
+import WorkItemsTab from "./WorkItemsTab";
 import type {
 	StaticFile,
 	AgentTaskItem,
@@ -333,6 +335,10 @@ export function CommandCenterWorkspacePane() {
 						<TabsTrigger value="tasks" className="text-xs gap-1.5 px-3">
 							<ListTodo className="w-3.5 h-3.5" />
 							Tasks
+						</TabsTrigger>
+						<TabsTrigger value="work-items" className="text-xs gap-1.5 px-3">
+							<ListChecks className="w-3.5 h-3.5" />
+							Work Items
 						</TabsTrigger>
 					</TabsList>
 
@@ -612,6 +618,11 @@ export function CommandCenterWorkspacePane() {
 					</TabsContent>
 
 					{/* Tab: Tasks Data Table */}
+					<TabsContent value="work-items" className="data-[state=active]:flex data-[state=active]:flex-1 flex-col h-full w-full m-0 p-0 overflow-hidden">
+						<div className="flex-1 overflow-y-auto">
+							<WorkItemsTab />
+						</div>
+					</TabsContent>
 					<TabsContent value="tasks" className="data-[state=active]:flex data-[state=active]:flex-1 flex-col h-full w-full m-0 p-0 overflow-hidden p-4 bg-muted/5">
 						<div className="flex flex-col h-full overflow-hidden space-y-3">
 							<div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-background border rounded-lg shrink-0">

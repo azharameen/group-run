@@ -6,6 +6,7 @@ temp_workspace : Temporary workspace with ideas.yaml
 isolate_test_env : Autouse — clears OpenAI credentials
 patch_config : Points WORKSPACE_DIR at the temp workspace
 in_memory_db : In-memory SqliteSaver for thread_manager tests (AC-4)
+org_db : In-memory sqlite connection for the organization repository (8.1)
 mock_agent : AsyncMock agent returned by get_deep_agent_runtime() (AC-1)
 mock_supervisor : Stubbed supervisor graph for chat endpoint tests (AC-2)
 """
@@ -136,6 +137,59 @@ def _clear_supervisor():
     for mod in list(sys.modules.keys()):
         if mod.startswith("app.orchestrator.supervisor"):
             del sys.modules[mod]
+
+
+@pytest.fixture
+def org_db():
+    """Yield an in-memory organization DB injected into the repository.
+
+    Resets the organization repository singleton in place (same
+    rationale as :func:`_clear_thread_manager` — never purge
+    ``sys.modules``) and points it at a fresh ``:memory:`` connection
+    with the org schema initialized, so every test gets an isolated,
+    empty organization database.
+
+    Usage
+    -----
+    def test_something(org_db):
+        from app.organization import service  # operates on the in-memory DB
+    """
+    from app.organization import repository as org_repo
+
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    org_repo._reset_organization_db(conn)
+
+    yield conn
+
+    conn.close()
+    # Clear the singleton so the closed in-memory connection is never served
+    # to a later test that skips this fixture (review P4).
+    org_repo._reset_organization_db()
+
+
+@pytest.fixture
+def work_item_db():
+    """In-memory work items SQLite DB (Story 8.2).
+
+    Mirrors :func:`org_db`: the work_items repository keeps a
+    module-singleton connection that would otherwise persist across tests
+    and write real files into the storage dir, so every test gets a clean
+    in-memory DB and the singleton is cleared on teardown.
+
+    Usage
+    -----
+    def test_something(org_db, work_item_db):
+        from app.work_items import service  # operates on the in-memory DB
+    """
+    from app.work_items import repository as work_items_repository
+
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    work_items_repository._reset_work_item_db(conn)
+
+    yield conn
+
+    conn.close()
+    work_items_repository._reset_work_item_db()
 
 
 # ---------------------------------------------------------------------------

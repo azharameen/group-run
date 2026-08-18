@@ -15,6 +15,7 @@ const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const IdeaDetail = lazy(() => import("./pages/IdeaDetail"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
+const Organization = lazy(() => import("./pages/Organization"));
 
 function AppContent() {
 	const {
@@ -90,6 +91,7 @@ function AppContent() {
 								}
 							/>
 							<Route path="/knowledge-base" element={<KnowledgeBase />} />
+							<Route path="/organization" element={<Organization />} />
 							<Route path="*" element={<Navigate to="/" replace />} />
 						</Routes>
 					</Suspense>

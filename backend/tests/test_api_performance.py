@@ -30,7 +30,7 @@ from tests.fixtures.perf import percentile
 _ITERATIONS = 5  # number of warm iterations per endpoint
 
 
-def _clear_modules():
+def _clear_modules(monkeypatch: pytest.MonkeyPatch):
     """Clear app modules so imports are fresh for each test."""
     for mod in list(sys.modules.keys()):
         if any(mod.startswith(p) for p in (
@@ -49,7 +49,10 @@ def _clear_modules():
             "app.config",
             "app.api.app",
         )):
-            del sys.modules[mod]
+            # monkeypatch.delitem (not bare del) so the purge reverts at
+            # teardown — a permanent purge leaves cached modules referencing
+            # the old settings object (module-identity split).
+            monkeypatch.delitem(sys.modules, mod, raising=False)
 
 
 def _stub_deepagents(monkeypatch):
@@ -136,7 +139,7 @@ class TestChatStreamPerformance:
 
     def test_chat_stream_first_byte_latency(self, monkeypatch, tmp_path, patch_config):
         """POST /api/chat/stream — measure first-byte and full-stream duration."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
 
@@ -175,7 +178,7 @@ class TestChatStreamPerformance:
 
     def test_chat_stream_error_latency(self, monkeypatch, tmp_path, patch_config):
         """Chat stream with error — verify response is handled."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
 
@@ -204,7 +207,7 @@ class TestThreadCrudPerformance:
 
     def test_thread_list_latency(self, monkeypatch, tmp_path, patch_config):
         """GET /api/threads — measure list response time."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
         monkeypatch.setattr(
@@ -232,7 +235,7 @@ class TestThreadCrudPerformance:
 
     def test_thread_create_latency(self, monkeypatch, tmp_path, patch_config):
         """POST /api/threads — measure create response time."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
         monkeypatch.setattr(
@@ -266,7 +269,7 @@ class TestInterruptApprovalPerformance:
 
     def test_interrupt_approval_latency(self, monkeypatch, tmp_path, patch_config):
         """PATCH /api/interrupts/{id}/approve — measure approval response time."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
         monkeypatch.setattr(
@@ -332,7 +335,7 @@ class TestIdeasListPerformance:
 
     def test_ideas_list_latency(self, monkeypatch, tmp_path, patch_config):
         """GET /api/ideas — measure list response time with pre-seeded data."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
         monkeypatch.setattr(
@@ -378,7 +381,7 @@ class TestIdeasListPerformance:
 
     def test_ideas_create_latency(self, monkeypatch, tmp_path, patch_config):
         """POST /api/ideas — measure create response time."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
         monkeypatch.setattr(
@@ -414,7 +417,7 @@ class TestTimingMiddleware:
 
     def test_health_endpoint_has_timing_header(self, monkeypatch, tmp_path, patch_config):
         """GET /api/health — verify X-Process-Time header is present."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
         monkeypatch.setattr(
@@ -432,7 +435,7 @@ class TestTimingMiddleware:
 
     def test_sse_endpoint_skips_timing(self, monkeypatch, tmp_path, patch_config):
         """Verify SSE endpoint is skipped by timing middleware."""
-        _clear_modules()
+        _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
         monkeypatch.setattr(

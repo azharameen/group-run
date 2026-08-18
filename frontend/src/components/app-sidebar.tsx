@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BarChart3, Database, Bot } from "lucide-react";
+import { BarChart3, Database, Bot, Building2 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -37,6 +37,11 @@ const data = {
 			title: "Knowledge Base",
 			url: "/knowledge-base",
 			icon: Database,
+		},
+		{
+			title: "Organization",
+			url: "/organization",
+			icon: Building2,
 		},
 	],
 };
