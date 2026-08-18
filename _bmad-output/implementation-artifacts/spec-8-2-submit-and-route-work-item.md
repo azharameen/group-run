@@ -99,6 +99,7 @@ Submit a Work Item (idea/task/feature) via chat (Chief of Staff calls a `submit_
 
 ## Spec Change Log
 - 2026-08-18: initial draft from step-02 investigation.
+- 2026-08-18: story closed — PR #59 merged to develop (merge commit `032ddc1`); all gates green at merge (303 backend / 190 frontend tests, ruff, tsc). E2E follow-up (Playwright spec for submit & route) tracked as issue #60; org dashboard e2e as #54; shared prerequisite: extend `POST /api/testing/reset` to clear organizations/work_items storage.
 - Implementation deviation: the mandated `general-purpose` implementation subagent failed twice on this machine ("Unable to access the repository tooling in this session" — systematic environment failure), so the parent session implemented the spec directly instead.
 - Out-of-scope fix (required for a fully green `python -m pytest backend/tests`): pre-existing test-isolation flake fixed in `backend/tests/test_chat_endpoint.py`, `backend/tests/test_api_performance.py`, and `backend/tests/test_runtime.py` — bare `del sys.modules[mod]` purges replaced with `monkeypatch.delitem(sys.modules, mod, raising=False)` so `app.config` and cached `app.agent.runtime` references are restored after each test.
 
