@@ -19,6 +19,7 @@ from ..config import (
     settings,
 )
 from ..config_schemas import validate_mcp_config, validate_teams_config
+from ..work_items.tools import DOMAIN_TOOLS
 from .backends import build_agent_backend
 from .context import DeepAgentContext
 from .permissions import build_agent_permissions
@@ -400,7 +401,9 @@ def get_deep_agent_runtime(team_name: str = "general"):
     }
 
     mcp_tools = _load_mcp_tools()
-    all_tools = mcp_tools if mcp_tools else None
+    # Domain tools (Story 8.2: submit_work_item) are always present,
+    # alongside any configured MCP tools.
+    all_tools = (mcp_tools or []) + list(DOMAIN_TOOLS)
 
     # ``resolve_chat_model`` substitutes the deterministic local mock when the
     # configured model is the ``openai:test-model`` sentinel (NFR-A10) so CI /

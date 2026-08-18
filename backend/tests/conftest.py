@@ -167,6 +167,31 @@ def org_db():
     org_repo._reset_organization_db()
 
 
+@pytest.fixture
+def work_item_db():
+    """In-memory work items SQLite DB (Story 8.2).
+
+    Mirrors :func:`org_db`: the work_items repository keeps a
+    module-singleton connection that would otherwise persist across tests
+    and write real files into the storage dir, so every test gets a clean
+    in-memory DB and the singleton is cleared on teardown.
+
+    Usage
+    -----
+    def test_something(org_db, work_item_db):
+        from app.work_items import service  # operates on the in-memory DB
+    """
+    from app.work_items import repository as work_items_repository
+
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    work_items_repository._reset_work_item_db(conn)
+
+    yield conn
+
+    conn.close()
+    work_items_repository._reset_work_item_db()
+
+
 # ---------------------------------------------------------------------------
 # Agent / supervisor mocks  (AC-1, AC-2)
 # ---------------------------------------------------------------------------
