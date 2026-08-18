@@ -51,7 +51,7 @@ development_status:
   # EP-8: Orchestration Core and Workflow Trust
   epic-8: in-progress
   8-1-create-and-initialize-an-organization-structure: done
-  8-2-submit-and-route-a-work-item-to-the-correct-department: backlog
+  8-2-submit-and-route-a-work-item-to-the-correct-department: done
   8-3-manage-lifecycle-status-and-handoffs-for-work-items: backlog
   8-4-enforce-approval-for-risky-filesystem-changes: backlog
   epic-8-retrospective: optional
