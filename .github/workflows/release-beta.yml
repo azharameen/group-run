@@ -50,6 +50,6 @@ jobs:
           git push origin "${{ steps.version.outputs.tag }}"
           args=(--prerelease --title "${{ steps.version.outputs.tag }}" --target develop --generate-notes)
           if [ -n "${{ steps.version.outputs.previous_tag }}" ]; then
-            args+=(--notes-start-from "${{ steps.version.outputs.previous_tag }}")
+            args+=(--notes-start-tag "${{ steps.version.outputs.previous_tag }}")
           fi
           gh release create "${{ steps.version.outputs.tag }}" "${args[@]}"
