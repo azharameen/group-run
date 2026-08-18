@@ -66,7 +66,9 @@ def generate_invention_ideas(
     output = runtime.invoke(input_payload)
     ideas = _parse_ideas_from_output(output, max_ideas)
     if not ideas:
-        raise RuntimeError(f"Agentic idea generation returned no parseable ideas (runtime output: {type(output).__name__})")
+        raise RuntimeError(
+            f"Agentic idea generation returned no parseable ideas (runtime output: {type(output).__name__})"
+        )
     return ideas
 
 
@@ -179,32 +181,35 @@ def record_approval_decision(
     return {"idea_id": idea_id, "reviewer": reviewer_role, "decision": decision}
 
 
-def save_research_note(
-    note_id: str,
+def save_workspace_item(
+    item_type: str,
+    item_id: str,
     title: str,
     content: str,
     source_refs: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Save a research note to the workspace for later reference by other agents.
+    """Save a generic item to the workspace for later reference by other agents.
 
     Args:
-        note_id: Unique identifier for the note (e.g., 'signal-cluster-1').
-        title: Short title describing the note.
-        content: Full research note content.
+        item_type: Category folder for the item (e.g., 'research-notes').
+        item_id: Unique identifier for the item (e.g., 'signal-cluster-1').
+        title: Short title describing the item.
+        content: Full item content.
         source_refs: Optional list of source document references.
     """
-    notes_dir = Path(WORKSPACE_DIR) / "research-notes"
-    notes_dir.mkdir(parents=True, exist_ok=True)
-    note = {
-        "note_id": note_id,
+    item_dir = Path(WORKSPACE_DIR) / item_type
+    item_dir.mkdir(parents=True, exist_ok=True)
+    item = {
+        "item_type": item_type,
+        "item_id": item_id,
         "title": title,
         "content": content,
         "source_refs": source_refs or [],
         "created_at": datetime.now(UTC).isoformat(),
-        "provenance": f"research:{note_id}",
+        "provenance": f"{item_type}:{item_id}",
     }
-    note_path = notes_dir / f"{note_id}.json"
-    with open(note_path, "w", encoding="utf-8") as f:
-        json.dump(note, f, indent=2)
-    print(f"[Research] Saved note: {title} ({note_id})")
-    return note
+    item_path = item_dir / f"{item_id}.json"
+    with open(item_path, "w", encoding="utf-8") as f:
+        json.dump(item, f, indent=2)
+    print(f"[Workspace] Saved {item_type}: {title} ({item_id})")
+    return item
