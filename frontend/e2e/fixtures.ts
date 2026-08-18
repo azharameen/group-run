@@ -17,6 +17,8 @@ export interface ApiHelpers {
   baseUrl: string;
   /** GET a JSON resource from the backend API. */
   getJson: <T = unknown>(path: string) => Promise<T>;
+  /** POST a JSON resource to the backend API. */
+  postJson: <T = unknown>(path: string, body: unknown) => Promise<T>;
   /** Wait until the backend `/api/health` endpoint responds successfully. */
   waitForHealthy: (timeoutMs?: number) => Promise<void>;
   /** Reset backend application state to a clean, deterministic baseline. */
@@ -43,6 +45,22 @@ export const test = base.extend<Fixtures>({
       const contentType = response.headers.get('content-type');
       if (!contentType?.includes('application/json')) {
         throw new Error(`GET ${path} returned non-JSON content type: ${contentType}`);
+      }
+      return (await response.json()) as T;
+    };
+
+    const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        throw new Error(`POST ${path} failed with status ${response.status}: ${await response.text()}`);
+      }
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        throw new Error(`POST ${path} returned non-JSON content type: ${contentType}`);
       }
       return (await response.json()) as T;
     };
@@ -75,7 +93,7 @@ export const test = base.extend<Fixtures>({
       }
     };
 
-    await use({ baseUrl, getJson, waitForHealthy, resetState });
+    await use({ baseUrl, getJson, postJson, waitForHealthy, resetState });
   },
 
   autoResetState: [
