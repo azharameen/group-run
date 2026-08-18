@@ -39,19 +39,19 @@ fi
 
 commits=$(git log --no-merges --pretty='format:%s%n%b' "$range")
 
-if printf '%s\n' "$commits" | grep -qE '^(feat|fix|perf|refactor|build|ci|chore|test|docs)(\([^)]*\))?!:|^BREAKING CHANGE:'; then
-  level="major"
-elif printf '%s\n' "$commits" | grep -qE '^feat(\([^)]*\))?:'; then
-  level="minor"
-else
-  level="patch" # fix:/perf:, or docs/chore-only merges
-fi
-
 # Breakdown for the preview comment (human-readable evidence).
 feat_n=$(printf '%s\n' "$commits" | grep -cE '^feat(\([^)]*\))?:' || true)
 fix_n=$(printf '%s\n' "$commits" | grep -cE '^fix(\([^)]*\))?:' || true)
 perf_n=$(printf '%s\n' "$commits" | grep -cE '^perf(\([^)]*\))?:' || true)
 breaking_n=$(printf '%s\n' "$commits" | grep -cE '^(feat|fix|perf|refactor|build|ci|chore|test|docs)(\([^)]*\))?!:|^BREAKING CHANGE:' || true)
+
+if [ "$breaking_n" -gt 0 ]; then
+  level="major"
+elif [ "$feat_n" -gt 0 ]; then
+  level="minor"
+else
+  level="patch" # fix:/perf:, or docs/chore-only merges
+fi
 level_raw=$level
 
 # Pre-1.0 breaking demotion, identical to bump-minor-pre-major.
