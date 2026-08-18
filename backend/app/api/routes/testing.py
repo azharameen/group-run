@@ -68,4 +68,14 @@ def reset_test_state() -> dict[str, str]:
     from app.infrastructure.events.stream_bus import _bus
     _bus._clients.clear()
 
+    # 6. Reset organization DB tables
+    try:
+        from app.organization import repository as org_repo
+        conn = org_repo._get_conn()
+        for table in ("agents", "teams", "departments", "organizations"):
+            conn.execute(f"DELETE FROM {table}")
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Error resetting organization tables: %s", exc)
+
     return {"status": "ok", "message": "Test state reset successfully"}
