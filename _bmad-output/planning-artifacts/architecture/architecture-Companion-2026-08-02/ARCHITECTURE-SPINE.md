@@ -226,6 +226,18 @@ Config reload merges DB overlay on top of the file base. File changes require ex
   - **Verification gate:** an agent issue closes only after its PR merges to develop and CI is green; board status follows AD-19.
 - **Enforcement:** recorded in `github-board.md` (Delegation protocol section) and in the deferred-work ledger (the incident is the permanent record).
 
+### AD-21 — E2E Test Strategy: Per-Story User-Flow Cases, Hardened Existing Suite [ADOPTED]
+
+- **Binds:** what e2e coverage every story must deliver, how the existing Playwright suite is kept reliable, and where the e2e strategy is documented
+- **Prevents:** feature areas shipping with zero e2e coverage (the Epic-8+ gap), silent test weakening (incident: PR #18 stop-generation test), flaky-test deletion, and database migration churn with no trigger
+- **Context:** the 5-spec/18-test suite was a one-shot Epic-7 deliverable (stories 7.3/7.5) that was never re-scoped. State isolation is solved: the backend under test is in-memory SQLite + mock LLM (NFR-A10/A13), per-test `POST /api/testing/reset` via the `autoResetState` fixture, `workers:1`. SQLite is not the constraint — the gap was scope, not stack. Last 5 develop runs green (~2 min).
+- **Rule:**
+  - **Stack:** keep Playwright + in-memory SQLite + mock LLM. Revisit only on a trigger (suite >10 min in CI, CI sharding need, or production moving to an RDBMS — see Epic 12).
+  - **Coverage model:** every story delivers an e2e test case for its primary user flow (extend the feature-area spec, or create one) as a **standing acceptance-criterion line** in the story template; any deferral must be recorded in the deferred-work ledger with reason. One spec per stable feature area; epic close requires the feature area's golden path covered.
+  - **Reliability:** hardening + proof (3× back-to-back green runs, spec audit for weakened assertions) ships as a single Jules task (#61, per AD-20 one at a time). Quarantine policy: flaky test = `test.skip` + reason comment + tracked issue — never deleted, never silently retried into green.
+  - **CI gating:** e2e gates `develop` (unchanged, post-#57 path filters); `main` stays ungated per AD-16, revisit at v1.0.0.
+- **Enforcement:** standing AC line in `_bmad/custom/bmad-create-story.toml` (persistent fact); the full contract lives in `docs/testing.md` (delivered with #61).
+
 ## Consistency Conventions
 
 | Concern | Convention |

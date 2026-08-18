@@ -43,6 +43,7 @@ New sprint iterations cannot be created via the available API → the owner crea
 | #47 story 11.2 | `g2u2Sg` | #48 story 11.3 | `g2u2UU` |
 | #49 story 12.1 | `g2u2Vc` | #50 story 12.2 | `g2u2W0` |
 | #51 story 12.3 | `g2u2YU` | #54 task org e2e (sub of #35) | `g21E5w` |
+| #61 Jules e2e hardening | `g2-fzI` | | |
 
 ## Status machine (AD-19)
 

@@ -23,7 +23,8 @@ If output starts with "blockers:N":
 
 persistent_facts = [
   "file:{project-root}/_bmad-output/implementation-artifacts/github-board.md",
-  "The story file is the source of truth for content; the GitHub issue body is a generated mirror that is re-synced whenever the story file is created or updated."
+  "The story file is the source of truth for content; the GitHub issue body is a generated mirror that is re-synced whenever the story file is created or updated.",
+  "E2E AC line (AD-21, 2026-08-18): every story file's Acceptance Criteria section must include a standing e2e criterion: 'e2e: test case(s) for the story's primary user flow (extend the feature-area spec under frontend/e2e/, or create one); any deferral must be recorded in _bmad-output/implementation-artifacts/deferred-work.md with reason.' Non-UI stories carry the line as 'e2e: N/A (no user-facing flow) - <reason>'."
 ]
 
 on_complete = "GH-SYNC (AD-18/AD-19): sync this story file to its GitHub issue - full body (story text + acceptance criteria + meta + source + hierarchy line), Status = Backlog, Issue Type = Story, Sprint, milestone and parent epic. If the linked issue does not exist yet, create it as a sub-issue of the epic first. Verify with a GraphQL re-query; log any item that could not be synced in the deferred-work ledger."
