@@ -245,6 +245,8 @@ def load_and_validate_teams(path: str) -> tuple[dict, list[str]]:
         data = yaml.safe_load(p.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
         return {}, [f"YAML parse error in {path}: {exc}"]
+    if not data or not isinstance(data, dict):
+        return {}, ["File is empty or not a valid YAML object."]
     errors = validate_teams_config(data, path)
     return data or {}, errors
 
