@@ -76,3 +76,4 @@ frontend/public/
 .bmad-loop/runs/
 .bmad-loop/cache/
 .bmad-loop/policy.toml
+test_venv/
