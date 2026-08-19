@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.api.app import create_app
@@ -80,3 +81,12 @@ class TestIdeasCrud:
     @pytest.mark.parametrize('idea_id', ['idea-1', 'IDEA_1', 'Idea-1', 'IDEA!1'])
     def test_idea_id_format_validation(self, client, patch_config, idea_id):
         assert client.get(f'/api/ideas/{idea_id}').status_code == 400
+
+    @patch('app.api.routes.ideas.delete_idea_folder')
+    def test_archive_cleanup_failure_is_non_fatal(self, mock_delete, client, patch_config):
+        mock_delete.side_effect = Exception("Simulated failure")
+        create_idea_folder('IDEA-0009')
+        save_idea_yaml('IDEA-0009', 'idea.yaml', {'idea_id': 'IDEA-0009', 'title': 'Archive Cleanup'})
+        res = client.post('/api/ideas/IDEA-0009/archive')
+        assert res.status_code == 200
+        assert res.json()['archived'] is True
