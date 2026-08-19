@@ -42,12 +42,12 @@ class StreamBus:
                 event: str = await queue.get()
                 yield event
         except asyncio.CancelledError:
-            pass
+            logger.debug("SSE client subscription cancelled")
         finally:
             try:
                 self._clients.remove(queue)
             except ValueError:
-                pass
+                logger.debug("SSE client queue already removed")
             logger.debug("SSE client disconnected (total: %d)", len(self._clients))
 
     def publish(self, event_type: str, payload: dict) -> None:
