@@ -1,3 +1,4 @@
+import yaml
 import json
 
 from app.config_schemas import load_and_validate_mcp, load_and_validate_teams
@@ -31,6 +32,42 @@ def test_load_and_validate_teams_empty_file(tmp_path):
     assert data == {}
     assert len(errors) == 1
     assert "File is empty or not a valid YAML object." in errors[0]
+
+
+import yaml
+
+
+def test_load_and_validate_teams_invalid_schema(tmp_path):
+    path = tmp_path / "invalid_schema.yaml"
+    invalid_data = {"schema_version": "1.0"}
+    path.write_text(yaml.dump(invalid_data), encoding="utf-8")
+
+    data, errors = load_and_validate_teams(str(path))
+
+    assert data == invalid_data
+    assert len(errors) > 0
+    assert any("teams" in err for err in errors)
+
+
+def test_load_and_validate_teams_valid(tmp_path):
+    path = tmp_path / "valid.yaml"
+    valid_data = {
+        "schema_version": "1.0",
+        "teams": {
+            "team1": {
+                "name": "Team One",
+                "description": "A test team",
+                "agents": [{"name": "agent1", "role": "helper"}],
+                "routing_keys": ["test_key"],
+            }
+        },
+    }
+    path.write_text(yaml.dump(valid_data), encoding="utf-8")
+
+    data, errors = load_and_validate_teams(str(path))
+
+    assert data == valid_data
+    assert len(errors) == 0
 
 
 def test_load_and_validate_mcp_missing_file(tmp_path):
