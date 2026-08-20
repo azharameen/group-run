@@ -12,8 +12,13 @@ from fastapi import APIRouter, HTTPException
 from ...organization import service as org_service
 from ...organization.service import OrganizationIntegrityError
 from ...work_items import service
-from ...work_items.models import SubmitWorkItemRequest
-from ...work_items.service import NoOrganizationError, UnknownOrganizationError
+from ...work_items.models import SubmitWorkItemRequest, TransitionWorkItemRequest
+from ...work_items.service import (
+    InvalidTransitionError,
+    NoOrganizationError,
+    UnknownOrganizationError,
+    UnknownWorkItemError,
+)
 
 router = APIRouter(prefix="/api", tags=["work-items"])
 
@@ -90,3 +95,32 @@ def get_work_item(work_item_id: str) -> dict:
     if item is None:
         raise HTTPException(status_code=404, detail=f"Work item {work_item_id} not found")
     return {"work_item": item.model_dump()}
+
+
+@router.post("/work-items/{work_item_id}/transitions", status_code=201)
+async def transition_work_item(work_item_id: str, request: TransitionWorkItemRequest) -> dict:
+    """Advance a work item to a later lifecycle phase."""
+    try:
+        item, event = service.transition_work_item(
+            work_item_id, request.status, request.reasoning, request.decided_by
+        )
+    except UnknownWorkItemError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        status_code = 400 if not isinstance(exc, InvalidTransitionError) else 409
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except (sqlite3.Error, OrganizationIntegrityError) as exc:
+        raise HTTPException(status_code=500, detail="Failed to transition work item") from exc
+    return {"work_item": item.model_dump(), "event": event.model_dump()}
+
+
+@router.get("/work-items/{work_item_id}/lifecycle")
+async def lifecycle_history(work_item_id: str) -> dict:
+    """Return the complete lifecycle history, including creation."""
+    try:
+        events = service.get_lifecycle_history(work_item_id)
+    except UnknownWorkItemError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except sqlite3.Error as exc:
+        raise HTTPException(status_code=500, detail="Failed to load lifecycle history") from exc
+    return {"events": [event.model_dump() for event in events], "count": len(events)}

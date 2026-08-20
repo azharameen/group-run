@@ -9,6 +9,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from . import lifecycle
+
+LIFECYCLE_PHASES = lifecycle.LIFECYCLE_PHASES
+PHASE_DEPARTMENT = lifecycle.PHASE_DEPARTMENT
+
 #: Routing confidence levels (Story 8.2: deterministic, two tiers).
 RoutingConfidence = Literal["high", "low"]
 
@@ -55,3 +60,28 @@ class SubmitWorkItemRequest(BaseModel):
     org_id: str | None = None
     department: str | None = None
     source: str | None = None
+
+
+class LifecycleEvent(BaseModel):
+    """A persisted lifecycle transition or synthesized creation event."""
+
+    event_id: str
+    work_item_id: str
+    event_type: Literal["created", "transition", "handoff"]
+    from_status: str
+    to_status: str
+    from_department: str
+    to_department: str
+    decided_by: str
+    decided_at: str
+    confidence: RoutingConfidence
+    reasoning: str
+    alternatives: list[str] = Field(default_factory=list)
+
+
+class TransitionWorkItemRequest(BaseModel):
+    """Request body for advancing a work item through its lifecycle."""
+
+    status: str
+    reasoning: str = ""
+    decided_by: str = OWNER_AGENT_ID

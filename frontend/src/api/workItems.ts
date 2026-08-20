@@ -1,6 +1,18 @@
 import { request, RequestOptions } from './request';
 
 export type RoutingConfidence = 'high' | 'low';
+export const LIFECYCLE_PHASES = [
+  'new', 'ideation', 'product_definition', 'development', 'testing', 'deployment', 'monitoring',
+] as const;
+export type LifecyclePhase = (typeof LIFECYCLE_PHASES)[number];
+export interface LifecycleEvent {
+  event_id: string; work_item_id: string;
+  event_type: 'created' | 'transition' | 'handoff';
+  from_status: string; to_status: string;
+  from_department: string; to_department: string;
+  decided_by: string; decided_at: string;
+  confidence: RoutingConfidence; reasoning: string; alternatives: string[];
+}
 
 export interface RoutingDecision {
   department_id: string;
@@ -57,4 +69,20 @@ export async function fetchWorkItem(workItemId: string, options?: RequestOptions
     options,
   );
   return data.work_item;
+}
+
+export async function transitionWorkItem(
+  workItemId: string,
+  payload: { status: string; reasoning?: string; decided_by?: string },
+): Promise<{ work_item: WorkItem; event: LifecycleEvent }> {
+  return request(`/work-items/${encodeURIComponent(workItemId)}/transitions`, {
+    method: 'POST', body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchLifecycleHistory(workItemId: string): Promise<LifecycleEvent[]> {
+  const data = await request<{ events: LifecycleEvent[]; count: number }>(
+    `/work-items/${encodeURIComponent(workItemId)}/lifecycle`,
+  );
+  return data.events ?? [];
 }

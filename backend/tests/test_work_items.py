@@ -50,7 +50,7 @@ class TestSubmitWorkItemService:
         assert item.status == STATUS_NEW
         assert item.owner_agent_id == OWNER_AGENT_ID
 
-    def test_create_requires_an_organization(self, work_item_db):
+    def test_create_requires_an_organization(self, org_db, work_item_db):
         with pytest.raises(NoOrganizationError):
             work_items_service.submit_work_item("Orphan idea")
 
@@ -136,22 +136,27 @@ class TestTestingResetRoute:
     """Prerequisite for fresh state isolation: POST /api/testing/reset clears work items and orgs."""
 
     def test_reset_route_clears_organizations_and_work_items(self, client, organization):
-        # Seed work item
-        work_items_service.submit_work_item(
+        # Seed work item plus a lifecycle event
+        item = work_items_service.submit_work_item(
             "Item to be reset", org_id=organization.org_id
         )
+        work_items_service.transition_work_item(item.work_item_id, "ideation")
 
-        # Verify items and org exist
+        # Verify items, org, and lifecycle events exist
         assert client.get("/api/organizations").json()["count"] > 0
         assert client.get("/api/work-items").json()["count"] > 0
+        from app.work_items import repository as work_items_repository
+
+        assert len(work_items_repository.list_lifecycle_events(item.work_item_id)) == 1
 
         # Call reset route
         reset_res = client.post("/api/testing/reset")
         assert reset_res.status_code == 200
 
-        # Assert work items and orgs are empty
+        # Assert work items, orgs, and lifecycle events are empty
         assert client.get("/api/organizations").json()["count"] == 0
         assert client.get("/api/work-items").json()["count"] == 0
+        assert len(work_items_repository.list_lifecycle_events(item.work_item_id)) == 0
 
 
 class TestWorkItemsApi:
@@ -230,7 +235,8 @@ class TestSubmitWorkItemTool:
     def test_tool_is_exposed_and_named(self):
         from app.work_items.tools import DOMAIN_TOOLS
 
-        assert [tool.name for tool in DOMAIN_TOOLS] == ["submit_work_item"]
+        assert "submit_work_item" in [tool.name for tool in DOMAIN_TOOLS]
+        assert "transition_work_item" in [tool.name for tool in DOMAIN_TOOLS]
 
     def test_tool_success_confirmation(self, organization, work_item_db):
         from app.work_items.tools import submit_work_item
@@ -256,6 +262,240 @@ class TestSubmitWorkItemTool:
         result = submit_work_item.invoke({"title": "   "})
         assert "Could not submit" in result
         assert "title" in result.lower()
+
+
+class TestLifecycleTransitions:
+    """Story 8.3 AC-1/AC-2/AC-5 — service-level transition semantics."""
+
+    def _item(self, organization, work_item_db, **kwargs):
+        return work_items_service.submit_work_item("Lifecycle item", org_id=organization.org_id, **kwargs)
+
+    def test_forward_same_department(self, organization, work_item_db):
+        item = self._item(organization, work_item_db)
+        updated, event = work_items_service.transition_work_item(item.work_item_id, "ideation")
+        assert updated.status == "ideation"
+        assert updated.department_id == "ideation"
+        assert event.event_type == "transition"
+        assert event.from_status == "new"
+        assert event.to_status == "ideation"
+        assert event.decided_by == OWNER_AGENT_ID
+        assert event.confidence == "high"
+        assert event.decided_at
+        assert event.reasoning
+        assert event.alternatives == [
+            "product_definition", "development", "testing", "deployment", "monitoring",
+        ]
+
+    def test_cross_department_handoff_forces_cos(self, organization, work_item_db):
+        item = self._item(organization, work_item_db)
+        work_items_service.transition_work_item(item.work_item_id, "product_definition")
+        updated, event = work_items_service.transition_work_item(
+            item.work_item_id, "development", decided_by="some_agent"
+        )
+        assert updated.status == "development"
+        assert updated.department_id == "technology"
+        assert event.event_type == "handoff"
+        assert event.from_department == "ideation"
+        assert event.to_department == "technology"
+        assert event.decided_by == OWNER_AGENT_ID
+        assert event.confidence == "high"
+        assert "ideation" in event.reasoning and "technology" in event.reasoning
+
+    def test_forward_skip_allowed(self, organization, work_item_db):
+        item = self._item(organization, work_item_db)
+        updated, event = work_items_service.transition_work_item(item.work_item_id, "development")
+        assert updated.status == "development"
+        assert updated.department_id == "technology"
+        assert event.event_type == "handoff"
+
+    def test_backward_transition_rejected(self, organization, work_item_db):
+        item = self._item(organization, work_item_db)
+        work_items_service.transition_work_item(item.work_item_id, "development")
+        with pytest.raises(work_items_service.InvalidTransitionError) as excinfo:
+            work_items_service.transition_work_item(item.work_item_id, "ideation")
+        assert "development" in str(excinfo.value)
+        assert "ideation" in str(excinfo.value)
+        # No event written for the rejected transition.
+        assert len(work_items_service.get_lifecycle_history(item.work_item_id)) == 2
+
+    def test_no_op_transition_rejected(self, organization, work_item_db):
+        item = self._item(organization, work_item_db)
+        with pytest.raises(work_items_service.InvalidTransitionError):
+            work_items_service.transition_work_item(item.work_item_id, "new")
+
+    def test_invalid_status_rejected(self, organization, work_item_db):
+        item = self._item(organization, work_item_db)
+        with pytest.raises(ValueError) as excinfo:
+            work_items_service.transition_work_item(item.work_item_id, "shipped")
+        assert "shipped" in str(excinfo.value)
+        assert "monitoring" in str(excinfo.value)
+
+    def test_unknown_item_rejected(self, work_item_db):
+        with pytest.raises(work_items_service.UnknownWorkItemError):
+            work_items_service.transition_work_item("nope", "ideation")
+
+    def test_non_cos_decider_low_confidence(self, organization, work_item_db):
+        item = self._item(organization, work_item_db)
+        _, event = work_items_service.transition_work_item(
+            item.work_item_id, "ideation", decided_by="some_agent"
+        )
+        assert event.decided_by == "some_agent"
+        assert event.confidence == "low"
+
+    def test_custom_reasoning_preserved(self, organization, work_item_db):
+        item = self._item(organization, work_item_db)
+        _, event = work_items_service.transition_work_item(
+            item.work_item_id, "ideation", reasoning="Phase finished."
+        )
+        assert event.reasoning == "Phase finished."
+
+
+class TestLifecycleHistory:
+    """Story 8.3 AC-3 — full history oldest first, starting with creation."""
+
+    def test_created_event_synthesized_from_routing(self, organization, work_item_db):
+        item = work_items_service.submit_work_item("History item", org_id=organization.org_id)
+        events = work_items_service.get_lifecycle_history(item.work_item_id)
+        assert len(events) == 1
+        created = events[0]
+        assert created.event_type == "created"
+        assert created.from_status == ""
+        assert created.to_status == "new"
+        assert created.to_department == "ideation"
+        assert created.decided_by == OWNER_AGENT_ID
+        assert created.decided_at == item.created_at
+        assert created.confidence == "low"
+
+    def test_history_ordering_and_provenance(self, organization, work_item_db):
+        item = work_items_service.submit_work_item("Ordered item", org_id=organization.org_id)
+        work_items_service.transition_work_item(item.work_item_id, "ideation")
+        work_items_service.transition_work_item(item.work_item_id, "development")
+        work_items_service.transition_work_item(item.work_item_id, "monitoring")
+        events = work_items_service.get_lifecycle_history(item.work_item_id)
+        assert [event.event_type for event in events] == [
+            "created", "transition", "handoff", "transition",
+        ]
+        assert [event.to_status for event in events] == [
+            "new", "ideation", "development", "monitoring",
+        ]
+        assert all(event.work_item_id == item.work_item_id for event in events)
+
+    def test_unknown_item_rejected(self, work_item_db):
+        with pytest.raises(work_items_service.UnknownWorkItemError):
+            work_items_service.get_lifecycle_history("nope")
+
+
+class TestLifecycleApi:
+    """Story 8.3 AC-1/AC-3/AC-5 — API error mapping and envelopes."""
+
+    def test_post_transition_201(self, client, organization):
+        created = client.post("/api/work-items", json={"title": "API item", "org_id": organization.org_id})
+        item_id = created.json()["work_item"]["work_item_id"]
+        response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "ideation"})
+        assert response.status_code == 201
+        body = response.json()
+        assert body["work_item"]["status"] == "ideation"
+        assert body["event"]["event_type"] == "transition"
+        assert body["event"]["to_status"] == "ideation"
+
+    def test_post_transition_handoff_updates_department(self, client, organization):
+        created = client.post("/api/work-items", json={"title": "Handoff item", "org_id": organization.org_id})
+        item_id = created.json()["work_item"]["work_item_id"]
+        response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "development"})
+        assert response.status_code == 201
+        body = response.json()
+        assert body["work_item"]["department_id"] == "technology"
+        assert body["event"]["event_type"] == "handoff"
+        assert body["event"]["decided_by"] == "chief_of_staff"
+
+    def test_post_transition_invalid_status_400(self, client, organization):
+        created = client.post("/api/work-items", json={"title": "Bad status", "org_id": organization.org_id})
+        item_id = created.json()["work_item"]["work_item_id"]
+        response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "shipped"})
+        assert response.status_code == 400
+        assert "shipped" in response.json()["detail"]
+
+    def test_post_transition_backward_409(self, client, organization):
+        created = client.post("/api/work-items", json={"title": "Backward", "org_id": organization.org_id})
+        item_id = created.json()["work_item"]["work_item_id"]
+        client.post(f"/api/work-items/{item_id}/transitions", json={"status": "development"})
+        response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "ideation"})
+        assert response.status_code == 409
+
+    def test_post_transition_no_op_409(self, client, organization):
+        created = client.post("/api/work-items", json={"title": "No-op", "org_id": organization.org_id})
+        item_id = created.json()["work_item"]["work_item_id"]
+        response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "new"})
+        assert response.status_code == 409
+
+    def test_post_transition_unknown_item_404(self, client, organization, org_db):
+        response = client.post("/api/work-items/nope/transitions", json={"status": "ideation"})
+        assert response.status_code == 404
+
+    def test_get_lifecycle_200(self, client, organization):
+        created = client.post("/api/work-items", json={"title": "Lifecycle", "org_id": organization.org_id})
+        item_id = created.json()["work_item"]["work_item_id"]
+        client.post(f"/api/work-items/{item_id}/transitions", json={"status": "development"})
+        response = client.get(f"/api/work-items/{item_id}/lifecycle")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["count"] == 2
+        assert [event["event_type"] for event in body["events"]] == ["created", "handoff"]
+
+    def test_get_lifecycle_unknown_item_404(self, client, organization, org_db):
+        response = client.get("/api/work-items/nope/lifecycle")
+        assert response.status_code == 404
+
+
+class TestTransitionWorkItemTool:
+    """Story 8.3 AC-1 (chat) — the tool confirms in chat and never raises."""
+
+    def test_tool_success_confirmation(self, organization, work_item_db):
+        from app.work_items.tools import transition_work_item
+
+        item = work_items_service.submit_work_item("Chat lifecycle", org_id=organization.org_id)
+        result = transition_work_item.invoke(
+            {"work_item_id": item.work_item_id, "status": "ideation"}
+        )
+        assert "Chat lifecycle" in result
+        assert "ideation" in result
+        assert "ideation" in result  # department
+
+    def test_tool_handoff_note(self, organization, work_item_db):
+        from app.work_items.tools import transition_work_item
+
+        item = work_items_service.submit_work_item("Chat handoff", org_id=organization.org_id)
+        result = transition_work_item.invoke(
+            {"work_item_id": item.work_item_id, "status": "development"}
+        )
+        assert "development" in result
+        assert "technology" in result
+        assert "Handoff" in result
+
+    def test_tool_unknown_item_returns_error_string(self, organization, work_item_db):
+        from app.work_items.tools import transition_work_item
+
+        result = transition_work_item.invoke({"work_item_id": "nope", "status": "ideation"})
+        assert "Could not transition" in result
+
+    def test_tool_invalid_status_returns_error_string(self, organization, work_item_db):
+        from app.work_items.tools import transition_work_item
+
+        item = work_items_service.submit_work_item("Chat invalid", org_id=organization.org_id)
+        result = transition_work_item.invoke(
+            {"work_item_id": item.work_item_id, "status": "shipped"}
+        )
+        assert "Could not transition" in result
+
+    def test_tool_backward_returns_error_string(self, organization, work_item_db):
+        from app.work_items.tools import transition_work_item
+
+        item = work_items_service.submit_work_item("Chat backward", org_id=organization.org_id)
+        work_items_service.transition_work_item(item.work_item_id, "development")
+        result = transition_work_item.invoke(
+            {"work_item_id": item.work_item_id, "status": "ideation"}
+        )
+        assert "Could not transition" in result
 
 
 class TestRuntimeToolWiring:
