@@ -453,3 +453,11 @@ Setup executed and logged as AD-17 in the architecture spine.
   - OPEN - #61 `fix(e2e): harden suite, reliability proof, and testing strategy doc - jules` filed 2026-08-18 (labels testing + jules, milestone v1.0.0): reliability proof (3x back-to-back green runs), spec audit of all 5 specs incl. the chat stop-generation assertion (weakened in PR #18, restored in 6397589), new `docs/testing.md` contract (isolation mechanism, how to write a spec, quarantine policy, CI gating, coverage model), test/docs-only diff. Per AD-20 this is the only open Jules task; #54 (org dashboard spec) delegates NEXT after #61 merges.
   - Story-template standing e2e AC line added via `_bmad/custom/bmad-create-story.toml` persistent_facts (bmad-customize mechanism, no direct skill edit per team convention).
   - OPEN (side decisions, owner): security-audit CI filter one-line tightening (`manifests || shared` -> `manifests`); close stale dependency PRs #6/#17 (vite 5->8 as a deliberate later upgrade).
+
+## Deferred from: create-story of spec-8-3-manage-lifecycle-status-and-handoffs.md (2026-08-20)
+
+- GH-SYNC (AD-18/AD-19) for story 8.3 (issue #37, board item `g2u2Ck`) could not be completed — both sync paths are blocked for the current `gh` identity:
+  - Issue body update: `gh issue edit 37` (GraphQL `updateIssue`) → "As an Enterprise Managed User, you cannot access this content"; REST `PATCH /repos/azharameen/group-run/issues/37` → 403.
+  - Board field edit: `gh project item-edit` → "authentication token is missing required scopes [project read:project]".
+  - Intended state: issue #37 body = story text + ACs + meta + source + hierarchy line (mirror of the story file, template used for #35–#51); board Status = Backlog (`f75ad846`), Issue Type = Story (`73799926`).
+  - Action when unblocked: run `gh auth refresh -s project,read:project` (or use an identity with issue+project write), then apply the body + board fields and re-query to verify. Story file is the source of truth; the GitHub body is a generated mirror.
