@@ -116,3 +116,68 @@ def test_record_approval_decision_new_idea(mock_load, mock_save):
     assert saved_data["reviews"]["counsel"]["trust"] == "trusted"
     assert "timestamp" in saved_data["reviews"]["counsel"]
     assert saved_data["reviews"]["counsel"]["provenance"] == "approval:test-idea-2:counsel"
+
+
+def test_query_prior_art_taxonomy_exact_match(monkeypatch, tmp_path):
+    """Test returning matched category code when found in taxonomy file."""
+    taxonomy_file = tmp_path / "prior_art_taxonomy.json"
+    taxonomy_file.write_text(
+        json.dumps(
+            {
+                "categories": [
+                    {"code": "CAT1", "name": "Category 1"},
+                    {"code": "TEST_CAT", "name": "Test Category", "keywords": ["test"]},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("app.agent.domain_tools.KNOWLEDGE_BASE_DIR", str(tmp_path))
+
+    from app.agent.domain_tools import query_prior_art_taxonomy
+
+    result = query_prior_art_taxonomy("TEST_CAT")
+
+    assert result == {"code": "TEST_CAT", "name": "Test Category", "keywords": ["test"]}
+
+
+def test_query_prior_art_taxonomy_not_found(monkeypatch, tmp_path):
+    """Test returning first category when requested code is not in file."""
+    taxonomy_file = tmp_path / "prior_art_taxonomy.json"
+    taxonomy_file.write_text(
+        json.dumps({"categories": [{"code": "DEFAULT_CAT", "name": "Default"}, {"code": "OTHER", "name": "Other"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("app.agent.domain_tools.KNOWLEDGE_BASE_DIR", str(tmp_path))
+
+    from app.agent.domain_tools import query_prior_art_taxonomy
+
+    result = query_prior_art_taxonomy("MISSING_CAT")
+
+    assert result == {"code": "DEFAULT_CAT", "name": "Default"}
+
+
+def test_query_prior_art_taxonomy_invalid_json(monkeypatch, tmp_path):
+    """Test falling back to default taxonomy on invalid JSON."""
+    taxonomy_file = tmp_path / "prior_art_taxonomy.json"
+    taxonomy_file.write_text("invalid json", encoding="utf-8")
+    monkeypatch.setattr("app.agent.domain_tools.KNOWLEDGE_BASE_DIR", str(tmp_path))
+
+    from app.agent.domain_tools import query_prior_art_taxonomy
+
+    result = query_prior_art_taxonomy("ANY_CAT")
+
+    assert result["code"] == "IND_AI"
+    assert "Industrial Artificial Intelligence" in result["name"]
+
+
+def test_query_prior_art_taxonomy_file_missing(monkeypatch, tmp_path):
+    """Test falling back to default taxonomy when file does not exist."""
+    monkeypatch.setattr("app.agent.domain_tools.KNOWLEDGE_BASE_DIR", str(tmp_path))
+
+    from app.agent.domain_tools import query_prior_art_taxonomy
+
+    result = query_prior_art_taxonomy("ANY_CAT")
+
+    assert result["code"] == "IND_AI"
+    assert "Industrial Artificial Intelligence" in result["name"]
