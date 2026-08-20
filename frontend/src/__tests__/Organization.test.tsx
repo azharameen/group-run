@@ -209,7 +209,7 @@ describe('Organization', () => {
 
   test('shows the error state when the organization fetch fails', async () => {
     vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([summary]);
-    vi.mocked(orgApi.fetchOrganization).mockRejectedValue(new Error('API 404: {"detail":"Organization gone not found"}'));
+    vi.mocked(orgApi.fetchOrganization).mockRejectedValue(new Error('API 404: Organization gone not found'));
 
     render(<Organization />);
 
