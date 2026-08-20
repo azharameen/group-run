@@ -1,4 +1,4 @@
-﻿
+
 ## Resolved from: Epic 4 Retro — Deferred Debt Triage (2026-08-09)
 
 - [RESOLVED] `asyncio.run()` in MCP tools hangs inside active event loop (`runtime.py:_create_mcp_tools()`) — replaced with graceful warning + empty return when inside active loop
@@ -461,3 +461,16 @@ Setup executed and logged as AD-17 in the architecture spine.
   - Board field edit: `gh project item-edit` → "authentication token is missing required scopes [project read:project]".
   - Intended state: issue #37 body = story text + ACs + meta + source + hierarchy line (mirror of the story file, template used for #35–#51); board Status = Backlog (`f75ad846`), Issue Type = Story (`73799926`).
   - Action when unblocked: run `gh auth refresh -s project,read:project` (or use an identity with issue+project write), then apply the body + board fields and re-query to verify. Story file is the source of truth; the GitHub body is a generated mirror.
+
+## Epic 7 missed-issues sweep (2026-08-20, party-mode round-table)
+
+- Suites verified green: backend 320 passed (1 warning), frontend 190 passed. The earlier WorkItemsTab.test.tsx failures were a stale-worktree artifact — the mock already carries LIFECYCLE_PHASES / fetchLifecycleHistory / transitionWorkItem; no fix needed.
+- The 4 "open" Epic 7 action items in sprint-status.yaml (SSE docs, perf test patterns, E2E data isolation, Docker multi-stage) were verified DONE in the repo (docs/sse-streaming.md, docs/performance-testing.md, playwright workers:1 + reset fixture, multi-stage Dockerfiles) and CLOSED on the board (#9-#12). sprint-status.yaml corrected: all 4 marked done.
+- W1/W2/W3 (8-1 code review deferrals) + the chat-test warning were issued as GitHub issues with full context, Jules-eligible (AD-20 title suffix):
+  - #86 fix(backend): move blocking SQLite I/O off the event loop in async routes - jules (W1; bug + tech debt + jules)
+  - #87 fix(frontend): clean raw JSON from user-facing API error messages - jules (W2; bug + tech debt + jules)
+  - #88 fix(frontend): add fetch timeout/abort to API clients - jules (W3; bug + tech debt + jules)
+  - #89 test(backend): fix unawaited coroutine warning in chat endpoint test - jules (testing + jules)
+- These ledger lines (W1/W2/W3) close when the corresponding PR lands with Closes #N.
+- OPEN - board sync for #86-#89 (Status Backlog, Issue Type Task/Bug, Sprint 2) blocked: gh identity lacks project scopes; use GitHub MCP or an identity with project write.
+- OPEN - repo issue types (Epic/Story/Task/Bug) still missing at repo level (REST /issue-types 404 = feature not enabled); labels remain the type marker per AD-17 workaround.

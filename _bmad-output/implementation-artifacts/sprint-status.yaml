@@ -213,11 +213,11 @@ action_items:
   - epic: 7
     action: "SSE and Streaming Edge Case Documentation - document race conditions, event ordering, connection lifecycle"
     owner: "Charlie"
-    status: open
+    status: done
   - epic: 7
     action: "Performance Test Design Patterns - document timing middleware, generator exhaustion, fixture isolation"
     owner: "Dana"
-    status: open
+    status: done
   - epic: 7
     action: "Cross-Epic Deferred Work Review - triage all Epic 7 deferred items"
     owner: "Amelia/Charlie"
@@ -225,11 +225,11 @@ action_items:
   - epic: 7
     action: "E2E Test Data Isolation - address parallel Playwright test run isolation"
     owner: "Elena"
-    status: open
+    status: done
   - epic: 7
     action: "Docker Multi-Stage Optimization - remove pytest from production image"
     owner: "Charlie"
-    status: open
+    status: done
   - epic: 7
     action: "Config Schema Validation - implement JSON Schema for teams.yaml and mcp.json"
     owner: "Charlie"
