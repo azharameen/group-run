@@ -1,18 +1,4 @@
-import { formatApiError } from './errors';
-
-const API_BASE = '/api';
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(formatApiError(res.status, text));
-  }
-  return res.json();
-}
+import { request, RequestOptions } from './request';
 
 export interface IdeaListItem {
   idea_id: string;
@@ -66,55 +52,58 @@ export interface ArtifactRevision {
   evidence_refs: string[];
 }
 
-export async function fetchIdeas(): Promise<IdeaListItem[]> {
-  const data = await request<{ ideas: IdeaListItem[] }>(`/ideas`);
+export async function fetchIdeas(options?: RequestOptions): Promise<IdeaListItem[]> {
+  const data = await request<{ ideas: IdeaListItem[] }>(`/ideas`, options);
   return data.ideas;
 }
 
-export async function fetchIdeaDetail(ideaId: string): Promise<IdeaDetail> {
-  return request<IdeaDetail>(`/ideas/${ideaId}`);
+export async function fetchIdeaDetail(ideaId: string, options?: RequestOptions): Promise<IdeaDetail> {
+  return request<IdeaDetail>(`/ideas/${ideaId}`, options);
 }
 
-export async function fetchIdeaFiles(ideaId: string): Promise<IdeaFile[]> {
-  const res = await request<{ idea_id: string; files: IdeaFile[] }>(`/ideas/${ideaId}/files`);
+export async function fetchIdeaFiles(ideaId: string, options?: RequestOptions): Promise<IdeaFile[]> {
+  const res = await request<{ idea_id: string; files: IdeaFile[] }>(`/ideas/${ideaId}/files`, options);
   return res.files || [];
 }
 
-export async function fetchIdeaRevisions(ideaId: string): Promise<ArtifactRevision[]> {
-  const res = await request<{ idea_id: string; revisions: ArtifactRevision[] }>(`/ideas/${ideaId}/revisions`);
+export async function fetchIdeaRevisions(ideaId: string, options?: RequestOptions): Promise<ArtifactRevision[]> {
+  const res = await request<{ idea_id: string; revisions: ArtifactRevision[] }>(`/ideas/${ideaId}/revisions`, options);
   return res.revisions || [];
 }
 
-export async function fetchArtifactDiff(ideaId: string, artifactName: string): Promise<Record<string, unknown>> {
-  return request<Record<string, unknown>>(`/ideas/${ideaId}/artifacts/${encodeURIComponent(artifactName)}/diff`);
+export async function fetchArtifactDiff(ideaId: string, artifactName: string, options?: RequestOptions): Promise<Record<string, unknown>> {
+  return request<Record<string, unknown>>(`/ideas/${ideaId}/artifacts/${encodeURIComponent(artifactName)}/diff`, options);
 }
 
-export async function createIdea(signalText: string, title?: string): Promise<{ idea_id: string; message: string }> {
+export async function createIdea(signalText: string, title?: string, options?: RequestOptions): Promise<{ idea_id: string; message: string }> {
   return request('/ideas', {
     method: 'POST',
     body: JSON.stringify({ signal_text: signalText, title: title || '' }),
+    ...options,
   });
 }
 
-export async function deleteIdea(ideaId: string): Promise<{ idea_id: string; deleted: boolean; interrupt_pending?: boolean; message?: string }> {
-  return request(`/ideas/${ideaId}`, { method: 'DELETE' });
+export async function deleteIdea(ideaId: string, options?: RequestOptions): Promise<{ idea_id: string; deleted: boolean; interrupt_pending?: boolean; message?: string }> {
+  return request(`/ideas/${ideaId}`, { method: 'DELETE', ...options });
 }
 
 export async function addIdeaComment(
   ideaId: string,
   text: string,
   author = 'User',
+  options?: RequestOptions,
 ): Promise<{ idea_id: string; comment: { author: string; text: string; timestamp: string } }> {
   return request(`/ideas/${ideaId}/comment`, {
     method: 'POST',
     body: JSON.stringify({ author, text }),
+    ...options,
   });
 }
 
-export async function updateIdea(ideaId: string, field: string, value: unknown): Promise<{ idea_id: string; field: string; updated: boolean }> {
+export async function updateIdea(ideaId: string, field: string, value: unknown, options?: RequestOptions): Promise<{ idea_id: string; field: string; updated: boolean }> {
   return request(`/ideas/${ideaId}/update`, {
     method: 'POST',
     body: JSON.stringify({ field, value }),
+    ...options,
   });
 }
-

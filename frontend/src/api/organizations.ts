@@ -1,18 +1,4 @@
-import { formatApiError } from './errors';
-
-const API_BASE = '/api';
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(formatApiError(res.status, text));
-  }
-  return res.json();
-}
+import { request, RequestOptions } from './request';
 
 export type OrgStatus = 'active' | 'idle' | 'overloaded';
 
@@ -65,24 +51,28 @@ export interface OrganizationSummary {
 export async function createOrganization(
   name: string,
   description: string,
+  options?: RequestOptions,
 ): Promise<Organization> {
   const data = await request<{ organization: Organization }>('/organizations', {
     method: 'POST',
     body: JSON.stringify({ name, description }),
+    ...options,
   });
   return data.organization;
 }
 
-export async function fetchOrganizations(): Promise<OrganizationSummary[]> {
+export async function fetchOrganizations(options?: RequestOptions): Promise<OrganizationSummary[]> {
   const data = await request<{ organizations: OrganizationSummary[]; count: number }>(
     '/organizations',
+    options,
   );
   return data.organizations;
 }
 
-export async function fetchOrganization(orgId: string): Promise<Organization> {
+export async function fetchOrganization(orgId: string, options?: RequestOptions): Promise<Organization> {
   const data = await request<{ organization: Organization }>(
     `/organizations/${encodeURIComponent(orgId)}`,
+    options,
   );
   return data.organization;
 }

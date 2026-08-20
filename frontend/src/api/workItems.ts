@@ -1,18 +1,4 @@
-import { formatApiError } from './errors';
-
-const API_BASE = '/api';
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(formatApiError(res.status, text));
-  }
-  return res.json();
-}
+import { request, RequestOptions } from './request';
 
 export type RoutingConfidence = 'high' | 'low';
 
@@ -47,25 +33,28 @@ export interface SubmitWorkItemPayload {
   source?: string;
 }
 
-export async function submitWorkItem(payload: SubmitWorkItemPayload): Promise<WorkItem> {
+export async function submitWorkItem(payload: SubmitWorkItemPayload, options?: RequestOptions): Promise<WorkItem> {
   const data = await request<{ work_item: WorkItem }>('/work-items', {
     method: 'POST',
     body: JSON.stringify(payload),
+    ...options,
   });
   return data.work_item;
 }
 
-export async function fetchWorkItems(orgId?: string): Promise<WorkItem[]> {
+export async function fetchWorkItems(orgId?: string, options?: RequestOptions): Promise<WorkItem[]> {
   const query = orgId ? `?org_id=${encodeURIComponent(orgId)}` : '';
   const data = await request<{ work_items: WorkItem[]; count: number }>(
     `/work-items${query}`,
+    options,
   );
   return data.work_items ?? [];
 }
 
-export async function fetchWorkItem(workItemId: string): Promise<WorkItem> {
+export async function fetchWorkItem(workItemId: string, options?: RequestOptions): Promise<WorkItem> {
   const data = await request<{ work_item: WorkItem }>(
     `/work-items/${encodeURIComponent(workItemId)}`,
+    options,
   );
   return data.work_item;
 }
