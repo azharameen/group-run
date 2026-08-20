@@ -6,7 +6,7 @@ and done-event generation in the finally block.
 
 import json
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -165,7 +165,12 @@ async def test_error_propagates_as_sse(monkeypatch: pytest.MonkeyPatch):
     _stub_deepagents(monkeypatch)
 
     mock_graph = MagicMock()
-    mock_graph.astream = AsyncMock(side_effect=Exception("agent failure"))
+
+    async def astream_gen(**kwargs):
+        raise Exception("agent failure")
+        yield  # make this an async generator
+
+    mock_graph.astream = MagicMock(return_value=astream_gen())
 
     with patch("app.api.routes.chat.get_supervisor_graph", return_value=mock_graph):
         from app.api.routes.chat import _chat_stream_generator
@@ -175,7 +180,6 @@ async def test_error_propagates_as_sse(monkeypatch: pytest.MonkeyPatch):
             events.append(evt)
 
         error_found = any("error" in e for e in events)
-        done_found = any("done" not in e or "error" in e for e in events)
         assert error_found
 
 
@@ -256,7 +260,7 @@ async def test_full_integration_post_to_sse(monkeypatch: pytest.MonkeyPatch):
     _clear_modules(monkeypatch)
     _stub_deepagents(monkeypatch)
 
-    from app.api.routes.chat import router, _chat_stream_generator
+    from app.api.routes.chat import _chat_stream_generator
 
     # Mock the supervisor graph
     mock_graph = MagicMock()
