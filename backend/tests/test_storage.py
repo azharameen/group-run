@@ -2,8 +2,8 @@
 
 import os
 
-import pytest
 
+from app.storage.registry import remove_from_registry
 from app.storage.yaml_io import (
     load_idea_registry,
     save_idea_registry,
@@ -37,6 +37,7 @@ class TestIdeaRegistry:
 
         # Write a minimal idea.yaml
         import yaml
+
         with open(os.path.join(folder, "idea.yaml"), "w") as f:
             yaml.dump({"title": "Recovered Idea", "current_state": "idea_discovery"}, f)
 
@@ -50,18 +51,42 @@ class TestIdeaRegistry:
 
     def test_recover_skips_registered(self, patch_config):
         """Already-registered ideas should not be recovered again."""
-        ws = patch_config
         registry = {"ideas": [{"idea_id": "IDEA-0001", "title": "Existing"}], "next_id": 2}
         save_idea_registry(registry)
 
         count = recover_from_filesystem()
         assert count == 0
 
+    def test_remove_from_registry_existing_idea(self, patch_config):
+        """Removing an existing idea should return True and update the registry."""
+        registry = {
+            "ideas": [{"idea_id": "IDEA-0001", "title": "First"}, {"idea_id": "IDEA-0002", "title": "Second"}],
+            "next_id": 3,
+        }
+        save_idea_registry(registry)
+
+        result = remove_from_registry("IDEA-0001")
+        assert result is True
+
+        loaded = load_idea_registry()
+        assert len(loaded["ideas"]) == 1
+        assert loaded["ideas"][0]["idea_id"] == "IDEA-0002"
+
+    def test_remove_from_registry_nonexistent_idea(self, patch_config):
+        """Removing a non-existent idea should return False and not change the registry."""
+        registry = {"ideas": [{"idea_id": "IDEA-0001", "title": "Existing"}], "next_id": 2}
+        save_idea_registry(registry)
+
+        result = remove_from_registry("IDEA-9999")
+        assert result is False
+
+        loaded = load_idea_registry()
+        assert loaded == registry
+
 
 class TestIdeaFolder:
     def test_create_and_load_idea_yaml(self, patch_config):
         """Creating an idea folder and writing YAML should persist correctly."""
-        ws = patch_config
         idea_id = "IDEA-0001"
         create_idea_folder(idea_id)
 
