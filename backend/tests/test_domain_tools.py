@@ -181,3 +181,28 @@ def test_query_prior_art_taxonomy_file_missing(monkeypatch, tmp_path):
 
     assert result["code"] == "IND_AI"
     assert "Industrial Artificial Intelligence" in result["name"]
+
+
+def test_query_prior_art_taxonomy_read_error(monkeypatch, tmp_path):
+    """Test falling back to default taxonomy on file read error."""
+    taxonomy_file = tmp_path / "prior_art_taxonomy.json"
+    taxonomy_file.touch()
+    monkeypatch.setattr("app.agent.domain_tools.KNOWLEDGE_BASE_DIR", str(tmp_path))
+
+    from pathlib import Path
+
+    original_read_text = Path.read_text
+
+    def mock_read_text(self, *args, **kwargs):
+        if self.name == "prior_art_taxonomy.json":
+            raise OSError("Permission denied")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr("pathlib.Path.read_text", mock_read_text)
+
+    from app.agent.domain_tools import query_prior_art_taxonomy
+
+    result = query_prior_art_taxonomy("ANY_CAT")
+
+    assert result["code"] == "IND_AI"
+    assert "Industrial Artificial Intelligence" in result["name"]
