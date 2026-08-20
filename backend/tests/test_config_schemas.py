@@ -34,9 +34,6 @@ def test_load_and_validate_teams_empty_file(tmp_path):
     assert "File is empty or not a valid YAML object." in errors[0]
 
 
-import yaml
-
-
 def test_load_and_validate_teams_invalid_schema(tmp_path):
     path = tmp_path / "invalid_schema.yaml"
     invalid_data = {"schema_version": "1.0"}
@@ -114,3 +111,46 @@ def test_load_and_validate_mcp_valid(tmp_path):
 
     assert data == valid_data
     assert len(errors) == 0
+
+
+def test_load_and_validate_mcp_empty_list(tmp_path):
+    path = tmp_path / "empty_list.json"
+    path.write_text("[]", encoding="utf-8")
+
+    data, errors = load_and_validate_mcp(str(path))
+
+    assert data == {}
+    assert len(errors) == 1
+    assert "File is empty or not a valid JSON object." in errors[0]
+
+
+def test_load_and_validate_mcp_empty_dict(tmp_path):
+    path = tmp_path / "empty_dict.json"
+    path.write_text("{}", encoding="utf-8")
+
+    data, errors = load_and_validate_mcp(str(path))
+
+    assert data == {}
+    assert len(errors) == 1
+    assert "File is empty or not a valid JSON object." in errors[0]
+
+
+def test_load_and_validate_mcp_not_dict(tmp_path):
+    path = tmp_path / "not_dict.json"
+    path.write_text('"string"', encoding="utf-8")
+
+    data, errors = load_and_validate_mcp(str(path))
+
+    assert data == {}
+    assert len(errors) == 1
+    assert "File is empty or not a valid JSON object." in errors[0]
+
+def test_load_and_validate_mcp_invalid_json_decode_error(tmp_path):
+    path = tmp_path / "invalid_syntax.json"
+    path.write_text('{ invalid', encoding="utf-8")
+
+    data, errors = load_and_validate_mcp(str(path))
+
+    assert data == {}
+    assert len(errors) == 1
+    assert "JSON parse error" in errors[0]
