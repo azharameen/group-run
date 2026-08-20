@@ -1,3 +1,5 @@
+import { formatApiError } from './errors';
+
 const API_BASE = '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -7,7 +9,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`API ${res.status}: ${text}`);
+    throw new Error(formatApiError(res.status, text));
   }
   return res.json();
 }
