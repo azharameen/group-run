@@ -22,7 +22,7 @@ _DESCRIPTION_MAX_LENGTH = 5000
 
 
 @router.post("/work-items", status_code=201)
-async def submit_work_item(request: SubmitWorkItemRequest) -> dict:
+def submit_work_item(request: SubmitWorkItemRequest) -> dict:
     """Submit a work item; the Chief of Staff receives and routes it.
 
     Returns the created work item including its routing decision
@@ -63,7 +63,7 @@ async def submit_work_item(request: SubmitWorkItemRequest) -> dict:
 
 
 @router.get("/work-items")
-async def list_work_items(org_id: str | None = None) -> dict:
+def list_work_items(org_id: str | None = None) -> dict:
     """List work items, newest first.
 
     ``org_id`` filters to one organization (404 when unknown); omitted
@@ -81,7 +81,7 @@ async def list_work_items(org_id: str | None = None) -> dict:
 
 
 @router.get("/work-items/{work_item_id}")
-async def get_work_item(work_item_id: str) -> dict:
+def get_work_item(work_item_id: str) -> dict:
     """Fetch a single work item with its routing decision. 404 if missing."""
     try:
         item = service.get_work_item(work_item_id)

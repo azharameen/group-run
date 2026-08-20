@@ -18,7 +18,7 @@ _NAME_MAX_LENGTH = 200
 
 
 @router.post("/organizations", status_code=201)
-async def create_organization(request: CreateOrganizationRequest) -> dict:
+def create_organization(request: CreateOrganizationRequest) -> dict:
     """Create an organization initialized with the pinned default structure.
 
     Returns the full organization tree. Rejects blank or over-long names
@@ -44,7 +44,7 @@ async def create_organization(request: CreateOrganizationRequest) -> dict:
 
 
 @router.get("/organizations")
-async def list_organizations() -> dict:
+def list_organizations() -> dict:
     """List all organizations, most recently updated first, with counts."""
     try:
         organizations = service.list_organizations()
@@ -59,7 +59,7 @@ async def list_organizations() -> dict:
 
 
 @router.get("/organizations/{org_id}")
-async def get_organization(org_id: str) -> dict:
+def get_organization(org_id: str) -> dict:
     """Fetch a single organization tree by id. Returns 404 if unknown."""
     try:
         organization = service.get_organization(org_id)
