@@ -268,5 +268,7 @@ def load_and_validate_mcp(path: str) -> tuple[dict, list[str]]:
         data = json.loads(p.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         return {}, [f"JSON parse error in {path}: {exc}"]
+    if not data or not isinstance(data, dict):
+        return {}, ["File is empty or not a valid JSON object."]
     errors = validate_mcp_config(data, path)
     return data or {}, errors
