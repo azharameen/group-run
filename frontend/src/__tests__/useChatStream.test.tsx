@@ -28,6 +28,13 @@ class MockEventSource {
   }
 }
 
+// Mock toast
+const toastMock = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({
+  toast: (...args: unknown[]) => toastMock(...args),
+  useToast: () => ({ toast: toastMock }),
+}));
+
 // Interrupt callback from connectSSE 3rd parameter - reset each test
 let interruptCallback: ((eventType: string, payload: SSEPayload) => void) | undefined;
 
@@ -52,6 +59,7 @@ const mockSSE = new MockEventSource();
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
+  toastMock.mockClear();
   // Clear mockSSE handlers between tests
   mockSSE.clearHandlers();
   interruptCallback = undefined;
@@ -836,5 +844,77 @@ describe('useChatStream', () => {
 
     // Should NOT contain stale thread 1 message
     expect(result.current.messages.some((m) => m.text === 'Stale msg from thread 1')).toBe(false);
+  });
+
+  test('handleApproveInterrupt surfaces error on approval failure', async () => {
+    vi.mocked(apiClient.approveInterrupt).mockRejectedValue(new Error('Network error 500'));
+
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+
+    // Create interrupt int-1
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool', message: 'needs approval', status: 'pending' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt?.id).toBe('int-1'));
+
+    // Attempt approval which fails
+    await act(async () => {
+      await result.current.handleApproveInterrupt('int-1', 'yes', 'go ahead');
+    });
+
+    // Check toast surfaced error
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Interrupt Approval Failed',
+        description: 'Network error 500',
+      })
+    );
+
+    // Check System error message was added to chat transcript
+    expect(
+      result.current.messages.some(
+        (m) => m.eventType === 'error' && m.text.includes('Failed to approve interrupt: Network error 500')
+      )
+    ).toBe(true);
+
+    // Pending interrupt remains intact so user can retry
+    expect(result.current.pendingInterrupt?.id).toBe('int-1');
+  });
+
+  test('handleRejectInterrupt surfaces error on rejection failure', async () => {
+    vi.mocked(apiClient.rejectInterrupt).mockRejectedValue(new Error('Server error 500'));
+
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+
+    // Create interrupt int-1
+    await act(async () => {
+      interruptCallback?.('interrupt.created', { interrupt: { id: 'int-1', tool_name: 'tool', message: 'needs approval', status: 'pending' } });
+    });
+    await waitFor(() => expect(result.current.pendingInterrupt?.id).toBe('int-1'));
+
+    // Attempt rejection which fails
+    await act(async () => {
+      await result.current.handleRejectInterrupt('int-1', 'no');
+    });
+
+    // Check toast surfaced error
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Interrupt Rejection Failed',
+        description: 'Server error 500',
+      })
+    );
+
+    // Check System error message was added to chat transcript
+    expect(
+      result.current.messages.some(
+        (m) => m.eventType === 'error' && m.text.includes('Failed to reject interrupt: Server error 500')
+      )
+    ).toBe(true);
+
+    // Pending interrupt remains intact so user can retry
+    expect(result.current.pendingInterrupt?.id).toBe('int-1');
   });
 });

@@ -12,6 +12,7 @@ import {
 import { type InterruptPayload } from "@/api/threads";
 import type { ChatMessage, TaskItem } from "@/types/chat";
 import { eventToMessage, groupMessages } from "@/lib/chat-utils";
+import { toast } from "@/hooks/use-toast";
 
 // Cap transcript size to prevent unbounded memory growth
 const MAX_MESSAGES = 500;
@@ -254,10 +255,27 @@ export function useChatStream({
 				await approveInterrupt(id, decision, reason);
 				setPendingInterrupt(null);
 				activeInterruptIdRef.current = null;
-			} catch {
-				// SSE will clear the interrupt when the resolution event arrives
-				setPendingInterrupt(null);
-				activeInterruptIdRef.current = null;
+			} catch (err: unknown) {
+				const errMsg = err instanceof Error ? err.message : "Failed to approve interrupt";
+				toast({
+					variant: "destructive",
+					title: "Interrupt Approval Failed",
+					description: errMsg,
+				});
+				setRawMessages((prev) => {
+					const msg: ChatMessage = {
+						id: `error_${Date.now()}`,
+						sender: "System",
+						text: `Failed to approve interrupt: ${errMsg}`,
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
+						eventType: "error",
+					};
+					const next = [...prev, msg];
+					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+				});
 			}
 		},
 		[],
@@ -269,9 +287,27 @@ export function useChatStream({
 				await rejectInterrupt(id, reason);
 				setPendingInterrupt(null);
 				activeInterruptIdRef.current = null;
-			} catch {
-				setPendingInterrupt(null);
-				activeInterruptIdRef.current = null;
+			} catch (err: unknown) {
+				const errMsg = err instanceof Error ? err.message : "Failed to reject interrupt";
+				toast({
+					variant: "destructive",
+					title: "Interrupt Rejection Failed",
+					description: errMsg,
+				});
+				setRawMessages((prev) => {
+					const msg: ChatMessage = {
+						id: `error_${Date.now()}`,
+						sender: "System",
+						text: `Failed to reject interrupt: ${errMsg}`,
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
+						eventType: "error",
+					};
+					const next = [...prev, msg];
+					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+				});
 			}
 		},
 		[],
