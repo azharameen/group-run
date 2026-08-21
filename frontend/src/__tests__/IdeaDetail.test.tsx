@@ -195,11 +195,20 @@ describe('IdeaDetail', () => {
     });
   });
 
-  test('shows error state on fetch failure', async () => {
+  test('shows error state on fetch failure of main detail request', async () => {
     vi.mocked(apiClient.fetchIdeaDetail).mockRejectedValue(new Error('Not found'));
     render(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByText(/(Not found|Error)/i)).toBeDefined();
+    });
+  });
+
+  test('renders remaining idea data when a non-critical request (e.g. fetchIdeaFiles) fails', async () => {
+    vi.mocked(apiClient.fetchIdeaFiles).mockRejectedValue(new Error('Failed to fetch files'));
+    render(<IdeaDetail />);
+    await waitFor(() => {
+      expect(screen.getByTestId('header-title')).toHaveTextContent('Test Idea');
+      expect(screen.getByTestId('idea-detail-description')).toHaveTextContent('Test problem');
     });
   });
 
