@@ -1,6 +1,8 @@
+import functools
 import logging
 import os
 
+import anyio.to_thread
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 
@@ -23,7 +25,7 @@ logger = logging.getLogger(__name__)
 async def list_documents():
     """List all documents in the knowledge base."""
     try:
-        docs = load_knowledge_base()
+        docs = await anyio.to_thread.run_sync(load_knowledge_base)
         return KnowledgeBaseResponse(
             documents=[KnowledgeDocument(**d) for d in docs],
             count=len(docs)
@@ -53,11 +55,14 @@ async def upload_document(
 
     try:
         content = await file.read()
-        result = save_knowledge_base_upload(
-            filename=file.filename,
-            content=content,
-            mime_type=file.content_type,
-            source=source
+        result = await anyio.to_thread.run_sync(
+            functools.partial(
+                save_knowledge_base_upload,
+                filename=file.filename,
+                content=content,
+                mime_type=file.content_type or "",
+                source=source,
+            )
         )
         return result
     except Exception as e:  # noqa: BLE001  # API boundary: any failure maps to a 500 response
@@ -72,7 +77,7 @@ async def upload_document(
 async def search_documents(q: str = Query(..., min_length=1)):
     """Simple lexical search across knowledge base documents."""
     try:
-        docs = load_knowledge_base()
+        docs = await anyio.to_thread.run_sync(load_knowledge_base)
         query = q.lower()
         
         filtered = []
@@ -138,7 +143,9 @@ async def get_document_file(path: str):
 async def delete_document(path: str):
     """Delete a knowledge base document."""
     try:
-        result = delete_knowledge_base_document(path)
+        result = await anyio.to_thread.run_sync(
+            delete_knowledge_base_document, path
+        )
         return result
     except ValueError as e:
         message = str(e)
@@ -159,7 +166,9 @@ async def delete_document(path: str):
 async def archive_document(path: str):
     """Archive a knowledge base document."""
     try:
-        result = archive_knowledge_base_document(path)
+        result = await anyio.to_thread.run_sync(
+            archive_knowledge_base_document, path
+        )
         return result
     except ValueError as e:
         message = str(e)
