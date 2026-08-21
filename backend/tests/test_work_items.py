@@ -408,6 +408,19 @@ class TestLifecycleApi:
         assert body["event"]["event_type"] == "handoff"
         assert body["event"]["decided_by"] == "chief_of_staff"
 
+    def test_transition_status_codes_for_invalid_transition_and_value_error(self, client, organization):
+        """Assert InvalidTransitionError returns HTTP 409 and generic ValueError returns HTTP 400."""
+        created = client.post("/api/work-items", json={"title": "Transition Test", "org_id": organization.org_id})
+        item_id = created.json()["work_item"]["work_item_id"]
+
+        # Generic ValueError (invalid status value) -> HTTP 400
+        bad_val_res = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "shipped"})
+        assert bad_val_res.status_code == 400
+
+        # InvalidTransitionError (no-op transition) -> HTTP 409
+        invalid_trans_res = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "new"})
+        assert invalid_trans_res.status_code == 409
+
     def test_post_transition_invalid_status_400(self, client, organization):
         created = client.post("/api/work-items", json={"title": "Bad status", "org_id": organization.org_id})
         item_id = created.json()["work_item"]["work_item_id"]
