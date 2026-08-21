@@ -3,8 +3,8 @@
 import os
 import shutil
 import tempfile
-from contextlib import contextmanager
 from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 
@@ -14,16 +14,7 @@ from .base import read_yaml, write_yaml
 
 
 def idea_folder_path(idea_id: str) -> str:
-    if ".." in idea_id or "/" in idea_id or "\\" in idea_id or "\x00" in idea_id:
-        raise ValueError(f"Invalid idea_id: {idea_id}")
-    ideas_root = os.path.abspath(os.path.join(WORKSPACE_DIR, "ideas"))
-    path = os.path.abspath(os.path.join(ideas_root, idea_id))
-    try:
-        if os.path.commonpath([ideas_root, path]) != ideas_root:
-            raise ValueError(f"Invalid idea_id: {idea_id}")
-    except ValueError:
-        raise ValueError(f"Invalid idea_id: {idea_id}") from None
-    return path
+    return os.path.join(WORKSPACE_DIR, "ideas", idea_id)
 
 
 @contextmanager
