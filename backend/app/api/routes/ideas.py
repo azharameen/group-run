@@ -4,6 +4,7 @@ import re
 import threading
 from datetime import UTC, datetime
 
+import anyio.to_thread
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -69,8 +70,7 @@ def _register_idea(idea_id: str, title: str, signal_text: str):
     })
     save_idea_registry(reg)
 
-@router.get("/ideas")
-async def list_ideas() -> dict:
+def _list_ideas_sync() -> dict:
     ideas_list = load_idea_registry().get("ideas", [])
     result = []
     for entry in ideas_list:
@@ -85,20 +85,15 @@ async def list_ideas() -> dict:
         })
     return {"ideas": result, "count": len(result)}
 
-@router.get("/ideas/{idea_id}")
-async def get_idea(idea_id: str) -> dict:
-    _validate_idea_id(idea_id)
+def _get_idea_sync(idea_id: str) -> dict:
     return {"idea": _idea_exists(idea_id), "comments": load_comments(idea_id)}
 
-@router.get("/ideas/{idea_id}/files")
-async def get_idea_files(idea_id: str) -> dict:
-    _validate_idea_id(idea_id)
+def _get_idea_files_sync(idea_id: str) -> dict:
     _idea_exists(idea_id)
     files = get_all_idea_files(idea_id)
     return {"idea_id": idea_id, "files": files, "count": len(files)}
 
-@router.post("/ideas")
-async def create_idea(payload: CreateIdeaRequest) -> dict:
+def _create_idea_sync(payload_title: str | None, payload_signal_text: str | None) -> dict:
     with _idea_lock:
         reg = load_idea_registry()
         next_id = reg.get("next_id", 1)
@@ -106,8 +101,8 @@ async def create_idea(payload: CreateIdeaRequest) -> dict:
         reg["next_id"] = next_id + 1
         create_idea_folder(idea_id)
         now = _now()
-        title = payload.title or "Untitled"
-        signal_text = payload.signal_text or "Autonomous discovery"
+        title = payload_title or "Untitled"
+        signal_text = payload_signal_text or "Autonomous discovery"
         idea_data = {
             "idea_id": idea_id,
             "title": title,
@@ -118,28 +113,22 @@ async def create_idea(payload: CreateIdeaRequest) -> dict:
         save_idea_yaml(idea_id, "idea.yaml", idea_data)
         reg.setdefault("ideas", []).append({
             "idea_id": idea_id,
-            "title": payload.title or "",
+            "title": payload_title or "",
             "signal_text": signal_text,
             "created_at": now,
         })
         save_idea_registry(reg)
         return {"idea_id": idea_id, "message": f"Idea {idea_id} created"}
 
-@router.post("/ideas/{idea_id}/update")
-async def update_idea(idea_id: str, payload: UpdateIdeaRequest) -> dict:
-    _validate_idea_id(idea_id)
-    if payload.field not in _UPDATE_FIELDS:
-        raise HTTPException(status_code=400, detail=f"Field '{payload.field}' not writable. Allowed: {_UPDATE_FIELDS}")
+def _update_idea_sync(idea_id: str, field: str, value: str) -> dict:
     with _idea_lock:
         idea_data = _idea_exists(idea_id)
-        idea_data[payload.field] = payload.value
+        idea_data[field] = value
         idea_data["updated_at"] = _now()
         save_idea_yaml(idea_id, "idea.yaml", idea_data)
-        return {"idea_id": idea_id, "field": payload.field, "updated": True}
+        return {"idea_id": idea_id, "field": field, "updated": True}
 
-@router.delete("/ideas/{idea_id}")
-async def delete_idea(idea_id: str) -> dict:
-    _validate_idea_id(idea_id)
+def _delete_idea_sync(idea_id: str) -> dict:
     with _idea_lock:
         _idea_exists(idea_id)
         # Remove from registry first to avoid zombie folders if deletion fails
@@ -150,9 +139,7 @@ async def delete_idea(idea_id: str) -> dict:
             logger.debug("Idea folder cleanup failed for %s", idea_id, exc_info=True)
         return {"idea_id": idea_id, "deleted": True, "message": f"Idea {idea_id} deleted"}
 
-@router.post("/ideas/{idea_id}/archive")
-async def archive_idea(idea_id: str) -> dict:
-    _validate_idea_id(idea_id)
+def _archive_idea_sync(idea_id: str) -> dict:
     with _idea_lock:
         _idea_exists(idea_id)
         archive_path = archive_idea_folder(idea_id)
@@ -166,10 +153,48 @@ async def archive_idea(idea_id: str) -> dict:
             logger.debug("Idea folder cleanup failed after archive for %s", idea_id, exc_info=True)
         return {"idea_id": idea_id, "archived": True, "archive_path": archive_path, "message": f"Idea {idea_id} archived"}
 
+def _add_comment_sync(idea_id: str, author: str, text: str) -> dict:
+    with _idea_lock:
+        _idea_exists(idea_id)
+        return {"idea_id": idea_id, "comment": save_comment(idea_id, author, text)}
+
+@router.get("/ideas")
+async def list_ideas() -> dict:
+    return await anyio.to_thread.run_sync(_list_ideas_sync)
+
+@router.get("/ideas/{idea_id}")
+async def get_idea(idea_id: str) -> dict:
+    _validate_idea_id(idea_id)
+    return await anyio.to_thread.run_sync(_get_idea_sync, idea_id)
+
+@router.get("/ideas/{idea_id}/files")
+async def get_idea_files(idea_id: str) -> dict:
+    _validate_idea_id(idea_id)
+    return await anyio.to_thread.run_sync(_get_idea_files_sync, idea_id)
+
+@router.post("/ideas")
+async def create_idea(payload: CreateIdeaRequest) -> dict:
+    return await anyio.to_thread.run_sync(_create_idea_sync, payload.title, payload.signal_text)
+
+@router.post("/ideas/{idea_id}/update")
+async def update_idea(idea_id: str, payload: UpdateIdeaRequest) -> dict:
+    _validate_idea_id(idea_id)
+    if payload.field not in _UPDATE_FIELDS:
+        raise HTTPException(status_code=400, detail=f"Field '{payload.field}' not writable. Allowed: {_UPDATE_FIELDS}")
+    return await anyio.to_thread.run_sync(_update_idea_sync, idea_id, payload.field, payload.value)
+
+@router.delete("/ideas/{idea_id}")
+async def delete_idea(idea_id: str) -> dict:
+    _validate_idea_id(idea_id)
+    return await anyio.to_thread.run_sync(_delete_idea_sync, idea_id)
+
+@router.post("/ideas/{idea_id}/archive")
+async def archive_idea(idea_id: str) -> dict:
+    _validate_idea_id(idea_id)
+    return await anyio.to_thread.run_sync(_archive_idea_sync, idea_id)
+
 @router.post("/ideas/{idea_id}/comment")
 async def add_comment(idea_id: str, payload: AddCommentRequest) -> dict:
     _validate_idea_id(idea_id)
     author = str(payload.author or "User").strip() or "User"
-    with _idea_lock:
-        _idea_exists(idea_id)
-        return {"idea_id": idea_id, "comment": save_comment(idea_id, author, payload.text)}
+    return await anyio.to_thread.run_sync(_add_comment_sync, idea_id, author, payload.text)
