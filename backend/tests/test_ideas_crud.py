@@ -157,3 +157,34 @@ class TestIdeasCrud:
         assert res.status_code == 200
         final_title = res.json()["idea"]["title"]
         assert final_title.startswith("Title ")
+
+    def test_non_blocking_event_loop(self, patch_config):
+        import asyncio
+        import time
+        from httpx import ASGITransport, AsyncClient
+
+        app = create_app()
+
+        async def run_test():
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                loop_ticks = 0
+
+                async def monitor_event_loop():
+                    nonlocal loop_ticks
+                    for _ in range(10):
+                        await asyncio.sleep(0.01)
+                        loop_ticks += 1
+
+                def slow_list():
+                    time.sleep(0.1)
+                    return {"ideas": [], "count": 0}
+
+                with patch("app.api.routes.ideas._list_ideas_sync", side_effect=slow_list):
+                    monitor_task = asyncio.create_task(monitor_event_loop())
+                    req_task = asyncio.create_task(ac.get("/api/ideas"))
+
+                    res, _ = await asyncio.gather(req_task, monitor_task)
+                    assert res.status_code == 200
+                    assert loop_ticks >= 5
+
+        asyncio.run(run_test())
