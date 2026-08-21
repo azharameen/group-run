@@ -132,7 +132,7 @@ class InterruptService:
         try:
             _bus.publish(event_type, payload)
         except Exception as exc:
-            logger.error("Failed to deliver %s event: %s", event_type, exc, exc_info=True)
+            logger.exception("Failed to deliver %s event: %s", event_type, exc)
             raise InterruptDeliveryError(f"Failed to deliver {event_type} event: {exc}") from exc
 
     def _row_dict(self, row: sqlite3.Row | None) -> dict[str, Any] | None:
