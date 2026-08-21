@@ -118,4 +118,35 @@ test.describe('Work Items Tab', () => {
     await expect(emptyState).toBeVisible({ timeout: 10_000 });
     await expect(emptyState).toContainText('No organization yet');
   });
+
+  test('shows lifecycle history after advancing through a department handoff', async ({
+    page,
+    api,
+  }) => {
+    const orgRes = await api.postJson<OrganizationResponse>('/api/organizations', {
+      name: 'Lifecycle E2E Org',
+      description: 'Lifecycle history',
+    });
+    const item = await api.postJson<{ work_item: { work_item_id: string } }>('/api/work-items', {
+      title: 'Lifecycle item',
+      org_id: orgRes.organization.org_id,
+    });
+    const id = item.work_item.work_item_id;
+    await api.postJson(`/api/work-items/${id}/transitions`, { status: 'ideation' });
+    await api.postJson(`/api/work-items/${id}/transitions`, { status: 'development' });
+
+    const commandCenter = new CommandCenterPage(page);
+    await commandCenter.goto();
+    await commandCenter.workItemsTabTrigger.click();
+    const row = page.getByTestId('work-item-row');
+    await expect(row).toContainText('development');
+    await row.getByTestId('work-item-history-button').click();
+    const dialog = page.getByTestId('work-item-history-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByTestId('lifecycle-event-row')).toHaveCount(3);
+    await expect(dialog).toContainText('created');
+    await expect(dialog).toContainText('handoff');
+    await expect(dialog).toContainText('chief_of_staff');
+    await expect(dialog).toContainText('ideation → technology');
+  });
 });

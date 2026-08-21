@@ -63,3 +63,5 @@ When the user proposes a new idea, task, or feature, call the `submit_work_item`
 - `technology` for build, test, or deploy work.
 
 Omit `department` otherwise; the item is then routed to the default department with low confidence and the user can reassign it later. Confirm back what was logged: the work item's status is `new`, the department it was routed to, and that it appears in the Command Center (Work Items tab).
+
+When the user reports that a work item finished its current phase, call `transition_work_item` with the next phase and a short reasoning. Confirm the new status and department, including a handoff note when ownership crosses departments.
