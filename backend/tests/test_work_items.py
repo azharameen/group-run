@@ -594,3 +594,72 @@ class TestRuntimeToolWiring:
             getattr(tool, "name", None) for tool in captured_kwargs.get("tools", [])
         ]
         assert "submit_work_item" in tool_names
+
+
+class TestConcurrentTransitions:
+    """AC: Concurrency tests firing simultaneous transitions."""
+
+    def test_simultaneous_identical_transitions(self, organization, work_item_db):
+        """Firing two simultaneous identical transitions on a work item guarantees exactly one succeeds."""
+        import concurrent.futures
+
+        item = work_items_service.submit_work_item(
+            "Concurrent transition item", org_id=organization.org_id
+        )
+
+        def _do_transition():
+            return work_items_service.transition_work_item(item.work_item_id, "ideation")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future1 = executor.submit(_do_transition)
+            future2 = executor.submit(_do_transition)
+
+            results = []
+            errors = []
+            for future in (future1, future2):
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    errors.append(exc)
+
+        assert len(results) == 1
+        assert len(errors) == 1
+        assert isinstance(errors[0], work_items_service.InvalidTransitionError)
+
+        # Verify lifecycle history is consistent and clean (created + 1 transition)
+        history = work_items_service.get_lifecycle_history(item.work_item_id)
+        assert len(history) == 2
+        assert history[1].to_status == "ideation"
+
+    def test_simultaneous_conflicting_transitions(self, organization, work_item_db):
+        """Firing two simultaneous transitions to different phases executes atomically without state corruption."""
+        import concurrent.futures
+
+        item = work_items_service.submit_work_item(
+            "Conflicting transitions item", org_id=organization.org_id
+        )
+
+        def _t_ideation():
+            return work_items_service.transition_work_item(item.work_item_id, "ideation")
+
+        def _t_development():
+            return work_items_service.transition_work_item(item.work_item_id, "development")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future1 = executor.submit(_t_ideation)
+            future2 = executor.submit(_t_development)
+
+            results = []
+            errors = []
+            for future in (future1, future2):
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    errors.append(exc)
+
+        # Either both succeed sequentially (new -> ideation -> development) or ideation is skipped/rejected
+        # Total lifecycle events recorded should match the number of successful transitions + created
+        history = work_items_service.get_lifecycle_history(item.work_item_id)
+        assert len(history) == len(results) + 1
+        updated = work_items_service.get_work_item(item.work_item_id)
+        assert updated.status == history[-1].to_status

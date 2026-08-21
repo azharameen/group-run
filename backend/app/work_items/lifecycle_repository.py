@@ -26,25 +26,59 @@ def list_lifecycle_events(work_item_id: str) -> list[sqlite3.Row]:
     ).fetchall()
 
 
-def update_work_item_status(work_item_id: str, status: str, department_id: str, updated_at: str) -> None:
+def update_work_item_status(
+    work_item_id: str,
+    status: str,
+    department_id: str,
+    updated_at: str,
+    expected_status: str | None = None,
+    commit: bool = True,
+) -> None:
     conn = repository._get_conn()
-    cursor = conn.execute(
-        "UPDATE work_items SET status = ?, department_id = ?, updated_at = ? WHERE work_item_id = ?",
-        (status, department_id, updated_at, work_item_id),
-    )
+    if expected_status is not None:
+        cursor = conn.execute(
+            "UPDATE work_items SET status = ?, department_id = ?, updated_at = ? "
+            "WHERE work_item_id = ? AND status = ?",
+            (status, department_id, updated_at, work_item_id, expected_status),
+        )
+    else:
+        cursor = conn.execute(
+            "UPDATE work_items SET status = ?, department_id = ?, updated_at = ? WHERE work_item_id = ?",
+            (status, department_id, updated_at, work_item_id),
+        )
     if cursor.rowcount != 1:
-        raise ValueError(f"Work item {work_item_id} not found")
-    conn.commit()
+        item_exists = conn.execute(
+            "SELECT status FROM work_items WHERE work_item_id = ?", (work_item_id,)
+        ).fetchone()
+        if item_exists is None:
+            raise ValueError(f"Work item {work_item_id} not found")
+        raise ValueError(
+            f"Work item {work_item_id} status changed concurrently (expected '{expected_status}', found '{item_exists['status']}')"
+        )
+    if commit:
+        conn.commit()
 
 
 def record_transition(
-    work_item_id: str, status: str, department_id: str, updated_at: str, event: dict[str, Any]
+    work_item_id: str,
+    status: str,
+    department_id: str,
+    updated_at: str,
+    event: dict[str, Any],
+    expected_status: str | None = None,
 ) -> None:
     conn = repository._get_conn()
     try:
-        update_work_item_status(work_item_id, status, department_id, updated_at)
+        update_work_item_status(
+            work_item_id,
+            status,
+            department_id,
+            updated_at,
+            expected_status=expected_status,
+            commit=False,
+        )
         insert_lifecycle_event(event)
         conn.commit()
-    except sqlite3.Error:
+    except (sqlite3.Error, ValueError):
         conn.rollback()
         raise
