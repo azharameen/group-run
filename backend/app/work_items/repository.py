@@ -1,10 +1,8 @@
 """SQLite repository for work items and routing decisions (Story 8.2).
-
 Dedicated ``storage/work_items.sqlite`` file, module-singleton
 connection mirroring :mod:`app.organization.repository` (AD-3: one
 storage file per entity — never shared with threads.sqlite).
 """
-
 import json
 import sqlite3
 import threading
@@ -16,8 +14,6 @@ from ..config import STORAGE_DIR
 _WORK_ITEM_DB_PATH: Path | None = None
 _WORK_ITEM_CONN: sqlite3.Connection | None = None
 _CONN_LOCK = threading.Lock()
-
-
 def _get_db_path() -> Path:
     """Return the work_items.sqlite path, creating the storage dir."""
     global _WORK_ITEM_DB_PATH
@@ -25,8 +21,6 @@ def _get_db_path() -> Path:
         _WORK_ITEM_DB_PATH = Path(STORAGE_DIR) / "work_items.sqlite"
         _WORK_ITEM_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     return _WORK_ITEM_DB_PATH
-
-
 def _init_schema(conn: sqlite3.Connection) -> None:
     """Create the work item tables if they do not exist yet."""
     conn.executescript(
@@ -41,6 +35,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             source TEXT NOT NULL DEFAULT 'api',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
+            ,department_id TEXT NOT NULL DEFAULT 'ideation'
         );
         CREATE TABLE IF NOT EXISTS routing_decisions (
             work_item_id TEXT PRIMARY KEY,
@@ -53,11 +48,32 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_work_items_org_created
             ON work_items (org_id, created_at DESC);
+        CREATE TABLE IF NOT EXISTS lifecycle_events (
+            event_id TEXT PRIMARY KEY,
+            work_item_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            from_status TEXT NOT NULL,
+            to_status TEXT NOT NULL,
+            from_department TEXT NOT NULL,
+            to_department TEXT NOT NULL,
+            decided_by TEXT NOT NULL,
+            decided_at TEXT NOT NULL,
+            confidence TEXT NOT NULL,
+            reasoning TEXT NOT NULL,
+            alternatives TEXT NOT NULL DEFAULT '[]'
+        );
+        CREATE INDEX IF NOT EXISTS idx_lifecycle_events_item_time
+            ON lifecycle_events (work_item_id, decided_at);
         """
     )
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(work_items)")}
+    if "department_id" not in columns:
+        conn.execute("ALTER TABLE work_items ADD COLUMN department_id TEXT NOT NULL DEFAULT 'ideation'")
+        conn.execute(
+            "UPDATE work_items SET department_id = (SELECT department_id FROM "
+            "routing_decisions WHERE routing_decisions.work_item_id = work_items.work_item_id)"
+        )
     conn.commit()
-
-
 def _get_conn() -> sqlite3.Connection:
     """Return the singleton connection, lazily opening it with WAL mode."""
     global _WORK_ITEM_CONN
@@ -69,8 +85,6 @@ def _get_conn() -> sqlite3.Connection:
             _WORK_ITEM_CONN.row_factory = sqlite3.Row
             _init_schema(_WORK_ITEM_CONN)
     return _WORK_ITEM_CONN
-
-
 def _routing_map(conn: sqlite3.Connection, work_item_ids: list[str]) -> dict[str, sqlite3.Row]:
     """Fetch routing decision rows for the given ids in one query."""
     if not work_item_ids:
@@ -81,11 +95,8 @@ def _routing_map(conn: sqlite3.Connection, work_item_ids: list[str]) -> dict[str
         work_item_ids,
     ).fetchall()
     return {row["work_item_id"]: row for row in rows}
-
-
 def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
     """Insert a work item and its routing decision in one transaction.
-
     Rolls back on any error so a failed submit never leaves a work
     item behind without its routing decision.
     """
@@ -93,8 +104,8 @@ def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
     try:
         conn.execute(
             "INSERT INTO work_items (work_item_id, org_id, title, description,"
-            " status, owner_agent_id, source, created_at, updated_at)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " status, owner_agent_id, source, created_at, updated_at, department_id)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 item["work_item_id"],
                 item["org_id"],
@@ -105,6 +116,7 @@ def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
                 item["source"],
                 item["created_at"],
                 item["updated_at"],
+                routing["department_id"],
             ),
         )
         conn.execute(
@@ -125,8 +137,6 @@ def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
     except sqlite3.Error:
         conn.rollback()
         raise
-
-
 def get_work_item_rows(work_item_id: str) -> dict[str, Any] | None:
     """Return the work item row and its routing decision row, or None."""
     conn = _get_conn()
@@ -139,11 +149,8 @@ def get_work_item_rows(work_item_id: str) -> dict[str, Any] | None:
         "SELECT * FROM routing_decisions WHERE work_item_id = ?", (work_item_id,)
     ).fetchone()
     return {"item": item, "routing": routing}
-
-
 def list_work_items_with_routing(org_id: str | None = None) -> list[dict[str, Any]]:
     """Return work items (newest first) paired with their routing rows.
-
     ``org_id=None`` lists across all organizations.
     """
     conn = _get_conn()
@@ -161,11 +168,16 @@ def list_work_items_with_routing(org_id: str | None = None) -> list[dict[str, An
     return [
         {"item": row, "routing": routing.get(row["work_item_id"])} for row in item_rows
     ]
+from .lifecycle_repository import (  # noqa: F401
+    insert_lifecycle_event,
+    list_lifecycle_events,
+    record_transition,
+    update_work_item_status,
+)
 
 
 def _reset_work_item_db(conn: sqlite3.Connection | None = None) -> None:
     """Reset the repository singletons (test hook).
-
     Closes the current connection (best effort) and replaces the globals
     in place — the module is never purged from ``sys.modules``, mirroring
     the organization repository reset rationale. When ``conn`` is

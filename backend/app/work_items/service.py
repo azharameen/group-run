@@ -1,13 +1,3 @@
-"""Service layer for work item submission and routing (Story 8.2).
-
-The Chief of Staff receives every submitted work item. Routing is
-deterministic and total (no LLM in the hot path): an explicit department
-hint that matches one of the org's departments wins with high confidence;
-anything else falls back to the first lifecycle-phase department
-(ideation, PRD FR-4) with low confidence. Every decision persists with
-provenance so the assignment is explainable (PRD FR-3, AC-3).
-"""
-
 import json
 import uuid
 from datetime import UTC, datetime
@@ -15,29 +5,23 @@ from datetime import UTC, datetime
 from ..organization import service as org_service
 from ..organization.models import Organization
 from . import repository
+from .lifecycle import LIFECYCLE_PHASES, PHASE_DEPARTMENT
+from .mapping import row_to_work_item
 from .models import (
     OWNER_AGENT_ID,
     STATUS_NEW,
+    LifecycleEvent,
     RoutingDecision,
     WorkItem,
 )
 
-#: Default routing target — the first lifecycle phase (PRD FR-4) —
-#: used whenever the hint is missing or does not match a department.
 DEFAULT_ROUTING_DEPARTMENT = "ideation"
-
-
-class UnknownOrganizationError(LookupError):
-    """Raised when an explicitly submitted org_id does not exist."""
-
-
-class NoOrganizationError(LookupError):
-    """Raised when a work item is submitted but no organization exists."""
-
-
+class UnknownOrganizationError(LookupError): pass
+class NoOrganizationError(LookupError): pass
+class UnknownWorkItemError(LookupError): pass
+class InvalidTransitionError(ValueError): pass
 def _resolve_organization(org_id: str | None) -> Organization:
     """Resolve the target organization for a new work item.
-
     An explicit id must exist; an omitted id resolves to the most
     recently updated organization (same rule as the frontend views).
     """
@@ -53,8 +37,6 @@ def _resolve_organization(org_id: str | None) -> Organization:
     if organization is None:
         raise NoOrganizationError("No organization exists. Create an organization first.")
     return organization
-
-
 def _route(department_hint: str | None, organization: Organization) -> RoutingDecision:
     """Compute the deterministic routing decision (total — never fails)."""
     department_ids = [dept.department_id for dept in organization.departments]
@@ -92,36 +74,6 @@ def _route(department_hint: str | None, organization: Organization) -> RoutingDe
         reasoning=reasoning,
         alternatives=[dept for dept in department_ids if dept != fallback],
     )
-
-
-def _row_to_work_item(rows: dict) -> WorkItem | None:
-    """Assemble a WorkItem from stored rows, or None if incomplete."""
-    item = rows["item"]
-    routing_row = rows["routing"]
-    if routing_row is None:
-        return None
-    return WorkItem(
-        work_item_id=item["work_item_id"],
-        org_id=item["org_id"],
-        title=item["title"],
-        description=item["description"],
-        status=item["status"],
-        owner_agent_id=item["owner_agent_id"],
-        source=item["source"],
-        department_id=routing_row["department_id"],
-        routing=RoutingDecision(
-            department_id=routing_row["department_id"],
-            decided_by=routing_row["decided_by"],
-            decided_at=routing_row["decided_at"],
-            confidence=routing_row["confidence"],
-            reasoning=routing_row["reasoning"],
-            alternatives=json.loads(routing_row["alternatives"]),
-        ),
-        created_at=item["created_at"],
-        updated_at=item["updated_at"],
-    )
-
-
 def submit_work_item(
     title: str,
     description: str = "",
@@ -130,7 +82,6 @@ def submit_work_item(
     source: str = "api",
 ) -> WorkItem:
     """Create a work item owned by the Chief of Staff and route it.
-
     The item is created with status ``new``; the routing decision is
     deterministic (see :func:`_route`) and persisted in the same
     transaction as the item itself.
@@ -157,19 +108,100 @@ def submit_work_item(
     if created is None:
         raise RuntimeError(f"Work item {item['work_item_id']} vanished after creation")
     return created
-
-
 def get_work_item(work_item_id: str) -> WorkItem | None:
     """Return one work item with its routing decision, or None."""
     rows = repository.get_work_item_rows(work_item_id)
-    return _row_to_work_item(rows) if rows else None
-
-
+    return row_to_work_item(rows) if rows else None
 def list_work_items(org_id: str | None = None) -> list[WorkItem]:
     """Return work items, newest first. ``org_id=None`` lists all orgs."""
     rows = repository.list_work_items_with_routing(org_id)
     return [
         work_item
-        for work_item in (_row_to_work_item(row) for row in rows)
+        for work_item in (row_to_work_item(row) for row in rows)
         if work_item is not None
     ]
+def _parse_alternatives(raw: object) -> list[str]:
+    """Decode a persisted alternatives JSON column, tolerating corrupt data."""
+    try:
+        value = json.loads(raw if isinstance(raw, str) else "[]")
+        return value if isinstance(value, list) else []
+    except (TypeError, ValueError):
+        return []
+def transition_work_item(
+    work_item_id: str,
+    status: str,
+    reasoning: str = "",
+    decided_by: str = OWNER_AGENT_ID,
+) -> tuple[WorkItem, LifecycleEvent]:
+    """Advance an item and persist its provenance in one transaction."""
+    item = get_work_item(work_item_id)
+    if item is None:
+        raise UnknownWorkItemError(f"Work item {work_item_id} not found")
+    if status not in LIFECYCLE_PHASES:
+        raise ValueError(f"Invalid status '{status}'. Valid statuses: {', '.join(LIFECYCLE_PHASES)}")
+    current_index = LIFECYCLE_PHASES.index(item.status)
+    target_index = LIFECYCLE_PHASES.index(status)
+    if target_index <= current_index:
+        raise InvalidTransitionError(
+            f"Cannot transition work item from '{item.status}' to '{status}'; target must be later"
+        )
+    to_department = PHASE_DEPARTMENT[status]
+    handoff = item.department_id != to_department
+    actual_decider = OWNER_AGENT_ID if handoff else decided_by
+    confidence = "high" if decided_by == OWNER_AGENT_ID or handoff else "low"
+    if not reasoning.strip():
+        reasoning = f"Transitioned from {item.status} to {status}."
+        if handoff:
+            reasoning += f" Handoff from {item.department_id} to {to_department}."
+    event = LifecycleEvent(
+        event_id=str(uuid.uuid4()),
+        work_item_id=work_item_id,
+        event_type="handoff" if handoff else "transition",
+        from_status=item.status,
+        to_status=status,
+        from_department=item.department_id,
+        to_department=to_department,
+        decided_by=actual_decider,
+        decided_at=datetime.now(UTC).isoformat(),
+        confidence=confidence,
+        reasoning=reasoning.strip(),
+        alternatives=[phase for phase in LIFECYCLE_PHASES[target_index + 1 :]],
+    )
+    try:
+        repository.record_transition(
+            work_item_id, status, to_department, datetime.now(UTC).isoformat(), event.model_dump()
+        )
+    except ValueError as exc:
+        raise UnknownWorkItemError(f"Work item {work_item_id} not found") from exc
+    updated = get_work_item(work_item_id)
+    if updated is None:
+        raise RuntimeError(f"Work item {work_item_id} vanished after transition")
+    return updated, event
+def get_lifecycle_history(work_item_id: str) -> list[LifecycleEvent]:
+    """Return creation plus persisted lifecycle events oldest first."""
+    rows = repository.get_work_item_rows(work_item_id)
+    if rows is None or rows["routing"] is None:
+        raise UnknownWorkItemError(f"Work item {work_item_id} not found")
+    item = rows["item"]
+    stored_rows = repository.list_lifecycle_events(work_item_id)
+    first_department = (
+        stored_rows[0]["from_department"] if stored_rows else rows["routing"]["department_id"]
+    )
+    created = LifecycleEvent(
+        event_id=f"created-{work_item_id}",
+        work_item_id=work_item_id,
+        event_type="created",
+        from_status="",
+        to_status=STATUS_NEW,
+        from_department="",
+        to_department=first_department,
+        decided_by=rows["routing"]["decided_by"],
+        decided_at=item["created_at"],
+        confidence=rows["routing"]["confidence"],
+        reasoning=rows["routing"]["reasoning"],
+        alternatives=_parse_alternatives(rows["routing"]["alternatives"]),
+    )
+    events = [created]
+    for row in stored_rows:
+        events.append(LifecycleEvent(**{**dict(row), "alternatives": _parse_alternatives(row["alternatives"])}))
+    return events

@@ -11,7 +11,12 @@ from langchain_core.tools import tool
 
 from ..organization.service import OrganizationIntegrityError
 from . import service
-from .service import NoOrganizationError, UnknownOrganizationError
+from .service import (
+    InvalidTransitionError,
+    NoOrganizationError,
+    UnknownOrganizationError,
+    UnknownWorkItemError,
+)
 
 
 @tool
@@ -51,3 +56,31 @@ def submit_work_item(
 
 
 DOMAIN_TOOLS = [submit_work_item]
+
+
+@tool
+def transition_work_item(work_item_id: str, status: str, reasoning: str = "") -> str:
+    """Advance a work item to a later lifecycle phase."""
+    try:
+        item, event = service.transition_work_item(work_item_id, status, reasoning)
+    except (
+        UnknownWorkItemError,
+        ValueError,
+        InvalidTransitionError,
+        sqlite3.Error,
+        OrganizationIntegrityError,
+    ) as exc:
+        return f"Could not transition the work item: {exc}"
+    handoff = (
+        f" Handoff approved by the Chief of Staff from {event.from_department} "
+        f"to {event.to_department}."
+        if event.event_type == "handoff"
+        else ""
+    )
+    return (
+        f"Work item '{item.title}' moved to '{item.status}' "
+        f"(department: {item.department_id}).{handoff}"
+    )
+
+
+DOMAIN_TOOLS = [submit_work_item, transition_work_item]

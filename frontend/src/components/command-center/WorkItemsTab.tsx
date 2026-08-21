@@ -2,9 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ListChecks } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchOrganizations, fetchWorkItems } from "../../api/client";
-import type { WorkItem } from "../../api/workItems";
+import {
+	fetchLifecycleHistory, transitionWorkItem, LIFECYCLE_PHASES,
+} from "@/api/workItems";
+import type { LifecycleEvent, WorkItem } from "@/api/workItems";
+
+const lifecyclePhases = LIFECYCLE_PHASES ?? [
+	"new", "ideation", "product_definition", "development", "testing", "deployment", "monitoring",
+] as const;
 
 function formatDate(iso: string): string {
 	const date = new Date(iso);
@@ -12,7 +22,38 @@ function formatDate(iso: string): string {
 	return date.toLocaleString();
 }
 
-function WorkItemRow({ item }: { item: WorkItem }) {
+function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => void }) {
+	const [historyOpen, setHistoryOpen] = useState(false);
+	const [events, setEvents] = useState<LifecycleEvent[]>([]);
+	const [historyError, setHistoryError] = useState<string | null>(null);
+	const [advanceError, setAdvanceError] = useState<string | null>(null);
+	const [advancing, setAdvancing] = useState(false);
+	const statusIndex = lifecyclePhases.indexOf(item.status as never);
+	const next = statusIndex >= 0 ? lifecyclePhases[statusIndex + 1] : undefined;
+	const openHistory = async (open: boolean) => {
+		setHistoryOpen(open);
+		if (!open) return;
+		setHistoryError(null);
+		try {
+			setEvents(await fetchLifecycleHistory(item.work_item_id));
+		} catch (err) {
+			setEvents([]);
+			setHistoryError(err instanceof Error ? err.message : "Failed to load lifecycle history");
+		}
+	};
+	const advance = async () => {
+		if (!next || advancing) return;
+		setAdvancing(true);
+		setAdvanceError(null);
+		try {
+			await transitionWorkItem(item.work_item_id, { status: next });
+			onRefresh();
+		} catch (err) {
+			setAdvanceError(err instanceof Error ? err.message : "Advance failed");
+		} finally {
+			setAdvancing(false);
+		}
+	};
 	return (
 		<div
 			data-testid="work-item-row"
@@ -49,6 +90,38 @@ function WorkItemRow({ item }: { item: WorkItem }) {
 			<div className="text-[11px] text-muted-foreground">
 				by {item.owner_agent_id} · {formatDate(item.created_at)}
 			</div>
+			<div className="flex gap-2">
+				<Button size="sm" variant="outline" data-testid="work-item-history-button"
+					onClick={() => void openHistory(true)}>History</Button>
+				<Button size="sm" data-testid="work-item-advance-button" disabled={!next || advancing}
+					onClick={() => void advance()}>Advance</Button>
+			</div>
+			{advanceError && (
+				<p data-testid="work-item-advance-error" className="text-xs text-destructive">
+					{advanceError}
+				</p>
+			)}
+			<Dialog open={historyOpen} onOpenChange={(open) => void openHistory(open)}>
+				<DialogContent data-testid="work-item-history-dialog">
+					<DialogHeader><DialogTitle>Lifecycle history: {item.title}</DialogTitle></DialogHeader>
+					{historyError && (
+						<p data-testid="work-item-history-error" className="text-xs text-destructive">
+							{historyError}
+						</p>
+					)}
+					<div className="space-y-2 max-h-96 overflow-y-auto">
+						{events.map((event) => (
+							<div key={event.event_id} data-testid="lifecycle-event-row"
+								className="rounded border p-2 text-xs space-y-1">
+								<div><Badge>{event.event_type}</Badge> {event.from_status || "—"} → {event.to_status}</div>
+								<div>{event.from_department || "—"} → {event.to_department} · {event.decided_by}</div>
+								<div>{formatDate(event.decided_at)} · confidence: {event.confidence}</div>
+								<div>{event.reasoning}</div>
+							</div>
+						))}
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
@@ -139,7 +212,7 @@ export default function WorkItemsTab() {
 				{items.length} work item{items.length === 1 ? "" : "s"} · newest first
 			</div>
 			{items.map((item) => (
-				<WorkItemRow key={item.work_item_id} item={item} />
+				<WorkItemRow key={item.work_item_id} item={item} onRefresh={() => void loadData()} />
 			))}
 		</div>
 	);

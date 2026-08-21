@@ -474,3 +474,12 @@ Setup executed and logged as AD-17 in the architecture spine.
 - These ledger lines (W1/W2/W3) close when the corresponding PR lands with Closes #N.
 - OPEN - board sync for #86-#89 (Status Backlog, Issue Type Task/Bug, Sprint 2) blocked: gh identity lacks project scopes; use GitHub MCP or an identity with project write.
 - OPEN - repo issue types (Epic/Story/Task/Bug) still missing at repo level (REST /issue-types 404 = feature not enabled); labels remain the type marker per AD-17 workaround.
+
+## Story 8.3 review deferrals (2026-08-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-manage-lifecycle-status-and-handoffs.md`
+  summary: Work-item transitions use read-then-write without optimistic concurrency, so two concurrent transitions from the same status can both validate.
+  evidence: `transition_work_item` reads the current status, validates the transition, then writes; there is no version column or `WHERE status = ?` guard on the UPDATE, so a race between two API calls (or API + agent tool) can double-advance an item.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-manage-lifecycle-status-and-handoffs.md`
+  summary: WorkItemsTab has stale-response races in loadData and the history fetch (a slow earlier response can overwrite a newer one).
+  evidence: Pre-existing 8.2 pattern — `loadData` and `openHistory` issue fetches without request sequencing/abort, so out-of-order responses can render stale state. Not introduced by 8.3; the new history fetch follows the same pattern.

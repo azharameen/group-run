@@ -2,8 +2,11 @@
 title: "8.3 Manage Lifecycle Status and Handoffs for Work Items"
 type: spec
 created: 2026-08-20
-status: ready-for-dev
+status: done
 review_loop_iteration: 0
+baseline_revision: 22d5bf91a361524fcd970d054275188c6781fe25
+final_revision: e88c9ddbe42b82dd73e9be52827c84bf2827d4d8
+followup_review_recommended: false
 context: "Story 8.3, Epic 8 (Orchestration Core), Companion. Depends on 8.2 (done, PR #59): app/work_items package (models/repository/service/tools), work_items.sqlite (work_items + routing_decisions), /api/work-items, WorkItemsTab in Command Center, work_item_db fixture, POST /api/testing/reset already clears work_items tables."
 ---
 
@@ -77,17 +80,17 @@ Give every work item a tracked lifecycle: the v1 phase chain `new → ideation �
 
 ## Tasks & Acceptance
 
-1. [ ] **models.py** — `LIFECYCLE_PHASES = ("new", "ideation", "product_definition", "development", "testing", "deployment", "monitoring")`; `PHASE_DEPARTMENT: dict[str, str]` per the pinned map; `LifecycleEvent(event_id, work_item_id, event_type: Literal["created","transition","handoff"], from_status, to_status, from_department, to_department, decided_by, decided_at, confidence, reasoning, alternatives)`; `TransitionWorkItemRequest(status, reasoning="", decided_by="chief_of_staff")`.
-2. [ ] **repository.py** — `lifecycle_events` schema + index; `insert_lifecycle_event(event)`; `list_lifecycle_events(work_item_id)` ordered `decided_at ASC, rowid ASC`; `update_work_item_status(...)`; transactional `record_transition(item_update, event)` (single commit, rollback on error — mirrors `insert_work_item`).
-3. [ ] **service.py** — `transition_work_item`: load item (None → `UnknownWorkItemError`); target not in `LIFECYCLE_PHASES` → `ValueError`; target index ≤ current index → `InvalidTransitionError` (covers backward AND no-op); department = `PHASE_DEPARTMENT[target]`; handoff iff department changes (decided_by forced `chief_of_staff`); confidence `high` when the caller's decided_by is `chief_of_staff` or a handoff, else `low`; reasoning defaults to a deterministic sentence naming from→to (and departments on handoff); alternatives = the other later phases. `get_lifecycle_history`: `created` event synthesized from item (`from_status=""`, `to_status=item.status` at creation = `new`, department from routing row, decided_by/confidence/reasoning from the routing decision) + stored events.
-4. [ ] **routes** — implement both endpoints with the matrix error mapping; register the lifecycle router if split.
-5. [ ] **tools.py + runtime** — `transition_work_item(work_item_id, status, reasoning="")` tool; returns e.g. `"Work item '<title>' moved to '<status>' (department: <dept>)."` + handoff note; error strings for `UnknownWorkItemError`/`ValueError`/`InvalidTransitionError`/`sqlite3.Error`/`OrganizationIntegrityError`.
-6. [ ] **testing.py** — reset clears `lifecycle_events`.
-7. [ ] **test_work_items.py** — one test per matrix row at service level (`org_db` + `work_item_db`), API level via TestClient, tool level by direct invocation, wiring test mocks `create_deep_agent` (pattern: `test_skills_wiring.py`) and asserts both `submit_work_item` and `transition_work_item` are registered.
-8. [ ] **workItems.ts + client.ts** — types + `transitionWorkItem` + `fetchLifecycleHistory` following the existing module patterns (`?? []` guard on list keys).
-9. [ ] **WorkItemsTab.tsx + tests** — History dialog + Advance button per Code Map; keep existing `data-testid`s intact (e2e `work-items.spec.ts` depends on them).
-10. [ ] **e2e work-items.spec.ts** — extend with the lifecycle flow test (primary user flow per AD-21).
-11. [ ] **global-agent-instructions.md** — CoS lifecycle-advance guidance (prompt-only; `teams.yaml` untouched).
+1. [x] **models.py** — `LIFECYCLE_PHASES = ("new", "ideation", "product_definition", "development", "testing", "deployment", "monitoring")`; `PHASE_DEPARTMENT: dict[str, str]` per the pinned map; `LifecycleEvent(event_id, work_item_id, event_type: Literal["created","transition","handoff"], from_status, to_status, from_department, to_department, decided_by, decided_at, confidence, reasoning, alternatives)`; `TransitionWorkItemRequest(status, reasoning="", decided_by="chief_of_staff")`.
+2. [x] **repository.py** — `lifecycle_events` schema + index; `insert_lifecycle_event(event)`; `list_lifecycle_events(work_item_id)` ordered `decided_at ASC, rowid ASC`; `update_work_item_status(...)`; transactional `record_transition(item_update, event)` (single commit, rollback on error — mirrors `insert_work_item`).
+3. [x] **service.py** — `transition_work_item`: load item (None → `UnknownWorkItemError`); target not in `LIFECYCLE_PHASES` → `ValueError`; target index ≤ current index → `InvalidTransitionError` (covers backward AND no-op); department = `PHASE_DEPARTMENT[target]`; handoff iff department changes (decided_by forced `chief_of_staff`); confidence `high` when the caller's decided_by is `chief_of_staff` or a handoff, else `low`; reasoning defaults to a deterministic sentence naming from→to (and departments on handoff); alternatives = the other later phases. `get_lifecycle_history`: `created` event synthesized from item (`from_status=""`, `to_status=item.status` at creation = `new`, department from routing row, decided_by/confidence/reasoning from the routing decision) + stored events.
+4. [x] **routes** — implement both endpoints with the matrix error mapping; register the lifecycle router if split.
+5. [x] **tools.py + runtime** — `transition_work_item(work_item_id, status, reasoning="")` tool; returns e.g. `"Work item '<title>' moved to '<status>' (department: <dept>)."` + handoff note; error strings for `UnknownWorkItemError`/`ValueError`/`InvalidTransitionError`/`sqlite3.Error`/`OrganizationIntegrityError`.
+6. [x] **testing.py** — reset clears `lifecycle_events`.
+7. [x] **test_work_items.py** — one test per matrix row at service level (`org_db` + `work_item_db`), API level via TestClient, tool level by direct invocation, wiring test mocks `create_deep_agent` (pattern: `test_skills_wiring.py`) and asserts both `submit_work_item` and `transition_work_item` are registered.
+8. [x] **workItems.ts + client.ts** — types + `transitionWorkItem` + `fetchLifecycleHistory` following the existing module patterns (`?? []` guard on list keys).
+9. [x] **WorkItemsTab.tsx + tests** — History dialog + Advance button per Code Map; keep existing `data-testid`s intact (e2e `work-items.spec.ts` depends on them).
+10. [x] **e2e work-items.spec.ts** — extend with the lifecycle flow test (primary user flow per AD-21).
+11. [x] **global-agent-instructions.md** — CoS lifecycle-advance guidance (prompt-only; `teams.yaml` untouched).
 
 **Acceptance criteria** (story + PRD FR-4):
 - AC-1: Given a work item is active in the organization, when it transitions between phases via `POST /api/work-items/{id}/transitions`, then the lifecycle status updates with timestamps, owner, and provenance metadata (decided_by, decided_at, confidence, reasoning, alternatives) and the response returns the updated item plus the event.
@@ -140,3 +143,63 @@ Give every work item a tracked lifecycle: the v1 phase chain `new → ideation �
 ### Completion Notes List
 
 ### File List
+
+## Review Triage Log
+
+### 2026-08-20 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 6: (medium 5, low 1)
+- defer: 2
+- reject: 5
+- addressed_findings:
+  - `[medium]` `[patch]` `record_transition` did not verify the UPDATE affected a row — a missing work item could still insert an orphan lifecycle event. `update_work_item_status` now raises `ValueError` when `rowcount != 1`; `transition_work_item` maps it to `UnknownWorkItemError` (404).
+  - `[medium]` `[patch]` Malformed `alternatives` JSON in stored rows caused an unhandled 500 in history/list/mapping. Added tolerant `_parse_alternatives()` helper in `service.py` and `mapping.py` (falls back to `[]`).
+  - `[medium]` `[patch]` Frontend: unknown status made `indexOf` return -1, wrongly enabling Advance to "new". `WorkItemsTab` now guards with `statusIndex >= 0` before computing the next phase.
+  - `[medium]` `[patch]` Frontend: history fetch rejection was unhandled (unhandled promise rejection). `openHistory` now wraps the fetch in try/catch and surfaces a `work-item-history-error` message.
+  - `[medium]` `[patch]` Frontend: advance failure was silently swallowed. `advance` now catches errors, resets the `advancing` guard, and surfaces a `work-item-advance-error` message.
+  - `[low]` `[patch]` (found during post-patch verification) Pre-existing test `test_create_requires_an_organization` lacked the `org_db` fixture, so it passed only while `storage/organizations.sqlite` was absent; once the file existed it read real orgs and failed. Added the `org_db` fixture for deterministic isolation.
+
+## Auto Run Result
+
+**Status: done**
+
+### Summary
+Implemented the work-item lifecycle state machine (Story 8.3): the v1 phase chain `new → ideation → product_definition → development → testing → deployment → monitoring` with a pinned phase→department mapping, forward-only transitions (skips allowed), handoff events (department change) forced to `chief_of_staff` approval, full provenance on every event, `POST /api/work-items/{id}/transitions` + `GET /api/work-items/{id}/lifecycle` endpoints, a `transition_work_item` deep-agent tool, and Command Center UI (per-item history dialog + Advance button).
+
+### Files changed
+- `backend/app/work_items/lifecycle.py` (new) — phase chain, phase→department mapping, transition validation
+- `backend/app/work_items/lifecycle_repository.py` (new) — lifecycle_events persistence, transactional record_transition, rowcount-verified status update
+- `backend/app/work_items/mapping.py` (new) — row→WorkItem assembly with tolerant alternatives parsing
+- `backend/app/work_items/service.py` — transition_work_item, get_lifecycle_history, _parse_alternatives, error types
+- `backend/app/work_items/repository.py` — lifecycle_events schema, reset hook
+- `backend/app/work_items/tools.py` — transition_work_item tool for the deep agent
+- `backend/app/api/routes/work_items.py` — transitions + lifecycle endpoints
+- `backend/app/api/routes/testing.py` — reset clears lifecycle_events
+- `backend/tests/test_work_items.py` — lifecycle transition/history/API/tool tests + org_db fixture fix
+- `frontend/src/api/workItems.ts` — transition + lifecycle history API calls
+- `frontend/src/components/command-center/WorkItemsTab.tsx` — history dialog, advance button, error states, unknown-status guard
+- `frontend/src/components/command-center/WorkItemsTab.test.tsx` — history/advance UI tests
+- `frontend/e2e/work-items.spec.ts` — lifecycle handoff e2e test
+- `instructions/global-agent-instructions.md` — CoS lifecycle-advance guidance
+- `_bmad-output/implementation-artifacts/spec-8-3-manage-lifecycle-status-and-handoffs.md` — this spec
+
+### Review findings breakdown
+- Patches applied: 5 (all medium, localized) + 1 low test-isolation fix found during post-patch verification
+- Deferred: 2 (no optimistic concurrency on transitions; stale-response races in WorkItemsTab — pre-existing 8.2 pattern)
+- Rejected: 5 (client-supplied decided_by is spec-defined with no auth layer; migration NULL on orphaned items has no delete path; FK/cascade on lifecycle_events matches codebase; double-click race already guarded; timestamp ordering is deterministic via `decided_at ASC, rowid ASC`)
+
+### Follow-up review recommendation
+`false` — all review-driven changes were localized, low-blast-radius fixes (error handling, one guard, one helper) with no API contract, security, or data-model impact.
+
+### Verification
+- `ruff check backend/app` — clean; `python scripts/forbidden_imports.py` — PASS
+- `python -m pytest backend/tests -q` — 345 passed
+- `npx tsc --noEmit` — exit 0
+- `npx vitest run` — 193 passed (17 files; one worker-start timeout on the slow machine was a pool flake, the affected file re-ran green in isolation)
+- `npx playwright test work-items --project=dev` — 4/4 passed (incl. lifecycle handoff e2e)
+
+### Residual risks
+- No optimistic concurrency: two concurrent transitions from the same status can both validate (deferred).
+- Stale-response races in the Work Items tab (pre-existing 8.2 pattern, deferred).
+- `decided_by` is client-supplied per spec; there is no auth layer in the app yet, so it is not tamper-proof.
