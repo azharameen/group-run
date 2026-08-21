@@ -144,3 +144,40 @@ def test_upload_large_file(temp_kb):
 
     stored_path = Path(config.KNOWLEDGE_BASE_DIR) / data["path"]
     assert stored_path.stat().st_size == len(content)
+
+
+def test_delete_document(temp_kb):
+    from app.api.app import create_app
+
+    client = TestClient(create_app())
+    doc_path = "raw/test.md"
+    file_full_path = temp_kb / "raw" / "test.md"
+    assert file_full_path.exists()
+
+    response = client.delete(f"/api/knowledge-base/{doc_path}")
+    assert response.status_code == 200
+    assert not file_full_path.exists()
+
+    # Deleting missing document returns 404
+    response = client.delete(f"/api/knowledge-base/{doc_path}")
+    assert response.status_code == 404
+
+
+def test_archive_document(temp_kb):
+    from app.api.app import create_app
+
+    client = TestClient(create_app())
+    doc_path = "raw/test.md"
+    file_full_path = temp_kb / "raw" / "test.md"
+    assert file_full_path.exists()
+
+    response = client.patch(f"/api/knowledge-base/{doc_path}/archive")
+    assert response.status_code == 200
+    data = response.json()
+    assert "moved" in data
+    assert not file_full_path.exists()
+    assert (temp_kb / "_archive" / "raw" / "test.md").exists()
+
+    # Archiving missing document returns 404
+    response = client.patch(f"/api/knowledge-base/{doc_path}/archive")
+    assert response.status_code == 404
