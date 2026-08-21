@@ -107,7 +107,7 @@ async def transition_work_item(work_item_id: str, request: TransitionWorkItemReq
     except UnknownWorkItemError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
-        status_code = 400 if not isinstance(exc, InvalidTransitionError) else 409
+        status_code = 409 if isinstance(exc, InvalidTransitionError) else 400
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except (sqlite3.Error, OrganizationIntegrityError) as exc:
         raise HTTPException(status_code=500, detail="Failed to transition work item") from exc
