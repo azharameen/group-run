@@ -39,19 +39,38 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 	const loadData = async () => {
 		if (!ideaId) return;
 		try {
-			const [detailRes, filesRes, interruptsRes] = await Promise.all([
+			const [detailResult, filesResult, interruptsResult] = await Promise.allSettled([
 				fetchIdeaDetail(ideaId),
-				fetchIdeaFiles(ideaId).catch(() => []),
-				fetchPendingInterrupts().catch(() => []),
+				fetchIdeaFiles(ideaId),
+				fetchPendingInterrupts(),
 			]);
-			setDetail(detailRes);
-			setFiles(filesRes);
-			setInterrupts(interruptsRes);
-			if (detailRes?.idea?.title && onIdeaLoaded) onIdeaLoaded(detailRes.idea.title);
+
+			if (detailResult.status === "fulfilled") {
+				setDetail(detailResult.value);
+				setError("");
+				if (detailResult.value?.idea?.title && onIdeaLoaded) {
+					onIdeaLoaded(detailResult.value.idea.title);
+				}
+			} else {
+				setError(detailResult.reason instanceof Error ? detailResult.reason.message : "Failed to load idea.");
+			}
+
+			if (filesResult.status === "fulfilled") {
+				setFiles(filesResult.value);
+			} else {
+				setFiles([]);
+			}
+
+			if (interruptsResult.status === "fulfilled") {
+				setInterrupts(interruptsResult.value);
+			} else {
+				setInterrupts([]);
+			}
 		} catch (err: unknown) {
 			setError(err instanceof Error ? err.message : "Failed to load idea.");
+		} finally {
+			setLoading(false);
 		}
-		setLoading(false);
 	};
 
 	useEffect(() => {
