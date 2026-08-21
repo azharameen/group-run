@@ -349,6 +349,18 @@ class TestLifecycleTransitions:
         )
         assert event.reasoning == "Phase finished."
 
+    def test_update_work_item_status_persists(self, organization, work_item_db):
+        from app.work_items.lifecycle_repository import update_work_item_status
+
+        item = self._item(organization, work_item_db)
+        update_work_item_status(item.work_item_id, "development", "technology", "2025-01-01T00:00:00Z")
+
+        fetched = work_items_service.get_work_item(item.work_item_id)
+        assert fetched is not None
+        assert fetched.status == "development"
+        assert fetched.department_id == "technology"
+        assert fetched.updated_at == "2025-01-01T00:00:00Z"
+
 
 class TestLifecycleHistory:
     """Story 8.3 AC-3 — full history oldest first, starting with creation."""

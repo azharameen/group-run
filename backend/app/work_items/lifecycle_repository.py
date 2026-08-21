@@ -27,12 +27,14 @@ def list_lifecycle_events(work_item_id: str) -> list[sqlite3.Row]:
 
 
 def update_work_item_status(work_item_id: str, status: str, department_id: str, updated_at: str) -> None:
-    cursor = repository._get_conn().execute(
+    conn = repository._get_conn()
+    cursor = conn.execute(
         "UPDATE work_items SET status = ?, department_id = ?, updated_at = ? WHERE work_item_id = ?",
         (status, department_id, updated_at, work_item_id),
     )
     if cursor.rowcount != 1:
         raise ValueError(f"Work item {work_item_id} not found")
+    conn.commit()
 
 
 def record_transition(
