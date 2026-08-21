@@ -4,7 +4,9 @@ from pathlib import Path
 import pytest
 
 import app.services.interrupt_service as interrupt_module
-from app.services.interrupt_service import InterruptService
+from unittest.mock import patch
+
+from app.services.interrupt_service import InterruptDeliveryError, InterruptService
 
 
 @pytest.fixture()
@@ -61,3 +63,29 @@ def test_resolved_interrupt_cannot_transition(service):
     service.approve_interrupt(interrupt["id"], "approved")
     assert service.approve_interrupt(interrupt["id"], "approved") is None
     assert service.reject_interrupt(interrupt["id"], "later") is None
+
+
+def test_create_interrupt_delivery_failure(service, caplog):
+    with patch.object(interrupt_module._bus, "publish", side_effect=RuntimeError("Bus connection error")):
+        with pytest.raises(InterruptDeliveryError, match="Failed to deliver interrupt.created event"):
+            service.create_interrupt("thread-1", "write_file", "Need approval")
+
+    assert "Failed to deliver interrupt.created event" in caplog.text
+
+
+def test_approve_interrupt_delivery_failure(service, caplog):
+    interrupt = service.create_interrupt("thread-1", "edit_file", "Approve me")
+    with patch.object(interrupt_module._bus, "publish", side_effect=RuntimeError("Bus connection error")):
+        with pytest.raises(InterruptDeliveryError, match="Failed to deliver interrupt.approved event"):
+            service.approve_interrupt(interrupt["id"], "approved", "ok")
+
+    assert "Failed to deliver interrupt.approved event" in caplog.text
+
+
+def test_reject_interrupt_delivery_failure(service, caplog):
+    interrupt = service.create_interrupt("thread-1", "delete", "Reject me")
+    with patch.object(interrupt_module._bus, "publish", side_effect=RuntimeError("Bus connection error")):
+        with pytest.raises(InterruptDeliveryError, match="Failed to deliver interrupt.rejected event"):
+            service.reject_interrupt(interrupt["id"], "no")
+
+    assert "Failed to deliver interrupt.rejected event" in caplog.text
