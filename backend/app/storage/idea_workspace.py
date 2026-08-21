@@ -13,7 +13,11 @@ from .base import read_yaml, write_yaml
 
 
 def idea_folder_path(idea_id: str) -> str:
-    return os.path.join(WORKSPACE_DIR, "ideas", idea_id)
+    path = os.path.abspath(os.path.join(WORKSPACE_DIR, "ideas", idea_id))
+    ideas_root = os.path.abspath(os.path.join(WORKSPACE_DIR, "ideas"))
+    if not path.startswith(ideas_root):
+        raise ValueError(f"Invalid idea_id: {idea_id}")
+    return path
 
 
 @contextmanager
