@@ -108,3 +108,52 @@ class TestIdeasCrud:
         res = client.delete("/api/ideas/IDEA-0010")
         assert res.status_code == 200
         assert res.json()["deleted"] is True
+
+    def test_concurrent_creates(self, patch_config):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        app = create_app()
+
+        async def run_concurrent():
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                tasks = [
+                    ac.post("/api/ideas", json={"title": f"Idea {i}"})
+                    for i in range(10)
+                ]
+                results = await asyncio.gather(*tasks)
+                return results
+
+        responses = asyncio.run(run_concurrent())
+        assert all(r.status_code == 200 for r in responses)
+        idea_ids = [r.json()["idea_id"] for r in responses]
+        assert len(idea_ids) == 10
+        assert len(set(idea_ids)) == 10  # All unique
+
+    def test_concurrent_updates(self, patch_config):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        create_idea_folder("IDEA-0020")
+        save_idea_yaml("IDEA-0020", "idea.yaml", {"idea_id": "IDEA-0020", "title": "Initial Title"})
+        save_idea_registry({"ideas": [{"idea_id": "IDEA-0020", "title": "Initial Title"}], "next_id": 21})
+
+        app = create_app()
+
+        async def run_concurrent_updates():
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                tasks = [
+                    ac.post("/api/ideas/IDEA-0020/update", json={"field": "title", "value": f"Title {i}"})
+                    for i in range(10)
+                ]
+                results = await asyncio.gather(*tasks)
+                return results
+
+        responses = asyncio.run(run_concurrent_updates())
+        assert all(r.status_code == 200 for r in responses)
+
+        # Check that idea state exists and holds one of the final values cleanly
+        res = TestClient(app).get("/api/ideas/IDEA-0020")
+        assert res.status_code == 200
+        final_title = res.json()["idea"]["title"]
+        assert final_title.startswith("Title ")

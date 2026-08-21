@@ -1,7 +1,7 @@
 """Idea CRUD endpoints — pure filesystem-backed operations."""
-import asyncio
 import logging
 import re
+import threading
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["ideas"])
 _ID_RE = re.compile(r"^[A-Z0-9-]+$")
 _UPDATE_FIELDS = {"title", "signal_text"}
-_idea_id_lock = asyncio.Lock()
+_idea_lock = threading.Lock()
 
 def _validate_idea_id(idea_id: str) -> str:
     if not _ID_RE.match(idea_id):
@@ -53,14 +53,13 @@ class AddCommentRequest(BaseModel):
     text: str = Field(..., min_length=1)
     author: str | None = "User"
 
-async def _generate_idea_id() -> str:
-    """Generate a unique idea ID with async lock to prevent race conditions."""
-    async with _idea_id_lock:
-        reg = load_idea_registry()
-        idea_id = f"IDEA-{reg.get('next_id', 1):04d}"
-        reg["next_id"] = reg.get("next_id", 1) + 1
-        save_idea_registry(reg)
-        return idea_id
+def _generate_idea_id() -> str:
+    """Generate a unique idea ID."""
+    reg = load_idea_registry()
+    idea_id = f"IDEA-{reg.get('next_id', 1):04d}"
+    reg["next_id"] = reg.get("next_id", 1) + 1
+    save_idea_registry(reg)
+    return idea_id
 
 def _register_idea(idea_id: str, title: str, signal_text: str):
     reg = load_idea_registry()
@@ -100,59 +99,77 @@ async def get_idea_files(idea_id: str) -> dict:
 
 @router.post("/ideas")
 async def create_idea(payload: CreateIdeaRequest) -> dict:
-    idea_id = await _generate_idea_id()
-    create_idea_folder(idea_id)
-    now = _now()
-    idea_data = {
-        "idea_id": idea_id, "title": payload.title or "Untitled",
-        "signal_text": payload.signal_text or "Autonomous discovery",
-        "created_at": now, "updated_at": now,
-    }
-    save_idea_yaml(idea_id, "idea.yaml", idea_data)
-    _register_idea(idea_id, payload.title or "", payload.signal_text or "Autonomous discovery")
-    return {"idea_id": idea_id, "message": f"Idea {idea_id} created"}
+    with _idea_lock:
+        reg = load_idea_registry()
+        next_id = reg.get("next_id", 1)
+        idea_id = f"IDEA-{next_id:04d}"
+        reg["next_id"] = next_id + 1
+        create_idea_folder(idea_id)
+        now = _now()
+        title = payload.title or "Untitled"
+        signal_text = payload.signal_text or "Autonomous discovery"
+        idea_data = {
+            "idea_id": idea_id,
+            "title": title,
+            "signal_text": signal_text,
+            "created_at": now,
+            "updated_at": now,
+        }
+        save_idea_yaml(idea_id, "idea.yaml", idea_data)
+        reg.setdefault("ideas", []).append({
+            "idea_id": idea_id,
+            "title": payload.title or "",
+            "signal_text": signal_text,
+            "created_at": now,
+        })
+        save_idea_registry(reg)
+        return {"idea_id": idea_id, "message": f"Idea {idea_id} created"}
 
 @router.post("/ideas/{idea_id}/update")
 async def update_idea(idea_id: str, payload: UpdateIdeaRequest) -> dict:
     _validate_idea_id(idea_id)
-    idea_data = _idea_exists(idea_id)
     if payload.field not in _UPDATE_FIELDS:
         raise HTTPException(status_code=400, detail=f"Field '{payload.field}' not writable. Allowed: {_UPDATE_FIELDS}")
-    idea_data[payload.field] = payload.value
-    idea_data["updated_at"] = _now()
-    save_idea_yaml(idea_id, "idea.yaml", idea_data)
-    return {"idea_id": idea_id, "field": payload.field, "updated": True}
+    with _idea_lock:
+        idea_data = _idea_exists(idea_id)
+        idea_data[payload.field] = payload.value
+        idea_data["updated_at"] = _now()
+        save_idea_yaml(idea_id, "idea.yaml", idea_data)
+        return {"idea_id": idea_id, "field": payload.field, "updated": True}
 
 @router.delete("/ideas/{idea_id}")
 async def delete_idea(idea_id: str) -> dict:
     _validate_idea_id(idea_id)
-    _idea_exists(idea_id)
-    # Remove from registry first to avoid zombie folders if deletion fails
-    remove_from_registry(idea_id)
-    try:
-        delete_idea_folder(idea_id)
-    except Exception:  # registry already removed; folder cleanup failure is non-fatal
-        logger.debug("Idea folder cleanup failed for %s", idea_id, exc_info=True)
-    return {"idea_id": idea_id, "deleted": True, "message": f"Idea {idea_id} deleted"}
+    with _idea_lock:
+        _idea_exists(idea_id)
+        # Remove from registry first to avoid zombie folders if deletion fails
+        remove_from_registry(idea_id)
+        try:
+            delete_idea_folder(idea_id)
+        except Exception:  # registry already removed; folder cleanup failure is non-fatal
+            logger.debug("Idea folder cleanup failed for %s", idea_id, exc_info=True)
+        return {"idea_id": idea_id, "deleted": True, "message": f"Idea {idea_id} deleted"}
 
 @router.post("/ideas/{idea_id}/archive")
 async def archive_idea(idea_id: str) -> dict:
     _validate_idea_id(idea_id)
-    _idea_exists(idea_id)
-    archive_path = archive_idea_folder(idea_id)
-    if not archive_path:
-        raise HTTPException(status_code=500, detail=f"Archive failed for {idea_id}")
-    # Remove from registry first, then delete source folder
-    remove_from_registry(idea_id)
-    try:
-        delete_idea_folder(idea_id)
-    except Exception:  # archive already saved; source-folder cleanup failure is non-fatal
-        logger.debug("Idea folder cleanup failed after archive for %s", idea_id, exc_info=True)
-    return {"idea_id": idea_id, "archived": True, "archive_path": archive_path, "message": f"Idea {idea_id} archived"}
+    with _idea_lock:
+        _idea_exists(idea_id)
+        archive_path = archive_idea_folder(idea_id)
+        if not archive_path:
+            raise HTTPException(status_code=500, detail=f"Archive failed for {idea_id}")
+        # Remove from registry first, then delete source folder
+        remove_from_registry(idea_id)
+        try:
+            delete_idea_folder(idea_id)
+        except Exception:  # archive already saved; source-folder cleanup failure is non-fatal
+            logger.debug("Idea folder cleanup failed after archive for %s", idea_id, exc_info=True)
+        return {"idea_id": idea_id, "archived": True, "archive_path": archive_path, "message": f"Idea {idea_id} archived"}
 
 @router.post("/ideas/{idea_id}/comment")
 async def add_comment(idea_id: str, payload: AddCommentRequest) -> dict:
     _validate_idea_id(idea_id)
-    _idea_exists(idea_id)
     author = str(payload.author or "User").strip() or "User"
-    return {"idea_id": idea_id, "comment": save_comment(idea_id, author, payload.text)}
+    with _idea_lock:
+        _idea_exists(idea_id)
+        return {"idea_id": idea_id, "comment": save_comment(idea_id, author, payload.text)}
