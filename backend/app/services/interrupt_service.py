@@ -1,6 +1,7 @@
 """Interrupt service for HITL approvals."""
 
 import json
+import logging
 import sqlite3
 import threading
 import uuid
@@ -11,6 +12,12 @@ from typing import Any
 from app.infrastructure.events.stream_bus import _bus
 
 from ..config import STORAGE_DIR
+
+logger = logging.getLogger(__name__)
+
+
+class InterruptDeliveryError(Exception):
+    """Raised when interrupt event delivery fails."""
 
 
 class InterruptService:
@@ -43,7 +50,9 @@ class InterruptService:
         )
         self._conn().commit()
 
-    def create_interrupt(self, thread_id: str, tool_name: str, message: str, tool_input: dict[str, Any] | None = None) -> dict[str, Any]:
+    def create_interrupt(
+        self, thread_id: str, tool_name: str, message: str, tool_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         interrupt_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
         with self._lock:
@@ -60,11 +69,15 @@ class InterruptService:
                 raise
             interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
-            _bus.publish("interrupt.created", {"interrupt": interrupt, "thread_id": thread_id})
+            self._publish_event("interrupt.created", {"interrupt": interrupt, "thread_id": thread_id})
         return interrupt  # type: ignore[return-value]
 
     def list_pending(self) -> list[dict[str, Any]]:
-        rows = self._conn().execute("SELECT * FROM interrupts WHERE status = 'pending' ORDER BY created_at DESC").fetchall()
+        rows = (
+            self._conn()
+            .execute("SELECT * FROM interrupts WHERE status = 'pending' ORDER BY created_at DESC")
+            .fetchall()
+        )
         return [self._row_dict(row) for row in rows]
 
     def get_interrupt(self, interrupt_id: str) -> dict[str, Any] | None:
@@ -90,7 +103,7 @@ class InterruptService:
                 raise
         interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
-            _bus.publish("interrupt.approved", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
+            self._publish_event("interrupt.approved", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
         return interrupt
 
     def reject_interrupt(self, interrupt_id: str, reason: str) -> dict[str, Any] | None:
@@ -112,12 +125,21 @@ class InterruptService:
                 raise
         interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
-            _bus.publish("interrupt.rejected", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
+            self._publish_event("interrupt.rejected", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
         return interrupt
+
+    def _publish_event(self, event_type: str, payload: dict[str, Any]) -> None:
+        try:
+            _bus.publish(event_type, payload)
+        except Exception as exc:
+            logger.error("Failed to deliver %s event: %s", event_type, exc, exc_info=True)
+            raise InterruptDeliveryError(f"Failed to deliver {event_type} event: {exc}") from exc
 
     def _row_dict(self, row: sqlite3.Row | None) -> dict[str, Any] | None:
         if row is None:
             return None
         data = dict(row)
-        data["tool_input"] = json.loads(data["tool_input"]) if isinstance(data.get("tool_input"), str) else data.get("tool_input", {})
+        data["tool_input"] = (
+            json.loads(data["tool_input"]) if isinstance(data.get("tool_input"), str) else data.get("tool_input", {})
+        )
         return data
