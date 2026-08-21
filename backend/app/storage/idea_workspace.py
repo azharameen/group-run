@@ -2,8 +2,10 @@
 
 import os
 import shutil
+import tempfile
+from contextlib import contextmanager
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Generator
 
 from ..config import WORKSPACE_DIR
 from ..models.transcript import normalize_transcript_event
@@ -14,6 +16,38 @@ def idea_folder_path(idea_id: str) -> str:
     return os.path.join(WORKSPACE_DIR, "ideas", idea_id)
 
 
+@contextmanager
+def workspace_transaction(idea_id: str) -> Generator[str, None, None]:
+    """Context manager wrapping multi-step workspace operations in a transaction.
+
+    If an exception occurs within the block, any workspace state changes for idea_id
+    are rolled back to the pre-transaction state.
+    """
+    folder = idea_folder_path(idea_id)
+    existed = os.path.exists(folder)
+    backup_dir = None
+
+    if existed:
+        backup_dir = tempfile.mkdtemp(prefix=f"workspace_bak_{idea_id}_")
+        shutil.rmtree(backup_dir)  # copytree expects target not to exist
+        shutil.copytree(folder, backup_dir)
+
+    try:
+        yield folder
+    except Exception:
+        if existed:
+            if os.path.exists(folder):
+                shutil.rmtree(folder)
+            shutil.copytree(backup_dir, folder)
+        else:
+            if os.path.exists(folder):
+                shutil.rmtree(folder)
+        raise
+    finally:
+        if backup_dir and os.path.exists(backup_dir):
+            shutil.rmtree(backup_dir)
+
+
 def load_idea_yaml(idea_id: str, filename: str) -> Any | None:
     path = os.path.join(idea_folder_path(idea_id), filename)
     if not os.path.exists(path):
@@ -22,23 +56,31 @@ def load_idea_yaml(idea_id: str, filename: str) -> Any | None:
 
 
 def save_idea_yaml(idea_id: str, filename: str, data: Any):
-    write_yaml(os.path.join(idea_folder_path(idea_id), filename), data)
+    with workspace_transaction(idea_id):
+        write_yaml(os.path.join(idea_folder_path(idea_id), filename), data)
 
 
 def create_idea_folder(idea_id: str) -> str:
-    folder = idea_folder_path(idea_id)
-    os.makedirs(folder, exist_ok=True)
-    os.makedirs(os.path.join(folder, "handovers"), exist_ok=True)
-    os.makedirs(os.path.join(folder, "revisions"), exist_ok=True)
-    return folder
+    with workspace_transaction(idea_id):
+        folder = idea_folder_path(idea_id)
+        os.makedirs(folder, exist_ok=True)
+        os.makedirs(os.path.join(folder, "handovers"), exist_ok=True)
+        os.makedirs(os.path.join(folder, "revisions"), exist_ok=True)
+        return folder
 
 
 def write_changelog_entry(idea_id: str, entry: str):
-    path = os.path.join(idea_folder_path(idea_id), "revisions", "changelog.md")
-    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "a", encoding="utf-8") as handle:
-        handle.write(f"\n## {timestamp}\n{entry}\n---\n")
+    with workspace_transaction(idea_id):
+        path = os.path.join(idea_folder_path(idea_id), "revisions", "changelog.md")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        content = ""
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as handle:
+                content = handle.read()
+        content += f"\n## {timestamp}\n{entry}\n---\n"
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(content)
 
 
 def delete_idea_folder(idea_id: str) -> bool:
@@ -86,22 +128,24 @@ def load_pending_interrupts(idea_id: str) -> list[dict]:
 
 
 def save_pending_interrupts(idea_id: str, interrupts: list[dict]) -> list[dict]:
-    path = _pending_interrupts_path(idea_id)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    write_yaml(path, interrupts)
-    return interrupts
+    with workspace_transaction(idea_id):
+        path = _pending_interrupts_path(idea_id)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        write_yaml(path, interrupts)
+        return interrupts
 
 
 def save_comment(idea_id: str, author: str, text: str) -> dict:
-    comments = load_comments(idea_id)
-    entry = {
-        "author": author,
-        "text": text,
-        "timestamp": datetime.now(UTC).isoformat(),
-    }
-    comments.append(entry)
-    write_yaml(os.path.join(idea_folder_path(idea_id), "comments.yaml"), comments)
-    return entry
+    with workspace_transaction(idea_id):
+        comments = load_comments(idea_id)
+        entry = {
+            "author": author,
+            "text": text,
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+        comments.append(entry)
+        write_yaml(os.path.join(idea_folder_path(idea_id), "comments.yaml"), comments)
+        return entry
 
 
 def load_transcript_events(idea_id: str) -> list[dict]:
@@ -113,11 +157,12 @@ def load_transcript_events(idea_id: str) -> list[dict]:
 
 
 def save_transcript_event(idea_id: str, event: dict) -> dict:
-    events = load_transcript_events(idea_id)
-    normalized = normalize_transcript_event(idea_id, event)
-    events.append(normalized)
-    write_yaml(os.path.join(idea_folder_path(idea_id), "transcript.yaml"), events)
-    return normalized
+    with workspace_transaction(idea_id):
+        events = load_transcript_events(idea_id)
+        normalized = normalize_transcript_event(idea_id, event)
+        events.append(normalized)
+        write_yaml(os.path.join(idea_folder_path(idea_id), "transcript.yaml"), events)
+        return normalized
 
 
 def get_all_idea_files(idea_id: str) -> list[dict]:
