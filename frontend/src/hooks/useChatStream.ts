@@ -46,6 +46,7 @@ export function useChatStream({
 	const streamMsgIdRef = useRef<string | null>(null);
 	const queueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const fetchCounterRef = useRef(0);
+	const streamCounterRef = useRef(0);
 
 	// Clean up pending timeouts and abort controllers on unmount
 	useEffect(() => {
@@ -183,9 +184,16 @@ export function useChatStream({
 		const prevThreadId = prevThreadIdRef.current;
 		prevThreadIdRef.current = activeThreadId;
 
+		const fetchCounter = ++fetchCounterRef.current;
+
 		// Abort in-flight stream when switching threads (only if switching from an existing thread)
-		if (prevThreadId && activeThreadId !== prevThreadId && isGenerating && abortRef.current) {
-			abortRef.current.abort();
+		if (prevThreadId && activeThreadId !== prevThreadId) {
+			if (abortRef.current) {
+				abortRef.current.abort();
+				abortRef.current = null;
+			}
+			streamCounterRef.current++;
+			setIsGenerating(false);
 		}
 
 		if (activeThreadId) {
@@ -193,10 +201,9 @@ export function useChatStream({
 			if (prevThreadId && prevThreadId !== activeThreadId) {
 				setRawMessages([]);
 			}
-			const counter = ++fetchCounterRef.current;
 			getThreadMessages(activeThreadId)
 				.then(({ messages: msgs }) => {
-					if (counter !== fetchCounterRef.current) return;
+					if (fetchCounter !== fetchCounterRef.current) return;
 					if (msgs.length > 0) {
 						const chatMessages = msgs.map((m) => ({
 							id: m.id,
@@ -223,8 +230,11 @@ export function useChatStream({
 	}, [activeThreadId]);
 
 	const handleStopGeneration = useCallback(() => {
-		abortRef.current?.abort();
-		abortRef.current = null;
+		if (abortRef.current) {
+			abortRef.current.abort();
+			abortRef.current = null;
+		}
+		streamCounterRef.current++;
 		setIsGenerating(false);
 		setMessageQueue([]);
 	}, []);
@@ -269,6 +279,12 @@ export function useChatStream({
 
 	const executeSend = useCallback(
 		async (textToSend: string) => {
+			if (abortRef.current) {
+				abortRef.current.abort();
+				abortRef.current = null;
+			}
+			const currentStreamId = ++streamCounterRef.current;
+
 			streamMsgIdRef.current = null;
 			const userMsg: ChatMessage = {
 				id: `u_${Date.now()}`,
@@ -285,16 +301,25 @@ export function useChatStream({
 			});
 			setIsGenerating(true);
 
+			const ctrl = new AbortController();
+			abortRef.current = ctrl;
+
 			let tid: string;
 			try {
 				tid = await ensureThread();
 			} catch {
-				setIsGenerating(false);
+				if (streamCounterRef.current === currentStreamId) {
+					setIsGenerating(false);
+					if (abortRef.current === ctrl) {
+						abortRef.current = null;
+					}
+				}
 				return;
 			}
 
-			const ctrl = new AbortController();
-			abortRef.current = ctrl;
+			if (ctrl.signal.aborted || streamCounterRef.current !== currentStreamId) {
+				return;
+			}
 
 			try {
 				await streamThreadMessage(
@@ -302,6 +327,10 @@ export function useChatStream({
 					textToSend,
 					undefined,
 					(evt: StreamEvent) => {
+						if (ctrl.signal.aborted || streamCounterRef.current !== currentStreamId) {
+							return;
+						}
+
 						// Task 3: Detect interrupt events from stream
 						if (evt.type === "interrupt") {
 							const interrupt = (evt.extras?.interrupt ?? evt) as InterruptPayload;
@@ -341,7 +370,11 @@ export function useChatStream({
 							streamMsgIdRef.current = null;
 							setIsGenerating(false);
 							listThreads()
-								.then(onThreadsUpdate)
+								.then((threads) => {
+									if (streamCounterRef.current === currentStreamId) {
+										onThreadsUpdate(threads);
+									}
+								})
 								.catch(() => {});
 							return;
 						}
@@ -402,17 +435,23 @@ export function useChatStream({
 					console.error("[Chat Stream Error]", err);
 				}
 			} finally {
-				setIsGenerating(false);
-				abortRef.current = null;
-
-				setMessageQueue((prevQueue) => {
-					if (prevQueue.length > 0) {
-						const [nextMsg, ...remaining] = prevQueue;
-						queueTimeoutRef.current = setTimeout(() => executeSend(nextMsg), 200);
-						return remaining;
+				if (streamCounterRef.current === currentStreamId) {
+					setIsGenerating(false);
+					if (abortRef.current === ctrl) {
+						abortRef.current = null;
 					}
-					return [];
-				});
+
+					if (!ctrl.signal.aborted) {
+						setMessageQueue((prevQueue) => {
+							if (prevQueue.length > 0) {
+								const [nextMsg, ...remaining] = prevQueue;
+								queueTimeoutRef.current = setTimeout(() => executeSend(nextMsg), 200);
+								return remaining;
+							}
+							return [];
+						});
+					}
+				}
 			}
 		},
 		[ensureThread, onThreadsUpdate],

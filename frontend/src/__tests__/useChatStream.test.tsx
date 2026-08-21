@@ -723,4 +723,118 @@ describe('useChatStream', () => {
     await waitFor(() => expect(result.current.pendingInterrupt).toBeTruthy());
     expect(result.current.pendingInterrupt?.id).toBe('stream-1');
   });
+
+  test('cancels previous request and ignores stale events when a new request starts', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ tasks: [], completed: 0, total: 0 }),
+    } as Response);
+
+    const onEventCallbacks: Array<(evt: StreamEvent) => void> = [];
+    const signals: AbortSignal[] = [];
+    const resolvers: Array<() => void> = [];
+
+    vi.mocked(apiClient.streamThreadMessage).mockImplementation(
+      (_tid, _text, _ideaId, onEvent, signal) => {
+        if (onEvent) onEventCallbacks.push(onEvent);
+        if (signal) signals.push(signal);
+        return new Promise<void>((resolve) => {
+          resolvers.push(resolve);
+        });
+      }
+    );
+
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+
+    // Start request 1 (remains in-flight)
+    await act(async () => {
+      result.current.executeSend('First request');
+    });
+
+    expect(signals.length).toBe(1);
+    expect(signals[0].aborted).toBe(false);
+
+    // Start request 2 while request 1 is still in-flight
+    await act(async () => {
+      result.current.executeSend('Second request');
+    });
+
+    expect(signals.length).toBe(2);
+    // Request 1 signal should now be aborted
+    expect(signals[0].aborted).toBe(true);
+    expect(signals[1].aborted).toBe(false);
+
+    // Simulate stale event from request 1
+    await act(async () => {
+      onEventCallbacks[0]?.({ type: 'state_update', response: 'Stale response from First' });
+    });
+
+    // Simulate current event from request 2
+    await act(async () => {
+      onEventCallbacks[1]?.({ type: 'state_update', response: 'Fresh response from Second' });
+    });
+
+    // Check messages in hook state: stale response should be ignored, fresh response retained
+    const assistantMsgs = result.current.messages.filter((m) => m.sender !== 'You');
+    expect(assistantMsgs.map((m) => m.text)).not.toContain('Stale response from First');
+    expect(assistantMsgs.map((m) => m.text)).toContain('Fresh response from Second');
+
+    // Clean up pending promises
+    await act(async () => {
+      resolvers.forEach((r) => r());
+    });
+  });
+
+  test('ignores stale thread messages fetch when activeThreadId changes rapidly', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ tasks: [], completed: 0, total: 0 }),
+    } as Response);
+
+    type ThreadMessagesResponse = {
+      messages: Array<{ id: string; type: string; content: string }>;
+      count: number;
+    };
+    let resolveFirstThread: (val: ThreadMessagesResponse) => void = () => {};
+    let resolveSecondThread: (val: ThreadMessagesResponse) => void = () => {};
+
+    vi.mocked(apiClient.getThreadMessages).mockImplementation((threadId) => {
+      if (threadId === 'thread-1') {
+        return new Promise((r) => { resolveFirstThread = r; });
+      }
+      return new Promise((r) => { resolveSecondThread = r; });
+    });
+
+    const { result, rerender } = renderHook(
+      (props) => useChatStream(props),
+      { initialProps: { ...defaultOptions, activeThreadId: null } as UseChatStreamOptions }
+    );
+
+    // Switch to thread-1
+    rerender({ ...defaultOptions, activeThreadId: 'thread-1' });
+
+    // Switch to thread-2 before thread-1 finishes loading
+    rerender({ ...defaultOptions, activeThreadId: 'thread-2' });
+
+    // Resolve thread-2 first
+    await act(async () => {
+      resolveSecondThread({
+        messages: [{ id: 'm2', type: 'human', content: 'Msg from thread 2' }],
+        count: 1,
+      });
+    });
+
+    expect(result.current.messages.some((m) => m.text === 'Msg from thread 2')).toBe(true);
+
+    // Resolve stale thread-1 response late
+    await act(async () => {
+      resolveFirstThread({
+        messages: [{ id: 'm1', type: 'human', content: 'Stale msg from thread 1' }],
+        count: 1,
+      });
+    });
+
+    // Should NOT contain stale thread 1 message
+    expect(result.current.messages.some((m) => m.text === 'Stale msg from thread 1')).toBe(false);
+  });
 });
