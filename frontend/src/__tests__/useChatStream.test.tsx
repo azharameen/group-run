@@ -791,8 +791,12 @@ describe('useChatStream', () => {
       json: async () => ({ tasks: [], completed: 0, total: 0 }),
     } as Response);
 
-    let resolveFirstThread: (val: any) => void = () => {};
-    let resolveSecondThread: (val: any) => void = () => {};
+    type ThreadMessagesResponse = {
+      messages: Array<{ id: string; type: string; content: string }>;
+      count: number;
+    };
+    let resolveFirstThread: (val: ThreadMessagesResponse) => void = () => {};
+    let resolveSecondThread: (val: ThreadMessagesResponse) => void = () => {};
 
     vi.mocked(apiClient.getThreadMessages).mockImplementation((threadId) => {
       if (threadId === 'thread-1') {
