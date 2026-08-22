@@ -5,6 +5,7 @@ result and persists it via ``InterruptService.create_interrupt`` with full
 provenance, returning a ``waiting_for_approval=True`` state.
 """
 
+import importlib
 import sys
 import types
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -74,8 +75,8 @@ async def test_supervisor_persists_interrupt(monkeypatch):
     mock_agent = AsyncMock()
     mock_agent.ainvoke = AsyncMock(return_value=_interrupt_result())
 
-    from app.orchestrator import supervisor as sup_mod
-    from app.orchestrator.supervisor import supervisor_general
+    sup_mod = importlib.import_module("app.orchestrator.supervisor")
+    supervisor_general = sup_mod.supervisor_general
 
     sup_mod._agent = mock_agent
 
@@ -116,8 +117,8 @@ async def test_supervisor_no_interrupt_returns_response(monkeypatch):
     mock_agent = AsyncMock()
     mock_agent.ainvoke = AsyncMock(return_value={"output": "hello"})
 
-    from app.orchestrator import supervisor as sup_mod
-    from app.orchestrator.supervisor import supervisor_general
+    sup_mod = importlib.import_module("app.orchestrator.supervisor")
+    supervisor_general = sup_mod.supervisor_general
 
     sup_mod._agent = mock_agent
 

@@ -99,6 +99,10 @@ async def lifespan(_app: FastAPI):
     # Reset supervisor graph cache so it rebuilds with fresh checkpointer
     from ..orchestrator import supervisor as _sup
     _sup._graph = None
+    _sup._agent = None
+
+    from ..services.interrupt_service import InterruptService
+    InterruptService._instance = None
 
 
 def create_app() -> FastAPI:
