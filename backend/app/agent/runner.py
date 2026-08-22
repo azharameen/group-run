@@ -28,6 +28,18 @@ async def resume_agent(thread_id: str, decisions: list[dict[str, Any]]) -> dict[
     """
     from langgraph.types import Command
 
+    # Verify a checkpoint exists for this thread before resuming. Interrupts
+    # created via the API (no agent run) have no checkpointed state — resuming
+    # them must fail with a clear error, never a fabricated result (Story 8.4 AC-5).
+    from ..services.thread_manager import get_async_checkpointer
+
+    checkpointer = get_async_checkpointer()
+    checkpoint_tuple = await checkpointer.aget_tuple(
+        {"configurable": {"thread_id": thread_id}}
+    )
+    if checkpoint_tuple is None:
+        raise RuntimeError(f"no resumable state for thread {thread_id}")
+
     runtime = get_deep_agent_runtime()
     result = await runtime.ainvoke(
         Command(resume={"decisions": decisions}),
