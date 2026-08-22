@@ -8,7 +8,7 @@ import sqlite3
 
 from fastapi import APIRouter, HTTPException, Path
 
-from ...organization import health, service
+from ...organization import evaluate, health, service
 from ...organization.models import CreateOrganizationRequest
 from ...organization.service import OrganizationIntegrityError
 
@@ -84,3 +84,40 @@ def get_organization_health(org_id: str = Path(..., max_length=64)) -> dict:
     if organization_health is None:
         raise HTTPException(status_code=404, detail=f"Organization {org_id} not found")
     return {"health": organization_health.model_dump()}
+
+
+@router.post("/organizations/{org_id}/evaluate", status_code=201)
+def evaluate_organization(org_id: str = Path(..., max_length=64)) -> dict:
+    """Run the deterministic Chief of Staff evaluation (Story 9.2).
+
+    Reassigns unowned/idle-owned open work items to idle agents and raises
+    escalation alerts for items stuck beyond the threshold. Returns 404 for
+    unknown orgs.
+    """
+    try:
+        evaluation = evaluate.evaluate_organization(org_id)
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=500, detail="Failed to evaluate organization"
+        ) from exc
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail=f"Organization {org_id} not found")
+    return {"evaluation": evaluation.model_dump()}
+
+
+@router.get("/organizations/{org_id}/alerts")
+def list_organization_alerts(org_id: str = Path(..., max_length=64)) -> dict:
+    """List the organization's escalation alerts (Story 9.2). 404 if unknown."""
+    try:
+        from ...organization import repository as org_repository
+        from ...work_items import repository as work_items_repository
+
+        if org_repository.get_organization_rows(org_id) is None:
+            raise HTTPException(status_code=404, detail=f"Organization {org_id} not found")
+        rows = work_items_repository.list_org_alerts(org_id)
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=500, detail="Failed to list organization alerts"
+        ) from exc
+    alerts = [dict(row) for row in rows]
+    return {"alerts": alerts, "count": len(alerts)}

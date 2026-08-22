@@ -162,6 +162,27 @@ def get_organization_rows(org_id: str) -> dict[str, Any] | None:
     return {"org": org, "departments": departments, "teams": teams, "agents": agents}
 
 
+def update_agent_status(org_id: str, agent_id: str, status: str) -> bool:
+    """Update one agent's status; return whether a row was changed.
+
+    Args:
+        org_id: The organization owning the agent.
+        agent_id: The agent to update.
+        status: The new status (``active``, ``idle`` or ``overloaded``).
+
+    Returns:
+        ``True`` when an agent row was updated, ``False`` when no agent
+        with that id exists in the organization.
+    """
+    conn = _get_conn()
+    cursor = conn.execute(
+        "UPDATE agents SET status = ? WHERE org_id = ? AND agent_id = ?",
+        (status, org_id, agent_id),
+    )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
 def list_organizations() -> list[sqlite3.Row]:
     """Return all organizations (newest update first) with aggregate counts."""
     conn = _get_conn()

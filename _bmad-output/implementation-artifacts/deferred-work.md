@@ -20,6 +20,10 @@
   - Added test verifying pendingInterrupt remains when approved event has different ID
 # Deferred Work Ledger
 
+## Deferred from: spec-9-2-reassign-idle-agents-escalate-blocked-work.md (2026-08-22)
+
+- Concurrent `evaluate` calls can double-assign one idle agent — two simultaneous `POST /organizations/{org_id}/evaluate` requests can both observe the same idle agent (or the same missing alert) before either writes, assigning multiple items to one agent. Partially mitigated: `idx_org_alerts_dedupe` is now UNIQUE (duplicate alerts impossible) and `record_reassignment` has an optimistic `previous_owner_agent_id` guard. Full fix requires a transactional evaluation pass (SELECT ... FOR UPDATE-style serialization or a single-transaction loop). Deferred: single-user POC with an on-demand endpoint; revisit if multi-user concurrency is introduced.
+
 ## Deferred from: spec-8-4-enforce-approval-for-risky-filesystem-changes.md (2026-08-20)
 
 - Real-agent resume e2e deferred — e2e tests create interrupts via API directly (no real checkpoint), so `POST /api/interrupts/{id}/resume` returns 409 "no resumable state". The e2e asserts this 409 rather than a real resume. A real-agent resume e2e would require a live LLM conversation that triggers an interrupt, which is out of scope (no live LLM in tests). Covered by backend unit tests (test_interrupt_routes.py resume tests mock `resume_agent`).

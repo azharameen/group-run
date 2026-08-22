@@ -81,6 +81,16 @@ def _init_schema(conn: sqlite3.Connection) -> None:
                 ON decisions (work_item_id, decided_at);
             CREATE INDEX IF NOT EXISTS idx_decisions_agent_time
                 ON decisions (agent_id, decided_at);
+            CREATE TABLE IF NOT EXISTS org_alerts (
+                alert_id TEXT PRIMARY KEY,
+                org_id TEXT NOT NULL,
+                work_item_id TEXT NOT NULL,
+                phase TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                raised_at TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_org_alerts_dedupe
+                ON org_alerts (org_id, work_item_id, phase);
             """
         )
         columns = {row[1] for row in conn.execute("PRAGMA table_info(work_items)")}
@@ -247,6 +257,11 @@ def __getattr__(name: str) -> Any:
         "list_lifecycle_events",
         "record_transition",
         "update_work_item_status",
+        "insert_org_alert",
+        "list_org_alerts",
+        "has_org_alert",
+        "record_reassignment",
+        "record_escalation",
     ):
         from . import lifecycle_repository
         return getattr(lifecycle_repository, name)
