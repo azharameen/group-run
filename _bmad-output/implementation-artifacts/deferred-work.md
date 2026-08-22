@@ -20,6 +20,10 @@
   - Added test verifying pendingInterrupt remains when approved event has different ID
 # Deferred Work Ledger
 
+## Deferred from: spec-8-4-enforce-approval-for-risky-filesystem-changes.md (2026-08-20)
+
+- Real-agent resume e2e deferred — e2e tests create interrupts via API directly (no real checkpoint), so `POST /api/interrupts/{id}/resume` returns 409 "no resumable state". The e2e asserts this 409 rather than a real resume. A real-agent resume e2e would require a live LLM conversation that triggers an interrupt, which is out of scope (no live LLM in tests). Covered by backend unit tests (test_interrupt_routes.py resume tests mock `resume_agent`).
+
 ## Deferred from: code review of EP-0 dead code cleanup (2026-08-03)
 
 - ~~Backend Siemens strings in agent prompts and model fields (`backend/app/agent/runtime.py`, `domain_tools.py`, `context.py`, `models/idea.py`)~~ — **RESOLVED 2026-08-13**: all Siemens references replaced with "Companion" in runtime.py, domain_tools.py, context.py, __init__.py, and runner.py
@@ -483,3 +487,52 @@ Setup executed and logged as AD-17 in the architecture spine.
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-3-manage-lifecycle-status-and-handoffs.md`
   summary: WorkItemsTab has stale-response races in loadData and the history fetch (a slow earlier response can overwrite a newer one).
   evidence: Pre-existing 8.2 pattern — `loadData` and `openHistory` issue fetches without request sequencing/abort, so out-of-order responses can render stale state. Not introduced by 8.3; the new history fetch follows the same pattern.
+
+## Deferred from: Epic 7 missed-issues sweep (2026-08-21) — 32 issues filed on GitHub board
+
+Full sweep of backend/frontend/tests/deps produced 32 issues (#95-#126), each with context, ACs, and confidence. No fixes done — all delegated to Jules. See github-board.md for the item map.
+
+### Wave 1 — Critical bugs (series, highest blast radius first)
+- #96 Reversed status_code in work_items transition endpoint (HIGH confidence, verified)
+- #97 Missing commit in lifecycle_repository update_work_item_status (HIGH)
+- #95 TOCTOU race in ideas.py create/update (MED-HIGH)
+- #100 TOCTOU in work_items service transition_work_item (MED-HIGH)
+- #98 Silent failures in interrupt_service.py (MED-HIGH)
+- #99 Atomicity in idea_workspace.py (MED-HIGH)
+
+### Wave 2 — Frontend bugs (parallel with Wave 1, different files)
+- #102 No timeout on interrupt APIs in threads.ts
+- #103 Stale fetch races in useChatStream.ts
+- #101 Silent interrupt approval failures in useChatStream.ts
+- #104 Partial Promise.all failures in IdeaDetail.tsx
+- #105 No timeout handling in DocumentUploadCard.tsx
+
+### Wave 3 — Tech debt (parallel, grouped by module)
+- #106 Blocking I/O in knowledge_base.py
+- #107 Blocking I/O in ideas.py
+- #108 Blocking I/O in mcp.py
+- #109 Backend validation gaps
+- #110 Backend transaction atomicity gaps
+- #111 No unit tests for mcp.ts
+- #112 No unit tests for config.ts
+- #113 No unit tests for deepagents.ts
+- #114 Missing hook race-condition tests
+- #115 Missing component error-state tests
+
+### Wave 4 — Test phases (parallel, after relevant bugs fixed)
+- #116 E2E workflow coverage
+- #117 Security coverage
+- #118 Resilience coverage
+- #119 Concurrency coverage
+- #120 Infrastructure coverage
+- #121 Frontend/A11y coverage
+
+### Wave 5 — Dependencies (series, riskiest last)
+- #124 Upgrade openai SDK to 1.x (CRITICAL)
+- #122 Upgrade langchain to 0.1+ (HIGH)
+- #123 Upgrade React to 19 (HIGH)
+- #126 Upgrade vitest to 5 (LOW)
+- #125 Add Python lockfile and CI scanning
+
+### Board fields
+Status/Issue Type/Sprint could NOT be set via available tools (no MCP project tool; gh needs interactive project scopes). Labels applied instead. User must set board fields manually or grant project scopes.

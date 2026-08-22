@@ -12,4 +12,5 @@ export {
   fetchPendingInterrupts,
   approveInterrupt,
   rejectInterrupt,
+  resumeInterrupt,
 } from './threads';

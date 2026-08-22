@@ -119,7 +119,7 @@ describe('threads.ts interrupt APIs', () => {
         '/api/interrupts/int-1/approve',
         expect.objectContaining({
           method: 'PATCH',
-          body: JSON.stringify({ decision: 'approved', reason: 'Looks good' }),
+          body: JSON.stringify({ decision: 'approved', reason: 'Looks good', reasoning: 'Looks good' }),
           headers: { 'Content-Type': 'application/json' },
         }),
       );
@@ -139,7 +139,7 @@ describe('threads.ts interrupt APIs', () => {
         }),
       );
 
-      const promise = approveInterrupt('int-1', 'approved', 'Looks good', { timeoutMs: 5000 });
+      const promise = approveInterrupt('int-1', 'approved', 'Looks good', undefined, { timeoutMs: 5000 });
       vi.advanceTimersByTime(5000);
 
       await expect(promise).rejects.toThrow('API timeout after 5000 ms');
@@ -175,7 +175,7 @@ describe('threads.ts interrupt APIs', () => {
         '/api/interrupts/int-2/reject',
         expect.objectContaining({
           method: 'PATCH',
-          body: JSON.stringify({ decision: 'rejected', reason: 'Unsafe action' }),
+          body: JSON.stringify({ decision: 'rejected', reason: 'Unsafe action', reasoning: 'Unsafe action' }),
           headers: { 'Content-Type': 'application/json' },
         }),
       );
@@ -195,7 +195,7 @@ describe('threads.ts interrupt APIs', () => {
         }),
       );
 
-      const promise = rejectInterrupt('int-2', 'Unsafe action', { timeoutMs: 3000 });
+      const promise = rejectInterrupt('int-2', 'Unsafe action', undefined, { timeoutMs: 3000 });
       vi.advanceTimersByTime(3000);
 
       await expect(promise).rejects.toThrow('API timeout after 3000 ms');

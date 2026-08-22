@@ -51,6 +51,7 @@ vi.mock('@/api/client', () => ({
   deleteThread: vi.fn(),
   approveInterrupt: vi.fn(),
   rejectInterrupt: vi.fn(),
+  resumeInterrupt: vi.fn(),
 }));
 
 // Shared mock SSE instance (created after MockEventSource is defined)

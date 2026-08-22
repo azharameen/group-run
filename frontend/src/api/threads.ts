@@ -127,8 +127,18 @@ export interface InterruptPayload {
   status: 'pending' | 'approved' | 'rejected';
   decision?: string;
   reason?: string;
+  reasoning?: string;
+  decided_by?: string;
+  decided_at?: string;
+  confidence?: string;
+  alternatives?: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface ResumeResponse {
+  interrupt: InterruptPayload;
+  response: string;
 }
 
 export async function fetchPendingInterrupts(options?: RequestOptions): Promise<InterruptPayload[]> {
@@ -140,11 +150,12 @@ export async function approveInterrupt(
   id: string,
   decision: string,
   reason: string,
+  reasoning?: string,
   options?: RequestOptions,
 ): Promise<InterruptPayload> {
   const data = await request<{ interrupt: InterruptPayload }>(`/interrupts/${id}/approve`, {
     method: 'PATCH',
-    body: JSON.stringify({ decision, reason }),
+    body: JSON.stringify({ decision, reason, reasoning: reasoning ?? reason }),
     ...options,
   });
   return data.interrupt;
@@ -153,14 +164,25 @@ export async function approveInterrupt(
 export async function rejectInterrupt(
   id: string,
   reason: string,
+  reasoning?: string,
   options?: RequestOptions,
 ): Promise<InterruptPayload> {
   const data = await request<{ interrupt: InterruptPayload }>(`/interrupts/${id}/reject`, {
     method: 'PATCH',
-    body: JSON.stringify({ decision: 'rejected', reason }),
+    body: JSON.stringify({ decision: 'rejected', reason, reasoning: reasoning ?? reason }),
     ...options,
   });
   return data.interrupt;
+}
+
+export async function resumeInterrupt(id: string): Promise<ResumeResponse> {
+  const res = await fetch(`${API_BASE}/interrupts/${id}/resume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) throw new Error(`resumeInterrupt ${res.status}`);
+  return res.json();
 }
 
 export interface SSEPayload extends Record<string, unknown> {

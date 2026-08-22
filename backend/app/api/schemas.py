@@ -37,6 +37,11 @@ class Interrupt(BaseModel):
     status: str
     decision: str | None = None
     reason: str | None = None
+    reasoning: str | None = None
+    decided_by: str | None = None
+    decided_at: str | None = None
+    confidence: str | None = None
+    alternatives: list[str] = []
     created_at: str
     updated_at: str
 
@@ -46,15 +51,24 @@ class CreateInterruptRequest(BaseModel):
     tool_name: str = Field(..., min_length=1, max_length=128)
     message: str = Field(..., min_length=1, max_length=2000)
     tool_input: dict[str, Any] = Field(default_factory=dict)
+    decided_by: str = "agent"
+    confidence: str = "low"
+    reasoning: str | None = None
+    alternatives: list[str] = []
 
 
 class InterruptDecisionRequest(BaseModel):
     decision: str = Field(..., min_length=1, max_length=50)
     reason: str = Field(default="", max_length=2000)
+    reasoning: str | None = None
 
 
 class InterruptResponse(BaseModel):
     interrupt: Interrupt
+
+
+class ResumeInterruptRequest(BaseModel):
+    """Empty body — resume is driven by the interrupt's stored decision."""
 
 
 class MCPServer(BaseModel):

@@ -6,6 +6,7 @@ import {
 	listThreads,
 	approveInterrupt,
 	rejectInterrupt,
+	resumeInterrupt,
 	type StreamEvent,
 	type ThreadMetadata,
 } from "@/api/client";
@@ -252,9 +253,18 @@ export function useChatStream({
 	const handleApproveInterrupt = useCallback(
 		async (id: string, decision: string, reason: string) => {
 			try {
-				await approveInterrupt(id, decision, reason);
+				await approveInterrupt(id, decision, reason, reason);
+				try {
+					await resumeInterrupt(id);
+				} catch (resumeError: unknown) {
+					const message = resumeError instanceof Error ? resumeError.message : String(resumeError);
+					if (!message.includes('409') && !message.includes('no resumable state')) {
+						throw resumeError;
+					}
+				}
 				setPendingInterrupt(null);
 				activeInterruptIdRef.current = null;
+
 			} catch (err: unknown) {
 				const errMsg = err instanceof Error ? err.message : "Failed to approve interrupt";
 				toast({
@@ -276,6 +286,7 @@ export function useChatStream({
 					const next = [...prev, msg];
 					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
 				});
+				// Keep pendingInterrupt intact so the user can retry the decision.
 			}
 		},
 		[],
@@ -284,9 +295,18 @@ export function useChatStream({
 	const handleRejectInterrupt = useCallback(
 		async (id: string, reason: string) => {
 			try {
-				await rejectInterrupt(id, reason);
+				await rejectInterrupt(id, reason, reason);
+				try {
+					await resumeInterrupt(id);
+				} catch (resumeError: unknown) {
+					const message = resumeError instanceof Error ? resumeError.message : String(resumeError);
+					if (!message.includes('409') && !message.includes('no resumable state')) {
+						throw resumeError;
+					}
+				}
 				setPendingInterrupt(null);
 				activeInterruptIdRef.current = null;
+
 			} catch (err: unknown) {
 				const errMsg = err instanceof Error ? err.message : "Failed to reject interrupt";
 				toast({
@@ -308,6 +328,7 @@ export function useChatStream({
 					const next = [...prev, msg];
 					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
 				});
+				// Keep pendingInterrupt intact so the user can retry the decision.
 			}
 		},
 		[],

@@ -288,10 +288,20 @@ class TestInterruptApprovalPerformance:
         conn = sqlite3.connect(str(db_path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
 
-        # Patch InterruptService to use the test connection
+        # Reset the singleton before creating the app so the service binds to the
+        # temp database created for this test instead of the real production DB.
         monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
+        svc = InterruptService.instance()
+        assert svc._conn() is conn
 
-        with TestClient(create_app()) as client:
+        # Re-import the app factory: _clear_modules purged app.api.app and the
+        # routes, so the module-level create_app still references the OLD
+        # InterruptService class (unpatched, real DB). The fresh app is built
+        # from fresh modules that use the patched service.
+        import importlib
+
+        app_mod = importlib.import_module("app.api.app")
+        with TestClient(app_mod.create_app()) as client:
             durations = []
             for i in range(_ITERATIONS):
                 # Create an interrupt first
