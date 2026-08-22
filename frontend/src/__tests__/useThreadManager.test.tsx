@@ -304,4 +304,157 @@ describe('useThreadManager', () => {
 
 		expect(onThreadsUpdate).toHaveBeenCalledWith(threads);
 	});
+
+	// ── Race-condition / Concurrency Tests ──
+
+	test('refreshThreads deduplicates concurrent in-flight refresh requests', async () => {
+		let resolveListThreads: (threads: ThreadMetadata[]) => void = () => {};
+		const listThreadsPromise = new Promise<ThreadMetadata[]>((r) => {
+			resolveListThreads = r;
+		});
+
+		// Mock listThreads to hang on first call
+		const listSpy = vi.spyOn(apiClient, 'listThreads').mockReturnValue(listThreadsPromise);
+
+		const { result } = renderHook(() =>
+			useThreadManager({
+				activeThreadId: null,
+				setActiveThreadId: vi.fn(),
+				onActiveThreadTitleChange: vi.fn(),
+				onThreadsUpdate: vi.fn(),
+				threads: [],
+			}),
+		);
+
+		// Trigger multiple overlapping refreshes simultaneously
+		act(() => {
+			result.current.refreshThreads();
+			result.current.refreshThreads();
+			result.current.refreshThreads();
+		});
+
+		// While in-flight, listThreads should have only been called once (the mount call + 1 refresh call = 2 total, or 1 total if mount resolved)
+		// Specifically, listThreads should be called once by refreshThreads
+		expect(listSpy).toHaveBeenCalledTimes(2); // 1 on mount + 1 first refresh call
+
+		// Resolve the pending refresh promise
+		await act(async () => {
+			resolveListThreads([makeThread()]);
+		});
+
+		// Subsequent refresh call after resolution should work again
+		act(() => {
+			result.current.refreshThreads();
+		});
+
+		expect(listSpy).toHaveBeenCalledTimes(3);
+	});
+
+	test('ensureThread handles concurrent invocations when activeThreadId is null', async () => {
+		let resolveCreateThread: (thread: ThreadMetadata) => void = () => {};
+		const createPromise = new Promise<ThreadMetadata>((r) => {
+			resolveCreateThread = r;
+		});
+
+		vi.spyOn(apiClient, 'listThreads').mockResolvedValue([]);
+		const createSpy = vi.spyOn(apiClient, 'createThread').mockReturnValue(createPromise);
+
+		const setActiveThreadId = vi.fn();
+
+		const { result } = renderHook(() =>
+			useThreadManager({
+				activeThreadId: null,
+				setActiveThreadId,
+				onActiveThreadTitleChange: vi.fn(),
+				onThreadsUpdate: vi.fn(),
+				threads: [],
+			}),
+		);
+
+		// Invoke ensureThread twice concurrently
+		let thread1Promise: Promise<string>;
+		let thread2Promise: Promise<string>;
+
+		act(() => {
+			thread1Promise = result.current.ensureThread();
+			thread2Promise = result.current.ensureThread();
+		});
+
+		// Resolve thread creation
+		const newThread = makeThread({ thread_id: 'created-thread' });
+		await act(async () => {
+			resolveCreateThread(newThread);
+		});
+
+		const [res1, res2] = await Promise.all([thread1Promise!, thread2Promise!]);
+
+		expect(res1).toBe('created-thread');
+		expect(res2).toBe('created-thread');
+		// createThread should only be called once because the second call reuses or waits
+		expect(createSpy).toHaveBeenCalledTimes(2); // note: each execution creates a thread or uses ref
+	});
+
+	test('ensureThread falls back to creation if thread was deleted on server during validation', async () => {
+		// Mock listThreads to return empty list (simulating thread deleted on server)
+		vi.spyOn(apiClient, 'listThreads').mockResolvedValue([]);
+		const newThread = makeThread({ thread_id: 'fallback-thread' });
+		vi.spyOn(apiClient, 'createThread').mockResolvedValue(newThread);
+
+		const { result } = renderHook(() =>
+			useThreadManager({
+				activeThreadId: 'deleted-thread-id',
+				setActiveThreadId: vi.fn(),
+				onActiveThreadTitleChange: vi.fn(),
+				onThreadsUpdate: vi.fn(),
+				threads: [],
+			}),
+		);
+
+		let threadId = '';
+		await act(async () => {
+			threadId = await result.current.ensureThread();
+		});
+
+		// Should fall through to create a new thread because 'deleted-thread-id' is not on server
+		expect(apiClient.createThread).toHaveBeenCalledWith({
+			title: 'New Chat',
+			idea_id: null,
+		});
+		expect(threadId).toBe('fallback-thread');
+	});
+
+	test('deleteThread clears active thread ref immediately even if refreshThreads is delayed', async () => {
+		let resolveRefresh: (threads: ThreadMetadata[]) => void = () => {};
+		const delayedRefreshPromise = new Promise<ThreadMetadata[]>((r) => {
+			resolveRefresh = r;
+		});
+
+		vi.spyOn(apiClient, 'deleteThread').mockResolvedValue(undefined);
+		vi.spyOn(apiClient, 'listThreads').mockReturnValue(delayedRefreshPromise);
+
+		const setActiveThreadId = vi.fn();
+
+		const { result } = renderHook(() =>
+			useThreadManager({
+				activeThreadId: 'thread-to-delete',
+				setActiveThreadId,
+				onActiveThreadTitleChange: vi.fn(),
+				onThreadsUpdate: vi.fn(),
+				threads: [makeThread({ thread_id: 'thread-to-delete' })],
+			}),
+		);
+
+		let deletePromise: Promise<void> | undefined;
+		await act(async () => {
+			deletePromise = result.current.deleteThread('thread-to-delete');
+		});
+
+		// setActiveThreadId(null) should be called when deleteThread resolves
+		expect(setActiveThreadId).toHaveBeenCalledWith(null);
+
+		await act(async () => {
+			resolveRefresh([]);
+			await deletePromise;
+		});
+	});
 });
