@@ -126,8 +126,6 @@ export function useChatStream({
 							setPendingInterrupt(latest);
 						} else {
 							// No pending interrupts — clear stale state
-							setPendingInterrupt(null);
-							activeInterruptIdRef.current = null;
 						}
 					}
 				} catch {
@@ -286,8 +284,6 @@ export function useChatStream({
 					const next = [...prev, msg];
 					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
 				});
-				setPendingInterrupt(null);
-				activeInterruptIdRef.current = null;
 			}
 		},
 		[],
@@ -329,8 +325,6 @@ export function useChatStream({
 					const next = [...prev, msg];
 					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
 				});
-				setPendingInterrupt(null);
-				activeInterruptIdRef.current = null;
 			}
 		},
 		[],

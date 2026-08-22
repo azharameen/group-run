@@ -5,8 +5,10 @@ result and persists it via ``InterruptService.create_interrupt`` with full
 provenance, returning a ``waiting_for_approval=True`` state.
 """
 
+import importlib
 import sys
 import types
+from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -22,6 +24,8 @@ def _clear_modules(monkeypatch: pytest.MonkeyPatch):
             "app.config",
         )):
             del sys.modules[mod]
+    import app
+    app.__dict__.pop("orchestrator", None)
 
 
 def _stub_deepagents(monkeypatch: pytest.MonkeyPatch):
@@ -60,7 +64,7 @@ def _stub_deepagents(monkeypatch: pytest.MonkeyPatch):
 def _interrupt_result():
     """Build an agent result dict with a __interrupt__ key."""
     class _Interrupt:
-        value = {"action_requests": [{"name": "write_file", "args": {"path": "x.txt"}}]}
+        value: ClassVar = {"action_requests": [{"name": "write_file", "args": {"path": "x.txt"}}]}
 
     return {"__interrupt__": [_Interrupt()]}
 
@@ -74,8 +78,8 @@ async def test_supervisor_persists_interrupt(monkeypatch):
     mock_agent = AsyncMock()
     mock_agent.ainvoke = AsyncMock(return_value=_interrupt_result())
 
-    from app.orchestrator import supervisor as sup_mod
-    from app.orchestrator.supervisor import supervisor_general
+    sup_mod = importlib.import_module("app.orchestrator.supervisor")
+    supervisor_general = sup_mod.supervisor_general
 
     sup_mod._agent = mock_agent
 
@@ -116,8 +120,8 @@ async def test_supervisor_no_interrupt_returns_response(monkeypatch):
     mock_agent = AsyncMock()
     mock_agent.ainvoke = AsyncMock(return_value={"output": "hello"})
 
-    from app.orchestrator import supervisor as sup_mod
-    from app.orchestrator.supervisor import supervisor_general
+    sup_mod = importlib.import_module("app.orchestrator.supervisor")
+    supervisor_general = sup_mod.supervisor_general
 
     sup_mod._agent = mock_agent
 
