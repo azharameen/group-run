@@ -58,7 +58,7 @@ development_status:
 
   # EP-9: Team Health, Monitoring, and Reuse
   epic-9: backlog
-  9-1-surface-organization-health-and-team-capacity: backlog
+  9-1-surface-organization-health-and-team-capacity: done
   9-2-reassign-idle-agents-and-escalate-blocked-work: backlog
   9-3-save-and-replay-a-workflow-as-a-template: backlog
   epic-9-retrospective: optional
