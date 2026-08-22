@@ -35,28 +35,32 @@ def update_work_item_status(
     commit: bool = True,
 ) -> None:
     conn = repository._get_conn()
-    if expected_status is not None:
-        cursor = conn.execute(
-            "UPDATE work_items SET status = ?, department_id = ?, updated_at = ? "
-            "WHERE work_item_id = ? AND status = ?",
-            (status, department_id, updated_at, work_item_id, expected_status),
-        )
-    else:
-        cursor = conn.execute(
-            "UPDATE work_items SET status = ?, department_id = ?, updated_at = ? WHERE work_item_id = ?",
-            (status, department_id, updated_at, work_item_id),
-        )
-    if cursor.rowcount != 1:
-        item_exists = conn.execute(
-            "SELECT status FROM work_items WHERE work_item_id = ?", (work_item_id,)
-        ).fetchone()
-        if item_exists is None:
-            raise ValueError(f"Work item {work_item_id} not found")
-        raise ValueError(
-            f"Work item {work_item_id} status changed concurrently (expected '{expected_status}', found '{item_exists['status']}')"
-        )
-    if commit:
-        conn.commit()
+    try:
+        if expected_status is not None:
+            cursor = conn.execute(
+                "UPDATE work_items SET status = ?, department_id = ?, updated_at = ? "
+                "WHERE work_item_id = ? AND status = ?",
+                (status, department_id, updated_at, work_item_id, expected_status),
+            )
+        else:
+            cursor = conn.execute(
+                "UPDATE work_items SET status = ?, department_id = ?, updated_at = ? WHERE work_item_id = ?",
+                (status, department_id, updated_at, work_item_id),
+            )
+        if cursor.rowcount != 1:
+            item_exists = conn.execute(
+                "SELECT status FROM work_items WHERE work_item_id = ?", (work_item_id,)
+            ).fetchone()
+            if item_exists is None:
+                raise ValueError(f"Work item {work_item_id} not found")
+            raise ValueError(
+                f"Work item {work_item_id} status changed concurrently (expected '{expected_status}', found '{item_exists['status']}')"
+            )
+        if commit:
+            conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def record_transition(
@@ -79,6 +83,6 @@ def record_transition(
         )
         insert_lifecycle_event(event)
         conn.commit()
-    except (sqlite3.Error, ValueError):
+    except Exception:
         conn.rollback()
         raise
