@@ -7,7 +7,8 @@ import logging
 from pathlib import Path
 
 import anyio.to_thread
-from fastapi import APIRouter, HTTPException, Path as FastPath, status
+from fastapi import APIRouter, HTTPException, status
+from fastapi import Path as FastPath
 from pydantic import ValidationError
 
 from ...config import MCP_CONFIG_PATH, MCP_SCHEMA_VERSION
