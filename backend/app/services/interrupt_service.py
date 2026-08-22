@@ -45,10 +45,14 @@ class InterruptService:
         return self._conn_obj
 
     def _init_table(self) -> None:
-        self._conn().execute(
-            "CREATE TABLE IF NOT EXISTS interrupts (id TEXT PRIMARY KEY, thread_id TEXT NOT NULL, tool_name TEXT NOT NULL DEFAULT 'unknown', tool_input TEXT DEFAULT '{}', message TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', decision TEXT, reason TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
-        )
-        self._conn().commit()
+        try:
+            self._conn().execute(
+                "CREATE TABLE IF NOT EXISTS interrupts (id TEXT PRIMARY KEY, thread_id TEXT NOT NULL, tool_name TEXT NOT NULL DEFAULT 'unknown', tool_input TEXT DEFAULT '{}', message TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', decision TEXT, reason TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
+            )
+            self._conn().commit()
+        except Exception:
+            self._conn().rollback()
+            raise
 
     def create_interrupt(
         self, thread_id: str, tool_name: str, message: str, tool_input: dict[str, Any] | None = None
