@@ -536,3 +536,13 @@ Full sweep of backend/frontend/tests/deps produced 32 issues (#95-#126), each wi
 
 ### Board fields
 Status/Issue Type/Sprint could NOT be set via available tools (no MCP project tool; gh needs interactive project scopes). Labels applied instead. User must set board fields manually or grant project scopes.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-1-record-decisions-with-provenance-metadata.md`
+  summary: Decision dialog has no loading state and is vulnerable to stale-request overwrites (same pre-existing pattern as the lifecycle history dialog).
+  evidence: WorkItemsTab.tsx openDecisions opens the dialog immediately with an empty array, showing ""No decisions recorded"" while the request is pending; a slow earlier request can resolve after a newer one and overwrite state. The pre-existing openHistory has the identical pattern, so this is not introduced by story 10.1.
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-1-record-decisions-with-provenance-metadata.md`
+  summary: decisions table has no foreign key to work_items and no CHECK constraints on decision_type/confidence (pre-existing pattern).
+  evidence: repository.py _init_schema creates decisions without FK/CHECK constraints; lifecycle_events and routing_decisions follow the same unconstrained pattern, so this is a pre-existing schema convention surfaced incidentally.
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-1-record-decisions-with-provenance-metadata.md`
+  summary: list_decisions legacy synthesis loads all routing/lifecycle rows into memory with no pagination.
+  evidence: decisions.py list_decisions scans routing_decisions and lifecycle_events fully and sorts in Python; fine at current scale but unbounded as history grows. Pre-existing endpoints (list_work_items_with_routing) have the same unbounded pattern.
