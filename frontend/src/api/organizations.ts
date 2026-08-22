@@ -113,3 +113,47 @@ export async function fetchOrganizationHealth(
   );
   return data.health;
 }
+
+export interface ReassignmentAction {
+  work_item_id: string;
+  from_agent_id: string;
+  to_agent_id: string;
+  department_id: string;
+  reason: string;
+}
+
+export interface OrgAlert {
+  alert_id: string;
+  org_id: string;
+  work_item_id: string;
+  phase: string;
+  reason: string;
+  raised_at: string;
+}
+
+export interface EvaluationResult {
+  actions: ReassignmentAction[];
+  alerts: OrgAlert[];
+}
+
+export async function evaluateOrganization(
+  orgId: string,
+  options?: RequestOptions,
+): Promise<EvaluationResult> {
+  const data = await request<{ evaluation: EvaluationResult }>(
+    `/organizations/${encodeURIComponent(orgId)}/evaluate`,
+    { method: 'POST', ...options },
+  );
+  return data.evaluation;
+}
+
+export async function fetchOrganizationAlerts(
+  orgId: string,
+  options?: RequestOptions,
+): Promise<OrgAlert[]> {
+  const data = await request<{ alerts: OrgAlert[]; count: number }>(
+    `/organizations/${encodeURIComponent(orgId)}/alerts`,
+    options,
+  );
+  return data.alerts;
+}

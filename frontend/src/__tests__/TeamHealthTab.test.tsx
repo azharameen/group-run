@@ -1,16 +1,48 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import TeamHealthTab from '@/components/command-center/TeamHealthTab';
 import * as apiClient from '@/api/client';
-import type { OrganizationHealth } from '@/api/client';
+import type { EvaluationResult, OrganizationHealth, OrgAlert } from '@/api/client';
 
 vi.mock('@/api/client', () => ({
   fetchOrganizations: vi.fn(),
   fetchOrganizationHealth: vi.fn(),
+  fetchOrganizationAlerts: vi.fn(),
+  evaluateOrganization: vi.fn(),
 }));
 
 const mockFetchOrganizations = vi.mocked(apiClient.fetchOrganizations);
 const mockFetchHealth = vi.mocked(apiClient.fetchOrganizationHealth);
+const mockFetchAlerts = vi.mocked(apiClient.fetchOrganizationAlerts);
+const mockEvaluate = vi.mocked(apiClient.evaluateOrganization);
+
+function makeAlert(overrides: Partial<OrgAlert> = {}): OrgAlert {
+  return {
+    alert_id: 'alert-1',
+    org_id: 'org-1',
+    work_item_id: 'wi-1',
+    phase: 'building',
+    reason: 'Stuck in building for 30 hours',
+    raised_at: '2026-02-10T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function makeEvaluation(overrides: Partial<EvaluationResult> = {}): EvaluationResult {
+  return {
+    actions: [
+      {
+        work_item_id: 'wi-2',
+        from_agent_id: 'chief_of_staff',
+        to_agent_id: 'backend_engineer',
+        department_id: 'technology',
+        reason: 'Owner is the chief of staff',
+      },
+    ],
+    alerts: [makeAlert()],
+    ...overrides,
+  };
+}
 
 function makeHealth(overrides: Partial<OrganizationHealth> = {}): OrganizationHealth {
   return {
@@ -64,6 +96,7 @@ describe('TeamHealthTab', () => {
         agent_count: 6,
       },
     ]);
+    mockFetchAlerts.mockResolvedValue([]);
   });
 
   test('renders team cards with capacity counts', async () => {
@@ -93,6 +126,7 @@ describe('TeamHealthTab', () => {
 
   test('surfaces API error with retry', async () => {
     mockFetchHealth.mockRejectedValue(new Error('boom'));
+    mockFetchAlerts.mockResolvedValue([]);
 
     render(<TeamHealthTab />);
 
@@ -110,5 +144,44 @@ describe('TeamHealthTab', () => {
       expect(screen.getByTestId('team-health-empty')).toBeInTheDocument();
     });
     expect(mockFetchHealth).not.toHaveBeenCalled();
+  });
+
+  test('lists existing escalation alerts on load', async () => {
+    mockFetchHealth.mockResolvedValue(makeHealth());
+    mockFetchAlerts.mockResolvedValue([makeAlert()]);
+
+    render(<TeamHealthTab />);
+
+    const alert = await screen.findByTestId('team-health-alert-alert-1');
+    expect(alert).toHaveTextContent('wi-1');
+    expect(alert).toHaveTextContent('building');
+  });
+
+  test('evaluate button triggers POST and renders returned actions and alerts', async () => {
+    mockFetchHealth.mockResolvedValue(makeHealth());
+    mockEvaluate.mockResolvedValue(makeEvaluation());
+
+    render(<TeamHealthTab />);
+    const button = await screen.findByTestId('team-health-evaluate');
+    fireEvent.click(button);
+
+    expect(await screen.findByTestId('team-health-evaluation')).toBeInTheDocument();
+    expect(mockEvaluate).toHaveBeenCalledWith('org-1');
+    const action = screen.getByTestId('team-health-action-wi-2');
+    expect(action).toHaveTextContent('chief_of_staff');
+    expect(action).toHaveTextContent('backend_engineer');
+    expect(screen.getByTestId('team-health-alert-alert-1')).toBeInTheDocument();
+  });
+
+  test('surfaces evaluation error', async () => {
+    mockFetchHealth.mockResolvedValue(makeHealth());
+    mockEvaluate.mockRejectedValue(new Error('eval boom'));
+
+    render(<TeamHealthTab />);
+    const button = await screen.findByTestId('team-health-evaluate');
+    fireEvent.click(button);
+
+    const error = await screen.findByTestId('team-health-evaluation-error');
+    expect(error).toHaveTextContent('eval boom');
   });
 });

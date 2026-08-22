@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # "overloaded" when its department's open work items exceed this count.
     team_overload_threshold: int = 5
 
+    # Blocked-work threshold for the Chief of Staff evaluation (Story 9.2):
+    # an open work item stuck in one phase for longer than this many hours
+    # raises an escalation alert.
+    blocked_phase_threshold_hours: int = 24
+
     # Compute .env path relative to this file (backend/app/config.py -> repo root)
     model_config = SettingsConfigDict(
         env_prefix="",
@@ -60,6 +65,8 @@ class Settings(BaseSettings):
             )
         if self.team_overload_threshold < 0:
             raise ValueError("TEAM_OVERLOAD_THRESHOLD must be non-negative")
+        if self.blocked_phase_threshold_hours < 0:
+            raise ValueError("BLOCKED_PHASE_THRESHOLD_HOURS must be non-negative")
         return self
 
     @model_validator(mode="after")

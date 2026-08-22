@@ -67,7 +67,7 @@ class LifecycleEvent(BaseModel):
 
     event_id: str
     work_item_id: str
-    event_type: Literal["created", "transition", "handoff"]
+    event_type: Literal["created", "transition", "handoff", "reassignment", "escalation"]
     from_status: str
     to_status: str
     from_department: str
@@ -77,6 +77,17 @@ class LifecycleEvent(BaseModel):
     confidence: RoutingConfidence
     reasoning: str
     alternatives: list[str] = Field(default_factory=list)
+
+
+class OrgAlert(BaseModel):
+    """A raised alert for a work item stuck in one phase (Story 9.2)."""
+
+    alert_id: str
+    org_id: str
+    work_item_id: str
+    phase: str
+    reason: str
+    raised_at: str
 
 
 class TransitionWorkItemRequest(BaseModel):
