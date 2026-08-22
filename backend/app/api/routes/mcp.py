@@ -8,6 +8,7 @@ from pathlib import Path
 
 import anyio.to_thread
 from fastapi import APIRouter, HTTPException, status
+from fastapi import Path as FastPath
 from pydantic import ValidationError
 
 from ...config import MCP_CONFIG_PATH, MCP_SCHEMA_VERSION
@@ -180,7 +181,7 @@ async def add_server(payload: AddMCPServerRequest) -> MCPServerResponse:
 
 
 @router.delete("/{name}", response_model=MCPServerResponse)
-async def remove_server(name: str) -> MCPServerResponse:
+async def remove_server(name: str = FastPath(..., min_length=1, max_length=64)) -> MCPServerResponse:
     try:
         removed = await anyio.to_thread.run_sync(_service.remove_server, name)
         return MCPServerResponse(**removed)
@@ -192,7 +193,7 @@ async def remove_server(name: str) -> MCPServerResponse:
 
 
 @router.get("/{name}", response_model=MCPServerResponse)
-async def get_server(name: str) -> MCPServerResponse:
+async def get_server(name: str = FastPath(..., min_length=1, max_length=64)) -> MCPServerResponse:
     try:
         server = await anyio.to_thread.run_sync(_service.get_server, name)
         return MCPServerResponse(**server)
@@ -204,7 +205,7 @@ async def get_server(name: str) -> MCPServerResponse:
 
 
 @router.post("/{name}/health")
-async def ping_server(name: str) -> dict:
+async def ping_server(name: str = FastPath(..., min_length=1, max_length=64)) -> dict:
     """Ping an MCP server to check its connection status."""
     try:
         return await anyio.to_thread.run_sync(_ping_server_sync, name)

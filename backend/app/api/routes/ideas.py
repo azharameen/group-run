@@ -29,7 +29,7 @@ _UPDATE_FIELDS = {"title", "signal_text"}
 _idea_lock = threading.Lock()
 
 def _validate_idea_id(idea_id: str) -> str:
-    if not _ID_RE.match(idea_id):
+    if len(idea_id) > 64 or not _ID_RE.match(idea_id):
         raise HTTPException(status_code=400, detail="Invalid idea_id format")
     return idea_id
 
@@ -43,16 +43,16 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 class CreateIdeaRequest(BaseModel):
-    title: str | None = None
-    signal_text: str | None = "Autonomous discovery"
+    title: str | None = Field(default=None, max_length=200)
+    signal_text: str | None = Field(default="Autonomous discovery", max_length=5000)
 
 class UpdateIdeaRequest(BaseModel):
-    field: str
-    value: str
+    field: str = Field(..., max_length=50)
+    value: str = Field(..., max_length=5000)
 
 class AddCommentRequest(BaseModel):
-    text: str = Field(..., min_length=1)
-    author: str | None = "User"
+    text: str = Field(..., min_length=1, max_length=2000)
+    author: str | None = Field(default="User", max_length=100)
 
 def _generate_idea_id() -> str:
     """Generate a unique idea ID."""

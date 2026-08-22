@@ -7,7 +7,7 @@ descriptions;
 
 import sqlite3
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path, Query
 
 from ...organization import service as org_service
 from ...organization.service import OrganizationIntegrityError
@@ -68,7 +68,7 @@ def submit_work_item(request: SubmitWorkItemRequest) -> dict:
 
 
 @router.get("/work-items")
-def list_work_items(org_id: str | None = None) -> dict:
+def list_work_items(org_id: str | None = Query(default=None, max_length=64)) -> dict:
     """List work items, newest first.
 
     ``org_id`` filters to one organization (404 when unknown); omitted
@@ -86,7 +86,7 @@ def list_work_items(org_id: str | None = None) -> dict:
 
 
 @router.get("/work-items/{work_item_id}")
-def get_work_item(work_item_id: str) -> dict:
+def get_work_item(work_item_id: str = Path(..., max_length=64)) -> dict:
     """Fetch a single work item with its routing decision. 404 if missing."""
     try:
         item = service.get_work_item(work_item_id)
@@ -98,7 +98,10 @@ def get_work_item(work_item_id: str) -> dict:
 
 
 @router.post("/work-items/{work_item_id}/transitions", status_code=201)
-async def transition_work_item(work_item_id: str, request: TransitionWorkItemRequest) -> dict:
+async def transition_work_item(
+    request: TransitionWorkItemRequest,
+    work_item_id: str = Path(..., max_length=64),
+) -> dict:
     """Advance a work item to a later lifecycle phase."""
     try:
         item, event = service.transition_work_item(
@@ -115,7 +118,7 @@ async def transition_work_item(work_item_id: str, request: TransitionWorkItemReq
 
 
 @router.get("/work-items/{work_item_id}/lifecycle")
-async def lifecycle_history(work_item_id: str) -> dict:
+async def lifecycle_history(work_item_id: str = Path(..., max_length=64)) -> dict:
     """Return the complete lifecycle history, including creation."""
     try:
         events = service.get_lifecycle_history(work_item_id)

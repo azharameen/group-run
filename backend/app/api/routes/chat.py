@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ...orchestrator.supervisor import get_supervisor_graph
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class StreamChatRequest(BaseModel):
-    text: str
+    text: str = Field(..., min_length=1, max_length=10000)
 
 
 def _error_shape(error) -> dict:

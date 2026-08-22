@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import anyio.to_thread
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
 
 from ...services.thread_manager import (
@@ -30,9 +30,9 @@ NO_FIELDS_TO_UPDATE = "No fields to update"
 
 @router.get("")
 def api_list_threads(
-    status: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    status: str | None = Query(default=None, max_length=50),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> dict[str, Any]:
     """List threads sorted by updated_at DESC."""
     threads = list_threads(status=status, limit=limit, offset=offset)
@@ -52,7 +52,7 @@ def api_create_thread(req: CreateThreadRequest) -> dict[str, Any]:
 
 
 @router.get("/{thread_id}", responses={404: {"description": THREAD_NOT_FOUND}})
-def api_get_thread(thread_id: str) -> dict[str, Any]:
+def api_get_thread(thread_id: str = Path(..., max_length=64)) -> dict[str, Any]:
     """Get thread metadata."""
     thread = get_thread(thread_id)
     if not thread:
@@ -63,8 +63,8 @@ def api_get_thread(thread_id: str) -> dict[str, Any]:
 @router.put("/{thread_id}")
 @router.patch("/{thread_id}")
 def api_update_thread(
-    thread_id: str,
     req: UpdateThreadRequest,
+    thread_id: str = Path(..., max_length=64),
 ) -> dict[str, Any]:
     """Update thread metadata (supports both PUT and PATCH)."""
     updates = {k: v for k, v in req.model_dump(exclude_none=True).items() if v is not None}
@@ -77,14 +77,14 @@ def api_update_thread(
 
 
 @router.delete("/{thread_id}")
-def api_delete_thread(thread_id: str) -> dict[str, bool]:
+def api_delete_thread(thread_id: str = Path(..., max_length=64)) -> dict[str, bool]:
     """Delete a thread."""
     deleted = delete_thread(thread_id)
     return {"deleted": deleted}
 
 
 @router.get("/{thread_id}/messages")
-async def api_get_thread_messages(thread_id: str) -> dict[str, Any]:
+async def api_get_thread_messages(thread_id: str = Path(..., max_length=64)) -> dict[str, Any]:
     """Retrieve messages from a thread's latest checkpoint state."""
     thread = await anyio.to_thread.run_sync(get_thread, thread_id)
     if not thread:
@@ -95,8 +95,8 @@ async def api_get_thread_messages(thread_id: str) -> dict[str, Any]:
 
 @router.post("/{thread_id}/stream")
 async def api_stream_message(
-    thread_id: str,
     req: SendMessageRequest,
+    thread_id: str = Path(..., max_length=64),
 ) -> StreamingResponse:
     """Send a message to a thread and stream the agent response."""
     thread = await anyio.to_thread.run_sync(get_thread, thread_id)

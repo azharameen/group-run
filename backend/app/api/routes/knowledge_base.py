@@ -41,7 +41,7 @@ async def list_documents():
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
-    source: str = "raw"
+    source: str = Query(default="raw", max_length=64)
 ):
     """Upload a new document to the knowledge base."""
     # Validate file extension (Story 6.4 requirement)
@@ -74,7 +74,7 @@ async def upload_document(
 
 
 @router.get("/search", response_model=KnowledgeBaseResponse)
-async def search_documents(q: str = Query(..., min_length=1)):
+async def search_documents(q: str = Query(..., min_length=1, max_length=500)):
     """Simple lexical search across knowledge base documents."""
     try:
         docs = await anyio.to_thread.run_sync(load_knowledge_base)

@@ -56,10 +56,10 @@ class SubmitWorkItemRequest(BaseModel):
     """Request body for POST /api/work-items."""
 
     title: str
-    description: str = ""
-    org_id: str | None = None
-    department: str | None = None
-    source: str | None = None
+    description: str = Field(default="", max_length=5000)
+    org_id: str | None = Field(default=None, max_length=64)
+    department: str | None = Field(default=None, max_length=64)
+    source: str | None = Field(default=None, max_length=64)
 
 
 class LifecycleEvent(BaseModel):
@@ -82,6 +82,6 @@ class LifecycleEvent(BaseModel):
 class TransitionWorkItemRequest(BaseModel):
     """Request body for advancing a work item through its lifecycle."""
 
-    status: str
-    reasoning: str = ""
-    decided_by: str = OWNER_AGENT_ID
+    status: str = Field(..., min_length=1, max_length=50)
+    reasoning: str = Field(default="", max_length=2000)
+    decided_by: str = Field(default=OWNER_AGENT_ID, max_length=64)
