@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from unittest.mock import patch
+
 from app.api.app import create_app
 import app.services.interrupt_service as interrupt_module
 from app.services.interrupt_service import InterruptService
@@ -36,14 +38,18 @@ def test_list_pending_empty(client):
 
 
 def test_list_pending_with_data(client):
-    interrupt = InterruptService.instance().create_interrupt("thread-1", "write_file", "Need approval", {"path": "x.txt"})
+    interrupt = InterruptService.instance().create_interrupt(
+        "thread-1", "write_file", "Need approval", {"path": "x.txt"}
+    )
     res = client.get("/api/interrupts/pending")
     assert res.status_code == 200
     assert res.json()["interrupts"][0]["id"] == interrupt["id"]
 
 
 def test_create_interrupt_valid(client):
-    res = client.post("/api/interrupts/", json={"thread_id": "thread-1", "tool_name": "edit_file", "message": "Approve?"})
+    res = client.post(
+        "/api/interrupts/", json={"thread_id": "thread-1", "tool_name": "edit_file", "message": "Approve?"}
+    )
     assert res.status_code == 201
     body = res.json()["interrupt"]
     assert body["thread_id"] == "thread-1"
@@ -162,3 +168,12 @@ def test_resume_no_checkpoint_409(client):
         res = client.post(f"/api/interrupts/{interrupt['id']}/resume", json={})
     assert res.status_code == 409
     assert "no resumable state" in res.json()["detail"]
+
+
+def test_create_interrupt_delivery_failure_returns_500(client):
+    with patch.object(interrupt_module._bus, "publish", side_effect=RuntimeError("Bus connection error")):
+        res = client.post(
+            "/api/interrupts/", json={"thread_id": "thread-1", "tool_name": "edit_file", "message": "Approve?"}
+        )
+        assert res.status_code == 500
+        assert "Failed to deliver interrupt.created event" in res.json()["detail"]

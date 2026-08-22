@@ -1,4 +1,5 @@
 import json
+import threading
 import uuid
 from datetime import UTC, datetime
 
@@ -16,6 +17,9 @@ from .models import (
 )
 
 DEFAULT_ROUTING_DEPARTMENT = "ideation"
+_TRANSITION_LOCK = threading.Lock()
+
+
 class UnknownOrganizationError(LookupError): pass
 class NoOrganizationError(LookupError): pass
 class UnknownWorkItemError(LookupError): pass
@@ -134,49 +138,57 @@ def transition_work_item(
     decided_by: str = OWNER_AGENT_ID,
 ) -> tuple[WorkItem, LifecycleEvent]:
     """Advance an item and persist its provenance in one transaction."""
-    item = get_work_item(work_item_id)
-    if item is None:
-        raise UnknownWorkItemError(f"Work item {work_item_id} not found")
-    if status not in LIFECYCLE_PHASES:
-        raise ValueError(f"Invalid status '{status}'. Valid statuses: {', '.join(LIFECYCLE_PHASES)}")
-    current_index = LIFECYCLE_PHASES.index(item.status)
-    target_index = LIFECYCLE_PHASES.index(status)
-    if target_index <= current_index:
-        raise InvalidTransitionError(
-            f"Cannot transition work item from '{item.status}' to '{status}'; target must be later"
+    with _TRANSITION_LOCK:
+        item = get_work_item(work_item_id)
+        if item is None:
+            raise UnknownWorkItemError(f"Work item {work_item_id} not found")
+        if status not in LIFECYCLE_PHASES:
+            raise ValueError(f"Invalid status '{status}'. Valid statuses: {', '.join(LIFECYCLE_PHASES)}")
+        current_index = LIFECYCLE_PHASES.index(item.status)
+        target_index = LIFECYCLE_PHASES.index(status)
+        if target_index <= current_index:
+            raise InvalidTransitionError(
+                f"Cannot transition work item from '{item.status}' to '{status}'; target must be later"
+            )
+        to_department = PHASE_DEPARTMENT[status]
+        handoff = item.department_id != to_department
+        actual_decider = OWNER_AGENT_ID if handoff else decided_by
+        confidence = "high" if decided_by == OWNER_AGENT_ID or handoff else "low"
+        if not reasoning.strip():
+            reasoning = f"Transitioned from {item.status} to {status}."
+            if handoff:
+                reasoning += f" Handoff from {item.department_id} to {to_department}."
+        event = LifecycleEvent(
+            event_id=str(uuid.uuid4()),
+            work_item_id=work_item_id,
+            event_type="handoff" if handoff else "transition",
+            from_status=item.status,
+            to_status=status,
+            from_department=item.department_id,
+            to_department=to_department,
+            decided_by=actual_decider,
+            decided_at=datetime.now(UTC).isoformat(),
+            confidence=confidence,
+            reasoning=reasoning.strip(),
+            alternatives=[phase for phase in LIFECYCLE_PHASES[target_index + 1 :]],
         )
-    to_department = PHASE_DEPARTMENT[status]
-    handoff = item.department_id != to_department
-    actual_decider = OWNER_AGENT_ID if handoff else decided_by
-    confidence = "high" if decided_by == OWNER_AGENT_ID or handoff else "low"
-    if not reasoning.strip():
-        reasoning = f"Transitioned from {item.status} to {status}."
-        if handoff:
-            reasoning += f" Handoff from {item.department_id} to {to_department}."
-    event = LifecycleEvent(
-        event_id=str(uuid.uuid4()),
-        work_item_id=work_item_id,
-        event_type="handoff" if handoff else "transition",
-        from_status=item.status,
-        to_status=status,
-        from_department=item.department_id,
-        to_department=to_department,
-        decided_by=actual_decider,
-        decided_at=datetime.now(UTC).isoformat(),
-        confidence=confidence,
-        reasoning=reasoning.strip(),
-        alternatives=[phase for phase in LIFECYCLE_PHASES[target_index + 1 :]],
-    )
-    try:
-        repository.record_transition(
-            work_item_id, status, to_department, datetime.now(UTC).isoformat(), event.model_dump()
-        )
-    except ValueError as exc:
-        raise UnknownWorkItemError(f"Work item {work_item_id} not found") from exc
-    updated = get_work_item(work_item_id)
-    if updated is None:
-        raise RuntimeError(f"Work item {work_item_id} vanished after transition")
-    return updated, event
+        try:
+            repository.record_transition(
+                work_item_id,
+                status,
+                to_department,
+                datetime.now(UTC).isoformat(),
+                event.model_dump(),
+                expected_status=item.status,
+            )
+        except ValueError as exc:
+            if "status changed concurrently" in str(exc):
+                raise InvalidTransitionError(str(exc)) from exc
+            raise UnknownWorkItemError(f"Work item {work_item_id} not found") from exc
+        updated = get_work_item(work_item_id)
+        if updated is None:
+            raise RuntimeError(f"Work item {work_item_id} vanished after transition")
+        return updated, event
 def get_lifecycle_history(work_item_id: str) -> list[LifecycleEvent]:
     """Return creation plus persisted lifecycle events oldest first."""
     rows = repository.get_work_item_rows(work_item_id)

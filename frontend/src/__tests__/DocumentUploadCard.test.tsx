@@ -12,6 +12,11 @@ vi.mock('@/api/client', async () => {
   };
 });
 
+const mockToast = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
+
 describe('DocumentUploadCard', () => {
   const mockOnSuccess = vi.fn().mockResolvedValue(undefined);
   const setUploading = vi.fn();
@@ -84,7 +89,8 @@ describe('DocumentUploadCard', () => {
 
     await waitFor(() => {
       expect(client.ingestKnowledgeBaseDocument).toHaveBeenCalledWith(
-        expect.objectContaining({ file: expect.any(File), source: 'raw' })
+        expect.objectContaining({ file: expect.any(File), source: 'raw' }),
+        { timeoutMs: undefined }
       );
     });
 
@@ -95,7 +101,7 @@ describe('DocumentUploadCard', () => {
     expect(setUploading).toHaveBeenCalledWith(false);
   });
 
-  test('handles upload error gracefully', async () => {
+  test('handles upload error gracefully and surfaces error message and toast', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(client.ingestKnowledgeBaseDocument).mockRejectedValue(new Error('Upload failed'));
 
@@ -113,12 +119,107 @@ describe('DocumentUploadCard', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Document upload error:', expect.any(Error));
+      expect(screen.getByTestId('upload-error')).toHaveTextContent('Upload failed');
     });
 
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Upload failed',
+        description: 'Upload failed',
+      })
+    );
     expect(setUploading).toHaveBeenCalledWith(false);
     expect(mockOnSuccess).not.toHaveBeenCalled();
     
     consoleSpy.mockRestore();
+  });
+
+  test('simulates slow upload timing out and asserts timeout fires and surfaces error', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Simulate a hung/slow upload that rejects due to timeout after timeoutMs
+    vi.mocked(client.ingestKnowledgeBaseDocument).mockImplementation(
+      (_payload, options) =>
+        new Promise((_, reject) => {
+          const timeout = options?.timeoutMs ?? 30000;
+          setTimeout(() => reject(new Error(`API timeout after ${timeout} ms`)), 10);
+        })
+    );
+
+    render(
+      <DocumentUploadCard
+        uploading={false}
+        setUploading={setUploading}
+        onSuccess={mockOnSuccess}
+        timeoutMs={5000}
+      />
+    );
+
+    const input = screen.getByTestId('file-input') as HTMLInputElement;
+    const file = new File(['large file content'], 'big-doc.pdf', { type: 'application/pdf' });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(setUploading).toHaveBeenCalledWith(true);
+
+    await waitFor(() => {
+      expect(client.ingestKnowledgeBaseDocument).toHaveBeenCalledWith(
+        expect.objectContaining({ file: expect.any(File), source: 'raw' }),
+        { timeoutMs: 5000 }
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upload-error')).toHaveTextContent('API timeout after 5000 ms');
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Upload failed',
+        description: 'API timeout after 5000 ms',
+      })
+    );
+
+    expect(setUploading).toHaveBeenCalledWith(false);
+    expect(mockOnSuccess).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  test('handles unsuccessful response payload gracefully with error msg', async () => {
+    vi.mocked(client.ingestKnowledgeBaseDocument).mockResolvedValue({
+      success: false,
+      error: 'Invalid file format',
+    });
+
+    render(
+      <DocumentUploadCard
+        uploading={false}
+        setUploading={setUploading}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    const input = screen.getByTestId('file-input') as HTMLInputElement;
+    const file = new File(['content'], 'file.xyz', { type: 'application/octet-stream' });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upload-error')).toHaveTextContent('Invalid file format');
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Upload failed',
+        description: 'Invalid file format',
+      })
+    );
+
+    expect(setUploading).toHaveBeenCalledWith(false);
+    expect(mockOnSuccess).not.toHaveBeenCalled();
   });
 });

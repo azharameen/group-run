@@ -27,43 +27,47 @@ def _get_db_path() -> Path:
 
 def _init_schema(conn: sqlite3.Connection) -> None:
     """Create the organization tables if they do not exist yet."""
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS organizations (
-            org_id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            description TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS departments (
-            org_id TEXT NOT NULL,
-            department_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'idle',
-            PRIMARY KEY (org_id, department_id)
-        );
-        CREATE TABLE IF NOT EXISTS teams (
-            org_id TEXT NOT NULL,
-            department_id TEXT NOT NULL,
-            team_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'idle',
-            PRIMARY KEY (org_id, department_id, team_id)
-        );
-        CREATE TABLE IF NOT EXISTS agents (
-            org_id TEXT NOT NULL,
-            department_id TEXT,
-            team_id TEXT,
-            agent_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            role TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'idle',
-            PRIMARY KEY (org_id, agent_id)
-        );
-        """
-    )
-    conn.commit()
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS organizations (
+                org_id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS departments (
+                org_id TEXT NOT NULL,
+                department_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'idle',
+                PRIMARY KEY (org_id, department_id)
+            );
+            CREATE TABLE IF NOT EXISTS teams (
+                org_id TEXT NOT NULL,
+                department_id TEXT NOT NULL,
+                team_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'idle',
+                PRIMARY KEY (org_id, department_id, team_id)
+            );
+            CREATE TABLE IF NOT EXISTS agents (
+                org_id TEXT NOT NULL,
+                department_id TEXT,
+                team_id TEXT,
+                agent_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'idle',
+                PRIMARY KEY (org_id, agent_id)
+            );
+            """
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -129,7 +133,7 @@ def insert_organization_tree(
                         conn, org_id, dept["department_id"], team["team_id"], agent
                     )
         conn.commit()
-    except sqlite3.Error:
+    except Exception:
         conn.rollback()
         raise
 

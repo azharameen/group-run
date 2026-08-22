@@ -8,24 +8,24 @@ from pydantic import BaseModel, Field, HttpUrl
 
 
 class CreateThreadRequest(BaseModel):
-    title: str = "New Chat"
-    idea_id: str | None = None
-    tags: list[str] = []
-    agent_names: list[str] = []
+    title: str = Field(default="New Chat", max_length=200)
+    idea_id: str | None = Field(default=None, max_length=64)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+    agent_names: list[str] = Field(default_factory=list, max_length=50)
 
 
 class UpdateThreadRequest(BaseModel):
-    title: str | None = None
-    status: str | None = None
-    idea_id: str | None = None
-    tags: list[str] | None = None
-    agent_names: list[str] | None = None
+    title: str | None = Field(default=None, max_length=200)
+    status: str | None = Field(default=None, max_length=50)
+    idea_id: str | None = Field(default=None, max_length=64)
+    tags: list[str] | None = Field(default=None, max_length=50)
+    agent_names: list[str] | None = Field(default=None, max_length=50)
 
 
 class SendMessageRequest(BaseModel):
-    text: str
-    sender: str = "user"
-    idea_id: str | None = None
+    text: str = Field(..., min_length=1, max_length=10000)
+    sender: str = Field(default="user", max_length=100)
+    idea_id: str | None = Field(default=None, max_length=64)
 
 
 class Interrupt(BaseModel):
@@ -47,10 +47,10 @@ class Interrupt(BaseModel):
 
 
 class CreateInterruptRequest(BaseModel):
-    thread_id: str
-    tool_name: str
-    message: str
-    tool_input: dict[str, Any] = {}
+    thread_id: str = Field(..., min_length=1, max_length=64)
+    tool_name: str = Field(..., min_length=1, max_length=128)
+    message: str = Field(..., min_length=1, max_length=2000)
+    tool_input: dict[str, Any] = Field(default_factory=dict)
     decided_by: str = "agent"
     confidence: str = "low"
     reasoning: str | None = None
@@ -58,8 +58,8 @@ class CreateInterruptRequest(BaseModel):
 
 
 class InterruptDecisionRequest(BaseModel):
-    decision: str
-    reason: str = ""
+    decision: str = Field(..., min_length=1, max_length=50)
+    reason: str = Field(default="", max_length=2000)
     reasoning: str | None = None
 
 

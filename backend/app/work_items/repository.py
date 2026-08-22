@@ -23,57 +23,61 @@ def _get_db_path() -> Path:
     return _WORK_ITEM_DB_PATH
 def _init_schema(conn: sqlite3.Connection) -> None:
     """Create the work item tables if they do not exist yet."""
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS work_items (
-            work_item_id TEXT PRIMARY KEY,
-            org_id TEXT NOT NULL,
-            title TEXT NOT NULL,
-            description TEXT NOT NULL DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'new',
-            owner_agent_id TEXT NOT NULL,
-            source TEXT NOT NULL DEFAULT 'api',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-            ,department_id TEXT NOT NULL DEFAULT 'ideation'
-        );
-        CREATE TABLE IF NOT EXISTS routing_decisions (
-            work_item_id TEXT PRIMARY KEY,
-            department_id TEXT NOT NULL,
-            decided_by TEXT NOT NULL,
-            decided_at TEXT NOT NULL,
-            confidence TEXT NOT NULL,
-            reasoning TEXT NOT NULL,
-            alternatives TEXT NOT NULL DEFAULT '[]'
-        );
-        CREATE INDEX IF NOT EXISTS idx_work_items_org_created
-            ON work_items (org_id, created_at DESC);
-        CREATE TABLE IF NOT EXISTS lifecycle_events (
-            event_id TEXT PRIMARY KEY,
-            work_item_id TEXT NOT NULL,
-            event_type TEXT NOT NULL,
-            from_status TEXT NOT NULL,
-            to_status TEXT NOT NULL,
-            from_department TEXT NOT NULL,
-            to_department TEXT NOT NULL,
-            decided_by TEXT NOT NULL,
-            decided_at TEXT NOT NULL,
-            confidence TEXT NOT NULL,
-            reasoning TEXT NOT NULL,
-            alternatives TEXT NOT NULL DEFAULT '[]'
-        );
-        CREATE INDEX IF NOT EXISTS idx_lifecycle_events_item_time
-            ON lifecycle_events (work_item_id, decided_at);
-        """
-    )
-    columns = {row[1] for row in conn.execute("PRAGMA table_info(work_items)")}
-    if "department_id" not in columns:
-        conn.execute("ALTER TABLE work_items ADD COLUMN department_id TEXT NOT NULL DEFAULT 'ideation'")
-        conn.execute(
-            "UPDATE work_items SET department_id = (SELECT department_id FROM "
-            "routing_decisions WHERE routing_decisions.work_item_id = work_items.work_item_id)"
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS work_items (
+                work_item_id TEXT PRIMARY KEY,
+                org_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'new',
+                owner_agent_id TEXT NOT NULL,
+                source TEXT NOT NULL DEFAULT 'api',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+                ,department_id TEXT NOT NULL DEFAULT 'ideation'
+            );
+            CREATE TABLE IF NOT EXISTS routing_decisions (
+                work_item_id TEXT PRIMARY KEY,
+                department_id TEXT NOT NULL,
+                decided_by TEXT NOT NULL,
+                decided_at TEXT NOT NULL,
+                confidence TEXT NOT NULL,
+                reasoning TEXT NOT NULL,
+                alternatives TEXT NOT NULL DEFAULT '[]'
+            );
+            CREATE INDEX IF NOT EXISTS idx_work_items_org_created
+                ON work_items (org_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS lifecycle_events (
+                event_id TEXT PRIMARY KEY,
+                work_item_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                from_status TEXT NOT NULL,
+                to_status TEXT NOT NULL,
+                from_department TEXT NOT NULL,
+                to_department TEXT NOT NULL,
+                decided_by TEXT NOT NULL,
+                decided_at TEXT NOT NULL,
+                confidence TEXT NOT NULL,
+                reasoning TEXT NOT NULL,
+                alternatives TEXT NOT NULL DEFAULT '[]'
+            );
+            CREATE INDEX IF NOT EXISTS idx_lifecycle_events_item_time
+                ON lifecycle_events (work_item_id, decided_at);
+            """
         )
-    conn.commit()
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(work_items)")}
+        if "department_id" not in columns:
+            conn.execute("ALTER TABLE work_items ADD COLUMN department_id TEXT NOT NULL DEFAULT 'ideation'")
+            conn.execute(
+                "UPDATE work_items SET department_id = (SELECT department_id FROM "
+                "routing_decisions WHERE routing_decisions.work_item_id = work_items.work_item_id)"
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 def _get_conn() -> sqlite3.Connection:
     """Return the singleton connection, lazily opening it with WAL mode."""
     global _WORK_ITEM_CONN
@@ -134,7 +138,7 @@ def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
             ),
         )
         conn.commit()
-    except sqlite3.Error:
+    except Exception:
         conn.rollback()
         raise
 def get_work_item_rows(work_item_id: str) -> dict[str, Any] | None:
@@ -168,12 +172,16 @@ def list_work_items_with_routing(org_id: str | None = None) -> list[dict[str, An
     return [
         {"item": row, "routing": routing.get(row["work_item_id"])} for row in item_rows
     ]
-from .lifecycle_repository import (  # noqa: F401
-    insert_lifecycle_event,
-    list_lifecycle_events,
-    record_transition,
-    update_work_item_status,
-)
+def __getattr__(name: str) -> Any:
+    if name in (
+        "insert_lifecycle_event",
+        "list_lifecycle_events",
+        "record_transition",
+        "update_work_item_status",
+    ):
+        from . import lifecycle_repository
+        return getattr(lifecycle_repository, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _reset_work_item_db(conn: sqlite3.Connection | None = None) -> None:

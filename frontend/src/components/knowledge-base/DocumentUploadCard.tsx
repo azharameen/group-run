@@ -1,21 +1,26 @@
-import { useRef, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2 } from "lucide-react";
 import { ingestKnowledgeBaseDocument } from "@/api/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface DocumentUploadCardProps {
 	uploading: boolean;
 	setUploading: (val: boolean) => void;
 	onSuccess: () => Promise<void>;
+	timeoutMs?: number;
 }
 
 export function DocumentUploadCard({
 	uploading,
 	setUploading,
 	onSuccess,
+	timeoutMs,
 }: DocumentUploadCardProps) {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const { toast } = useToast();
 
 	const handleUploadClick = () => {
 		fileInputRef.current?.click();
@@ -25,16 +30,35 @@ export function DocumentUploadCard({
 		const file = event.target.files?.[0];
 		if (!file) return;
 		setUploading(true);
+		setError(null);
 		try {
-			const res = await ingestKnowledgeBaseDocument({
-				file,
-				source: "raw",
-			});
+			const res = await ingestKnowledgeBaseDocument(
+				{
+					file,
+					source: "raw",
+				},
+				{ timeoutMs }
+			);
 			if (res.success) {
 				await onSuccess();
+			} else {
+				const errMsg = res.error || "Document upload failed";
+				setError(errMsg);
+				toast({
+					variant: "destructive",
+					title: "Upload failed",
+					description: errMsg,
+				});
 			}
 		} catch (err) {
 			console.error("Document upload error:", err);
+			const errMsg = err instanceof Error ? err.message : "Document upload failed";
+			setError(errMsg);
+			toast({
+				variant: "destructive",
+				title: "Upload failed",
+				description: errMsg,
+			});
 		} finally {
 			setUploading(false);
 			event.target.value = "";
@@ -69,6 +93,11 @@ export function DocumentUploadCard({
 						onChange={handleUpload}
 					/>
 				</div>
+				{error && (
+					<p data-testid="upload-error" className="text-xs text-destructive font-medium mt-2">
+						{error}
+					</p>
+				)}
 			</CardContent>
 		</Card>
 	);

@@ -349,6 +349,18 @@ class TestLifecycleTransitions:
         )
         assert event.reasoning == "Phase finished."
 
+    def test_update_work_item_status_persists(self, organization, work_item_db):
+        from app.work_items.lifecycle_repository import update_work_item_status
+
+        item = self._item(organization, work_item_db)
+        update_work_item_status(item.work_item_id, "development", "technology", "2025-01-01T00:00:00Z")
+
+        fetched = work_items_service.get_work_item(item.work_item_id)
+        assert fetched is not None
+        assert fetched.status == "development"
+        assert fetched.department_id == "technology"
+        assert fetched.updated_at == "2025-01-01T00:00:00Z"
+
 
 class TestLifecycleHistory:
     """Story 8.3 AC-3 — full history oldest first, starting with creation."""
@@ -407,6 +419,19 @@ class TestLifecycleApi:
         assert body["work_item"]["department_id"] == "technology"
         assert body["event"]["event_type"] == "handoff"
         assert body["event"]["decided_by"] == "chief_of_staff"
+
+    def test_transition_status_codes_for_invalid_transition_and_value_error(self, client, organization):
+        """Assert InvalidTransitionError returns HTTP 409 and generic ValueError returns HTTP 400."""
+        created = client.post("/api/work-items", json={"title": "Transition Test", "org_id": organization.org_id})
+        item_id = created.json()["work_item"]["work_item_id"]
+
+        # Generic ValueError (invalid status value) -> HTTP 400
+        bad_val_res = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "shipped"})
+        assert bad_val_res.status_code == 400
+
+        # InvalidTransitionError (no-op transition) -> HTTP 409
+        invalid_trans_res = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "new"})
+        assert invalid_trans_res.status_code == 409
 
     def test_post_transition_invalid_status_400(self, client, organization):
         created = client.post("/api/work-items", json={"title": "Bad status", "org_id": organization.org_id})
@@ -569,3 +594,72 @@ class TestRuntimeToolWiring:
             getattr(tool, "name", None) for tool in captured_kwargs.get("tools", [])
         ]
         assert "submit_work_item" in tool_names
+
+
+class TestConcurrentTransitions:
+    """AC: Concurrency tests firing simultaneous transitions."""
+
+    def test_simultaneous_identical_transitions(self, organization, work_item_db):
+        """Firing two simultaneous identical transitions on a work item guarantees exactly one succeeds."""
+        import concurrent.futures
+
+        item = work_items_service.submit_work_item(
+            "Concurrent transition item", org_id=organization.org_id
+        )
+
+        def _do_transition():
+            return work_items_service.transition_work_item(item.work_item_id, "ideation")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future1 = executor.submit(_do_transition)
+            future2 = executor.submit(_do_transition)
+
+            results = []
+            errors = []
+            for future in (future1, future2):
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    errors.append(exc)
+
+        assert len(results) == 1
+        assert len(errors) == 1
+        assert isinstance(errors[0], work_items_service.InvalidTransitionError)
+
+        # Verify lifecycle history is consistent and clean (created + 1 transition)
+        history = work_items_service.get_lifecycle_history(item.work_item_id)
+        assert len(history) == 2
+        assert history[1].to_status == "ideation"
+
+    def test_simultaneous_conflicting_transitions(self, organization, work_item_db):
+        """Firing two simultaneous transitions to different phases executes atomically without state corruption."""
+        import concurrent.futures
+
+        item = work_items_service.submit_work_item(
+            "Conflicting transitions item", org_id=organization.org_id
+        )
+
+        def _t_ideation():
+            return work_items_service.transition_work_item(item.work_item_id, "ideation")
+
+        def _t_development():
+            return work_items_service.transition_work_item(item.work_item_id, "development")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future1 = executor.submit(_t_ideation)
+            future2 = executor.submit(_t_development)
+
+            results = []
+            errors = []
+            for future in (future1, future2):
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    errors.append(exc)
+
+        # Either both succeed sequentially (new -> ideation -> development) or ideation is skipped/rejected
+        # Total lifecycle events recorded should match the number of successful transitions + created
+        history = work_items_service.get_lifecycle_history(item.work_item_id)
+        assert len(history) == len(results) + 1
+        updated = work_items_service.get_work_item(item.work_item_id)
+        assert updated.status == history[-1].to_status

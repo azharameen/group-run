@@ -1,6 +1,7 @@
 """Interrupt service for HITL approvals."""
 
 import json
+import logging
 import sqlite3
 import threading
 import uuid
@@ -11,6 +12,12 @@ from typing import Any
 from app.infrastructure.events.stream_bus import _bus
 
 from ..config import STORAGE_DIR
+
+logger = logging.getLogger(__name__)
+
+
+class InterruptDeliveryError(Exception):
+    """Raised when interrupt event delivery fails."""
 
 
 class InterruptService:
@@ -38,10 +45,14 @@ class InterruptService:
         return self._conn_obj
 
     def _init_table(self) -> None:
-        self._conn().execute(
-            "CREATE TABLE IF NOT EXISTS interrupts (id TEXT PRIMARY KEY, thread_id TEXT NOT NULL, tool_name TEXT NOT NULL DEFAULT 'unknown', tool_input TEXT DEFAULT '{}', message TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', decision TEXT, reason TEXT, reasoning TEXT, decided_by TEXT, decided_at TEXT, confidence TEXT, alternatives TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
-        )
-        self._conn().commit()
+        try:
+            self._conn().execute(
+                "CREATE TABLE IF NOT EXISTS interrupts (id TEXT PRIMARY KEY, thread_id TEXT NOT NULL, tool_name TEXT NOT NULL DEFAULT 'unknown', tool_input TEXT DEFAULT '{}', message TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', decision TEXT, reason TEXT, reasoning TEXT, decided_by TEXT, decided_at TEXT, confidence TEXT, alternatives TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
+            )
+            self._conn().commit()
+        except Exception:
+            self._conn().rollback()
+            raise
         cols = [row[1] for row in self._conn().execute("PRAGMA table_info(interrupts)").fetchall()]
         if "reasoning" not in cols:
             self._conn().execute("ALTER TABLE interrupts ADD COLUMN reasoning TEXT")
@@ -75,11 +86,15 @@ class InterruptService:
                 raise
             interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
-            _bus.publish("interrupt.created", {"interrupt": interrupt, "thread_id": thread_id})
+            self._publish_event("interrupt.created", {"interrupt": interrupt, "thread_id": thread_id})
         return interrupt  # type: ignore[return-value]
 
     def list_pending(self) -> list[dict[str, Any]]:
-        rows = self._conn().execute("SELECT * FROM interrupts WHERE status = 'pending' ORDER BY created_at DESC").fetchall()
+        rows = (
+            self._conn()
+            .execute("SELECT * FROM interrupts WHERE status = 'pending' ORDER BY created_at DESC")
+            .fetchall()
+        )
         return [self._row_dict(row) for row in rows]
 
     def list_all(self) -> list[dict[str, Any]]:
@@ -111,7 +126,7 @@ class InterruptService:
                 raise
         interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
-            _bus.publish("interrupt.approved", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
+            self._publish_event("interrupt.approved", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
         return interrupt
 
     def reject_interrupt(self, interrupt_id: str, reason: str, reasoning: str | None = None) -> dict[str, Any] | None:
@@ -134,13 +149,24 @@ class InterruptService:
                 raise
         interrupt = self.get_interrupt(interrupt_id)
         if interrupt is not None:
-            _bus.publish("interrupt.rejected", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
+            self._publish_event("interrupt.rejected", {"interrupt": interrupt, "thread_id": interrupt["thread_id"]})
         return interrupt
+
+    def _publish_event(self, event_type: str, payload: dict[str, Any]) -> None:
+        try:
+            _bus.publish(event_type, payload)
+        except Exception as exc:
+            logger.exception("Failed to deliver %s event", event_type)
+            raise InterruptDeliveryError(f"Failed to deliver {event_type} event: {exc}") from exc
 
     def _row_dict(self, row: sqlite3.Row | None) -> dict[str, Any] | None:
         if row is None:
             return None
         data = dict(row)
-        data["tool_input"] = json.loads(data["tool_input"]) if isinstance(data.get("tool_input"), str) else data.get("tool_input", {})
-        data["alternatives"] = json.loads(data["alternatives"]) if isinstance(data.get("alternatives"), str) else data.get("alternatives", [])
+        data["tool_input"] = (
+            json.loads(data["tool_input"]) if isinstance(data.get("tool_input"), str) else data.get("tool_input", {})
+        )
+        data["alternatives"] = (
+            json.loads(data["alternatives"]) if isinstance(data.get("alternatives"), str) else data.get("alternatives", [])
+        )
         return data

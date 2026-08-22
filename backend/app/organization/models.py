@@ -194,4 +194,4 @@ class CreateOrganizationRequest(BaseModel):
     """Request body for POST /api/organizations."""
 
     name: str
-    description: str = ""
+    description: str = Field(default="", max_length=2000)

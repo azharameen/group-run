@@ -1,3 +1,5 @@
+import { request, RequestOptions } from './request';
+
 const API_BASE = '/api';
 
 export type StreamEventType =
@@ -139,10 +141,8 @@ export interface ResumeResponse {
   response: string;
 }
 
-export async function fetchPendingInterrupts(): Promise<InterruptPayload[]> {
-  const res = await fetch(`${API_BASE}/interrupts/pending`);
-  if (!res.ok) throw new Error(`fetchPendingInterrupts ${res.status}`);
-  const data = await res.json();
+export async function fetchPendingInterrupts(options?: RequestOptions): Promise<InterruptPayload[]> {
+  const data = await request<{ interrupts?: InterruptPayload[] }>('/interrupts/pending', options);
   return data.interrupts || [];
 }
 
@@ -151,14 +151,13 @@ export async function approveInterrupt(
   decision: string,
   reason: string,
   reasoning?: string,
+  options?: RequestOptions,
 ): Promise<InterruptPayload> {
-  const res = await fetch(`${API_BASE}/interrupts/${id}/approve`, {
+  const data = await request<{ interrupt: InterruptPayload }>(`/interrupts/${id}/approve`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ decision, reason, reasoning: reasoning ?? reason }),
+    ...options,
   });
-  if (!res.ok) throw new Error(`approveInterrupt ${res.status}`);
-  const data = await res.json();
   return data.interrupt;
 }
 
@@ -166,14 +165,13 @@ export async function rejectInterrupt(
   id: string,
   reason: string,
   reasoning?: string,
+  options?: RequestOptions,
 ): Promise<InterruptPayload> {
-  const res = await fetch(`${API_BASE}/interrupts/${id}/reject`, {
+  const data = await request<{ interrupt: InterruptPayload }>(`/interrupts/${id}/reject`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ decision: 'rejected', reason, reasoning: reasoning ?? reason }),
+    ...options,
   });
-  if (!res.ok) throw new Error(`rejectInterrupt ${res.status}`);
-  const data = await res.json();
   return data.interrupt;
 }
 

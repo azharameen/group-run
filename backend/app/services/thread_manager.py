@@ -156,15 +156,19 @@ async def _ensure_async_checkpointer_wal() -> None:
 
 def _init_metadata_table(conn: sqlite3.Connection) -> None:
     """Ensure the thread_metadata table exists."""
-    conn.execute("CREATE TABLE IF NOT EXISTS thread_metadata (thread_id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT 'New Chat', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', idea_id TEXT, tags TEXT DEFAULT '[]', agent_names TEXT DEFAULT '[]')")
     try:
-        columns = [row[1] for row in conn.execute("PRAGMA table_info(thread_metadata)").fetchall()]
-        if "work_item_id" in columns and "idea_id" not in columns:
-            conn.execute("ALTER TABLE thread_metadata RENAME COLUMN work_item_id TO idea_id")
-    except sqlite3.OperationalError:
-        pass
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_thread_metadata_updated ON thread_metadata(updated_at DESC)")
-    conn.commit()
+        conn.execute("CREATE TABLE IF NOT EXISTS thread_metadata (thread_id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT 'New Chat', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', idea_id TEXT, tags TEXT DEFAULT '[]', agent_names TEXT DEFAULT '[]')")
+        try:
+            columns = [row[1] for row in conn.execute("PRAGMA table_info(thread_metadata)").fetchall()]
+            if "work_item_id" in columns and "idea_id" not in columns:
+                conn.execute("ALTER TABLE thread_metadata RENAME COLUMN work_item_id TO idea_id")
+        except sqlite3.OperationalError:
+            pass
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_thread_metadata_updated ON thread_metadata(updated_at DESC)")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 # ── Thread Metadata CRUD ──────────────────────────────────────────────────
@@ -180,11 +184,15 @@ def create_thread(
     thread_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
     conn = get_checkpointer().conn
-    conn.execute(
-        "INSERT INTO thread_metadata (thread_id, title, created_at, updated_at, status, idea_id, tags, agent_names) VALUES (?, ?, ?, ?, 'active', ?, ?, ?)",
-        (thread_id, title, now, now, idea_id, json.dumps(tags or []), json.dumps(agent_names or [])),
-    )
-    conn.commit()
+    try:
+        conn.execute(
+            "INSERT INTO thread_metadata (thread_id, title, created_at, updated_at, status, idea_id, tags, agent_names) VALUES (?, ?, ?, ?, 'active', ?, ?, ?)",
+            (thread_id, title, now, now, idea_id, json.dumps(tags or []), json.dumps(agent_names or [])),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     row = conn.execute("SELECT * FROM thread_metadata WHERE thread_id = ?", (thread_id,)).fetchone()
     return _row_dict(row) if row else None
 
@@ -223,17 +231,25 @@ def update_thread(
         if list_field in to_set and isinstance(to_set[list_field], list):
             to_set[list_field] = json.dumps(to_set[list_field])
     conn = get_checkpointer().conn
-    conn.execute(f"UPDATE thread_metadata SET {', '.join(f'{k} = ?' for k in to_set)} WHERE thread_id = ?", list(to_set.values()) + [thread_id])
-    conn.commit()
+    try:
+        conn.execute(f"UPDATE thread_metadata SET {', '.join(f'{k} = ?' for k in to_set)} WHERE thread_id = ?", list(to_set.values()) + [thread_id])
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     return get_thread(thread_id)
 
 
 def delete_thread(thread_id: str) -> bool:
     """Delete thread metadata. Returns True if existed."""
     conn = get_checkpointer().conn
-    cur = conn.execute("DELETE FROM thread_metadata WHERE thread_id = ?", (thread_id,))
-    conn.commit()
-    return cur.rowcount > 0
+    try:
+        cur = conn.execute("DELETE FROM thread_metadata WHERE thread_id = ?", (thread_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    except Exception:
+        conn.rollback()
+        raise
 
 
 async def get_thread_messages(thread_id: str) -> list[dict[str, Any]]:
@@ -265,8 +281,12 @@ async def get_thread_messages(thread_id: str) -> list[dict[str, Any]]:
 def touch_thread(thread_id: str) -> None:
     """Update the updated_at timestamp (e.g. after a new message)."""
     conn = get_checkpointer().conn
-    conn.execute("UPDATE thread_metadata SET updated_at = ? WHERE thread_id = ?", (datetime.now(UTC).isoformat(), thread_id))
-    conn.commit()
+    try:
+        conn.execute("UPDATE thread_metadata SET updated_at = ? WHERE thread_id = ?", (datetime.now(UTC).isoformat(), thread_id))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────

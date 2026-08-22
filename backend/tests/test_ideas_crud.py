@@ -108,3 +108,83 @@ class TestIdeasCrud:
         res = client.delete("/api/ideas/IDEA-0010")
         assert res.status_code == 200
         assert res.json()["deleted"] is True
+
+    def test_concurrent_creates(self, patch_config):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        app = create_app()
+
+        async def run_concurrent():
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                tasks = [
+                    ac.post("/api/ideas", json={"title": f"Idea {i}"})
+                    for i in range(10)
+                ]
+                results = await asyncio.gather(*tasks)
+                return results
+
+        responses = asyncio.run(run_concurrent())
+        assert all(r.status_code == 200 for r in responses)
+        idea_ids = [r.json()["idea_id"] for r in responses]
+        assert len(idea_ids) == 10
+        assert len(set(idea_ids)) == 10  # All unique
+
+    def test_concurrent_updates(self, patch_config):
+        import asyncio
+        from httpx import ASGITransport, AsyncClient
+
+        create_idea_folder("IDEA-0020")
+        save_idea_yaml("IDEA-0020", "idea.yaml", {"idea_id": "IDEA-0020", "title": "Initial Title"})
+        save_idea_registry({"ideas": [{"idea_id": "IDEA-0020", "title": "Initial Title"}], "next_id": 21})
+
+        app = create_app()
+
+        async def run_concurrent_updates():
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                tasks = [
+                    ac.post("/api/ideas/IDEA-0020/update", json={"field": "title", "value": f"Title {i}"})
+                    for i in range(10)
+                ]
+                results = await asyncio.gather(*tasks)
+                return results
+
+        responses = asyncio.run(run_concurrent_updates())
+        assert all(r.status_code == 200 for r in responses)
+
+        # Check that idea state exists and holds one of the final values cleanly
+        res = TestClient(app).get("/api/ideas/IDEA-0020")
+        assert res.status_code == 200
+        final_title = res.json()["idea"]["title"]
+        assert final_title.startswith("Title ")
+
+    def test_non_blocking_event_loop(self, patch_config):
+        import asyncio
+        import time
+        from httpx import ASGITransport, AsyncClient
+
+        app = create_app()
+
+        async def run_test():
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                loop_ticks = 0
+
+                async def monitor_event_loop():
+                    nonlocal loop_ticks
+                    for _ in range(10):
+                        await asyncio.sleep(0.01)
+                        loop_ticks += 1
+
+                def slow_list():
+                    time.sleep(0.1)
+                    return {"ideas": [], "count": 0}
+
+                with patch("app.api.routes.ideas._list_ideas_sync", side_effect=slow_list):
+                    monitor_task = asyncio.create_task(monitor_event_loop())
+                    req_task = asyncio.create_task(ac.get("/api/ideas"))
+
+                    res, _ = await asyncio.gather(req_task, monitor_task)
+                    assert res.status_code == 200
+                    assert loop_ticks >= 5
+
+        asyncio.run(run_test())
