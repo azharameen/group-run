@@ -37,7 +37,7 @@ test.describe('HITL Interrupts', () => {
       throw new Error(`Create interrupt failed: ${response.status} ${await response.text()}`);
     }
     const body = await response.json();
-    return body.interrupt.interrupt_id as string;
+    return body.interrupt.id as string;
   }
 
   async function createThread(api: { baseUrl: string }): Promise<string> {
