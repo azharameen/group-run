@@ -7,7 +7,7 @@ by the /api/work-items endpoints.
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from . import lifecycle
 
@@ -96,3 +96,32 @@ class TransitionWorkItemRequest(BaseModel):
     status: str = Field(..., min_length=1, max_length=50)
     reasoning: str = Field(default="", max_length=2000)
     decided_by: str = Field(default=OWNER_AGENT_ID, max_length=64)
+
+
+class DecisionRecord(BaseModel):
+    decision_id: str
+    work_item_id: str
+    agent_id: str
+    decision_type: Literal["routing", "transition", "handoff", "review"]
+    reasoning: str
+    evidence: list[str] = Field(default_factory=list)
+    confidence: RoutingConfidence
+    alternatives: list[str] = Field(default_factory=list)
+    decided_at: str
+
+
+class RecordDecisionRequest(BaseModel):
+    work_item_id: str
+    agent_id: str
+    decision_type: Literal["routing", "transition", "handoff", "review"]
+    reasoning: str = Field(..., min_length=1)
+
+    @field_validator("reasoning")
+    @classmethod
+    def _reasoning_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("reasoning must not be blank")
+        return value
+    evidence: list[str] = Field(default_factory=list)
+    confidence: RoutingConfidence
+    alternatives: list[str] = Field(default_factory=list)

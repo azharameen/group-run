@@ -180,6 +180,13 @@ def transition_work_item(
                 datetime.now(UTC).isoformat(),
                 event.model_dump(),
                 expected_status=item.status,
+                decision={
+                    "decision_id": str(uuid.uuid4()), "work_item_id": work_item_id,
+                    "agent_id": actual_decider, "decision_type": event.event_type,
+                    "reasoning": event.reasoning, "evidence": [],
+                    "confidence": event.confidence, "alternatives": event.alternatives,
+                    "decided_at": event.decided_at,
+                },
             )
         except ValueError as exc:
             if "status changed concurrently" in str(exc):

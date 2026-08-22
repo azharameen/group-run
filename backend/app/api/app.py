@@ -15,6 +15,7 @@ from ..infrastructure.observability import configure_langsmith_tracing
 from ..services.thread_manager import get_checkpointer
 from .routes.chat import router as chat_router
 from .routes.config import router as config_router
+from .routes.decisions import router as decisions_router
 from .routes.health import router as health_router
 from .routes.ideas import router as ideas_router
 from .routes.interrupts import router as interrupts_router
@@ -130,6 +131,7 @@ def create_app() -> FastAPI:
     app.include_router(interrupts_router)
     app.include_router(mcp_router)
     app.include_router(organizations_router)
+    app.include_router(decisions_router)
     app.include_router(work_items_router)
     app.include_router(config_router)
     app.include_router(sse_router)

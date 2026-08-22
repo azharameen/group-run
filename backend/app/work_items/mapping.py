@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from .models import RoutingDecision, WorkItem
+from .models import DecisionRecord, RoutingDecision, WorkItem
 
 
 def _parse_alternatives(raw: object) -> list[str]:
@@ -33,4 +33,21 @@ def row_to_work_item(rows: dict[str, Any]) -> WorkItem | None:
             reasoning=routing["reasoning"], alternatives=_parse_alternatives(routing["alternatives"]),
         ),
         created_at=item["created_at"], updated_at=item["updated_at"],
+    )
+
+
+def row_to_decision(row: Any) -> DecisionRecord:
+    def parse(value: object) -> list[str]:
+        try:
+            decoded = json.loads(value if isinstance(value, str) else "[]")
+            return decoded if isinstance(decoded, list) else []
+        except (TypeError, ValueError):
+            return []
+
+    return DecisionRecord(
+        decision_id=row["decision_id"], work_item_id=row["work_item_id"],
+        agent_id=row["agent_id"], decision_type=row["decision_type"],
+        reasoning=row["reasoning"], evidence=parse(row["evidence"]),
+        confidence=row["confidence"], alternatives=parse(row["alternatives"]),
+        decided_at=row["decided_at"],
     )

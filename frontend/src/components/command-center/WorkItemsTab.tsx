@@ -8,9 +8,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchOrganizations, fetchWorkItems } from "../../api/client";
 import {
-	fetchLifecycleHistory, transitionWorkItem, LIFECYCLE_PHASES,
+	fetchLifecycleHistory, listDecisions, transitionWorkItem, LIFECYCLE_PHASES,
 } from "@/api/workItems";
-import type { LifecycleEvent, WorkItem } from "@/api/workItems";
+import type { DecisionRecord, LifecycleEvent, WorkItem } from "@/api/workItems";
 
 const lifecyclePhases = LIFECYCLE_PHASES ?? [
 	"new", "ideation", "product_definition", "development", "testing", "deployment", "monitoring",
@@ -27,6 +27,9 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 	const [events, setEvents] = useState<LifecycleEvent[]>([]);
 	const [historyError, setHistoryError] = useState<string | null>(null);
 	const [advanceError, setAdvanceError] = useState<string | null>(null);
+	const [decisionOpen, setDecisionOpen] = useState(false);
+	const [decisions, setDecisions] = useState<DecisionRecord[]>([]);
+	const [decisionError, setDecisionError] = useState<string | null>(null);
 	const [advancing, setAdvancing] = useState(false);
 	const statusIndex = lifecyclePhases.indexOf(item.status as never);
 	const next = statusIndex >= 0 ? lifecyclePhases[statusIndex + 1] : undefined;
@@ -39,6 +42,17 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 		} catch (err) {
 			setEvents([]);
 			setHistoryError(err instanceof Error ? err.message : "Failed to load lifecycle history");
+		}
+	};
+	const openDecisions = async (open: boolean) => {
+		setDecisionOpen(open);
+		if (!open) return;
+		setDecisionError(null);
+		try {
+			setDecisions(await listDecisions({ work_item_id: item.work_item_id }));
+		} catch (err) {
+			setDecisions([]);
+			setDecisionError(err instanceof Error ? err.message : "Failed to load decisions");
 		}
 	};
 	const advance = async () => {
@@ -93,6 +107,8 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 			<div className="flex gap-2">
 				<Button size="sm" variant="outline" data-testid="work-item-history-button"
 					onClick={() => void openHistory(true)}>History</Button>
+				<Button size="sm" variant="outline" data-testid="work-item-decisions-button"
+					onClick={() => void openDecisions(true)}>Decisions</Button>
 				<Button size="sm" data-testid="work-item-advance-button" disabled={!next || advancing}
 					onClick={() => void advance()}>Advance</Button>
 			</div>
@@ -117,6 +133,26 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 								<div>{event.from_department || "—"} → {event.to_department} · {event.decided_by}</div>
 								<div>{formatDate(event.decided_at)} · confidence: {event.confidence}</div>
 								<div>{event.reasoning}</div>
+							</div>
+						))}
+					</div>
+				</DialogContent>
+			</Dialog>
+			<Dialog open={decisionOpen} onOpenChange={(open) => void openDecisions(open)}>
+				<DialogContent data-testid="work-item-decisions-dialog">
+					<DialogHeader><DialogTitle>Decision history: {item.title}</DialogTitle></DialogHeader>
+					{decisionError && <p data-testid="work-item-decisions-error" className="text-xs text-destructive">{decisionError}</p>}
+					<div className="space-y-2 max-h-96 overflow-y-auto">
+						{decisions.length === 0 && !decisionError && (
+							<p data-testid="work-item-decisions-empty" className="text-sm text-muted-foreground">No decisions recorded.</p>
+						)}
+						{decisions.map((decision) => (
+							<div key={decision.decision_id} data-testid="decision-row" className="rounded border p-2 text-xs space-y-1">
+								<div><Badge>{decision.decision_type}</Badge> · {decision.agent_id} · confidence: {decision.confidence}</div>
+								<div>{formatDate(decision.decided_at)}</div>
+								<div>{decision.reasoning}</div>
+								{decision.evidence.length > 0 && <div>Evidence: {decision.evidence.join(", ")}</div>}
+								{decision.alternatives.length > 0 && <div>Alternatives: {decision.alternatives.join(", ")}</div>}
 							</div>
 						))}
 					</div>

@@ -70,6 +70,17 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_lifecycle_events_item_time
                 ON lifecycle_events (work_item_id, decided_at);
+            CREATE TABLE IF NOT EXISTS decisions (
+                decision_id TEXT PRIMARY KEY, work_item_id TEXT NOT NULL,
+                agent_id TEXT NOT NULL, decision_type TEXT NOT NULL,
+                reasoning TEXT NOT NULL, evidence TEXT NOT NULL DEFAULT '[]',
+                confidence TEXT NOT NULL, alternatives TEXT NOT NULL DEFAULT '[]',
+                decided_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_decisions_item_time
+                ON decisions (work_item_id, decided_at);
+            CREATE INDEX IF NOT EXISTS idx_decisions_agent_time
+                ON decisions (agent_id, decided_at);
             CREATE TABLE IF NOT EXISTS org_alerts (
                 alert_id TEXT PRIMARY KEY,
                 org_id TEXT NOT NULL,
@@ -152,6 +163,13 @@ def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
                 json.dumps(routing["alternatives"]),
             ),
         )
+        insert_decision({
+            "decision_id": str(__import__("uuid").uuid4()),
+            "work_item_id": item["work_item_id"], "agent_id": routing["decided_by"],
+            "decision_type": "routing", "reasoning": routing["reasoning"],
+            "evidence": [], "confidence": routing["confidence"],
+            "alternatives": routing["alternatives"], "decided_at": routing["decided_at"],
+        }, commit=False)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -202,6 +220,35 @@ def count_open_work_items_by_department(org_id: str) -> dict[str, int]:
         (org_id, *_OPEN_LIFECYCLE_PHASES),
     ).fetchall()
     return {row["department_id"]: row["n"] for row in rows}
+
+
+def insert_decision(decision: dict[str, Any], commit: bool = True) -> None:
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO decisions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (decision["decision_id"], decision["work_item_id"], decision["agent_id"],
+             decision["decision_type"], decision["reasoning"], json.dumps(decision.get("evidence", [])),
+             decision["confidence"], json.dumps(decision.get("alternatives", [])),
+             decision["decided_at"]),
+        )
+        if commit:
+            conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def list_decisions(work_item_id=None, agent_id=None, from_ts=None, to_ts=None):
+    conn = _get_conn()
+    clauses, values = [], []
+    for column, value, operator in (("work_item_id", work_item_id, "="), ("agent_id", agent_id, "="),
+                                    ("decided_at", from_ts, ">="), ("decided_at", to_ts, "<=")):
+        if value is not None:
+            clauses.append(f"{column} {operator} ?")
+            values.append(value)
+    where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+    return conn.execute(f"SELECT * FROM decisions{where} ORDER BY decided_at ASC, rowid ASC", values).fetchall()
 
 
 def __getattr__(name: str) -> Any:
