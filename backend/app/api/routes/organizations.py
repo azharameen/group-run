@@ -6,7 +6,7 @@ invalid names.
 
 import sqlite3
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path
 
 from ...organization import service
 from ...organization.models import CreateOrganizationRequest
@@ -59,7 +59,7 @@ def list_organizations() -> dict:
 
 
 @router.get("/organizations/{org_id}")
-def get_organization(org_id: str) -> dict:
+def get_organization(org_id: str = Path(..., max_length=64)) -> dict:
     """Fetch a single organization tree by id. Returns 404 if unknown."""
     try:
         organization = service.get_organization(org_id)
