@@ -6,6 +6,7 @@ import json
 import logging
 from pathlib import Path
 
+import anyio.to_thread
 from fastapi import APIRouter, HTTPException, status
 from pydantic import ValidationError
 
@@ -96,75 +97,10 @@ class MCPServerManagementService:
 _service = MCPServerManagementService()
 
 
-@router.get("/", response_model=ListMCPServersResponse)
-def list_servers() -> ListMCPServersResponse:
-    servers = _service.list_servers()
-    http_servers = [s for s in servers if s.get("transport", "http") == "http"]
-    try:
-        return ListMCPServersResponse(
-            servers=[MCPServerResponse(**s) for s in http_servers],
-            count=len(http_servers),
-        )
-    except ValidationError as exc:
-        logger.error("Malformed server entry in mcp.json: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Malformed server entry in configuration",
-        ) from exc
-
-
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=MCPServerResponse)
-def add_server(payload: AddMCPServerRequest) -> MCPServerResponse:
-    server = {
-        "name": payload.name,
-        "transport": "http",
-        "url": str(payload.url),
-        "timeout": payload.timeout,
-        "options": payload.options,
-    }
-    try:
-        return MCPServerResponse(**_service.add_server(server))
-    except ValueError as exc:
-        message = str(exc)
-        if "already exists" in message:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=message) from exc
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
-
-
-@router.delete("/{name}", response_model=MCPServerResponse)
-def remove_server(name: str) -> MCPServerResponse:
-    try:
-        return MCPServerResponse(**_service.remove_server(name))
-    except ValueError as exc:
-        message = str(exc)
-        if "not found" in message:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
-
-
-@router.get("/{name}", response_model=MCPServerResponse)
-def get_server(name: str) -> MCPServerResponse:
-    try:
-        return MCPServerResponse(**_service.get_server(name))
-    except (ValueError, ValidationError) as exc:
-        message = str(exc)
-        if "not found" in message:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
-
-
-@router.post("/{name}/health")
-def ping_server(name: str) -> dict:
-    """Ping an MCP server to check its connection status."""
+def _ping_server_sync(name: str) -> dict:
     import time
 
-    try:
-        server = _service.get_server(name)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Server '{name}' not found",
-        )
+    server = _service.get_server(name)
 
     timeout = server.get("timeout", 5)
     transport = server.get("transport", "http")
@@ -205,3 +141,75 @@ def ping_server(name: str) -> dict:
         )
 
     return result
+
+
+@router.get("/", response_model=ListMCPServersResponse)
+async def list_servers() -> ListMCPServersResponse:
+    servers = await anyio.to_thread.run_sync(_service.list_servers)
+    http_servers = [s for s in servers if s.get("transport", "http") == "http"]
+    try:
+        return ListMCPServersResponse(
+            servers=[MCPServerResponse(**s) for s in http_servers],
+            count=len(http_servers),
+        )
+    except ValidationError as exc:
+        logger.error("Malformed server entry in mcp.json: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Malformed server entry in configuration",
+        ) from exc
+
+
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=MCPServerResponse)
+async def add_server(payload: AddMCPServerRequest) -> MCPServerResponse:
+    server = {
+        "name": payload.name,
+        "transport": "http",
+        "url": str(payload.url),
+        "timeout": payload.timeout,
+        "options": payload.options,
+    }
+    try:
+        added = await anyio.to_thread.run_sync(_service.add_server, server)
+        return MCPServerResponse(**added)
+    except ValueError as exc:
+        message = str(exc)
+        if "already exists" in message:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=message) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
+
+
+@router.delete("/{name}", response_model=MCPServerResponse)
+async def remove_server(name: str) -> MCPServerResponse:
+    try:
+        removed = await anyio.to_thread.run_sync(_service.remove_server, name)
+        return MCPServerResponse(**removed)
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
+
+
+@router.get("/{name}", response_model=MCPServerResponse)
+async def get_server(name: str) -> MCPServerResponse:
+    try:
+        server = await anyio.to_thread.run_sync(_service.get_server, name)
+        return MCPServerResponse(**server)
+    except (ValueError, ValidationError) as exc:
+        message = str(exc)
+        if "not found" in message:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
+
+
+@router.post("/{name}/health")
+async def ping_server(name: str) -> dict:
+    """Ping an MCP server to check its connection status."""
+    try:
+        return await anyio.to_thread.run_sync(_ping_server_sync, name)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Server '{name}' not found",
+        )
