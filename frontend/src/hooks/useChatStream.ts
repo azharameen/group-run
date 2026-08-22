@@ -6,6 +6,7 @@ import {
 	listThreads,
 	approveInterrupt,
 	rejectInterrupt,
+	resumeInterrupt,
 	type StreamEvent,
 	type ThreadMetadata,
 } from "@/api/client";
@@ -241,11 +242,19 @@ export function useChatStream({
 	const handleApproveInterrupt = useCallback(
 		async (id: string, decision: string, reason: string) => {
 			try {
-				await approveInterrupt(id, decision, reason);
+				await approveInterrupt(id, decision, reason, reason);
+				try {
+					await resumeInterrupt(id);
+				} catch (resumeError: unknown) {
+					const message = resumeError instanceof Error ? resumeError.message : String(resumeError);
+					if (!message.includes('409') && !message.includes('no resumable state')) {
+						throw resumeError;
+					}
+				}
 				setPendingInterrupt(null);
 				activeInterruptIdRef.current = null;
-			} catch {
-				// SSE will clear the interrupt when the resolution event arrives
+			} catch (err) {
+				console.error('[interrupt approval failed]', err);
 				setPendingInterrupt(null);
 				activeInterruptIdRef.current = null;
 			}
@@ -256,10 +265,19 @@ export function useChatStream({
 	const handleRejectInterrupt = useCallback(
 		async (id: string, reason: string) => {
 			try {
-				await rejectInterrupt(id, reason);
+				await rejectInterrupt(id, reason, reason);
+				try {
+					await resumeInterrupt(id);
+				} catch (resumeError: unknown) {
+					const message = resumeError instanceof Error ? resumeError.message : String(resumeError);
+					if (!message.includes('409') && !message.includes('no resumable state')) {
+						throw resumeError;
+					}
+				}
 				setPendingInterrupt(null);
 				activeInterruptIdRef.current = null;
-			} catch {
+			} catch (err) {
+				console.error('[interrupt rejection failed]', err);
 				setPendingInterrupt(null);
 				activeInterruptIdRef.current = null;
 			}

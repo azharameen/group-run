@@ -61,3 +61,43 @@ def test_resolved_interrupt_cannot_transition(service):
     service.approve_interrupt(interrupt["id"], "approved")
     assert service.approve_interrupt(interrupt["id"], "approved") is None
     assert service.reject_interrupt(interrupt["id"], "later") is None
+
+
+# ── Provenance (Story 8.4) ────────────────────────────────────────────────
+
+def test_create_interrupt_stores_provenance(service):
+    interrupt = service.create_interrupt(
+        "thread-1", "write_file", "Approve?", {"path": "x.txt"},
+        decided_by="agent", confidence="low", alternatives=["approve", "reject"],
+    )
+    assert interrupt["decided_by"] == "agent"
+    assert interrupt["confidence"] == "low"
+    assert interrupt["alternatives"] == ["approve", "reject"]
+    assert interrupt["decided_at"] is None
+    assert interrupt["reason"] is None
+
+
+def test_approve_sets_user_provenance(service):
+    interrupt = service.create_interrupt("thread-1", "edit_file", "Approve me")
+    updated = service.approve_interrupt(interrupt["id"], "approved", "looks good")
+    assert updated["decided_by"] == "user"
+    assert updated["confidence"] == "high"
+    assert updated["decided_at"] is not None
+    assert updated["reason"] == "looks good"
+
+
+def test_reject_sets_user_provenance(service):
+    interrupt = service.create_interrupt("thread-1", "delete", "Reject me")
+    updated = service.reject_interrupt(interrupt["id"], "not now")
+    assert updated["decided_by"] == "user"
+    assert updated["confidence"] == "high"
+    assert updated["decided_at"] is not None
+    assert updated["reason"] == "not now"
+
+
+def test_list_all_returns_audit_trail(service):
+    i1 = service.create_interrupt("thread-1", "write_file", "One")
+    i2 = service.create_interrupt("thread-1", "delete", "Two")
+    all_rows = service.list_all()
+    assert len(all_rows) == 2
+    assert {r["id"] for r in all_rows} == {i1["id"], i2["id"]}

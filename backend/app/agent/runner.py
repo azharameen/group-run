@@ -18,6 +18,26 @@ from .domain_tools import (
 from .runtime import get_deep_agent_runtime
 
 
+async def resume_agent(thread_id: str, decisions: list[dict[str, Any]]) -> dict[str, Any]:
+    """Resume a checkpointed agent run after a HITL decision.
+
+    Re-invokes the DeepAgents runtime with ``Command(resume=...)`` using the
+    same thread_id as the original invocation (checkpointer requirement).
+    Raises if there is no resumable state — the caller must never fabricate a
+    result.
+    """
+    from langgraph.types import Command
+
+    runtime = get_deep_agent_runtime()
+    result = await runtime.ainvoke(
+        Command(resume={"decisions": decisions}),
+        config={"configurable": {"thread_id": thread_id}},
+    )
+    if isinstance(result, dict):
+        return result
+    return {"output": str(result)}
+
+
 def _stringify_runtime_output(value: Any) -> str:
     if value is None:
         return ""

@@ -132,6 +132,43 @@ def _get_agent() -> Any:
 # Nodes
 # ---------------------------------------------------------------------------
 
+async def _persist_interrupts(interrupts: Any, thread_id: str, result: dict[str, Any]) -> dict[str, Any]:
+    """Persist a HITL interrupt and return a waiting-for-approval state.
+
+    Extracts the action requests from the interrupt value and stores each as a pending
+    interrupt with provenance. Returns a state that signals the supervisor to stop and
+    wait for the user's decision (resume happens via the resume endpoint).
+    """
+    from ..services.interrupt_service import InterruptService
+
+    interrupt_value = None
+    if isinstance(interrupts, list) and interrupts:
+        first = interrupts[0]
+        interrupt_value = getattr(first, "value", None) if not isinstance(first, dict) else first.get("value")
+    elif isinstance(interrupts, dict):
+        interrupt_value = interrupts.get("value")
+
+    action_requests = []
+    if isinstance(interrupt_value, dict):
+        action_requests = interrupt_value.get("action_requests", []) or []
+
+    for action in action_requests:
+        name = action.get("name", "unknown") if isinstance(action, dict) else "unknown"
+        args = action.get("args", {}) if isinstance(action, dict) else {}
+        message = f"Agent requires approval for '{name}'."
+        InterruptService.instance().create_interrupt(
+            thread_id=thread_id,
+            tool_name=name,
+            message=message,
+            tool_input=args,
+            decided_by="agent",
+            confidence="low",
+            alternatives=["approve", "reject"],
+        )
+
+    return {"waiting_for_approval": True, "routing_key": "general"}
+
+
 async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
     """Route to the general team via the DeepAgents runtime.
 
@@ -188,6 +225,12 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
             if not isinstance(result, dict):
                 logger.error("Agent returned unexpected type: %s", type(result))
                 return {"error": "agent returned unexpected result type", "routing_key": "general"}
+
+            # Detect a human-in-the-loop interrupt and persist it (Story 8.4).
+            interrupts = result.get("__interrupt__")
+            if interrupts:
+                return await _persist_interrupts(interrupts, thread_id, result)
+
             response = result.get("output", result.get("messages"))
             if isinstance(response, list) and response:
                 last = response[-1]

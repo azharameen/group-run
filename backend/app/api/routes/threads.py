@@ -132,7 +132,11 @@ async def _thread_stream_generator(
         )
         response = final_state.get("response")
         error = final_state.get("error")
-        if error:
+        if final_state.get("waiting_for_approval"):
+            ev = {'type': 'interrupt', 'interrupt': None, 'error': None, 'routing_key': final_state.get('routing_key', 'general')}
+            yield f"data: {json.dumps(ev)}\n\n"
+            emitted_done = True
+        elif error:
             err = {'type': 'error', 'error': {'code': 'agent_failure', 'message': str(error) if not isinstance(error, dict) else error.get('message', str(error)), 'retryable': isinstance(error, dict) and error.get('retryable', False)}}
             yield f"data: {json.dumps(err)}\n\n"
             emitted_done = True

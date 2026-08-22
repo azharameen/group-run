@@ -125,8 +125,18 @@ export interface InterruptPayload {
   status: 'pending' | 'approved' | 'rejected';
   decision?: string;
   reason?: string;
+  reasoning?: string;
+  decided_by?: string;
+  decided_at?: string;
+  confidence?: string;
+  alternatives?: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface ResumeResponse {
+  interrupt: InterruptPayload;
+  response: string;
 }
 
 export async function fetchPendingInterrupts(): Promise<InterruptPayload[]> {
@@ -140,11 +150,12 @@ export async function approveInterrupt(
   id: string,
   decision: string,
   reason: string,
+  reasoning?: string,
 ): Promise<InterruptPayload> {
   const res = await fetch(`${API_BASE}/interrupts/${id}/approve`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ decision, reason }),
+    body: JSON.stringify({ decision, reason, reasoning: reasoning ?? reason }),
   });
   if (!res.ok) throw new Error(`approveInterrupt ${res.status}`);
   const data = await res.json();
@@ -154,15 +165,26 @@ export async function approveInterrupt(
 export async function rejectInterrupt(
   id: string,
   reason: string,
+  reasoning?: string,
 ): Promise<InterruptPayload> {
   const res = await fetch(`${API_BASE}/interrupts/${id}/reject`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ decision: 'rejected', reason }),
+    body: JSON.stringify({ decision: 'rejected', reason, reasoning: reasoning ?? reason }),
   });
   if (!res.ok) throw new Error(`rejectInterrupt ${res.status}`);
   const data = await res.json();
   return data.interrupt;
+}
+
+export async function resumeInterrupt(id: string): Promise<ResumeResponse> {
+  const res = await fetch(`${API_BASE}/interrupts/${id}/resume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) throw new Error(`resumeInterrupt ${res.status}`);
+  return res.json();
 }
 
 export interface SSEPayload extends Record<string, unknown> {

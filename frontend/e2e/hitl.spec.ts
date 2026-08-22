@@ -116,4 +116,29 @@ test.describe('HITL Interrupts', () => {
     );
     expect(resolved.interrupts.some((i) => i.interrupt_id === interruptId)).toBe(false);
   });
+
+  test('resume returns 409 for API-created interrupt (no checkpoint)', async ({ page, api }) => {
+    // Interrupts created via API have no checkpointed agent state, so resume must
+    // return 409 "no resumable state" — never a fabricated result (Story 8.4 AC-5).
+    const commandCenter = new CommandCenterPage(page);
+    await commandCenter.goto();
+
+    const threadId = await createThread(api);
+    await commandCenter.goto();
+    await page.getByTestId(`thread-button-${threadId}`).click();
+    await expect(page.getByTestId(`thread-button-${threadId}`)).toBeVisible();
+
+    const interruptId = await createInterruptViaApi(api, threadId);
+    await expect(commandCenter.interruptOverlay).toBeVisible();
+    await commandCenter.approveInterrupt();
+    await expect(commandCenter.interruptOverlay).toBeHidden();
+
+    const resume = await fetch(`${api.baseUrl}/api/interrupts/${interruptId}/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(resume.status).toBe(409);
+    expect((await resume.json()).detail).toContain('no resumable state');
+  });
 });
