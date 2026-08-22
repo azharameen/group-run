@@ -14,6 +14,7 @@ vi.mock('@/api/workItems', () => ({
   fetchWorkItems: vi.fn(),
   fetchWorkItem: vi.fn(),
   fetchLifecycleHistory: vi.fn(),
+  listDecisions: vi.fn(),
   transitionWorkItem: vi.fn(),
   LIFECYCLE_PHASES: ['new', 'ideation', 'product_definition', 'development', 'testing', 'deployment', 'monitoring'],
 }));
@@ -91,6 +92,81 @@ beforeEach(() => {
 });
 
 describe('WorkItemsTab', () => {
+  test('opens decision history and renders decisions', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listDecisions).mockResolvedValue([
+      {
+        decision_id: 'd-1',
+        work_item_id: 'wi-1',
+        agent_id: 'chief_of_staff',
+        decision_type: 'routing',
+        reasoning: 'Explicitly assigned to the engineering department by the submitter.',
+        evidence: ['work_item:wi-1:routing:d-1'],
+        confidence: 'high',
+        alternatives: ['ideation'],
+        decided_at: '2026-07-20T10:00:00+00:00',
+      },
+    ]);
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-decisions-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-decisions-dialog')).toBeTruthy();
+    });
+    expect(workItemsApi.listDecisions).toHaveBeenCalledWith({ work_item_id: 'wi-1' });
+    await waitFor(() => {
+      expect(screen.getByTestId('decision-row')).toBeTruthy();
+    });
+    expect(screen.getAllByText(/chief_of_staff/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/work_item:wi-1:routing:d-1/)).toBeTruthy();
+  });
+
+  test('shows empty state when no decisions recorded', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listDecisions).mockResolvedValue([]);
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-decisions-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-decisions-empty')).toBeTruthy();
+    });
+  });
+
+  test('surfaces decision list API errors', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listDecisions).mockRejectedValue(new Error('boom'));
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-decisions-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-decisions-error')).toHaveTextContent('boom');
+    });
+  });
+
   test('renders work item rows with status, department, and routing reasoning', async () => {
     vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
     vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([

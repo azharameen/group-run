@@ -70,6 +70,7 @@ def record_transition(
     updated_at: str,
     event: dict[str, Any],
     expected_status: str | None = None,
+    decision: dict[str, Any] | None = None,
 ) -> None:
     conn = repository._get_conn()
     try:
@@ -82,6 +83,8 @@ def record_transition(
             commit=False,
         )
         insert_lifecycle_event(event)
+        if decision:
+            repository.insert_decision(decision, commit=False)
         conn.commit()
     except Exception:
         conn.rollback()

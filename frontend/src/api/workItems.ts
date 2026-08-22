@@ -13,6 +13,17 @@ export interface LifecycleEvent {
   decided_by: string; decided_at: string;
   confidence: RoutingConfidence; reasoning: string; alternatives: string[];
 }
+export interface DecisionRecord {
+  decision_id: string; work_item_id: string; agent_id: string;
+  decision_type: 'routing' | 'transition' | 'handoff' | 'review';
+  reasoning: string; evidence: string[]; confidence: RoutingConfidence;
+  alternatives: string[]; decided_at: string;
+}
+export interface RecordDecisionPayload {
+  work_item_id: string; agent_id: string;
+  decision_type: DecisionRecord['decision_type']; reasoning: string;
+  evidence?: string[]; confidence: RoutingConfidence; alternatives?: string[];
+}
 
 export interface RoutingDecision {
   department_id: string;
@@ -85,4 +96,25 @@ export async function fetchLifecycleHistory(workItemId: string): Promise<Lifecyc
     `/work-items/${encodeURIComponent(workItemId)}/lifecycle`,
   );
   return data.events ?? [];
+}
+
+export async function listDecisions(params: {
+  work_item_id?: string; agent_id?: string; from?: string; to?: string;
+} = {}, options?: RequestOptions): Promise<DecisionRecord[]> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => { if (value) query.set(key, value); });
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const data = await request<{ decisions: DecisionRecord[]; count: number }>(
+    `/work-items/decisions${suffix}`, options,
+  );
+  return data.decisions ?? [];
+}
+
+export async function createDecision(
+  body: RecordDecisionPayload, options?: RequestOptions,
+): Promise<DecisionRecord> {
+  const data = await request<{ decision: DecisionRecord }>('/work-items/decisions', {
+    method: 'POST', body: JSON.stringify(body), ...options,
+  });
+  return data.decision;
 }
