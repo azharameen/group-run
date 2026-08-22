@@ -69,7 +69,6 @@ class InterruptResponse(BaseModel):
 
 class ResumeInterruptRequest(BaseModel):
     """Empty body — resume is driven by the interrupt's stored decision."""
-    pass
 
 
 class MCPServer(BaseModel):

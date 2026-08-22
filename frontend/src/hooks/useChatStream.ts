@@ -286,8 +286,7 @@ export function useChatStream({
 					const next = [...prev, msg];
 					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
 				});
-				setPendingInterrupt(null);
-				activeInterruptIdRef.current = null;
+				// Keep pendingInterrupt intact so the user can retry the decision.
 			}
 		},
 		[],
@@ -329,8 +328,7 @@ export function useChatStream({
 					const next = [...prev, msg];
 					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
 				});
-				setPendingInterrupt(null);
-				activeInterruptIdRef.current = null;
+				// Keep pendingInterrupt intact so the user can retry the decision.
 			}
 		},
 		[],
