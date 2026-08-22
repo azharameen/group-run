@@ -2,10 +2,11 @@
 title: 'Surface organization health and team capacity'
 type: 'feature'
 created: '2026-08-22'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_revision: 'ce920644e0ee00e0e6dea510725a349dde040ad9'
 followup_review_recommended: false
+final_revision: 'dec8c66'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
 warnings: []
