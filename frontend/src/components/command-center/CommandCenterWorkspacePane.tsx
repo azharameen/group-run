@@ -70,6 +70,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Trash2,
+	HeartPulse,
 } from "lucide-react";
 import {
 	STATIC_FILES,
@@ -79,6 +80,7 @@ import {
 	TASK_AGENTS,
 } from "@/data/mockWorkspaceData";
 import WorkItemsTab from "./WorkItemsTab";
+import TeamHealthTab from "./TeamHealthTab";
 import type {
 	StaticFile,
 	AgentTaskItem,
@@ -339,6 +341,10 @@ export function CommandCenterWorkspacePane() {
 						<TabsTrigger data-testid="work-items-tab-trigger" value="work-items" className="text-xs gap-1.5 px-3">
 							<ListChecks className="w-3.5 h-3.5" />
 							Work Items
+						</TabsTrigger>
+						<TabsTrigger data-testid="team-health-tab-trigger" value="team-health" className="text-xs gap-1.5 px-3">
+							<HeartPulse className="w-3.5 h-3.5" />
+							Team Health
 						</TabsTrigger>
 					</TabsList>
 
@@ -621,6 +627,11 @@ export function CommandCenterWorkspacePane() {
 					<TabsContent value="work-items" className="data-[state=active]:flex data-[state=active]:flex-1 flex-col h-full w-full m-0 p-0 overflow-hidden">
 						<div className="flex-1 overflow-y-auto">
 							<WorkItemsTab />
+						</div>
+					</TabsContent>
+					<TabsContent value="team-health" className="data-[state=active]:flex data-[state=active]:flex-1 flex-col h-full w-full m-0 p-0 overflow-hidden">
+						<div className="flex-1 overflow-y-auto">
+							<TeamHealthTab />
 						</div>
 					</TabsContent>
 					<TabsContent value="tasks" className="data-[state=active]:flex data-[state=active]:flex-1 flex-col h-full w-full m-0 p-0 overflow-hidden p-4 bg-muted/5">

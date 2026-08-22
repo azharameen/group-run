@@ -10,6 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from ..config import STORAGE_DIR
+from .models import LIFECYCLE_PHASES
+
+_OPEN_LIFECYCLE_PHASES = tuple(
+    phase for phase in LIFECYCLE_PHASES if phase != "monitoring"
+)
 
 _WORK_ITEM_DB_PATH: Path | None = None
 _WORK_ITEM_CONN: sqlite3.Connection | None = None
@@ -172,6 +177,23 @@ def list_work_items_with_routing(org_id: str | None = None) -> list[dict[str, An
     return [
         {"item": row, "routing": routing.get(row["work_item_id"])} for row in item_rows
     ]
+def count_open_work_items_by_department(org_id: str) -> dict[str, int]:
+    """Count open work items per department for one organization.
+
+    Open means the item is in a lifecycle phase other than ``monitoring``
+    (the terminal phase). Returns ``{department_id: count}`` with only
+    departments that have at least one open item.
+    """
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT department_id, COUNT(*) AS n FROM work_items"
+        f" WHERE org_id = ? AND status IN ({','.join('?' for _ in _OPEN_LIFECYCLE_PHASES)})"
+        " GROUP BY department_id",
+        (org_id, *_OPEN_LIFECYCLE_PHASES),
+    ).fetchall()
+    return {row["department_id"]: row["n"] for row in rows}
+
+
 def __getattr__(name: str) -> Any:
     if name in (
         "insert_lifecycle_event",

@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Agent timeout and retry configuration (AC: 1-2)
     agent_timeout_sec: int = 120
 
+    # Team overload threshold for organization health (Story 9.1): a team is
+    # "overloaded" when its department's open work items exceed this count.
+    team_overload_threshold: int = 5
+
     # Compute .env path relative to this file (backend/app/config.py -> repo root)
     model_config = SettingsConfigDict(
         env_prefix="",
@@ -54,6 +58,8 @@ class Settings(BaseSettings):
                 "LANGGRAPH_STRICT_MSGPACK not set — assuming compliant runtime. "
                 "Set to 'true' in .env for explicit compliance."
             )
+        if self.team_overload_threshold < 0:
+            raise ValueError("TEAM_OVERLOAD_THRESHOLD must be non-negative")
         return self
 
     @model_validator(mode="after")

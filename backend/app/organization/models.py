@@ -177,6 +177,40 @@ class Organization(BaseModel):
     departments: list[OrgDepartment] = Field(default_factory=list)
 
 
+#: Derived workload state for a team (Story 9.1).
+WorkloadState = Literal["idle", "active", "overloaded"]
+
+
+class TeamHealth(BaseModel):
+    """Per-team capacity and workload snapshot (Story 9.1)."""
+
+    team_id: str
+    name: str
+    department_id: str
+    active_agents: int = 0
+    idle_agents: int = 0
+    total_agents: int = 0
+    open_work_items: int = 0
+    workload_state: WorkloadState = "idle"
+
+
+class DepartmentHealth(BaseModel):
+    """A department with the health of the teams it owns (Story 9.1)."""
+
+    department_id: str
+    name: str
+    teams: list[TeamHealth] = Field(default_factory=list)
+
+
+class OrganizationHealth(BaseModel):
+    """Organization-wide health snapshot served by the health endpoint."""
+
+    org_id: str
+    name: str
+    departments: list[DepartmentHealth] = Field(default_factory=list)
+    total_open_work_items: int = 0
+
+
 class OrganizationSummary(BaseModel):
     """List-endpoint summary of an organization with aggregate counts."""
 
