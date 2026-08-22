@@ -8,6 +8,7 @@ from difflib import unified_diff
 from pathlib import Path
 from typing import Any
 
+from ..work_items.models import TrustLevel
 from .base import read_yaml, write_markdown, write_yaml
 from .idea_workspace import idea_folder_path, load_idea_yaml, save_idea_yaml
 
@@ -36,8 +37,9 @@ def save_artifact_revision(
     content: str,
     *,
     provenance: str,
-    trust: str = "generated",
+    trust: TrustLevel = "generated",
     evidence_refs: list[str] | None = None,
+    agent_id: str = "unknown",
 ) -> dict[str, Any]:
     revisions = load_artifact_revisions(idea_id)
     version = len([r for r in revisions if r.get("artifact_name") == artifact_name]) + 1
@@ -73,6 +75,7 @@ def save_artifact_revision(
         "content": content,
         "diff": diff_text,
         "provenance": provenance,
+        "agent_id": agent_id,
         "trust": trust,
         "evidence_refs": evidence_refs or [],
     }
@@ -85,6 +88,7 @@ def save_artifact_revision(
         "version": version,
         "path": str(artifact_path),
         "provenance": provenance,
+        "agent_id": agent_id,
         "trust": trust,
         "updated_at": timestamp,
     }

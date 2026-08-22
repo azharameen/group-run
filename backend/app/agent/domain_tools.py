@@ -141,6 +141,7 @@ def draft_patent_section(
             provenance=f"artifact:{idea_id}:{section_name}",
             trust="generated",
             evidence_refs=(load_idea_yaml(idea_id, "idea.yaml") or {}).get("source_evidence", []),
+            agent_id="deepagents",
         )
 
         # Update metadata state
@@ -207,6 +208,7 @@ def save_workspace_item(
         "source_refs": source_refs or [],
         "created_at": datetime.now(UTC).isoformat(),
         "provenance": f"{item_type}:{item_id}",
+        "agent_id": "deepagents",
     }
     item_path = item_dir / f"{item_id}.json"
     with open(item_path, "w", encoding="utf-8") as f:

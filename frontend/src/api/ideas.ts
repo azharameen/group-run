@@ -48,6 +48,7 @@ export interface ArtifactRevision {
   content: string;
   diff: string;
   provenance: string;
+  agent_id: string;
   trust: string;
   evidence_refs: string[];
 }
@@ -73,6 +74,18 @@ export async function fetchIdeaRevisions(ideaId: string, options?: RequestOption
 
 export async function fetchArtifactDiff(ideaId: string, artifactName: string, options?: RequestOptions): Promise<Record<string, unknown>> {
   return request<Record<string, unknown>>(`/ideas/${ideaId}/artifacts/${encodeURIComponent(artifactName)}/diff`, options);
+}
+
+export async function recordIdeaReview(
+  ideaId: string,
+  body: { reviewer_role: string; decision: string; comments?: string },
+  options?: RequestOptions,
+): Promise<{ idea_id: string; reviewer: string; decision: string }> {
+  return request(`/ideas/${ideaId}/review`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    ...options,
+  });
 }
 
 export async function createIdea(signalText: string, title?: string, options?: RequestOptions): Promise<{ idea_id: string; message: string }> {
