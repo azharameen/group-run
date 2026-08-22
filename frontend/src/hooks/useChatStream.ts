@@ -126,8 +126,6 @@ export function useChatStream({
 							setPendingInterrupt(latest);
 						} else {
 							// No pending interrupts — clear stale state
-							setPendingInterrupt(null);
-							activeInterruptIdRef.current = null;
 						}
 					}
 				} catch {

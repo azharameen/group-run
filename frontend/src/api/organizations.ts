@@ -76,3 +76,40 @@ export async function fetchOrganization(orgId: string, options?: RequestOptions)
   );
   return data.organization;
 }
+
+export type WorkloadState = 'idle' | 'active' | 'overloaded';
+
+export interface TeamHealth {
+  team_id: string;
+  name: string;
+  department_id: string;
+  active_agents: number;
+  idle_agents: number;
+  total_agents: number;
+  open_work_items: number;
+  workload_state: WorkloadState;
+}
+
+export interface DepartmentHealth {
+  department_id: string;
+  name: string;
+  teams: TeamHealth[];
+}
+
+export interface OrganizationHealth {
+  org_id: string;
+  name: string;
+  departments: DepartmentHealth[];
+  total_open_work_items: number;
+}
+
+export async function fetchOrganizationHealth(
+  orgId: string,
+  options?: RequestOptions,
+): Promise<OrganizationHealth> {
+  const data = await request<{ health: OrganizationHealth }>(
+    `/organizations/${encodeURIComponent(orgId)}/health`,
+    options,
+  );
+  return data.health;
+}

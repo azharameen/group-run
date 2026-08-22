@@ -8,7 +8,7 @@ import sqlite3
 
 from fastapi import APIRouter, HTTPException, Path
 
-from ...organization import service
+from ...organization import health, service
 from ...organization.models import CreateOrganizationRequest
 from ...organization.service import OrganizationIntegrityError
 
@@ -70,3 +70,17 @@ def get_organization(org_id: str = Path(..., max_length=64)) -> dict:
     if organization is None:
         raise HTTPException(status_code=404, detail=f"Organization {org_id} not found")
     return {"organization": organization.model_dump()}
+
+
+@router.get("/organizations/{org_id}/health")
+def get_organization_health(org_id: str = Path(..., max_length=64)) -> dict:
+    """Fetch the organization health snapshot (Story 9.1). Returns 404 if unknown."""
+    try:
+        organization_health = health.get_organization_health(org_id)
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=500, detail="Failed to load organization health"
+        ) from exc
+    if organization_health is None:
+        raise HTTPException(status_code=404, detail=f"Organization {org_id} not found")
+    return {"health": organization_health.model_dump()}

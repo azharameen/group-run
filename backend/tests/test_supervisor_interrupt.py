@@ -8,6 +8,7 @@ provenance, returning a ``waiting_for_approval=True`` state.
 import importlib
 import sys
 import types
+from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,6 +24,8 @@ def _clear_modules(monkeypatch: pytest.MonkeyPatch):
             "app.config",
         )):
             del sys.modules[mod]
+    import app
+    app.__dict__.pop("orchestrator", None)
 
 
 def _stub_deepagents(monkeypatch: pytest.MonkeyPatch):
@@ -61,7 +64,7 @@ def _stub_deepagents(monkeypatch: pytest.MonkeyPatch):
 def _interrupt_result():
     """Build an agent result dict with a __interrupt__ key."""
     class _Interrupt:
-        value = {"action_requests": [{"name": "write_file", "args": {"path": "x.txt"}}]}
+        value: ClassVar = {"action_requests": [{"name": "write_file", "args": {"path": "x.txt"}}]}
 
     return {"__interrupt__": [_Interrupt()]}
 
