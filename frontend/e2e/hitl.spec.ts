@@ -37,7 +37,7 @@ test.describe('HITL Interrupts', () => {
       throw new Error(`Create interrupt failed: ${response.status} ${await response.text()}`);
     }
     const body = await response.json();
-    return body.interrupt.interrupt_id as string;
+    return body.interrupt.id as string;
   }
 
   async function createThread(api: { baseUrl: string }): Promise<string> {
@@ -86,10 +86,10 @@ test.describe('HITL Interrupts', () => {
 
     await expect(commandCenter.interruptOverlay).toBeHidden();
 
-    const resolved = await api.getJson<{ interrupts: { interrupt_id: string; status: string }[] }>(
+    const resolved = await api.getJson<{ interrupts: { id: string; status: string }[] }>(
       '/api/interrupts/pending'
     );
-    expect(resolved.interrupts.some((i) => i.interrupt_id === interruptId)).toBe(false);
+    expect(resolved.interrupts.some((i) => i.id === interruptId)).toBe(false);
   });
 
   test('rejects interrupt', async ({ page, api }) => {
@@ -111,10 +111,10 @@ test.describe('HITL Interrupts', () => {
 
     await expect(commandCenter.interruptOverlay).toBeHidden();
 
-    const resolved = await api.getJson<{ interrupts: { interrupt_id: string; status: string }[] }>(
+    const resolved = await api.getJson<{ interrupts: { id: string; status: string }[] }>(
       '/api/interrupts/pending'
     );
-    expect(resolved.interrupts.some((i) => i.interrupt_id === interruptId)).toBe(false);
+    expect(resolved.interrupts.some((i) => i.id === interruptId)).toBe(false);
   });
 
   test('resume returns 409 for API-created interrupt (no checkpoint)', async ({ page, api }) => {
