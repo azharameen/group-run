@@ -91,7 +91,7 @@ async def resume_interrupt(interrupt_id: str, payload: ResumeInterruptRequest) -
 
     try:
         final_state = await resume_agent(interrupt["thread_id"], decisions)
-    except Exception as exc:  # noqa: BLE001  # no resumable state → 409, never fabricate
+    except Exception as exc:  # no resumable state → 409, never fabricate
         raise HTTPException(status_code=409, detail=f"no resumable state: {exc}") from exc
 
     response = final_state.get("output", final_state.get("messages", ""))
