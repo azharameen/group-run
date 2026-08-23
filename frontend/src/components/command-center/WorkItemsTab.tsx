@@ -333,7 +333,6 @@ export default function WorkItemsTab() {
 	const [hasOrganization, setHasOrganization] = useState<boolean | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [activeOrg, setActiveOrg] = useState<string | null>(null);
 	const [replayTemplateId, setReplayTemplateId] = useState<string | null>(null);
 	const [replayTitle, setReplayTitle] = useState("");
 	const [replayDescription, setReplayDescription] = useState("");
@@ -356,7 +355,6 @@ export default function WorkItemsTab() {
 			// updated organization is the active one.
 			setHasOrganization(true);
 			const orgId = organizations[0].org_id;
-			setActiveOrg(orgId);
 			setItems(await fetchWorkItems(orgId));
 			setTemplates(await fetchTemplates(orgId));
 		} catch (err) {
@@ -371,7 +369,7 @@ export default function WorkItemsTab() {
 		setReplayingTemplate(true);
 		setReplayError(null);
 		try {
-			const result = await replayTemplate(replayTemplateId, {
+			await replayTemplate(replayTemplateId, {
 				title: replayTitle.trim(),
 				description: replayDescription.trim(),
 			});
