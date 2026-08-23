@@ -82,7 +82,7 @@ def reset_test_state() -> dict[str, str]:
     try:
         from app.work_items import repository as work_items_repo
         wconn = work_items_repo._get_conn()
-        for table in ("lifecycle_events", "routing_decisions", "work_items"):
+        for table in ("lifecycle_events", "routing_decisions", "work_items", "decisions", "workflow_templates"):
             wconn.execute(f"DELETE FROM {table}")
         wconn.commit()
     except Exception as exc:  # noqa: BLE001

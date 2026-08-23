@@ -84,6 +84,7 @@ def submit_work_item(
     org_id: str | None = None,
     department: str | None = None,
     source: str = "api",
+    template_id: str | None = None,
 ) -> WorkItem:
     """Create a work item owned by the Chief of Staff and route it.
     The item is created with status ``new``; the routing decision is
@@ -103,6 +104,7 @@ def submit_work_item(
         "status": STATUS_NEW,
         "owner_agent_id": OWNER_AGENT_ID,
         "source": source,
+        "template_id": template_id,
         "created_at": now,
         "updated_at": now,
     }
