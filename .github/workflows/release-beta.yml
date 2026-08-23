@@ -70,7 +70,7 @@ jobs:
             --min-instances 0 \
             --max-instances 2 \
             --cpu 0.5 \
-            --memory 256MiB
+            --memory 256Mi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
