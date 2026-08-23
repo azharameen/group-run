@@ -9,7 +9,6 @@ name: "Release - Beta & Deployment Test"
 on:
   workflow_dispatch: {}
   push: {}
-  pull_request: {}
 
 permissions:
   contents: write

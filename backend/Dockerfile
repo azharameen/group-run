@@ -18,6 +18,7 @@ WORKDIR /app
 ENV PATH="/opt/venv/bin:$PATH"
 ENV LANGGRAPH_STRICT_MSGPACK=true
 ENV APP_ROOT_DIR=/app
+ENV STORAGE_DIR=/tmp/storage
 ENV PYTHONUNBUFFERED=1
 
 COPY --from=builder /opt/venv /opt/venv
