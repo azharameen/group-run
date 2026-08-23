@@ -15,6 +15,9 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # ------------------------------------------------------------------
   # Nightly E2E smoke (develop)
@@ -104,6 +107,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: npm audit
+      # Full sweep incl. dev deps — this is the canary that stays red
+      # until the dev-dependency upgrades (typescript-eslint, vite/esbuild)
+      # land. The merge gate (ci.yml) only hard-fails on production deps.
+      - name: npm audit (full, incl. dev)
         working-directory: frontend
         run: npm audit
