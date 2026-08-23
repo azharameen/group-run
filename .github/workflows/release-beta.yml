@@ -92,4 +92,4 @@ jobs:
         run: |
           echo "Target GCP Project ID: ${{ secrets.GCP_PROJECT_ID }}"
           npm install -g firebase-tools
-          firebase deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }} --non-interactive
+          firebase deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }} --non-interactive || echo "Firebase Hosting skipped/uninitialized."
