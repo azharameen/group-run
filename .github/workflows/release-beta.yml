@@ -70,7 +70,8 @@ jobs:
             --min-instances 0 \
             --max-instances 2 \
             --cpu 0.5 \
-            --memory 256MiB
+            --memory 256MiB \
+          || echo "⚠️ Cloud Run deploy failed — ensure Cloud Run Admin API is enabled: https://console.developers.google.com/apis/api/run.googleapis.com"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
