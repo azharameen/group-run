@@ -11,7 +11,7 @@
 # Images are parked: when the registry decision lands, add a tag-triggered
 # docker workflow and uncomment the repository_dispatch_token below
 # (needs a PAT with repo+workflow; GITHUB_TOKEN cannot trigger workflows).
-name: "Release - Production"
+name: Release - Production
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   release-please:
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     # Reserved lane (AD-17): no protection rules yet; add required reviewers
     # here once deploy actions exist.
@@ -32,4 +32,4 @@ jobs:
     steps:
       - uses: google-github-actions/release-please-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # repository_dispatch_token: ${{ secrets.RELEASE_PLEASE_TOKEN }}

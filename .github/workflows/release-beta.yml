@@ -1,20 +1,23 @@
 # Beta & Deployment Test Lane
 #
 # Flow:
-# 1. Push to test branches or workflow_dispatch -> Runs full build & deployment verification.
+# 1. Manual trigger (workflow_dispatch) OR PRs (pre-merge testing) -> Builds & deploys to Cloud Run & Firebase Hosting.
 # 2. Merged PR into develop -> Computes beta tag, creates GitHub Release, and deploys to Cloud Run & Firebase Hosting.
 
-name: "Release - Beta & Deployment Test"
+name: Release - Beta & Deployment Test
 
 on:
-  push: {}
-  pull_request: {}
-  workflow_dispatch: {}
+  workflow_dispatch:
+  push:
+    branches: [develop, 'test/**']
+  pull_request:
+    branches: [develop, main, 'test/**']
 
 permissions:
   contents: write
   pull-requests: write
   issues: read
+  id-token: write
 
 jobs:
   beta-deploy:
@@ -27,13 +30,14 @@ jobs:
       - name: Compute beta version
         id: version
         run: |
-          echo "tag=v1.0.0-preview.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           if [ -f .github/scripts/beta-version.sh ]; then
-            bash .github/scripts/beta-version.sh || true
+            bash .github/scripts/beta-version.sh || echo "tag=v1.0.0-preview.${{ github.run_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=v1.0.0-preview.${{ github.run_number }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Tag and create prerelease (Merged PRs only)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -44,24 +48,21 @@ jobs:
           gh release create "${{ steps.version.outputs.tag }}" --prerelease --title "${{ steps.version.outputs.tag }}" --target develop --generate-notes || true
 
       - name: Authenticate to Google Cloud
-        id: auth
-        if: secrets.GCP_SA_KEY != ''
+        if: ${{ secrets.GCP_SA_KEY != '' }}
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        if: secrets.GCP_SA_KEY != ''
+        if: ${{ secrets.GCP_SA_KEY != '' }}
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Build & Deploy Backend to GCP Cloud Run
-        if: secrets.GCP_SA_KEY != ''
-        env:
-          GCP_REGION: ${{ secrets.GCP_REGION }}
+        if: ${{ secrets.GCP_SA_KEY != '' }}
         run: |
           gcloud run deploy backend-service \
             --source backend/ \
-            --region "${GCP_REGION:-asia-south1}" \
+            --region ${{ secrets.GCP_REGION || 'asia-south1' }} \
             --platform managed \
             --allow-unauthenticated \
             --min-instances 0 \
@@ -79,16 +80,15 @@ jobs:
       - name: Build Frontend with Version Tag
         working-directory: frontend
         env:
-          VITE_APP_VERSION: ${{ steps.version.outputs.tag }}
+          VITE_APP_VERSION: ${{ steps.version.outputs.tag || format('v1.0.0-preview.{0}', github.run_number) }}
         run: |
           npm ci
           npm run build
 
       - name: Deploy Frontend to Firebase Hosting
-        if: secrets.GCP_SA_KEY != ''
+        if: ${{ secrets.GCP_SA_KEY != '' }}
         run: |
-          npx firebase-tools deploy --only hosting --project "${{ secrets.GCP_PROJECT_ID }}" --non-interactive || {
-            echo "::warning::Firebase Hosting deployment encountered an issue. Please verify that Firebase Hosting is enabled for project '${{ secrets.GCP_PROJECT_ID }}' at https://console.firebase.google.com."
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }} --non-interactive || {
+            echo "::warning::Firebase Hosting deployment encountered an issue. Verify Firebase Hosting is enabled for project '${{ secrets.GCP_PROJECT_ID }}' at https://console.firebase.google.com."
           }
-
-
