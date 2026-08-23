@@ -553,3 +553,9 @@ Status/Issue Type/Sprint could NOT be set via available tools (no MCP project to
 - source_spec: _bmad-output/implementation-artifacts/spec-9-3-save-and-replay-workflow-template.md
   summary: Template endpoints (and all API routes) have no authorization/org-membership check, so any client can list or replay another org's templates.
   evidence: work_item_templates.py routes take org_id/template_id from the request with no auth layer; no route in app.py has authentication middleware — pre-existing app-wide pattern surfaced incidentally by the new endpoints.
+
+## Deferred from: code review of spec-10-3-support-accuracy-review-and-confidence-flagging.md (2026-08-22)
+
+- source_spec: _bmad-output/implementation-artifacts/spec-10-3-support-accuracy-review-and-confidence-flagging.md
+  summary: No fault-injection test verifying the review row and its DecisionRecord are written atomically (crash mid-transaction).
+  evidence: test_reviews.py covers the success path (both rows present) and the rollback path (decision insert failure rolls back the review), but a true mid-transaction crash test would require fault-injection infrastructure that does not exist in this codebase.

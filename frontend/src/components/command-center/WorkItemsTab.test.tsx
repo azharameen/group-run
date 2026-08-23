@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import WorkItemsTab from './WorkItemsTab';
 import * as workItemsApi from '@/api/workItems';
@@ -16,6 +16,8 @@ vi.mock('@/api/workItems', () => ({
   fetchLifecycleHistory: vi.fn(),
   listDecisions: vi.fn(),
   transitionWorkItem: vi.fn(),
+  listReviews: vi.fn(),
+  createReview: vi.fn(),
   saveWorkItemTemplate: vi.fn(),
   fetchTemplates: vi.fn(),
   replayTemplate: vi.fn(),
@@ -59,7 +61,11 @@ vi.mock('@/components/ui/dialog', () => ({
 }));
 
 vi.mock('@/components/ui/input', () => ({
-  Input: (props: any) => <input data-testid="input" {...props} />,
+  Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input data-testid="input" {...props} />,
+}));
+
+vi.mock('@/components/ui/textarea', () => ({
+  Textarea: (props: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} />,
 }));
 
 const org: OrganizationSummary = {
@@ -96,7 +102,7 @@ const makeWorkItem = (id: string, title: string, department: string): WorkItem =
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Provide default mock return values to avoid undefined errors in component
+  vi.mocked(workItemsApi.listReviews).mockResolvedValue([]);
   vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([]);
 });
 
@@ -335,6 +341,310 @@ describe('WorkItemsTab', () => {
     });
 
     expect(screen.getByTestId('work-item-advance-button')).toBeDisabled();
+  });
+
+  test('review dialog lists existing reviews', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listReviews).mockResolvedValue([
+      {
+        review_id: 'r-1', work_item_id: 'wi-1', reviewer: 'user',
+        accuracy_score: 95, summary: 'Solid claims.', flagged_for_review: false,
+        reviewed_at: '2026-07-20T10:00:00+00:00',
+      },
+    ]);
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-review-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-dialog')).toBeTruthy();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('review-row')).toBeTruthy();
+    });
+    expect(screen.getByText('Solid claims.')).toBeTruthy();
+  });
+
+  test('submitting a review calls createReview and refreshes the list', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.createReview).mockResolvedValue({
+      review_id: 'r-1', work_item_id: 'wi-1', reviewer: 'user',
+      accuracy_score: 95, summary: 'Solid claims.', flagged_for_review: false,
+      reviewed_at: '2026-07-20T10:00:00+00:00',
+    });
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-review-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-dialog')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByTestId('work-item-review-score-input'), { target: { value: '95' } });
+    fireEvent.change(screen.getByTestId('work-item-review-summary-input'), { target: { value: 'Solid claims.' } });
+    fireEvent.click(screen.getByTestId('work-item-review-submit-button'));
+
+    await waitFor(() => {
+      expect(workItemsApi.createReview).toHaveBeenCalledWith('wi-1', {
+        reviewer: 'user', accuracy_score: 95, summary: 'Solid claims.',
+      });
+    });
+    // Reviews are re-fetched after a successful submit: initial mount load + open + post-submit.
+    await waitFor(() => {
+      expect(vi.mocked(workItemsApi.listReviews).mock.calls.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  test('shows a flagged badge on the row when the latest review is flagged', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listReviews).mockResolvedValue([
+      {
+        review_id: 'r-1', work_item_id: 'wi-1', reviewer: 'user',
+        accuracy_score: 70, summary: 'Weak sourcing.', flagged_for_review: true,
+        reviewed_at: '2026-07-20T10:00:00+00:00',
+      },
+    ]);
+
+    render(<WorkItemsTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-flagged-badge')).toBeTruthy();
+    });
+  });
+
+  test('rejects out-of-range or non-integer scores before submitting', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listReviews).mockResolvedValue([]);
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-review-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-dialog')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByTestId('work-item-review-score-input'), { target: { value: '150' } });
+    fireEvent.change(screen.getByTestId('work-item-review-summary-input'), { target: { value: 'Too high.' } });
+    fireEvent.click(screen.getByTestId('work-item-review-submit-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-error')).toHaveTextContent(
+        'Accuracy score must be a whole number between 0 and 100',
+      );
+    });
+    expect(workItemsApi.createReview).not.toHaveBeenCalled();
+  });
+
+  test('surfaces review API errors', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listReviews).mockRejectedValue(new Error('boom'));
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-review-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-error')).toHaveTextContent('boom');
+    });
+  });
+
+  test('save template button opens dialog and POSTs on confirm', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    const advanced = makeWorkItem('wi-1', 'Prototype battery housing', 'engineering');
+    advanced.status = 'ideation';
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([advanced]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([]);
+    vi.mocked(workItemsApi.saveWorkItemTemplate).mockResolvedValue({
+      template_id: 't-1',
+      org_id: org.org_id,
+      name: 'Battery housing workflow',
+      source_work_item_id: 'wi-1',
+      phases: ['new', 'ideation'],
+      departments: ['ideation', 'ideation'],
+      usage_count: 0,
+      created_at: '2026-07-21T10:00:00+00:00',
+      last_used_at: null,
+    });
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-row')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-template-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-name-dialog')).toBeTruthy();
+    });
+
+    const input = screen.getByTestId('input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Battery housing workflow' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const saveButton = buttons.find((btn) => btn.textContent === 'Save');
+    if (saveButton) fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(workItemsApi.saveWorkItemTemplate).toHaveBeenCalledWith('wi-1', {
+        name: 'Battery housing workflow',
+      });
+    });
+  });
+
+  test('templates list renders fetched templates', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([
+      {
+        template_id: 't-1',
+        org_id: org.org_id,
+        name: 'Battery housing workflow',
+        source_work_item_id: 'wi-1',
+        phases: ['new', 'ideation', 'product_definition'],
+        departments: ['ideation', 'ideation', 'ideation'],
+        usage_count: 3,
+        created_at: '2026-07-20T10:00:00+00:00',
+        last_used_at: '2026-07-21T14:00:00+00:00',
+      },
+    ]);
+
+    render(<WorkItemsTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-row-t-1')).toBeTruthy();
+    });
+    expect(screen.getByText('Battery housing workflow')).toBeTruthy();
+    expect(screen.getByText(/Ends at product_definition/)).toBeTruthy();
+    expect(screen.getByText(/Used 3 times/)).toBeTruthy();
+  });
+
+  test('replay template dialog creates item and shows result', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([
+      {
+        template_id: 't-1',
+        org_id: org.org_id,
+        name: 'Battery housing workflow',
+        source_work_item_id: 'wi-1',
+        phases: ['new', 'ideation'],
+        departments: ['ideation', 'ideation'],
+        usage_count: 0,
+        created_at: '2026-07-20T10:00:00+00:00',
+        last_used_at: null,
+      },
+    ]);
+    const replayed = makeWorkItem('wi-2', 'Replay: Battery housing', 'ideation');
+    replayed.status = 'ideation';
+    replayed.template_id = 't-1';
+    replayed.source = 'template:t-1';
+    vi.mocked(workItemsApi.replayTemplate).mockResolvedValue({
+      work_item: replayed,
+      events: [
+        {
+          event_id: 'ev-1',
+          work_item_id: 'wi-2',
+          event_type: 'transition',
+          from_status: 'new',
+          to_status: 'ideation',
+          from_department: 'ideation',
+          to_department: 'ideation',
+          decided_by: 'chief_of_staff',
+          decided_at: '2026-07-21T10:00:00+00:00',
+          confidence: 'high',
+          reasoning: "Replayed template 'Battery housing workflow' (t-1): new → ideation.",
+          alternatives: ['product_definition'],
+        },
+      ],
+      count: 1,
+    });
+
+    render(<WorkItemsTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-row-t-1')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('template-replay-t-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-replay-dialog')).toBeTruthy();
+    });
+
+    const inputs = screen.getAllByTestId('input');
+    fireEvent.change(inputs[0], { target: { value: 'Replay: Battery housing' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const replayButton = buttons.find((btn) => btn.textContent === 'Replay');
+    if (replayButton) fireEvent.click(replayButton);
+
+    await waitFor(() => {
+      expect(workItemsApi.replayTemplate).toHaveBeenCalledWith('t-1', {
+        title: 'Replay: Battery housing',
+        description: '',
+      });
+    });
+  });
+
+  test('template operations surface API errors', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    const advanced = makeWorkItem('wi-1', 'Prototype battery housing', 'engineering');
+    advanced.status = 'ideation';
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([advanced]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([]);
+    vi.mocked(workItemsApi.saveWorkItemTemplate).mockRejectedValue(
+      new Error('Failed to save template'),
+    );
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-row')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-template-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-name-dialog')).toBeTruthy();
+    });
+
+    const input = screen.getByTestId('input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Test template' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const saveButton = buttons.find((btn) => btn.textContent === 'Save');
+    if (saveButton) fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to save template')).toBeTruthy();
+    });
   });
 
   test('save template button opens dialog and POSTs on confirm', async () => {

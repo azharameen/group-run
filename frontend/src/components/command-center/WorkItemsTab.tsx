@@ -7,12 +7,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { fetchOrganizations, fetchWorkItems } from "../../api/client";
 import {
-	fetchLifecycleHistory, listDecisions, transitionWorkItem, LIFECYCLE_PHASES,
+	createReview, fetchLifecycleHistory, listDecisions, listReviews,
+	transitionWorkItem, LIFECYCLE_PHASES,
 	saveWorkItemTemplate, fetchTemplates, replayTemplate,
 } from "@/api/workItems";
-import type { DecisionRecord, LifecycleEvent, WorkItem, WorkflowTemplate } from "@/api/workItems";
+import type { AccuracyReview, DecisionRecord, LifecycleEvent, WorkItem, WorkflowTemplate } from "@/api/workItems";
 
 const lifecyclePhases = LIFECYCLE_PHASES ?? [
 	"new", "ideation", "product_definition", "development", "testing", "deployment", "monitoring",
@@ -37,7 +39,14 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 	const [templateName, setTemplateName] = useState("");
 	const [savingTemplate, setSavingTemplate] = useState(false);
 	const [saveTemplateError, setSaveTemplateError] = useState<string | null>(null);
-	
+	const [reviewOpen, setReviewOpen] = useState(false);
+	const [reviews, setReviews] = useState<AccuracyReview[]>([]);
+	const [reviewError, setReviewError] = useState<string | null>(null);
+	const [reviewScore, setReviewScore] = useState("");
+	const [reviewSummary, setReviewSummary] = useState("");
+	const [reviewer, setReviewer] = useState("user");
+	const [submittingReview, setSubmittingReview] = useState(false);
+	const latestReview = reviews.length > 0 ? reviews[reviews.length - 1] : undefined;
 	const statusIndex = lifecyclePhases.indexOf(item.status as never);
 	const next = statusIndex >= 0 ? lifecyclePhases[statusIndex + 1] : undefined;
 	const canSaveTemplate = item.status !== "new";
@@ -62,6 +71,47 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 		} catch (err) {
 			setDecisions([]);
 			setDecisionError(err instanceof Error ? err.message : "Failed to load decisions");
+		}
+	};
+	const loadReviews = useCallback(async () => {
+		try {
+			setReviews(await listReviews(item.work_item_id));
+			setReviewError(null);
+		} catch (err) {
+			setReviews([]);
+			setReviewError(err instanceof Error ? err.message : "Failed to load reviews");
+		}
+	}, [item.work_item_id]);
+	useEffect(() => {
+		void loadReviews();
+	}, [loadReviews]);
+	const openReview = async (open: boolean) => {
+		setReviewOpen(open);
+		if (!open) return;
+		await loadReviews();
+	};
+	const submitReview = async () => {
+		if (submittingReview) return;
+		const score = Number(reviewScore);
+		if (!Number.isInteger(score) || score < 0 || score > 100) {
+			setReviewError("Accuracy score must be a whole number between 0 and 100");
+			return;
+		}
+		setSubmittingReview(true);
+		setReviewError(null);
+		try {
+			await createReview(item.work_item_id, {
+				reviewer: reviewer.trim() || "user",
+				accuracy_score: score,
+				summary: reviewSummary,
+			});
+			setReviewScore("");
+			setReviewSummary("");
+			await loadReviews();
+		} catch (err) {
+			setReviewError(err instanceof Error ? err.message : "Failed to submit review");
+		} finally {
+			setSubmittingReview(false);
 		}
 	};
 	const advance = async () => {
@@ -110,6 +160,11 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 				<Badge data-testid="work-item-status" variant="secondary" className="shrink-0">
 					{item.status}
 				</Badge>
+				{latestReview?.flagged_for_review && (
+					<Badge data-testid="work-item-flagged-badge" variant="destructive" className="shrink-0">
+						Needs review
+					</Badge>
+				)}
 			</div>
 			<div
 				data-testid="work-item-routing"
@@ -134,6 +189,8 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 					onClick={() => void openHistory(true)}>History</Button>
 				<Button size="sm" variant="outline" data-testid="work-item-decisions-button"
 					onClick={() => void openDecisions(true)}>Decisions</Button>
+				<Button size="sm" variant="outline" data-testid="work-item-review-button"
+					onClick={() => void openReview(true)}>Review</Button>
 				<Button size="sm" data-testid="work-item-advance-button" disabled={!next || advancing}
 					onClick={() => void advance()}>Advance</Button>
 				<Button size="sm" variant="outline" data-testid="work-item-template-button"
@@ -207,6 +264,62 @@ function WorkItemRow({ item, onRefresh }: { item: WorkItem; onRefresh: () => voi
 							<Button size="sm" disabled={!templateName.trim() || savingTemplate}
 								onClick={() => void saveAsTemplate()}>Save</Button>
 						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
+			<Dialog open={reviewOpen} onOpenChange={(open) => void openReview(open)}>
+				<DialogContent data-testid="work-item-review-dialog">
+					<DialogHeader><DialogTitle>Accuracy review: {item.title}</DialogTitle></DialogHeader>
+					{reviewError && <p data-testid="work-item-review-error" className="text-xs text-destructive">{reviewError}</p>}
+					<div className="space-y-2 max-h-64 overflow-y-auto">
+						{reviews.length === 0 && !reviewError && (
+							<p data-testid="work-item-review-empty" className="text-sm text-muted-foreground">No reviews recorded.</p>
+						)}
+						{reviews.map((review) => (
+							<div key={review.review_id} data-testid="review-row" className="rounded border p-2 text-xs space-y-1">
+								<div>
+									<Badge>{review.accuracy_score}</Badge> · {review.reviewer}
+									{review.flagged_for_review && (
+										<Badge data-testid="review-flagged-badge" variant="destructive" className="ml-1">
+											Needs review
+										</Badge>
+									)}
+								</div>
+								<div>{formatDate(review.reviewed_at)}</div>
+								<div>{review.summary}</div>
+							</div>
+						))}
+					</div>
+					<div className="space-y-2 border-t pt-2">
+						<Input
+							data-testid="work-item-review-score-input"
+							type="number"
+							min={0}
+							max={100}
+							placeholder="Accuracy score (0-100)"
+							value={reviewScore}
+							onChange={(event) => setReviewScore(event.target.value)}
+						/>
+						<Textarea
+							data-testid="work-item-review-summary-input"
+							placeholder="Review summary"
+							value={reviewSummary}
+							onChange={(event) => setReviewSummary(event.target.value)}
+						/>
+						<Input
+							data-testid="work-item-review-reviewer-input"
+							placeholder="Reviewer"
+							value={reviewer}
+							onChange={(event) => setReviewer(event.target.value)}
+						/>
+						<Button
+							size="sm"
+							data-testid="work-item-review-submit-button"
+							disabled={submittingReview || !reviewScore || !reviewSummary.trim()}
+							onClick={() => void submitReview()}
+						>
+							Submit review
+						</Button>
 					</div>
 				</DialogContent>
 			</Dialog>

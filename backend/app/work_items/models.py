@@ -153,3 +153,30 @@ class ReplayTemplateRequest(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=200)
     description: str = Field(default="", max_length=5000)
+
+
+class AccuracyReview(BaseModel):
+    """A human accuracy review recorded against a work item (Story 10.3)."""
+
+    review_id: str
+    work_item_id: str
+    reviewer: str
+    accuracy_score: int
+    summary: str
+    flagged_for_review: bool
+    reviewed_at: str
+
+
+class AccuracyReviewRequest(BaseModel):
+    """Request body for POST /api/work-items/{work_item_id}/reviews."""
+
+    reviewer: str = Field(default="user", min_length=1, max_length=64)
+    accuracy_score: int = Field(..., ge=0, le=100)
+    summary: str = Field(..., min_length=1)
+
+    @field_validator("summary")
+    @classmethod
+    def _summary_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("summary must not be blank")
+        return value
