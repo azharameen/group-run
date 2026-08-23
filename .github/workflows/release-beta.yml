@@ -6,11 +6,7 @@
 
 name: "Release - Beta & Deployment Test"
 
-on:
-  workflow_dispatch:
-  push:
-  pull_request:
-    branches: [develop, main, 'test/**']
+on: [push, pull_request, workflow_dispatch]
 
 permissions:
   contents: write
