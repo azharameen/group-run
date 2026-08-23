@@ -151,6 +151,13 @@ export function NavUser({
                 <LogOut className="mr-2 h-4 w-4" />
                 Log out
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5 text-xs text-muted-foreground flex items-center justify-between font-mono select-none">
+                <span>Version</span>
+                <span className="bg-muted px-1.5 py-0.5 rounded text-[10px] font-semibold text-foreground">
+                  {import.meta.env.VITE_APP_VERSION || "v1.0.0-dev"}
+                </span>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>

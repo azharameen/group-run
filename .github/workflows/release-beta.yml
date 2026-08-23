@@ -2,11 +2,9 @@
 #
 # Flow: any PR merged into develop -> this workflow computes the next beta
 # version using the SAME bump rules as the prod lane (release-please config),
-# tags vX.Y.Z-beta.N and creates a prerelease GitHub Release with notes
-# since the last tag. No PR, no human step: every merge is a beta.
-#
-# Images are parked: when the registry decision lands, build the images
-# inside this workflow (not tag-triggered), so no extra token is needed.
+# tags vX.Y.Z-beta.N and creates a prerelease GitHub Release with notes,
+# builds & deploys Backend to GCP Cloud Run, and Frontend to Firebase Hosting.
+
 name: Release - Beta
 
 on:
@@ -17,20 +15,17 @@ permissions:
   contents: write
   pull-requests: read
   issues: read
+  id-token: write
 
 jobs:
   beta:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
     runs-on: ubuntu-latest
-    # Reserved lane (AD-17): no protection rules yet; add required reviewers
-    # here once deploy actions exist.
     environment: beta
     steps:
       - uses: actions/checkout@v4
         with:
           ref: develop
-          # Full history: the version script needs all tags and the full
-          # commit range back to the last production tag.
           fetch-depth: 0
 
       - name: Test beta version calculator
@@ -53,3 +48,51 @@ jobs:
             args+=(--notes-start-tag "${{ steps.version.outputs.previous_tag }}")
           fi
           gh release create "${{ steps.version.outputs.tag }}" "${args[@]}"
+
+      - name: Authenticate to Google Cloud
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build & Deploy Backend to GCP Cloud Run
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        run: |
+          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend:${{ steps.version.outputs.tag }} backend/
+          gcloud run deploy backend-service \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend:${{ steps.version.outputs.tag }} \
+            --region ${{ secrets.GCP_REGION || 'asia-south1' }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 2 \
+            --cpu 0.5 \
+            --memory 256MiB
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Frontend with Beta Version Tag
+        working-directory: frontend
+        env:
+          VITE_APP_VERSION: ${{ steps.version.outputs.tag }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy Frontend to Firebase Hosting
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.GCP_SA_KEY }}
+          channelId: live
+          projectId: ${{ secrets.GCP_PROJECT_ID }}

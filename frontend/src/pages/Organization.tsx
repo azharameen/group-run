@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Building2, Plus } from 'lucide-react'
 import {
   createOrganization,
@@ -6,6 +6,9 @@ import {
   fetchOrganizations,
   type Organization,
   type OrgStatus,
+  type OrgDepartment,
+  type OrgTeam,
+  type OrgAgent,
 } from '../api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -147,7 +150,7 @@ export default function Organization() {
                 id="org-name"
                 data-testid="org-name-input"
                 value={name}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setName(e.target.value)
                   if (nameError) setNameError(null)
                 }}
@@ -168,7 +171,7 @@ export default function Organization() {
                 id="org-description"
                 data-testid="org-description-input"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
                 placeholder="What is this organization about?"
                 rows={3}
               />
@@ -219,7 +222,7 @@ export default function Organization() {
       </Card>
 
       {/* Departments and teams */}
-      {org.departments.map((dept) => (
+      {org.departments.map((dept: OrgDepartment) => (
         <Card key={dept.department_id}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -235,7 +238,7 @@ export default function Organization() {
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dept.teams.map((team) => (
+            {dept.teams.map((team: OrgTeam) => (
               <Card key={team.team_id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium text-sm" data-testid="org-team-name">
@@ -248,7 +251,7 @@ export default function Organization() {
                   Capacity {team.active_agents}/{team.total_agents}
                 </p>
                 <ul className="space-y-1.5">
-                  {team.agents.map((agent) => (
+                  {team.agents.map((agent: OrgAgent) => (
                     <li
                       key={agent.agent_id}
                       className="flex items-center justify-between gap-2 text-sm"
