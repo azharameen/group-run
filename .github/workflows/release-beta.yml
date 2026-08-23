@@ -60,10 +60,12 @@ jobs:
 
       - name: Build & Deploy Backend to GCP Cloud Run
         if: secrets.GCP_SA_KEY != ''
+        env:
+          GCP_REGION: ${{ secrets.GCP_REGION }}
         run: |
           gcloud run deploy backend-service \
             --source backend/ \
-            --region ${{ secrets.GCP_REGION || 'asia-south1' }} \
+            --region "${GCP_REGION:-asia-south1}" \
             --platform managed \
             --allow-unauthenticated \
             --min-instances 0 \
