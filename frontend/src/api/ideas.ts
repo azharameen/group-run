@@ -48,7 +48,7 @@ export interface ArtifactRevision {
   content: string;
   diff: string;
   provenance: string;
-  agent_id: string;
+  agent_id?: string;
   trust: string;
   evidence_refs: string[];
 }

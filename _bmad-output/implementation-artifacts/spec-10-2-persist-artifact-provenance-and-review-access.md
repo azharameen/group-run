@@ -2,7 +2,7 @@
 title: 'Story 10.2: Persist artifact provenance and review access'
 type: 'feature'
 created: '2026-08-22'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '34bd6f7b25fe362330e9adfec32fc8241ffe9268'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -110,6 +110,18 @@ warnings: []
 
 ## Review Triage Log
 
+### 2026-08-22 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 4: (high 1, medium 2, low 1)
+- defer: 4
+- reject: 6
+- addressed_findings:
+  - `[high]` `[patch]` ArtifactsPanel dialog dereferenced `comparison.previous`/`comparison.latest` without checking `available` — added guard with fallback message when comparison is unavailable.
+  - `[medium]` `[patch]` Trust badge used the same variant for `trusted` and `verified-tool-call` — now all four trust levels map to distinct badge variants per spec.
+  - `[medium]` `[patch]` `ArtifactRevision.agent_id` typed as required though legacy records omit it — made optional (`agent_id?: string`); UI already renders "unknown" fallback.
+  - `[low]` `[patch]` Stale error state persisted across `ideaId` changes in ArtifactsPanel — error is now cleared at the start of each load.
+
 ## Design Notes
 
 Artifact provenance stays in the workspace filesystem (epic: "workspace filesystem is the source of truth for ideas, research artifacts, and agent outputs; SQLite stores runtime state only"). `storage/artifacts.py` is the existing artifact owner and is **not** in the forbidden-import list — it is extended in place rather than duplicated into a new module. The trust scale lives in `work_items/models.py` as `TrustLevel` (mirroring how `RoutingConfidence` is shared) so Epic 10.3 can reuse it. Pre-existing revision records without `agent_id` are tolerated: the API returns them as-is and the UI renders `"unknown"` — no backfill migration (consistent with Story 10.1's no-backfill stance).
@@ -136,3 +148,34 @@ Example revision record:
 - `python -m ruff check backend` -- expected: clean
 - `python scripts/forbidden_imports.py` -- expected: PASS
 - `cd frontend && npx tsc -b --noEmit && npx vitest run src/components/idea-detail/ArtifactsPanel.test.tsx && npm run build` -- expected: pass
+
+## Auto Run Result
+
+**Status:** done
+
+**Summary:** Artifact revisions now carry `agent_id` attribution and the four-tier `TrustLevel` scale (`generated` | `trusted` | `verified-tool-call` | `fallback`), and are inspectable via three new API endpoints plus a new Artifacts tab on the Idea Detail page showing version, trust badge, agent, provenance, evidence references, and a version-comparison dialog.
+
+**Files changed:**
+- `backend/app/work_items/models.py` — added canonical `TrustLevel` literal.
+- `backend/app/storage/artifacts.py` — `save_artifact_revision` accepts/persists `agent_id` (record + idea.yaml meta); typed `trust` as `TrustLevel`.
+- `backend/app/agent/domain_tools.py` — `draft_patent_section` attributes `agent_id="deepagents"`; `save_workspace_item` sidecar includes `agent_id`.
+- `backend/app/api/routes/artifacts.py` (new) — `GET /ideas/{id}/revisions`, `GET /ideas/{id}/artifacts/{name}/diff`, `POST /ideas/{id}/review` with 404/422 handling.
+- `backend/app/api/app.py` — registered artifacts router.
+- `backend/tests/test_artifact_api.py` (new) — class-based TestClient tests covering the full I/O matrix.
+- `backend/tests/test_storage_artifacts.py` — agent_id persistence, all four trust levels, legacy-record tolerance.
+- `frontend/src/api/ideas.ts` — `agent_id` on `ArtifactRevision` (optional for legacy), `recordIdeaReview` client.
+- `frontend/src/components/idea-detail/ArtifactsPanel.tsx` (new) — provenance UI with trust badges, evidence refs, compare dialog.
+- `frontend/src/components/idea-detail/ArtifactsPanel.test.tsx` (new) — vitest + RTL coverage.
+- `frontend/src/pages/IdeaDetail.tsx` — Artifacts tab.
+- `frontend/src/__tests__/IdeaDetail.test.tsx` — mocked the new artifact API.
+
+**Review findings:** 4 patches applied (dialog `available` guard, per-level badge variants, optional `agent_id` type, stale-error clear); 4 items deferred to `deferred-work.md` (idea_id path traversal, YAML index write race, legacy `"verified"` trust test, ArtifactDiffPanel empty-content state); 6 rejected as false positives or out of scope.
+
+**Follow-up review recommended:** false — patches were small, localized UI/type fixes with no API, security, or data impact.
+
+**Verification:**
+- `python -m pytest backend/tests -q` → 476 passed.
+- `python -m ruff check` (changed files) → clean; `python scripts/forbidden_imports.py` → PASS.
+- `npx tsc -b --noEmit` → clean; `npx vitest run` → 280 passed (25 files); `npm run build` → success.
+
+**Residual risks:** Deferred items above — most notably the pre-existing `idea_id` path-traversal surface, now reachable from the new endpoints, and the unlocked YAML index rewrite under concurrent writes.

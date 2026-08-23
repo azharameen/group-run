@@ -19,6 +19,7 @@ interface ArtifactsPanelProps {
 const trustVariant = (trust: string): "default" | "secondary" | "destructive" | "outline" => {
   if (trust === "fallback") return "destructive";
   if (trust === "generated") return "secondary";
+  if (trust === "trusted") return "default";
   return "outline";
 };
 
@@ -31,6 +32,7 @@ export function ArtifactsPanel({ ideaId }: ArtifactsPanelProps) {
 
   useEffect(() => {
     let active = true;
+    setError(null);
     fetchIdeaRevisions(ideaId)
       .then((result) => {
         if (active) setRevisions(result);
@@ -112,13 +114,15 @@ export function ArtifactsPanel({ ideaId }: ArtifactsPanelProps) {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{compareName} comparison</DialogTitle></DialogHeader>
           {compareError && <p className="text-sm text-destructive" role="alert">{compareError}</p>}
-          {comparison && (
+          {comparison && comparison.available && comparison.previous && comparison.latest ? (
             <ArtifactDiffPanel
               versionA={`v${(comparison.previous as ArtifactRevision).version}`}
               versionB={`v${(comparison.latest as ArtifactRevision).version}`}
               contentA={String(comparison.content_a || "")}
               contentB={String(comparison.content_b || "")}
             />
+          ) : (
+            <p className="text-sm text-muted-foreground">No comparison available for this artifact.</p>
           )}
         </DialogContent>
       </Dialog>
