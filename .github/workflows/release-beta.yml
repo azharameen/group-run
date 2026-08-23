@@ -4,14 +4,12 @@
 # 1. Manual trigger (workflow_dispatch) OR PRs (pre-merge testing) -> Builds & deploys to Cloud Run & Firebase Hosting.
 # 2. Merged PR into develop -> Computes beta tag, creates GitHub Release, and deploys to Cloud Run & Firebase Hosting.
 
-name: Release - Beta & Deployment Test
+name: "Release - Beta & Deployment Test"
 
 on:
-  workflow_dispatch:
-  push:
-    branches: [develop, 'test/**']
-  pull_request:
-    branches: [develop, main, 'test/**']
+  workflow_dispatch: {}
+  push: {}
+  pull_request: {}
 
 permissions:
   contents: write
