@@ -9,6 +9,7 @@ name: Release - Beta & Deployment Test
 on:
   workflow_dispatch:
   push:
+    branches: ['*']
 
 permissions:
   contents: write
@@ -92,5 +93,6 @@ jobs:
           firebaseServiceAccount: ${{ secrets.GCP_SA_KEY }}
           channelId: live
           projectId: ${{ secrets.GCP_PROJECT_ID }}
+          entryPoint: .
 
 
