@@ -1,7 +1,7 @@
 # Beta & Deployment Test Lane
 #
 # Flow:
-# 1. Manual trigger (workflow_dispatch) OR PRs (pre-merge testing) -> Builds & deploys to Cloud Run & Firebase Hosting.
+# 1. Push to test branches or workflow_dispatch -> Runs full build & deployment verification.
 # 2. Merged PR into develop -> Computes beta tag, creates GitHub Release, and deploys to Cloud Run & Firebase Hosting.
 
 name: Release - Beta & Deployment Test
@@ -9,9 +9,6 @@ name: Release - Beta & Deployment Test
 on:
   workflow_dispatch:
   push:
-    branches: [develop, 'test/**']
-  pull_request:
-    branches: [develop, main, 'test/**']
 
 permissions:
   contents: write
@@ -49,6 +46,7 @@ jobs:
           gh release create "${{ steps.version.outputs.tag }}" --prerelease --title "${{ steps.version.outputs.tag }}" --target develop --generate-notes || true
 
       - name: Authenticate to Google Cloud
+        id: auth
         if: ${{ secrets.GCP_SA_KEY != '' }}
         uses: google-github-actions/auth@v2
         with:
@@ -88,7 +86,11 @@ jobs:
 
       - name: Deploy Frontend to Firebase Hosting
         if: ${{ secrets.GCP_SA_KEY != '' }}
-        run: |
-          npm install -g firebase-tools
-          firebase deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }} --non-interactive
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.GCP_SA_KEY }}
+          channelId: live
+          projectId: ${{ secrets.GCP_PROJECT_ID }}
+
 
