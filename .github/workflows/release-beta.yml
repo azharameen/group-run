@@ -28,11 +28,9 @@ jobs:
       - name: Compute beta version
         id: version
         run: |
+          echo "tag=v1.0.0-preview.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           if [ -f .github/scripts/beta-version.sh ]; then
             bash .github/scripts/beta-version.sh || true
-          fi
-          if [ -z "${{ steps.version.outputs.tag }}" ]; then
-            echo "tag=v1.0.0-preview.${{ github.run_number }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Tag and create prerelease (Merged PRs only)
@@ -80,7 +78,7 @@ jobs:
       - name: Build Frontend with Version Tag
         working-directory: frontend
         env:
-          VITE_APP_VERSION: ${{ steps.version.outputs.tag || format('v1.0.0-preview.{0}', github.run_number) }}
+          VITE_APP_VERSION: ${{ steps.version.outputs.tag }}
         run: |
           npm ci
           npm run build
