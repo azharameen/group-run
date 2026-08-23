@@ -550,3 +550,9 @@ Status/Issue Type/Sprint could NOT be set via available tools (no MCP project to
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-1-record-decisions-with-provenance-metadata.md`
   summary: list_decisions legacy synthesis loads all routing/lifecycle rows into memory with no pagination.
   evidence: decisions.py list_decisions scans routing_decisions and lifecycle_events fully and sorts in Python; fine at current scale but unbounded as history grows. Pre-existing endpoints (list_work_items_with_routing) have the same unbounded pattern.
+
+## Deferred from: code review of spec-10-3-support-accuracy-review-and-confidence-flagging.md (2026-08-22)
+
+- source_spec: _bmad-output/implementation-artifacts/spec-10-3-support-accuracy-review-and-confidence-flagging.md
+  summary: No fault-injection test verifying the review row and its DecisionRecord are written atomically (crash mid-transaction).
+  evidence: test_reviews.py covers the success path (both rows present) and the rollback path (decision insert failure rolls back the review), but a true mid-transaction crash test would require fault-injection infrastructure that does not exist in this codebase.
