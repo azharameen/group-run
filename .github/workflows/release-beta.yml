@@ -90,12 +90,7 @@ jobs:
 
       - name: Deploy Frontend to Firebase Hosting
         if: ${{ secrets.GCP_SA_KEY != '' }}
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.GCP_SA_KEY }}
-          channelId: live
-          projectId: ${{ secrets.GCP_PROJECT_ID }}
-          entryPoint: .
+        run: |
+          npx firebase-tools deploy --only hosting --project "${{ secrets.GCP_PROJECT_ID }}" --non-interactive
 
 
