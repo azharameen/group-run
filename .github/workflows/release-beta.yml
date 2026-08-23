@@ -37,15 +37,17 @@ jobs:
           fi
 
       - name: Tag and create prerelease (Merged PRs only)
-        if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.com"
-          git tag "${{ steps.version.outputs.tag }}" || true
-          git push origin "${{ steps.version.outputs.tag }}" || true
-          gh release create "${{ steps.version.outputs.tag }}" --prerelease --title "${{ steps.version.outputs.tag }}" --target develop --generate-notes || true
+          if [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.event.pull_request.base.ref }}" = "develop" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.com"
+            git tag "${{ steps.version.outputs.tag }}" || true
+            git push origin "${{ steps.version.outputs.tag }}" || true
+            gh release create "${{ steps.version.outputs.tag }}" --prerelease --title "${{ steps.version.outputs.tag }}" --target develop --generate-notes || true
+          fi
 
       - name: Authenticate to Google Cloud
         if: ${{ secrets.GCP_SA_KEY != '' }}
