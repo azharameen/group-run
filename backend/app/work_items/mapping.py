@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from .models import DecisionRecord, RoutingDecision, WorkItem
+from .models import AccuracyReview, DecisionRecord, RoutingDecision, WorkItem
 
 
 def _parse_alternatives(raw: object) -> list[str]:
@@ -27,6 +27,7 @@ def row_to_work_item(rows: dict[str, Any]) -> WorkItem | None:
         department_id=(
             item["department_id"] if "department_id" in item_keys else routing["department_id"]
         ),
+        template_id=item["template_id"] if "template_id" in item_keys else None,
         routing=RoutingDecision(
             department_id=routing["department_id"], decided_by=routing["decided_by"],
             decided_at=routing["decided_at"], confidence=routing["confidence"],
@@ -50,4 +51,13 @@ def row_to_decision(row: Any) -> DecisionRecord:
         reasoning=row["reasoning"], evidence=parse(row["evidence"]),
         confidence=row["confidence"], alternatives=parse(row["alternatives"]),
         decided_at=row["decided_at"],
+    )
+
+
+def row_to_review(row: Any) -> AccuracyReview:
+    return AccuracyReview(
+        review_id=row["review_id"], work_item_id=row["work_item_id"],
+        reviewer=row["reviewer"], accuracy_score=row["accuracy_score"],
+        summary=row["summary"], flagged_for_review=bool(row["flagged_for_review"]),
+        reviewed_at=row["reviewed_at"],
     )

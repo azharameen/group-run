@@ -91,6 +91,30 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_org_alerts_dedupe
                 ON org_alerts (org_id, work_item_id, phase);
+            CREATE TABLE IF NOT EXISTS workflow_templates (
+                template_id TEXT PRIMARY KEY,
+                org_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                source_work_item_id TEXT NOT NULL,
+                phases TEXT NOT NULL,
+                departments TEXT NOT NULL,
+                usage_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                last_used_at TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_workflow_templates_org
+                ON workflow_templates (org_id);
+            CREATE TABLE IF NOT EXISTS accuracy_reviews (
+                review_id TEXT PRIMARY KEY,
+                work_item_id TEXT NOT NULL,
+                reviewer TEXT NOT NULL,
+                accuracy_score INTEGER NOT NULL,
+                summary TEXT NOT NULL,
+                flagged_for_review INTEGER NOT NULL,
+                reviewed_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_accuracy_reviews_item_time
+                ON accuracy_reviews (work_item_id, reviewed_at);
             """
         )
         columns = {row[1] for row in conn.execute("PRAGMA table_info(work_items)")}
@@ -100,6 +124,8 @@ def _init_schema(conn: sqlite3.Connection) -> None:
                 "UPDATE work_items SET department_id = (SELECT department_id FROM "
                 "routing_decisions WHERE routing_decisions.work_item_id = work_items.work_item_id)"
             )
+        if "template_id" not in columns:
+            conn.execute("ALTER TABLE work_items ADD COLUMN template_id TEXT")
         conn.commit()
     except Exception:
         conn.rollback()
@@ -134,8 +160,8 @@ def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
     try:
         conn.execute(
             "INSERT INTO work_items (work_item_id, org_id, title, description,"
-            " status, owner_agent_id, source, created_at, updated_at, department_id)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " status, owner_agent_id, source, created_at, updated_at, department_id, template_id)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 item["work_item_id"],
                 item["org_id"],
@@ -147,6 +173,7 @@ def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
                 item["created_at"],
                 item["updated_at"],
                 routing["department_id"],
+                item.get("template_id"),
             ),
         )
         conn.execute(
@@ -249,6 +276,114 @@ def list_decisions(work_item_id=None, agent_id=None, from_ts=None, to_ts=None):
             values.append(value)
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
     return conn.execute(f"SELECT * FROM decisions{where} ORDER BY decided_at ASC, rowid ASC", values).fetchall()
+
+
+def insert_template(
+    template_id: str,
+    org_id: str,
+    name: str,
+    source_work_item_id: str,
+    phases: list[str],
+    departments: list[str],
+    created_at: str,
+) -> None:
+    """Insert a workflow template."""
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO workflow_templates (template_id, org_id, name,"
+            " source_work_item_id, phases, departments, usage_count, created_at, last_used_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                template_id,
+                org_id,
+                name,
+                source_work_item_id,
+                json.dumps(phases),
+                json.dumps(departments),
+                0,
+                created_at,
+                None,
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def insert_review(review: dict[str, Any], decision: dict[str, Any]) -> None:
+    """Insert an accuracy review and its companion decision in one transaction.
+
+    Rolls back on any error so a review never persists without the
+    provenance decision that backs it (spec: transactional pair, same
+    pattern as :func:`insert_work_item`).
+    """
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO accuracy_reviews (review_id, work_item_id, reviewer,"
+            " accuracy_score, summary, flagged_for_review, reviewed_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                review["review_id"],
+                review["work_item_id"],
+                review["reviewer"],
+                review["accuracy_score"],
+                review["summary"],
+                1 if review["flagged_for_review"] else 0,
+                review["reviewed_at"],
+            ),
+        )
+        insert_decision(decision, commit=False)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def list_templates(org_id: str) -> list[sqlite3.Row]:
+    """List all templates for an organization."""
+    conn = _get_conn()
+    return conn.execute(
+        "SELECT * FROM workflow_templates WHERE org_id = ?"
+        " ORDER BY created_at DESC",
+        (org_id,),
+    ).fetchall()
+
+
+def get_template(template_id: str) -> sqlite3.Row | None:
+    """Fetch a single template by id, or None."""
+    conn = _get_conn()
+    return conn.execute(
+        "SELECT * FROM workflow_templates WHERE template_id = ?",
+        (template_id,),
+    ).fetchone()
+
+
+def record_template_usage(template_id: str, now: str) -> None:
+    """Increment usage_count and set last_used_at for a template."""
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "UPDATE workflow_templates SET usage_count = usage_count + 1,"
+            " last_used_at = ? WHERE template_id = ?",
+            (now, template_id),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def list_reviews(work_item_id: str) -> list[sqlite3.Row]:
+    """Return accuracy review rows for one item, oldest reviewed first."""
+    conn = _get_conn()
+    return conn.execute(
+        "SELECT * FROM accuracy_reviews WHERE work_item_id = ?"
+        " ORDER BY reviewed_at ASC, rowid ASC",
+        (work_item_id,),
+    ).fetchall()
 
 
 def __getattr__(name: str) -> Any:
