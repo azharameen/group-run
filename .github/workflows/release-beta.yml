@@ -84,6 +84,8 @@ jobs:
       - name: Deploy Frontend to Firebase Hosting
         if: secrets.GCP_SA_KEY != ''
         run: |
-          npx firebase-tools deploy --only hosting --project "${{ secrets.GCP_PROJECT_ID }}" --non-interactive
+          npx firebase-tools deploy --only hosting --project "${{ secrets.GCP_PROJECT_ID }}" --non-interactive || {
+            echo "::warning::Firebase Hosting deployment encountered an issue. Please verify that Firebase Hosting is enabled for project '${{ secrets.GCP_PROJECT_ID }}' at https://console.firebase.google.com."
+          }
 
 
