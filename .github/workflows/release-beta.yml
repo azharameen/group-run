@@ -9,7 +9,6 @@ name: Release - Beta & Deployment Test
 on:
   workflow_dispatch:
   push:
-    branches: [develop, main, 'test/**']
   pull_request:
     branches: [develop, main, 'test/**']
 
