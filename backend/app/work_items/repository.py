@@ -91,6 +91,17 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_org_alerts_dedupe
                 ON org_alerts (org_id, work_item_id, phase);
+            CREATE TABLE IF NOT EXISTS accuracy_reviews (
+                review_id TEXT PRIMARY KEY,
+                work_item_id TEXT NOT NULL,
+                reviewer TEXT NOT NULL,
+                accuracy_score INTEGER NOT NULL,
+                summary TEXT NOT NULL,
+                flagged_for_review INTEGER NOT NULL,
+                reviewed_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_accuracy_reviews_item_time
+                ON accuracy_reviews (work_item_id, reviewed_at);
             """
         )
         columns = {row[1] for row in conn.execute("PRAGMA table_info(work_items)")}
@@ -249,6 +260,46 @@ def list_decisions(work_item_id=None, agent_id=None, from_ts=None, to_ts=None):
             values.append(value)
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
     return conn.execute(f"SELECT * FROM decisions{where} ORDER BY decided_at ASC, rowid ASC", values).fetchall()
+
+
+def insert_review(review: dict[str, Any], decision: dict[str, Any]) -> None:
+    """Insert an accuracy review and its companion decision in one transaction.
+
+    Rolls back on any error so a review never persists without the
+    provenance decision that backs it (spec: transactional pair, same
+    pattern as :func:`insert_work_item`).
+    """
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO accuracy_reviews (review_id, work_item_id, reviewer,"
+            " accuracy_score, summary, flagged_for_review, reviewed_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                review["review_id"],
+                review["work_item_id"],
+                review["reviewer"],
+                review["accuracy_score"],
+                review["summary"],
+                1 if review["flagged_for_review"] else 0,
+                review["reviewed_at"],
+            ),
+        )
+        insert_decision(decision, commit=False)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def list_reviews(work_item_id: str) -> list[sqlite3.Row]:
+    """Return accuracy review rows for one item, oldest reviewed first."""
+    conn = _get_conn()
+    return conn.execute(
+        "SELECT * FROM accuracy_reviews WHERE work_item_id = ?"
+        " ORDER BY reviewed_at ASC, rowid ASC",
+        (work_item_id,),
+    ).fetchall()
 
 
 def __getattr__(name: str) -> Any:
