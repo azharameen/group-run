@@ -4,7 +4,7 @@
 # 1. Push to test branches or workflow_dispatch -> Runs full build & deployment verification.
 # 2. Merged PR into develop -> Computes beta tag, creates GitHub Release, and deploys to Cloud Run & Firebase Hosting.
 
-name: Release - Beta & Deployment Test
+name: "Release - Beta & Deployment Test"
 
 on:
   workflow_dispatch:

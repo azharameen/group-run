@@ -11,7 +11,7 @@
 # Images are parked: when the registry decision lands, add a tag-triggered
 # docker workflow and uncomment the repository_dispatch_token below
 # (needs a PAT with repo+workflow; GITHUB_TOKEN cannot trigger workflows).
-name: Release - Production
+name: "Release - Production"
 
 on:
   pull_request:
