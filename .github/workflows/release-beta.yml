@@ -59,10 +59,12 @@ jobs:
 
       - name: Build & Deploy Backend to GCP Cloud Run
         if: secrets.GCP_SA_KEY != ''
+        env:
+          GCP_REGION: ${{ secrets.GCP_REGION }}
         run: |
           gcloud run deploy backend-service \
             --source backend/ \
-            --region ${{ secrets.GCP_REGION || 'asia-south1' }} \
+            --region "${GCP_REGION:-asia-south1}" \
             --platform managed \
             --allow-unauthenticated \
             --min-instances 0 \
@@ -80,7 +82,7 @@ jobs:
       - name: Build Frontend with Version Tag
         working-directory: frontend
         env:
-          VITE_APP_VERSION: ${{ steps.version.outputs.tag || format('v1.0.0-preview.{0}', github.run_number) }}
+          VITE_APP_VERSION: ${{ steps.version.outputs.tag }}
         run: |
           npm ci
           npm run build
