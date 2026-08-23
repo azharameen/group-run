@@ -36,7 +36,7 @@ jobs:
           fi
 
       - name: Tag and create prerelease (Merged PRs only)
-        if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
+        if: github.event_name == 'pull_request' && github.event.pull_request && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
