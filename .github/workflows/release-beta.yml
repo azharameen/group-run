@@ -8,8 +8,8 @@ name: "Release - Beta & Deployment Test"
 
 on:
   workflow_dispatch: {}
-  push: {}
-  pull_request: {}
+  push:
+    branches: [develop]
 
 permissions:
   contents: write
