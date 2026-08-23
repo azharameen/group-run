@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import WorkItemsTab from './WorkItemsTab';
 import * as workItemsApi from '@/api/workItems';
@@ -16,6 +16,8 @@ vi.mock('@/api/workItems', () => ({
   fetchLifecycleHistory: vi.fn(),
   listDecisions: vi.fn(),
   transitionWorkItem: vi.fn(),
+  listReviews: vi.fn(),
+  createReview: vi.fn(),
   LIFECYCLE_PHASES: ['new', 'ideation', 'product_definition', 'development', 'testing', 'deployment', 'monitoring'],
 }));
 
@@ -55,6 +57,14 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogTitle: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
+vi.mock('@/components/ui/input', () => ({
+  Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+}));
+
+vi.mock('@/components/ui/textarea', () => ({
+  Textarea: (props: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} />,
+}));
+
 const org: OrganizationSummary = {
   org_id: 'org-1',
   name: 'Acme Robotics',
@@ -89,6 +99,7 @@ const makeWorkItem = (id: string, title: string, department: string): WorkItem =
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(workItemsApi.listReviews).mockResolvedValue([]);
 });
 
 describe('WorkItemsTab', () => {
@@ -326,5 +337,138 @@ describe('WorkItemsTab', () => {
     });
 
     expect(screen.getByTestId('work-item-advance-button')).toBeDisabled();
+  });
+
+  test('review dialog lists existing reviews', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listReviews).mockResolvedValue([
+      {
+        review_id: 'r-1', work_item_id: 'wi-1', reviewer: 'user',
+        accuracy_score: 95, summary: 'Solid claims.', flagged_for_review: false,
+        reviewed_at: '2026-07-20T10:00:00+00:00',
+      },
+    ]);
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-review-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-dialog')).toBeTruthy();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('review-row')).toBeTruthy();
+    });
+    expect(screen.getByText('Solid claims.')).toBeTruthy();
+  });
+
+  test('submitting a review calls createReview and refreshes the list', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.createReview).mockResolvedValue({
+      review_id: 'r-1', work_item_id: 'wi-1', reviewer: 'user',
+      accuracy_score: 95, summary: 'Solid claims.', flagged_for_review: false,
+      reviewed_at: '2026-07-20T10:00:00+00:00',
+    });
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-review-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-dialog')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByTestId('work-item-review-score-input'), { target: { value: '95' } });
+    fireEvent.change(screen.getByTestId('work-item-review-summary-input'), { target: { value: 'Solid claims.' } });
+    fireEvent.click(screen.getByTestId('work-item-review-submit-button'));
+
+    await waitFor(() => {
+      expect(workItemsApi.createReview).toHaveBeenCalledWith('wi-1', {
+        reviewer: 'user', accuracy_score: 95, summary: 'Solid claims.',
+      });
+    });
+    // Reviews are re-fetched after a successful submit: initial mount load + open + post-submit.
+    await waitFor(() => {
+      expect(vi.mocked(workItemsApi.listReviews).mock.calls.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  test('shows a flagged badge on the row when the latest review is flagged', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listReviews).mockResolvedValue([
+      {
+        review_id: 'r-1', work_item_id: 'wi-1', reviewer: 'user',
+        accuracy_score: 70, summary: 'Weak sourcing.', flagged_for_review: true,
+        reviewed_at: '2026-07-20T10:00:00+00:00',
+      },
+    ]);
+
+    render(<WorkItemsTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-flagged-badge')).toBeTruthy();
+    });
+  });
+
+  test('rejects out-of-range or non-integer scores before submitting', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listReviews).mockResolvedValue([]);
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-review-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-dialog')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByTestId('work-item-review-score-input'), { target: { value: '150' } });
+    fireEvent.change(screen.getByTestId('work-item-review-summary-input'), { target: { value: 'Too high.' } });
+    fireEvent.click(screen.getByTestId('work-item-review-submit-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-error')).toHaveTextContent(
+        'Accuracy score must be a whole number between 0 and 100',
+      );
+    });
+    expect(workItemsApi.createReview).not.toHaveBeenCalled();
+  });
+
+  test('surfaces review API errors', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([
+      makeWorkItem('wi-1', 'Prototype battery housing', 'engineering'),
+    ]);
+    vi.mocked(workItemsApi.listReviews).mockRejectedValue(new Error('boom'));
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('work-item-row')).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-review-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-review-error')).toHaveTextContent('boom');
+    });
   });
 });

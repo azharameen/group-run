@@ -118,3 +118,31 @@ export async function createDecision(
   });
   return data.decision;
 }
+
+export interface AccuracyReview {
+  review_id: string; work_item_id: string; reviewer: string;
+  accuracy_score: number; summary: string; flagged_for_review: boolean;
+  reviewed_at: string;
+}
+
+export interface CreateReviewPayload {
+  reviewer?: string; accuracy_score: number; summary: string;
+}
+
+export async function listReviews(workItemId: string, options?: RequestOptions): Promise<AccuracyReview[]> {
+  const data = await request<{ reviews: AccuracyReview[]; count: number }>(
+    `/work-items/${encodeURIComponent(workItemId)}/reviews`, options,
+  );
+  return data.reviews ?? [];
+}
+
+export async function createReview(
+  workItemId: string, body: CreateReviewPayload, options?: RequestOptions,
+): Promise<AccuracyReview> {
+  const data = await request<{ review: AccuracyReview }>(
+    `/work-items/${encodeURIComponent(workItemId)}/reviews`, {
+      method: 'POST', body: JSON.stringify(body), ...options,
+    },
+  );
+  return data.review;
+}
