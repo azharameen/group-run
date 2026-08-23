@@ -28,6 +28,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY app/ ./app/
+COPY config/ ./config/
+COPY instructions/ ./instructions/
+RUN mkdir -p /tmp/storage /tmp/workspace /tmp/knowledge-base
 
 ENV PORT=8080
 EXPOSE 8080
