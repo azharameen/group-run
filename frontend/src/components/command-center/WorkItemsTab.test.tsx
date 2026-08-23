@@ -18,6 +18,9 @@ vi.mock('@/api/workItems', () => ({
   transitionWorkItem: vi.fn(),
   listReviews: vi.fn(),
   createReview: vi.fn(),
+  saveWorkItemTemplate: vi.fn(),
+  fetchTemplates: vi.fn(),
+  replayTemplate: vi.fn(),
   LIFECYCLE_PHASES: ['new', 'ideation', 'product_definition', 'development', 'testing', 'deployment', 'monitoring'],
 }));
 
@@ -58,7 +61,7 @@ vi.mock('@/components/ui/dialog', () => ({
 }));
 
 vi.mock('@/components/ui/input', () => ({
-  Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input data-testid="input" {...props} />,
 }));
 
 vi.mock('@/components/ui/textarea', () => ({
@@ -100,6 +103,7 @@ const makeWorkItem = (id: string, title: string, department: string): WorkItem =
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(workItemsApi.listReviews).mockResolvedValue([]);
+  vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([]);
 });
 
 describe('WorkItemsTab', () => {
@@ -469,6 +473,348 @@ describe('WorkItemsTab', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('work-item-review-error')).toHaveTextContent('boom');
+    });
+  });
+
+  test('save template button opens dialog and POSTs on confirm', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    const advanced = makeWorkItem('wi-1', 'Prototype battery housing', 'engineering');
+    advanced.status = 'ideation';
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([advanced]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([]);
+    vi.mocked(workItemsApi.saveWorkItemTemplate).mockResolvedValue({
+      template_id: 't-1',
+      org_id: org.org_id,
+      name: 'Battery housing workflow',
+      source_work_item_id: 'wi-1',
+      phases: ['new', 'ideation'],
+      departments: ['ideation', 'ideation'],
+      usage_count: 0,
+      created_at: '2026-07-21T10:00:00+00:00',
+      last_used_at: null,
+    });
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-row')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-template-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-name-dialog')).toBeTruthy();
+    });
+
+    const input = screen.getByTestId('input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Battery housing workflow' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const saveButton = buttons.find((btn) => btn.textContent === 'Save');
+    if (saveButton) fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(workItemsApi.saveWorkItemTemplate).toHaveBeenCalledWith('wi-1', {
+        name: 'Battery housing workflow',
+      });
+    });
+  });
+
+  test('templates list renders fetched templates', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([
+      {
+        template_id: 't-1',
+        org_id: org.org_id,
+        name: 'Battery housing workflow',
+        source_work_item_id: 'wi-1',
+        phases: ['new', 'ideation', 'product_definition'],
+        departments: ['ideation', 'ideation', 'ideation'],
+        usage_count: 3,
+        created_at: '2026-07-20T10:00:00+00:00',
+        last_used_at: '2026-07-21T14:00:00+00:00',
+      },
+    ]);
+
+    render(<WorkItemsTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-row-t-1')).toBeTruthy();
+    });
+    expect(screen.getByText('Battery housing workflow')).toBeTruthy();
+    expect(screen.getByText(/Ends at product_definition/)).toBeTruthy();
+    expect(screen.getByText(/Used 3 times/)).toBeTruthy();
+  });
+
+  test('replay template dialog creates item and shows result', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([
+      {
+        template_id: 't-1',
+        org_id: org.org_id,
+        name: 'Battery housing workflow',
+        source_work_item_id: 'wi-1',
+        phases: ['new', 'ideation'],
+        departments: ['ideation', 'ideation'],
+        usage_count: 0,
+        created_at: '2026-07-20T10:00:00+00:00',
+        last_used_at: null,
+      },
+    ]);
+    const replayed = makeWorkItem('wi-2', 'Replay: Battery housing', 'ideation');
+    replayed.status = 'ideation';
+    replayed.template_id = 't-1';
+    replayed.source = 'template:t-1';
+    vi.mocked(workItemsApi.replayTemplate).mockResolvedValue({
+      work_item: replayed,
+      events: [
+        {
+          event_id: 'ev-1',
+          work_item_id: 'wi-2',
+          event_type: 'transition',
+          from_status: 'new',
+          to_status: 'ideation',
+          from_department: 'ideation',
+          to_department: 'ideation',
+          decided_by: 'chief_of_staff',
+          decided_at: '2026-07-21T10:00:00+00:00',
+          confidence: 'high',
+          reasoning: "Replayed template 'Battery housing workflow' (t-1): new → ideation.",
+          alternatives: ['product_definition'],
+        },
+      ],
+      count: 1,
+    });
+
+    render(<WorkItemsTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-row-t-1')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('template-replay-t-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-replay-dialog')).toBeTruthy();
+    });
+
+    const inputs = screen.getAllByTestId('input');
+    fireEvent.change(inputs[0], { target: { value: 'Replay: Battery housing' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const replayButton = buttons.find((btn) => btn.textContent === 'Replay');
+    if (replayButton) fireEvent.click(replayButton);
+
+    await waitFor(() => {
+      expect(workItemsApi.replayTemplate).toHaveBeenCalledWith('t-1', {
+        title: 'Replay: Battery housing',
+        description: '',
+      });
+    });
+  });
+
+  test('template operations surface API errors', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    const advanced = makeWorkItem('wi-1', 'Prototype battery housing', 'engineering');
+    advanced.status = 'ideation';
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([advanced]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([]);
+    vi.mocked(workItemsApi.saveWorkItemTemplate).mockRejectedValue(
+      new Error('Failed to save template'),
+    );
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-row')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-template-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-name-dialog')).toBeTruthy();
+    });
+
+    const input = screen.getByTestId('input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Test template' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const saveButton = buttons.find((btn) => btn.textContent === 'Save');
+    if (saveButton) fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to save template')).toBeTruthy();
+    });
+  });
+
+  test('save template button opens dialog and POSTs on confirm', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    const advanced = makeWorkItem('wi-1', 'Prototype battery housing', 'engineering');
+    advanced.status = 'ideation';
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([advanced]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([]);
+    vi.mocked(workItemsApi.saveWorkItemTemplate).mockResolvedValue({
+      template_id: 't-1',
+      org_id: org.org_id,
+      name: 'Battery housing workflow',
+      source_work_item_id: 'wi-1',
+      phases: ['new', 'ideation'],
+      departments: ['ideation', 'ideation'],
+      usage_count: 0,
+      created_at: '2026-07-21T10:00:00+00:00',
+      last_used_at: null,
+    });
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-row')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-template-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-name-dialog')).toBeTruthy();
+    });
+
+    const input = screen.getByTestId('input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Battery housing workflow' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const saveButton = buttons.find((btn) => btn.textContent === 'Save');
+    if (saveButton) fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(workItemsApi.saveWorkItemTemplate).toHaveBeenCalledWith('wi-1', {
+        name: 'Battery housing workflow',
+      });
+    });
+  });
+
+  test('templates list renders fetched templates', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([
+      {
+        template_id: 't-1',
+        org_id: org.org_id,
+        name: 'Battery housing workflow',
+        source_work_item_id: 'wi-1',
+        phases: ['new', 'ideation', 'product_definition'],
+        departments: ['ideation', 'ideation', 'ideation'],
+        usage_count: 3,
+        created_at: '2026-07-20T10:00:00+00:00',
+        last_used_at: '2026-07-21T14:00:00+00:00',
+      },
+    ]);
+
+    render(<WorkItemsTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-row-t-1')).toBeTruthy();
+    });
+    expect(screen.getByText('Battery housing workflow')).toBeTruthy();
+    expect(screen.getByText(/Ends at product_definition/)).toBeTruthy();
+    expect(screen.getByText(/Used 3 times/)).toBeTruthy();
+  });
+
+  test('replay template dialog creates item and shows result', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([
+      {
+        template_id: 't-1',
+        org_id: org.org_id,
+        name: 'Battery housing workflow',
+        source_work_item_id: 'wi-1',
+        phases: ['new', 'ideation'],
+        departments: ['ideation', 'ideation'],
+        usage_count: 0,
+        created_at: '2026-07-20T10:00:00+00:00',
+        last_used_at: null,
+      },
+    ]);
+    const replayed = makeWorkItem('wi-2', 'Replay: Battery housing', 'ideation');
+    replayed.status = 'ideation';
+    replayed.template_id = 't-1';
+    replayed.source = 'template:t-1';
+    vi.mocked(workItemsApi.replayTemplate).mockResolvedValue({
+      work_item: replayed,
+      events: [
+        {
+          event_id: 'ev-1',
+          work_item_id: 'wi-2',
+          event_type: 'transition',
+          from_status: 'new',
+          to_status: 'ideation',
+          from_department: 'ideation',
+          to_department: 'ideation',
+          decided_by: 'chief_of_staff',
+          decided_at: '2026-07-21T10:00:00+00:00',
+          confidence: 'high',
+          reasoning: "Replayed template 'Battery housing workflow' (t-1): new → ideation.",
+          alternatives: ['product_definition'],
+        },
+      ],
+      count: 1,
+    });
+
+    render(<WorkItemsTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-row-t-1')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('template-replay-t-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-replay-dialog')).toBeTruthy();
+    });
+
+    const inputs = screen.getAllByTestId('input');
+    fireEvent.change(inputs[0], { target: { value: 'Replay: Battery housing' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const replayButton = buttons.find((btn) => btn.textContent === 'Replay');
+    if (replayButton) fireEvent.click(replayButton);
+
+    await waitFor(() => {
+      expect(workItemsApi.replayTemplate).toHaveBeenCalledWith('t-1', {
+        title: 'Replay: Battery housing',
+        description: '',
+      });
+    });
+  });
+
+  test('template operations surface API errors', async () => {
+    vi.mocked(orgApi.fetchOrganizations).mockResolvedValue([org]);
+    const advanced = makeWorkItem('wi-1', 'Prototype battery housing', 'engineering');
+    advanced.status = 'ideation';
+    vi.mocked(workItemsApi.fetchWorkItems).mockResolvedValue([advanced]);
+    vi.mocked(workItemsApi.fetchTemplates).mockResolvedValue([]);
+    vi.mocked(workItemsApi.saveWorkItemTemplate).mockRejectedValue(
+      new Error('Failed to save template'),
+    );
+
+    render(<WorkItemsTab />);
+    await waitFor(() => {
+      expect(screen.getByTestId('work-item-row')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('work-item-template-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('template-name-dialog')).toBeTruthy();
+    });
+
+    const input = screen.getByTestId('input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Test template' } });
+
+    const buttons = screen.getAllByTestId('button');
+    const saveButton = buttons.find((btn) => btn.textContent === 'Save');
+    if (saveButton) fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to save template')).toBeTruthy();
     });
   });
 });

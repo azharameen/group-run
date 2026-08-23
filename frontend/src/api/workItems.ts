@@ -46,6 +46,7 @@ export interface WorkItem {
   routing: RoutingDecision;
   created_at: string;
   updated_at: string;
+  template_id?: string | null;
 }
 
 export interface SubmitWorkItemPayload {
@@ -117,6 +118,69 @@ export async function createDecision(
     method: 'POST', body: JSON.stringify(body), ...options,
   });
   return data.decision;
+}
+
+export interface WorkflowTemplate {
+  template_id: string;
+  org_id: string;
+  name: string;
+  source_work_item_id: string;
+  phases: string[];
+  departments: string[];
+  usage_count: number;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface SaveTemplatePayload {
+  name: string;
+}
+
+export interface ReplayTemplatePayload {
+  title: string;
+  description?: string;
+}
+
+export async function saveWorkItemTemplate(
+  workItemId: string,
+  payload: SaveTemplatePayload,
+  options?: RequestOptions,
+): Promise<WorkflowTemplate> {
+  const data = await request<{ template: WorkflowTemplate }>(
+    `/work-items/${encodeURIComponent(workItemId)}/template`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      ...options,
+    },
+  );
+  return data.template;
+}
+
+export async function fetchTemplates(
+  orgId: string,
+  options?: RequestOptions,
+): Promise<WorkflowTemplate[]> {
+  const data = await request<{ templates: WorkflowTemplate[]; count: number }>(
+    `/work-items/templates?org_id=${encodeURIComponent(orgId)}`,
+    options,
+  );
+  return data.templates ?? [];
+}
+
+export async function replayTemplate(
+  templateId: string,
+  payload: ReplayTemplatePayload,
+  options?: RequestOptions,
+): Promise<{ work_item: WorkItem; events: LifecycleEvent[]; count: number }> {
+  return request(
+    `/work-items/templates/${encodeURIComponent(templateId)}/replay`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      ...options,
+    },
+  );
 }
 
 export interface AccuracyReview {

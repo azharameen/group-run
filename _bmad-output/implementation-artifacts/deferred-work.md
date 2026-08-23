@@ -550,6 +550,9 @@ Status/Issue Type/Sprint could NOT be set via available tools (no MCP project to
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-1-record-decisions-with-provenance-metadata.md`
   summary: list_decisions legacy synthesis loads all routing/lifecycle rows into memory with no pagination.
   evidence: decisions.py list_decisions scans routing_decisions and lifecycle_events fully and sorts in Python; fine at current scale but unbounded as history grows. Pre-existing endpoints (list_work_items_with_routing) have the same unbounded pattern.
+- source_spec: _bmad-output/implementation-artifacts/spec-9-3-save-and-replay-workflow-template.md
+  summary: Template endpoints (and all API routes) have no authorization/org-membership check, so any client can list or replay another org's templates.
+  evidence: work_item_templates.py routes take org_id/template_id from the request with no auth layer; no route in app.py has authentication middleware — pre-existing app-wide pattern surfaced incidentally by the new endpoints.
 
 ## Deferred from: code review of spec-10-3-support-accuracy-review-and-confidence-flagging.md (2026-08-22)
 

@@ -50,6 +50,7 @@ class WorkItem(BaseModel):
     routing: RoutingDecision
     created_at: str
     updated_at: str
+    template_id: str | None = None
 
 
 class SubmitWorkItemRequest(BaseModel):
@@ -125,6 +126,33 @@ class RecordDecisionRequest(BaseModel):
     evidence: list[str] = Field(default_factory=list)
     confidence: RoutingConfidence
     alternatives: list[str] = Field(default_factory=list)
+
+
+class WorkflowTemplate(BaseModel):
+    """Persisted workflow template (Story 9.3)."""
+
+    template_id: str
+    org_id: str
+    name: str
+    source_work_item_id: str
+    phases: list[str]
+    departments: list[str]
+    usage_count: int
+    created_at: str
+    last_used_at: str | None
+
+
+class SaveTemplateRequest(BaseModel):
+    """Request body for saving a work item as a template."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+
+
+class ReplayTemplateRequest(BaseModel):
+    """Request body for replaying a template."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    description: str = Field(default="", max_length=5000)
 
 
 class AccuracyReview(BaseModel):

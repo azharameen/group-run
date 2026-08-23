@@ -27,6 +27,7 @@ def row_to_work_item(rows: dict[str, Any]) -> WorkItem | None:
         department_id=(
             item["department_id"] if "department_id" in item_keys else routing["department_id"]
         ),
+        template_id=item["template_id"] if "template_id" in item_keys else None,
         routing=RoutingDecision(
             department_id=routing["department_id"], decided_by=routing["decided_by"],
             decided_at=routing["decided_at"], confidence=routing["confidence"],
