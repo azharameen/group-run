@@ -550,6 +550,19 @@ Status/Issue Type/Sprint could NOT be set via available tools (no MCP project to
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-1-record-decisions-with-provenance-metadata.md`
   summary: list_decisions legacy synthesis loads all routing/lifecycle rows into memory with no pagination.
   evidence: decisions.py list_decisions scans routing_decisions and lifecycle_events fully and sorts in Python; fine at current scale but unbounded as history grows. Pre-existing endpoints (list_work_items_with_routing) have the same unbounded pattern.
+
+- source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
+  summary: Path traversal possible via unrestricted idea_id in idea_workspace path construction (pre-existing, now reachable from new artifact endpoints).
+  evidence: backend/app/storage/idea_workspace.py builds workspace paths from raw path parameters; new routes in app/api/routes/artifacts.py pass idea_id through without validation.
+- source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
+  summary: Concurrent save_artifact_revision calls can compute the same version and overwrite the shared artifact-revisions.yaml index.
+  evidence: backend/app/storage/artifacts.py computes version from in-memory list length and rewrites the whole YAML file with no locking (pre-existing pattern).
+- source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
+  summary: Pre-existing test test_save_artifact_revision_trust_and_evidence_refs still uses trust value "verified", which is outside the new four-level TrustLevel contract.
+  evidence: backend/tests/test_storage_artifacts.py passes "verified" and asserts it round-trips; TrustLevel is a type hint only, so the value persists.
+- source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
+  summary: ArtifactDiffPanel shows "No artifact revisions" for a legitimate empty contentA/contentB instead of rendering the comparison.
+  evidence: frontend/src/components/deepagents/ArtifactDiffPanel.tsx treats empty strings as missing revisions (pre-existing component, now used by ArtifactsPanel).
 - source_spec: _bmad-output/implementation-artifacts/spec-9-3-save-and-replay-workflow-template.md
   summary: Template endpoints (and all API routes) have no authorization/org-membership check, so any client can list or replay another org's templates.
   evidence: work_item_templates.py routes take org_id/template_id from the request with no auth layer; no route in app.py has authentication middleware — pre-existing app-wide pattern surfaced incidentally by the new endpoints.

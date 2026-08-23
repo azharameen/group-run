@@ -17,6 +17,9 @@ PHASE_DEPARTMENT = lifecycle.PHASE_DEPARTMENT
 #: Routing confidence levels (Story 8.2: deterministic, two tiers).
 RoutingConfidence = Literal["high", "low"]
 
+#: Trust classification for generated artifacts.
+TrustLevel = Literal["generated", "trusted", "verified-tool-call", "fallback"]
+
 #: Status a work item is created with. Lifecycle transitions beyond
 #: ``new`` are Story 8.3 scope — 8.2 only ever creates items.
 STATUS_NEW = "new"
