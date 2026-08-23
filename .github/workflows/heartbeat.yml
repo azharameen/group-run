@@ -1,0 +1,115 @@
+# Heartbeat: scheduled health checks that run with or without a human pushing.
+# - e2e-smoke: nightly Playwright run on develop — the flake canary (AD-21)
+# - dependency-audit: pip-audit + npm audit sweep
+# Failures are visible in the Actions tab and are how the repo notices
+# problems on its own.
+name: Heartbeat
+
+on:
+  schedule:
+    # 02:00 PKT, Monday-Friday
+    - cron: '30 20 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ------------------------------------------------------------------
+  # Nightly E2E smoke (develop)
+  # ------------------------------------------------------------------
+  e2e-smoke:
+    name: Nightly E2E (develop)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          DEEPAGENTS_MODEL="openai:test-model" OPENAI_API_KEY="sk-test" OPENAI_MODEL_NAME="gpt-4" \
+            uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8000/api/health && break; sleep 1; done
+
+      - name: Run Playwright E2E tests
+        working-directory: frontend
+        env:
+          VITE_API_PROXY: http://127.0.0.1:8000
+        run: npx playwright test --project=dev --reporter=html
+
+      - name: Upload Playwright report
+        if: always() && hashFiles('frontend/playwright-report/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: heartbeat-e2e-results
+          path: frontend/playwright-report/
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # Dependency audit sweep
+  # ------------------------------------------------------------------
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Python dependency audit
+        run: pip install pip-audit && pip-audit -r backend/requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Full sweep incl. dev deps — this is the canary that stays red
+      # until the dev-dependency upgrades (typescript-eslint, vite/esbuild)
+      # land. The merge gate (ci.yml) only hard-fails on production deps.
+      - name: npm audit (full, incl. dev)
+        working-directory: frontend
+        run: npm audit
