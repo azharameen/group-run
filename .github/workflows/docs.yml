@@ -16,7 +16,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -25,8 +25,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build Docs
+  build-and-deploy:
+    name: Build & Deploy Docs
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -49,19 +49,8 @@ jobs:
           DISABLE_MKDOCS_2_WARNING: "true"
         run: mkdocs build
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site/
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
