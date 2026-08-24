@@ -89,7 +89,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         except BaseException:
             try:
                 await session.rollback()
-            except Exception as rollback_err:
+            except Exception as rollback_err:  # noqa: BLE001
                 _logger.error("Failed to rollback DB session: %s", rollback_err)
             raise
 
@@ -99,6 +99,7 @@ async def dispose_engine() -> None:
     global _engine
     if _engine is not None:
         await _engine.dispose()
+        _engine = None
         _logger.info("PostgreSQL async engine disposed")
 
 

@@ -44,7 +44,7 @@ async def reset_test_state() -> dict[str, str]:
             for table in tables:
                 try:
                     await session.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
-                except Exception:
+                except Exception:  # noqa: BLE001, S110
                     # Table might not exist yet if checkpointer hasn't initialized
                     pass
             await session.commit()

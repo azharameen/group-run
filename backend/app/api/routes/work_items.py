@@ -7,7 +7,6 @@ Storage failures map to 500; 400 covers blank or over-long titles and descriptio
 from fastapi import APIRouter, HTTPException, Path, Query
 from sqlalchemy.exc import SQLAlchemyError
 
-from ...organization import service as org_service
 from ...organization.service import OrganizationIntegrityError
 from ...work_items import service
 from ...work_items.models import SubmitWorkItemRequest, TransitionWorkItemRequest

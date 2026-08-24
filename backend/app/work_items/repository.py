@@ -8,7 +8,6 @@ import uuid
 from typing import Any
 
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 
 from ..db.session import get_session_factory
 from .models import LIFECYCLE_PHASES

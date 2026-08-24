@@ -12,8 +12,7 @@ from ..repositories.interfaces import (
     IThreadMetadataRepository,
     IWorkItemRepository,
 )
-from ..services import interrupt_service
-from ..services import thread_manager
+from ..services import interrupt_service, thread_manager
 from ..work_items import repository as work_items_repo
 
 

@@ -18,10 +18,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 
-from ..db.session import get_engine, get_session_factory
 from ..config import settings
+from ..db.session import get_session_factory
 
 _logger = logging.getLogger(__name__)
 
@@ -68,7 +67,7 @@ async def close_pg_checkpointer() -> None:
         try:
             if hasattr(_PG_CHECKPOINTER, "conn") and hasattr(_PG_CHECKPOINTER.conn, "close"):
                 await _PG_CHECKPOINTER.conn.close()
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
             _logger.warning("Error closing checkpointer connection: %s", err)
         finally:
             _PG_CHECKPOINTER = None

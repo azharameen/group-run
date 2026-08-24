@@ -1,6 +1,5 @@
 """Decision record service."""
 
-import json
 import uuid
 from datetime import UTC, datetime
 

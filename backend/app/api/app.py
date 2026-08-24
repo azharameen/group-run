@@ -89,6 +89,7 @@ def _run_alembic_upgrade() -> None:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         if result.returncode != 0:
             logger.error(
@@ -113,7 +114,7 @@ async def lifespan(_app: FastAPI):
 
     # 2. Initialize the PostgreSQL async engine (creates the connection pool)
     from ..db.session import dispose_engine, get_engine, reset_engine
-    engine = get_engine()
+    get_engine()
     logger.info("[Startup] PostgreSQL engine initialized")
 
     # 3. Initialize AsyncPostgresSaver for LangGraph checkpointing
