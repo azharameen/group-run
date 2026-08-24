@@ -26,7 +26,7 @@ _backend_dir = Path(__file__).resolve().parent.parent  # .../backend/
 sys.path.insert(0, str(_backend_dir))
 
 from app.db.models import Base
-from app.db.url import normalize_postgres_url
+from app.db.url import normalize_sqlalchemy_postgres_url
 
 # ── Alembic Config object (provides access to alembic.ini values) ────────
 config = context.config
@@ -49,7 +49,7 @@ def _get_url() -> str:
             "DATABASE_DIRECT_URL (or DATABASE_URL) must be set for Alembic migrations. "
             "Check your .env file or CI secrets."
         )
-    return normalize_postgres_url(url, drivername="postgresql+psycopg")
+    return normalize_sqlalchemy_postgres_url(url, drivername="postgresql+psycopg")
 
 
 def run_migrations_offline() -> None:
