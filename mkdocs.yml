@@ -126,38 +126,38 @@ plugins:
         Agents follow a supervisor-router pattern defined in teams.yaml.
         MCP tools are loaded at runtime from mcp.json.
       sections:
-        Getting Started:
-          - GETTING_STARTED.md
-          - DEPLOYMENT.md
-        Architecture:
-          - architecture.md
-          - target-architecture.md
-          - architecture-decisions.md
-        Product:
-          - prd.md
-          - features.md
-          - feature-roadmap.md
-        API Reference:
-          - api/swagger.md
-        Backend:
-          - agents.md
-          - sse-streaming.md
-        Frontend:
-          - frontend-plan.md
-          - ui-design.md
-        Testing:
-          - testing.md
-          - performance-testing.md
-        Standards:
-          - coding-guidelines.md
-          - technical-debt-policy.md
-        CI/CD:
-          - cicd/overview.md
-        For AI Agents:
-          - ai-agents/context-guide.md
-        Community:
-          - CHANGELOG.md
-          - CONTRIBUTING.md
+        - Getting Started:
+            - GETTING_STARTED.md
+            - DEPLOYMENT.md
+        - Architecture:
+            - architecture.md
+            - target-architecture.md
+            - architecture-decisions.md
+        - Product:
+            - prd.md
+            - features.md
+            - feature-roadmap.md
+        - API Reference:
+            - api/swagger.md
+        - Backend:
+            - agents.md
+            - sse-streaming.md
+        - Frontend:
+            - frontend-plan.md
+            - ui-design.md
+        - Testing:
+            - testing.md
+            - performance-testing.md
+        - Standards:
+            - coding-guidelines.md
+            - technical-debt-policy.md
+        - CI/CD:
+            - cicd/overview.md
+        - For AI Agents:
+            - ai-agents/context-guide.md
+        - Community:
+            - CHANGELOG.md
+            - CONTRIBUTING.md
       redirect_maps: {}
 
 hooks:
