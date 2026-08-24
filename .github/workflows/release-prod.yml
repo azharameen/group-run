@@ -17,6 +17,10 @@ on:
   pull_request:
     types: [closed]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
@@ -24,12 +28,10 @@ permissions:
 
 jobs:
   release-please:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
-    # Reserved lane (AD-17): no protection rules yet; add required reviewers
-    # here once deploy actions exist.
     environment: production
     steps:
       - uses: google-github-actions/release-please-action@v4
         with:
-          # repository_dispatch_token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
