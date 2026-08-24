@@ -14,6 +14,7 @@ import { type InterruptPayload } from "@/api/threads";
 import type { ChatMessage, TaskItem } from "@/types/chat";
 import { eventToMessage, groupMessages } from "@/lib/chat-utils";
 import { toast } from "@/hooks/use-toast";
+import { trackEvent, startTrace } from "@/lib/firebase";
 
 // Cap transcript size to prevent unbounded memory growth
 const MAX_MESSAGES = 500;
@@ -250,6 +251,7 @@ export function useChatStream({
 	// Interrupt approval handlers
 	const handleApproveInterrupt = useCallback(
 		async (id: string, decision: string, reason: string) => {
+			trackEvent("agent_interrupt_handled", { decision: "approved", interrupt_id: id });
 			try {
 				await approveInterrupt(id, decision, reason, reason);
 				try {
@@ -292,6 +294,7 @@ export function useChatStream({
 
 	const handleRejectInterrupt = useCallback(
 		async (id: string, reason: string) => {
+			trackEvent("agent_interrupt_handled", { decision: "rejected", interrupt_id: id, reason });
 			try {
 				await rejectInterrupt(id, reason, reason);
 				try {
@@ -334,6 +337,9 @@ export function useChatStream({
 
 	const executeSend = useCallback(
 		async (textToSend: string) => {
+			trackEvent("chat_message_sent", { text_length: textToSend.length });
+			const streamTrace = startTrace("message_stream_generation");
+
 			if (abortRef.current) {
 				abortRef.current.abort();
 				abortRef.current = null;
@@ -363,6 +369,7 @@ export function useChatStream({
 			try {
 				tid = await ensureThread();
 			} catch {
+				streamTrace?.stop();
 				if (streamCounterRef.current === currentStreamId) {
 					setIsGenerating(false);
 					if (abortRef.current === ctrl) {
@@ -373,6 +380,7 @@ export function useChatStream({
 			}
 
 			if (ctrl.signal.aborted || streamCounterRef.current !== currentStreamId) {
+				streamTrace?.stop();
 				return;
 			}
 
@@ -422,6 +430,7 @@ export function useChatStream({
 						}
 
 						if (evt.type === "done") {
+							streamTrace?.stop();
 							streamMsgIdRef.current = null;
 							setIsGenerating(false);
 							listThreads()
@@ -490,6 +499,7 @@ export function useChatStream({
 					console.error("[Chat Stream Error]", err);
 				}
 			} finally {
+				streamTrace?.stop();
 				if (streamCounterRef.current === currentStreamId) {
 					setIsGenerating(false);
 					if (abortRef.current === ctrl) {

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useMemo, useRef, useEffect } from "react";
+import { trackEvent } from "@/lib/firebase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -142,7 +143,18 @@ export function CommandCenterWorkspacePane() {
 	const terminalEndRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
-		terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+		if (terminalEndRef.current) {
+			const container = terminalEndRef.current.closest<HTMLDivElement>("[data-radix-scroll-area-viewport]");
+			if (container) {
+				if (typeof container.scrollTo === "function") {
+					container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+				} else {
+					container.scrollTop = container.scrollHeight;
+				}
+			} else if (typeof terminalEndRef.current.scrollIntoView === "function") {
+				terminalEndRef.current.scrollIntoView({ behavior: "smooth" });
+			}
+		}
 	}, [terminalLines]);
 
 	const handleTerminalSubmit = (e: React.FormEvent) => {
@@ -318,7 +330,7 @@ export function CommandCenterWorkspacePane() {
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden bg-background">
-			<Tabs defaultValue="filesystem" className="flex flex-col h-full w-full overflow-hidden">
+			<Tabs defaultValue="filesystem" onValueChange={(val) => trackEvent("workspace_tab_changed", { tab: val })} className="flex flex-col h-full w-full overflow-hidden">
 				{/* Header bar / tabbed selector */}
 				<div className="border-b px-4 flex items-center justify-between h-14 shrink-0 bg-muted/20">
 					<TabsList className="h-9">

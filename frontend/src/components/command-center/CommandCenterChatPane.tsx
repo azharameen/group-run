@@ -65,7 +65,21 @@ export function CommandCenterChatPane({
 
 	const scrollToTurnIndex = (idx: number) => {
 		const el = messageRefs.current[idx];
-		if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+		if (el) {
+			const container = el.closest<HTMLDivElement>("[data-slot='message-scroller'] > div");
+			if (container) {
+				const containerTop = container.getBoundingClientRect().top;
+				const elTop = el.getBoundingClientRect().top;
+				const targetScroll = container.scrollTop + (elTop - containerTop) - container.clientHeight / 2 + el.clientHeight / 2;
+				if (typeof container.scrollTo === "function") {
+					container.scrollTo({ top: targetScroll, behavior: "smooth" });
+				} else {
+					container.scrollTop = targetScroll;
+				}
+			} else if (typeof el.scrollIntoView === "function") {
+				el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+			}
+		}
 	};
 
 	return (
@@ -282,7 +296,7 @@ export function CommandCenterChatPane({
 									onSendOrQueue();
 								}
 							}}
-							className="w-full border-0 shadow-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 text-xs min-h-[42px] max-h-[80px] resize-none p-0 placeholder:text-muted-foreground text-foreground bg-transparent"
+							className="w-full border-none focus:border-none focus-visible:border-none shadow-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-xs min-h-[42px] max-h-[80px] resize-none p-0 placeholder:text-muted-foreground text-foreground bg-transparent"
 						/>
 						<div className="flex items-center justify-between pt-1">
 							<div className="flex items-center gap-1 text-muted-foreground">

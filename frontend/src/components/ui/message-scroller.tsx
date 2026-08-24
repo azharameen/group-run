@@ -24,7 +24,16 @@ const MessageScroller = React.forwardRef<HTMLDivElement, MessageScrollerProps>(
 		const [showScrollButton, setShowScrollButton] = React.useState(false);
 
 		const scrollToBottom = () => {
-			bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+			if (scrollRef.current) {
+				if (typeof scrollRef.current.scrollTo === "function") {
+					scrollRef.current.scrollTo({
+						top: scrollRef.current.scrollHeight,
+						behavior: "smooth",
+					});
+				} else {
+					scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+				}
+			}
 		};
 
 		const handleScroll = () => {
@@ -35,8 +44,15 @@ const MessageScroller = React.forwardRef<HTMLDivElement, MessageScrollerProps>(
 		};
 
 		React.useEffect(() => {
-			if (autoScroll && !showScrollButton && bottomRef.current) {
-				bottomRef.current.scrollIntoView({ behavior: "smooth" });
+			if (autoScroll && !showScrollButton && scrollRef.current) {
+				if (typeof scrollRef.current.scrollTo === "function") {
+					scrollRef.current.scrollTo({
+						top: scrollRef.current.scrollHeight,
+						behavior: "smooth",
+					});
+				} else {
+					scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+				}
 			}
 		}, [children, autoScroll, showScrollButton]);
 
