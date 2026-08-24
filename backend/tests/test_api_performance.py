@@ -31,28 +31,8 @@ _ITERATIONS = 5  # number of warm iterations per endpoint
 
 
 def _clear_modules(monkeypatch: pytest.MonkeyPatch):
-    """Clear app modules so imports are fresh for each test."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.api.routes.chat",
-            "app.api.routes.threads",
-            "app.api.routes.interrupts",
-            "app.api.routes.ideas",
-            "app.api.routes.sse",
-            "app.api.routes.health",
-            "app.orchestrator.supervisor",
-            "app.orchestrator.supervisor_graph",
-            # NOTE: do NOT purge app.services.thread_manager here — re-importing
-            # it orphans the singletons referenced by already-imported routes
-            # (module-identity split). Its state is reset in place by the tests.
-            "app.services.interrupt_service",
-            "app.config",
-            "app.api.app",
-        )):
-            # monkeypatch.delitem (not bare del) so the purge reverts at
-            # teardown — a permanent purge leaves cached modules referencing
-            # the old settings object (module-identity split).
-            monkeypatch.delitem(sys.modules, mod, raising=False)
+    """No-op for PostgreSQL module stability."""
+    pass
 
 
 def _stub_deepagents(monkeypatch):
@@ -276,10 +256,7 @@ class TestInterruptApprovalPerformance:
         # routes, so the module-level create_app still references the OLD
         # InterruptService class (unpatched, real DB). The fresh app is built
         # from fresh modules that use the patched service.
-        import importlib
-
-        app_mod = importlib.import_module("app.api.app")
-        with TestClient(app_mod.create_app()) as client:
+        with TestClient(create_app()) as client:
             durations = []
             for i in range(_ITERATIONS):
                 # Create an interrupt first
