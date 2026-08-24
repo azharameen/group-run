@@ -5,7 +5,6 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 
-import anyio.to_thread
 from fastapi import APIRouter, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
 
@@ -29,20 +28,20 @@ NO_FIELDS_TO_UPDATE = "No fields to update"
 
 
 @router.get("")
-def api_list_threads(
+async def api_list_threads(
     status: str | None = Query(default=None, max_length=50),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> dict[str, Any]:
     """List threads sorted by updated_at DESC."""
-    threads = list_threads(status=status, limit=limit, offset=offset)
+    threads = await list_threads(status=status, limit=limit, offset=offset)
     return {"threads": threads, "count": len(threads)}
 
 
 @router.post("")
-def api_create_thread(req: CreateThreadRequest) -> dict[str, Any]:
+async def api_create_thread(req: CreateThreadRequest) -> dict[str, Any]:
     """Create a new thread."""
-    thread = create_thread(
+    thread = await create_thread(
         title=req.title,
         idea_id=req.idea_id,
         tags=req.tags,
@@ -52,9 +51,9 @@ def api_create_thread(req: CreateThreadRequest) -> dict[str, Any]:
 
 
 @router.get("/{thread_id}", responses={404: {"description": THREAD_NOT_FOUND}})
-def api_get_thread(thread_id: str = Path(..., max_length=64)) -> dict[str, Any]:
+async def api_get_thread(thread_id: str = Path(..., max_length=64)) -> dict[str, Any]:
     """Get thread metadata."""
-    thread = get_thread(thread_id)
+    thread = await get_thread(thread_id)
     if not thread:
         raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
     return {"thread": thread}
@@ -62,7 +61,7 @@ def api_get_thread(thread_id: str = Path(..., max_length=64)) -> dict[str, Any]:
 
 @router.put("/{thread_id}")
 @router.patch("/{thread_id}")
-def api_update_thread(
+async def api_update_thread(
     req: UpdateThreadRequest,
     thread_id: str = Path(..., max_length=64),
 ) -> dict[str, Any]:
@@ -70,23 +69,23 @@ def api_update_thread(
     updates = {k: v for k, v in req.model_dump(exclude_none=True).items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
-    thread = update_thread(thread_id, **updates)
+    thread = await update_thread(thread_id, **updates)
     if not thread:
         raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
     return {"thread": thread}
 
 
 @router.delete("/{thread_id}")
-def api_delete_thread(thread_id: str = Path(..., max_length=64)) -> dict[str, bool]:
+async def api_delete_thread(thread_id: str = Path(..., max_length=64)) -> dict[str, bool]:
     """Delete a thread."""
-    deleted = delete_thread(thread_id)
+    deleted = await delete_thread(thread_id)
     return {"deleted": deleted}
 
 
 @router.get("/{thread_id}/messages")
 async def api_get_thread_messages(thread_id: str = Path(..., max_length=64)) -> dict[str, Any]:
     """Retrieve messages from a thread's latest checkpoint state."""
-    thread = await anyio.to_thread.run_sync(get_thread, thread_id)
+    thread = await get_thread(thread_id)
     if not thread:
         raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
     messages = await get_thread_messages(thread_id)
@@ -99,10 +98,10 @@ async def api_stream_message(
     thread_id: str = Path(..., max_length=64),
 ) -> StreamingResponse:
     """Send a message to a thread and stream the agent response."""
-    thread = await anyio.to_thread.run_sync(get_thread, thread_id)
+    thread = await get_thread(thread_id)
     if not thread:
         raise HTTPException(status_code=404, detail=THREAD_NOT_FOUND)
-    await anyio.to_thread.run_sync(touch_thread, thread_id)
+    await touch_thread(thread_id)
     return StreamingResponse(
         _thread_stream_generator(thread_id, req.text, req.idea_id),
         media_type="text/event-stream",
