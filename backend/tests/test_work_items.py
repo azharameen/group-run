@@ -580,8 +580,7 @@ class TestRuntimeToolWiring:
     """AC #5 — the deep agent runtime exposes submit_work_item."""
 
     def test_domain_tools_in_runtime(self, monkeypatch):
-        # Same mock recipe as test_skills_wiring.py: stub deepagents and
-        # capture the kwargs create_deep_agent receives.
+        # Stub deepagents and capture the kwargs create_deep_agent receives.
         deepagents_module = types.ModuleType("deepagents")
         backends_module = types.ModuleType("deepagents.backends")
         middleware_module = types.ModuleType("deepagents.middleware")
@@ -606,29 +605,11 @@ class TestRuntimeToolWiring:
         monkeypatch.setitem(sys.modules, "deepagents.middleware.skills", skills_middleware_module)
         monkeypatch.setitem(sys.modules, "langgraph.checkpoint.postgres", MagicMock())
 
-        thread_manager_module = types.ModuleType("app.services.thread_manager")
-        thread_manager_module.get_checkpointer = MagicMock(return_value=MagicMock())
-        thread_manager_module.get_async_checkpointer = MagicMock(return_value=MagicMock())
-        monkeypatch.setitem(
-            sys.modules, "app.services.thread_manager", thread_manager_module
-        )
+        from unittest.mock import AsyncMock
 
-        for mod in list(sys.modules.keys()):
-            if any(
-                mod.startswith(prefix)
-                for prefix in [
-                    "app.agent.permissions",
-                    "app.agent.backends",
-                    "app.agent.context",
-                    "app.agent.runtime",
-                ]
-            ):
-                monkeypatch.delitem(sys.modules, mod, raising=False)
-        app_agent_backends = types.ModuleType("app.agent.backends")
-        app_agent_backends.build_agent_backend = MagicMock()
-        monkeypatch.setitem(sys.modules, "app.agent.backends", app_agent_backends)
-        monkeypatch.setitem(sys.modules, "app.agent.permissions", MagicMock())
-        monkeypatch.setitem(sys.modules, "app.agent.context", MagicMock())
+        import app.services.thread_manager as tm
+
+        monkeypatch.setattr(tm, "get_pg_checkpointer", AsyncMock(return_value=MagicMock()))
 
         from app.agent.runtime import get_deep_agent_runtime
         from app.config import settings
@@ -638,7 +619,7 @@ class TestRuntimeToolWiring:
         try:
             import app.agent.runtime as runtime_mod
 
-            monkeypatch.setattr(runtime_mod, "_load_mcp_tools", lambda: [])
+            monkeypatch.setattr(runtime_mod, "_load_mcp_tools", list)
             get_deep_agent_runtime()
         finally:
             settings.deepagents_model = original_model
