@@ -20,6 +20,8 @@ from app.work_items.models import OWNER_AGENT_ID, STATUS_NEW
 from app.work_items.service import NoOrganizationError, UnknownOrganizationError
 from fastapi.testclient import TestClient
 
+pytestmark = pytest.mark.asyncio
+
 
 @pytest.fixture
 def client(org_db, work_item_db):
