@@ -14,6 +14,25 @@ def on_pre_build(config):
     _copy_architecture_spine()
     _copy_planning_artifacts()
     _copy_project_context()
+    _copy_community_files()
+    _cleanup_readme_conflict()
+
+
+def _copy_community_files():
+    """Copy root CHANGELOG, CONTRIBUTING, LICENSE files into docs/."""
+    for filename in ["CHANGELOG.md", "CONTRIBUTING.md", "LICENSE.md"]:
+        if os.path.exists(filename):
+            shutil.copy2(filename, os.path.join(DOCS_DIR, filename))
+            print(f"[docs-hook] Copied {filename} to docs/")
+
+
+def _cleanup_readme_conflict():
+    """Remove docs/README.md if docs/index.md exists to avoid conflict warning."""
+    readme = os.path.join(DOCS_DIR, "README.md")
+    index = os.path.join(DOCS_DIR, "index.md")
+    if os.path.exists(readme) and os.path.exists(index):
+        os.remove(readme)
+        print("[docs-hook] Removed docs/README.md to avoid conflict with docs/index.md")
 
 
 def _copy_architecture_spine():
