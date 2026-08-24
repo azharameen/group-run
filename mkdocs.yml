@@ -158,6 +158,7 @@ plugins:
         - Community:
             - CHANGELOG.md
             - CONTRIBUTING.md
+  - redirects:
       redirect_maps: {}
 
 hooks:
