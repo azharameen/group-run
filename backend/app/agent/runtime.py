@@ -339,24 +339,15 @@ def _memory_sources() -> list[str] | None:
 
 
 def _graph_checkpointer(thread_manager_module):
-    """Resolve the checkpointer for the compiled deep agent graph.
-
-    The graph is invoked via ``ainvoke``/``astream``, so it needs the async
-    checkpointer (the sync ``SqliteSaver`` raises ``NotImplementedError``
-    for async checkpoint access in langgraph 0.6+). In the server the
-    lifespan pre-creates the async saver, so the sync getter simply returns
-    it. When no event loop is running (synchronous contexts such as unit
-    tests) the async saver cannot be constructed — fall back to the sync
-    saver; those contexts never actually invoke the graph.
-    """
+    """Resolve the checkpointer for the compiled deep agent graph."""
     try:
-        return thread_manager_module.get_async_checkpointer()
+        return thread_manager_module.get_pg_checkpointer()
     except (AttributeError, RuntimeError):
         logger.warning(
-            "Async checkpointer unavailable (no running event loop?); "
-            "compiling graph with the sync checkpointer"
+            "Async checkpointer unavailable; compiling graph without checkpointer"
         )
-        return thread_manager_module.get_checkpointer()
+        return None
+
 
 
 def get_deep_agent_runtime(team_name: str = "general"):

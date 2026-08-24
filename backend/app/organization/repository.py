@@ -1,225 +1,190 @@
-"""SQLite repository for the organization structure (Story 8.1).
+"""PostgreSQL repository — organization hierarchy (Story 8.1).
 
-Dedicated ``storage/organizations.sqlite`` file, module-singleton
-connection per the :mod:`app.services.thread_manager` pattern.
+Full async implementation using SQLAlchemy AsyncSession.
+Implements IOrganizationRepository via PostgreSQL connection pool.
 """
 
-import sqlite3
-import threading
-from pathlib import Path
+import json
 from typing import Any
 
-from ..config import STORAGE_DIR
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
-_ORG_DB_PATH: Path | None = None
-_ORG_CONN: sqlite3.Connection | None = None
-_CONN_LOCK = threading.Lock()
-
-
-def _get_db_path() -> Path:
-    """Return the organizations.sqlite path, creating the storage dir."""
-    global _ORG_DB_PATH
-    if _ORG_DB_PATH is None:
-        _ORG_DB_PATH = Path(STORAGE_DIR) / "organizations.sqlite"
-        _ORG_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    return _ORG_DB_PATH
+from ..db.session import get_session_factory
+from ..repositories.interfaces import IOrganizationRepository
 
 
-def _init_schema(conn: sqlite3.Connection) -> None:
-    """Create the organization tables if they do not exist yet."""
-    try:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS organizations (
-                org_id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS departments (
-                org_id TEXT NOT NULL,
-                department_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'idle',
-                PRIMARY KEY (org_id, department_id)
-            );
-            CREATE TABLE IF NOT EXISTS teams (
-                org_id TEXT NOT NULL,
-                department_id TEXT NOT NULL,
-                team_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'idle',
-                PRIMARY KEY (org_id, department_id, team_id)
-            );
-            CREATE TABLE IF NOT EXISTS agents (
-                org_id TEXT NOT NULL,
-                department_id TEXT,
-                team_id TEXT,
-                agent_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                role TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'idle',
-                PRIMARY KEY (org_id, agent_id)
-            );
-            """
-        )
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+class PostgresOrganizationRepository(IOrganizationRepository):
+    """SQLAlchemy-backed async implementation of IOrganizationRepository."""
+
+    async def get_organization_rows(self, org_id: str) -> dict[str, Any] | None:
+        """Return the full organization tree or None if not found."""
+        async with get_session_factory()() as session:
+            org_result = await session.execute(
+                text("SELECT * FROM organizations WHERE org_id = :org_id"),
+                {"org_id": org_id},
+            )
+            org = org_result.mappings().one_or_none()
+            if org is None:
+                return None
+
+            dept_result = await session.execute(
+                text("SELECT * FROM departments WHERE org_id = :org_id ORDER BY department_id"),
+                {"org_id": org_id},
+            )
+            team_result = await session.execute(
+                text("SELECT * FROM teams WHERE org_id = :org_id ORDER BY team_id"),
+                {"org_id": org_id},
+            )
+            agent_result = await session.execute(
+                text("SELECT * FROM agents WHERE org_id = :org_id ORDER BY agent_id"),
+                {"org_id": org_id},
+            )
+
+            return {
+                "org": dict(org),
+                "departments": [dict(r) for r in dept_result.mappings()],
+                "teams": [dict(r) for r in team_result.mappings()],
+                "agents": [dict(r) for r in agent_result.mappings()],
+            }
+
+    async def list_organizations(self) -> list[dict[str, Any]]:
+        """Return all organizations with aggregate counts, newest first."""
+        async with get_session_factory()() as session:
+            result = await session.execute(
+                text(
+                    """
+                    SELECT o.org_id, o.name, o.description, o.created_at, o.updated_at,
+                           (SELECT COUNT(*) FROM departments d WHERE d.org_id = o.org_id)
+                               AS department_count,
+                           (SELECT COUNT(*) FROM teams t WHERE t.org_id = o.org_id)
+                               AS team_count,
+                           (SELECT COUNT(*) FROM agents a WHERE a.org_id = o.org_id)
+                               AS agent_count
+                    FROM organizations o
+                    ORDER BY o.updated_at DESC, o.created_at DESC, o.org_id
+                    """
+                )
+            )
+            return [dict(r) for r in result.mappings()]
+
+    async def insert_organization_tree(
+        self,
+        org_id: str,
+        name: str,
+        description: str,
+        now: str,
+        structure: dict[str, Any],
+    ) -> None:
+        """Insert an organization and its complete hierarchy atomically."""
+        async with get_session_factory()() as session:
+            try:
+                await session.execute(
+                    text(
+                        "INSERT INTO organizations (org_id, name, description, created_at, updated_at) "
+                        "VALUES (:org_id, :name, :description, :created_at, :updated_at)"
+                    ),
+                    {"org_id": org_id, "name": name, "description": description,
+                     "created_at": now, "updated_at": now},
+                )
+
+                # Chief of staff (org-level agent, no dept/team)
+                cos = structure["chief_of_staff"]
+                await session.execute(
+                    text(
+                        "INSERT INTO agents (org_id, department_id, team_id, agent_id, name, role, status) "
+                        "VALUES (:org_id, NULL, NULL, :agent_id, :name, :role, :status)"
+                    ),
+                    {"org_id": org_id, "agent_id": cos["agent_id"],
+                     "name": cos["name"], "role": cos["role"], "status": cos["status"]},
+                )
+
+                for dept in structure["departments"]:
+                    await session.execute(
+                        text(
+                            "INSERT INTO departments (org_id, department_id, name, status) "
+                            "VALUES (:org_id, :department_id, :name, :status)"
+                        ),
+                        {"org_id": org_id, "department_id": dept["department_id"],
+                         "name": dept["name"], "status": dept["status"]},
+                    )
+                    # Department chief
+                    chief = dept["chief"]
+                    await session.execute(
+                        text(
+                            "INSERT INTO agents (org_id, department_id, team_id, agent_id, name, role, status) "
+                            "VALUES (:org_id, :dept_id, NULL, :agent_id, :name, :role, :status)"
+                        ),
+                        {"org_id": org_id, "dept_id": dept["department_id"],
+                         "agent_id": chief["agent_id"], "name": chief["name"],
+                         "role": chief["role"], "status": chief["status"]},
+                    )
+
+                    for team in dept["teams"]:
+                        await session.execute(
+                            text(
+                                "INSERT INTO teams (org_id, department_id, team_id, name, status) "
+                                "VALUES (:org_id, :dept_id, :team_id, :name, :status)"
+                            ),
+                            {"org_id": org_id, "dept_id": dept["department_id"],
+                             "team_id": team["team_id"], "name": team["name"],
+                             "status": team["status"]},
+                        )
+                        for agent in [team["captain"], *team["members"]]:
+                            await session.execute(
+                                text(
+                                    "INSERT INTO agents "
+                                    "(org_id, department_id, team_id, agent_id, name, role, status) "
+                                    "VALUES (:org_id, :dept_id, :team_id, :agent_id, :name, :role, :status)"
+                                ),
+                                {"org_id": org_id, "dept_id": dept["department_id"],
+                                 "team_id": team["team_id"], "agent_id": agent["agent_id"],
+                                 "name": agent["name"], "role": agent["role"],
+                                 "status": agent["status"]},
+                            )
+
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    async def update_agent_status(self, org_id: str, agent_id: str, status: str) -> bool:
+        """Update one agent's status. Return True if a row was changed."""
+        async with get_session_factory()() as session:
+            result = await session.execute(
+                text(
+                    "UPDATE agents SET status = :status "
+                    "WHERE org_id = :org_id AND agent_id = :agent_id"
+                ),
+                {"status": status, "org_id": org_id, "agent_id": agent_id},
+            )
+            await session.commit()
+            return result.rowcount > 0
 
 
-def _get_conn() -> sqlite3.Connection:
-    """Return the singleton connection, lazily opening it with WAL mode."""
-    global _ORG_CONN
-    with _CONN_LOCK:
-        if _ORG_CONN is None:
-            db_path = _get_db_path()
-            _ORG_CONN = sqlite3.connect(str(db_path), check_same_thread=False)
-            _ORG_CONN.execute("PRAGMA journal_mode=WAL")
-            _ORG_CONN.row_factory = sqlite3.Row
-            _init_schema(_ORG_CONN)
-    return _ORG_CONN
+# Module-level singleton repository (backward-compatible interface).
+# Route files call module-level functions; we delegate to this instance.
+_repo = PostgresOrganizationRepository()
 
 
-def _insert_agent_row(
-    conn: sqlite3.Connection,
-    org_id: str,
-    department_id: str | None,
-    team_id: str | None,
-    agent: dict[str, Any],
-) -> None:
-    """Insert one agents row (department_id/team_id NULL for org-level)."""
-    values = (org_id, department_id, team_id)
-    conn.execute(
-        "INSERT INTO agents (org_id, department_id, team_id, agent_id, name, role, status)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?)",
-        values + (agent["agent_id"], agent["name"], agent["role"], agent["status"]),
-    )
+# ── Backward-compatible module-level API ───────────────────────────────────
+# These async wrappers preserve the call signatures used by existing route
+# handlers and services. When the route layer is refactored to use DI with
+# IOrganizationRepository directly, these can be removed.
 
-
-def insert_organization_tree(
+async def insert_organization_tree(
     org_id: str, name: str, description: str, now: str, structure: dict[str, Any]
 ) -> None:
-    """Insert an organization and all its structure rows in one transaction.
-
-    Rolls back on any error so a failed create never leaves a partial
-    organization behind (review P1).
-    """
-    conn = _get_conn()
-    try:
-        conn.execute(
-            "INSERT INTO organizations (org_id, name, description, created_at, updated_at)"
-            " VALUES (?, ?, ?, ?, ?)",
-            (org_id, name, description, now, now),
-        )
-        _insert_agent_row(conn, org_id, None, None, structure["chief_of_staff"])
-        for dept in structure["departments"]:
-            conn.execute(
-                "INSERT INTO departments (org_id, department_id, name, status)"
-                " VALUES (?, ?, ?, ?)",
-                (org_id, dept["department_id"], dept["name"], dept["status"]),
-            )
-            _insert_agent_row(conn, org_id, dept["department_id"], None, dept["chief"])
-            for team in dept["teams"]:
-                conn.execute(
-                    "INSERT INTO teams (org_id, department_id, team_id, name, status)"
-                    " VALUES (?, ?, ?, ?, ?)",
-                    (org_id, dept["department_id"], team["team_id"], team["name"], team["status"]),
-                )
-                for agent in [team["captain"], *team["members"]]:
-                    _insert_agent_row(
-                        conn, org_id, dept["department_id"], team["team_id"], agent
-                    )
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+    await _repo.insert_organization_tree(org_id, name, description, now, structure)
 
 
-def get_organization_rows(org_id: str) -> dict[str, Any] | None:
-    """Return all rows for one organization, or None if it does not exist.
-
-    Returns a dict with keys ``org`` (the organizations row),
-    ``departments``, ``teams`` and ``agents`` (list of rows each).
-    """
-    conn = _get_conn()
-    org = conn.execute(
-        "SELECT * FROM organizations WHERE org_id = ?", (org_id,)
-    ).fetchone()
-    if org is None:
-        return None
-    departments = conn.execute(
-        "SELECT * FROM departments WHERE org_id = ? ORDER BY department_id", (org_id,)
-    ).fetchall()
-    teams = conn.execute(
-        "SELECT * FROM teams WHERE org_id = ? ORDER BY team_id", (org_id,)
-    ).fetchall()
-    agents = conn.execute(
-        "SELECT * FROM agents WHERE org_id = ? ORDER BY agent_id", (org_id,)
-    ).fetchall()
-    return {"org": org, "departments": departments, "teams": teams, "agents": agents}
+async def get_organization_rows(org_id: str) -> dict[str, Any] | None:
+    return await _repo.get_organization_rows(org_id)
 
 
-def update_agent_status(org_id: str, agent_id: str, status: str) -> bool:
-    """Update one agent's status; return whether a row was changed.
-
-    Args:
-        org_id: The organization owning the agent.
-        agent_id: The agent to update.
-        status: The new status (``active``, ``idle`` or ``overloaded``).
-
-    Returns:
-        ``True`` when an agent row was updated, ``False`` when no agent
-        with that id exists in the organization.
-    """
-    conn = _get_conn()
-    cursor = conn.execute(
-        "UPDATE agents SET status = ? WHERE org_id = ? AND agent_id = ?",
-        (status, org_id, agent_id),
-    )
-    conn.commit()
-    return cursor.rowcount > 0
+async def update_agent_status(org_id: str, agent_id: str, status: str) -> bool:
+    return await _repo.update_agent_status(org_id, agent_id, status)
 
 
-def list_organizations() -> list[sqlite3.Row]:
-    """Return all organizations (newest update first) with aggregate counts."""
-    conn = _get_conn()
-    return conn.execute(
-        """
-        SELECT o.org_id, o.name, o.description, o.created_at, o.updated_at,
-               (SELECT COUNT(*) FROM departments d WHERE d.org_id = o.org_id)
-                   AS department_count,
-               (SELECT COUNT(*) FROM teams t WHERE t.org_id = o.org_id)
-                   AS team_count,
-               (SELECT COUNT(*) FROM agents a WHERE a.org_id = o.org_id)
-                   AS agent_count
-        FROM organizations o
-        ORDER BY o.updated_at DESC, o.created_at DESC, o.org_id
-        """
-    ).fetchall()
-
-
-def _reset_organization_db(conn: sqlite3.Connection | None = None) -> None:
-    """Reset the repository singletons (test hook).
-
-    Closes the current connection (best effort) and replaces the globals
-    in place — the module is never purged from ``sys.modules``, mirroring
-    the thread_manager reset rationale. When ``conn`` is provided it
-    becomes the active connection (schema initialized); otherwise the
-    next access reopens the file-backed database.
-    """
-    global _ORG_DB_PATH, _ORG_CONN
-    if _ORG_CONN is not None and _ORG_CONN is not conn:
-        try:
-            _ORG_CONN.close()
-        except sqlite3.Error:
-            pass
-    _ORG_DB_PATH = None
-    if conn is None:
-        _ORG_CONN = None
-        return
-    conn.row_factory = sqlite3.Row
-    _init_schema(conn)
-    _ORG_CONN = conn
+async def list_organizations() -> list[dict[str, Any]]:
+    return await _repo.list_organizations()

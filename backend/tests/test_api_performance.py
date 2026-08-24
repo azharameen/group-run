@@ -109,16 +109,7 @@ def _fake_supervisor_graph(response_text: str = "mock response"):
 
 def _patch_thread_storage(monkeypatch, tmp_path):
     """Patch thread storage to use temp directory."""
-    import sqlite3
-
-    storage_dir = tmp_path / "storage"
-    storage_dir.mkdir()
-
-    monkeypatch.setattr("app.config.STORAGE_DIR", str(storage_dir))
-    monkeypatch.setattr("app.services.thread_manager.STORAGE_DIR", str(storage_dir))
-    monkeypatch.setattr("app.services.thread_manager._THREAD_DB_PATH", None)
-    monkeypatch.setattr("app.services.thread_manager._SQLITE_SAVER", None)
-    monkeypatch.setattr("app.services.thread_manager._ASYNC_SQLITE_SAVER", None)
+    monkeypatch.setattr("app.services.thread_manager._PG_CHECKPOINTER", None)
 
 
 def _print_metrics(name: str, durations: list[float]):
@@ -277,22 +268,9 @@ class TestInterruptApprovalPerformance:
             lambda: _fake_supervisor_graph(),
         )
 
-        import app.services.interrupt_service as interrupt_module
-        import sqlite3
-
-        # Reset interrupt service singleton
         from app.services.interrupt_service import InterruptService
         InterruptService._instance = None
-
-        db_path = tmp_path / "perf_interrupts.sqlite"
-        conn = sqlite3.connect(str(db_path), check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-
-        # Reset the singleton before creating the app so the service binds to the
-        # temp database created for this test instead of the real production DB.
-        monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
         svc = InterruptService.instance()
-        assert svc._conn() is conn
 
         # Re-import the app factory: _clear_modules purged app.api.app and the
         # routes, so the module-level create_app still references the OLD

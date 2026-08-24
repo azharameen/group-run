@@ -1,4 +1,23 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ideator-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -13,11 +32,17 @@ services:
       # detection in app/config.py would otherwise resolve to "/" instead of
       # "/app" and silently write data outside the mounted volumes below.
       - APP_ROOT_DIR=/app
+      # Override database URLs to use the docker-compose postgres service hostname.
+      # These override the DATABASE_URL values from .env for the containerised stack.
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/app_db
+      - DATABASE_DIRECT_URL=postgresql+psycopg://postgres:postgres@postgres:5432/app_db
+      - DB_SSL_MODE=prefer
+      - DB_AUTO_MIGRATE=true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      start_period: 30s
+      start_period: 60s
       retries: 3
     ports:
       - "8000:8000"
@@ -26,6 +51,9 @@ services:
       - ./instructions:/app/instructions:ro
       - ./workspace:/app/workspace
       - ./knowledge-base:/app/knowledge-base
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -49,3 +77,7 @@ services:
       start_period: 5s
       retries: 3
     restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local

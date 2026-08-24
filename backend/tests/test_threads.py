@@ -738,15 +738,9 @@ def test_touch_thread_updates_timestamp(monkeypatch, tmp_path, patch_config):
 
 
 def test_row_dict_deserializes_json_fields(monkeypatch, tmp_path, patch_config):
-    _patch_thread_storage(monkeypatch, tmp_path)
     from app.services.thread_manager import _row_dict
-    import sqlite3
 
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("CREATE TABLE t (tags TEXT, agent_names TEXT)")
-    conn.execute("INSERT INTO t VALUES (?, ?)", ('["a"]', '["b"]'))
-    row = conn.execute("SELECT * FROM t").fetchone()
+    row = {"tags": '["a"]', "agent_names": '["b"]'}
     data = _row_dict(row)
     assert data["tags"] == ["a"]
     assert data["agent_names"] == ["b"]

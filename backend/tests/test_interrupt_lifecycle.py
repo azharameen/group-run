@@ -1,5 +1,4 @@
 import queue
-import sqlite3
 import threading
 from pathlib import Path
 
@@ -12,17 +11,7 @@ from app.services.interrupt_service import InterruptService
 
 
 @pytest.fixture()
-def ctx(tmp_path, monkeypatch):
-    db_path = Path(tmp_path) / "interrupts.sqlite"
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-
-    class DummyCheckpointer:
-        def __init__(self, conn):
-            self.conn = conn
-
-    monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
-    monkeypatch.setattr(interrupt_module.sqlite3, "connect", lambda *args, **kwargs: conn)
+def ctx(monkeypatch):
     InterruptService._instance = None
 
     events = []

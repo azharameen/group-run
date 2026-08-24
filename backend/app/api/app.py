@@ -1,6 +1,7 @@
-"""FastAPI app factory."""
-
+import asyncio
 import logging
+import subprocess
+import sys
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from time import time
@@ -11,8 +12,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from ..config import settings
 from ..infrastructure.observability import configure_langsmith_tracing
-from ..services.thread_manager import get_checkpointer
+from ..services.thread_manager import close_pg_checkpointer, get_pg_checkpointer, reset_pg_checkpointer
 from .routes.artifacts import router as artifacts_router
 from .routes.chat import router as chat_router
 from .routes.config import router as config_router
@@ -60,45 +62,75 @@ class TimingMiddleware(BaseHTTPMiddleware):
         return response
 
 
+def _run_alembic_upgrade() -> None:
+    """Run 'alembic upgrade head' as a subprocess.
+
+    Called at startup when DB_AUTO_MIGRATE=true (local dev / docker-compose).
+    Production deployments use the CI/CD db-migrate.yml reusable workflow instead.
+    """
+    import os
+    from pathlib import Path
+
+    # Resolve the backend directory (contains alembic.ini)
+    backend_dir = Path(__file__).resolve().parent.parent.parent
+    alembic_ini = backend_dir / "alembic.ini"
+    if not alembic_ini.exists():
+        logger.warning(
+            "[Startup] alembic.ini not found at %s — skipping auto-migrate", alembic_ini
+        )
+        return
+
+    env = {**os.environ, "DATABASE_DIRECT_URL": settings.database_direct_url}
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=str(backend_dir),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            logger.error(
+                "[Startup] Alembic upgrade failed:\n%s\n%s",
+                result.stdout,
+                result.stderr,
+            )
+            raise RuntimeError(f"Alembic upgrade head failed: {result.stderr}")
+        logger.info("[Startup] Alembic upgrade head completed:\n%s", result.stdout.strip())
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("Alembic upgrade head timed out after 60 seconds")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     configure_langsmith_tracing()
 
-    checkpointer = get_checkpointer()
-    print(f"[Startup] Checkpointer initialized at {checkpointer.conn}")
+    # 1. Run database schema migrations asynchronously in thread pool (dev mode only)
+    if settings.db_auto_migrate:
+        logger.info("[Startup] DB_AUTO_MIGRATE=true — running Alembic upgrade head...")
+        await asyncio.to_thread(_run_alembic_upgrade)
 
-    # Initialize async checkpointer for astream() compatibility
-    from ..services.thread_manager import create_async_checkpointer
-    await create_async_checkpointer()
-    print("[Startup] Async checkpointer initialized")
+    # 2. Initialize the PostgreSQL async engine (creates the connection pool)
+    from ..db.session import dispose_engine, get_engine, reset_engine
+    engine = get_engine()
+    logger.info("[Startup] PostgreSQL engine initialized")
+
+    # 3. Initialize AsyncPostgresSaver for LangGraph checkpointing
+    await get_pg_checkpointer()
+    logger.info("[Startup] AsyncPostgresSaver ready")
 
     yield
 
-    # Shutdown: close database connections to release file handles
-    print("[Shutdown] Closing database connections...")
-    from ..services import thread_manager as _tm
-    async_cp = _tm._ASYNC_SQLITE_SAVER
-    if async_cp is not None and async_cp.conn is not None:
-        try:
-            await async_cp.conn.close()
-            print("[Shutdown] Async checkpointer closed")
-        except Exception as exc:  # noqa: BLE001  # best-effort shutdown; never block teardown
-            print(f"[Shutdown] Async checkpointer close error: {exc}")
+    # ── Graceful shutdown ──────────────────────────────────────────────
+    logger.info("[Shutdown] Disposing PostgreSQL connections...")
+    await close_pg_checkpointer()
+    await dispose_engine()
+    logger.info("[Shutdown] PostgreSQL connection pool closed")
 
-    try:
-        # Close sync checkpointer connection
-        if hasattr(checkpointer, "conn") and checkpointer.conn is not None:
-            checkpointer.conn.close()
-            print("[Shutdown] Sync checkpointer closed")
-    except Exception as exc:  # noqa: BLE001  # best-effort shutdown; never block teardown
-        print(f"[Shutdown] Sync checkpointer close error: {exc}")
-
-    # Reset singleton references so re-initialization creates fresh connections
-    # (important for hot-reload and test environments)
-    _tm._SQLITE_SAVER = None
-    _tm._ASYNC_SQLITE_SAVER = None
-    _tm._METADATA_CONN = None
-    _tm._THREAD_DB_PATH = None
+    # Reset singletons so re-initialization creates fresh connections
+    reset_engine()
+    reset_pg_checkpointer()
 
     # Reset supervisor graph cache so it rebuilds with fresh checkpointer
     from ..orchestrator import supervisor as _sup
@@ -118,7 +150,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

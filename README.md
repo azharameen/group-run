@@ -68,7 +68,7 @@ companion/
 ## Tech Stack
 
 - **Backend:** Python 3.12+, FastAPI, Uvicorn
-- **Agent Runtime:** DeepAgents, LangGraph (SQLite checkpoints)
+- **Agent Runtime:** DeepAgents, LangGraph (PostgreSQL checkpoints)
 - **Frontend:** React 18, Vite, TypeScript (strict mode)
 - **UI:** shadcn/ui, Radix UI, Tailwind CSS
 - **Testing:** pytest (backend), Vitest + Playwright (frontend)

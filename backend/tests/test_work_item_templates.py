@@ -10,7 +10,6 @@ Covers acceptance criteria:
 """
 
 import json
-import sqlite3
 
 import pytest
 from app.api.app import create_app

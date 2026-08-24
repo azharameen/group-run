@@ -355,34 +355,10 @@ class TestSseNoDatabaseLocks:
 
     @pytest.mark.asyncio
     async def test_sse_with_in_memory_db_no_locks(self, monkeypatch):
-        """SSE + in-memory SQLite checkpointer — verify no locks."""
-        import sqlite3
-        import sys as _sys
-
-        # Reset thread_manager state in place (no sys.modules purge — purging
-        # orphans the singletons referenced by already-imported modules, so
-        # checkpoint writes and reads can hit different connections).
+        """SSE + PostgreSQL checkpointer — verify no locks."""
         from app.services import thread_manager as tm
-        from app.services.thread_manager import _discard_async_saver
 
-        _discard_async_saver(tm._ASYNC_SQLITE_SAVER)
-        if tm._SQLITE_SAVER is not None:
-            try:
-                tm._SQLITE_SAVER.conn.close()
-            except Exception:
-                pass
-
-        # Set up in-memory DB
-        tm._THREAD_DB_PATH = None
-        tm._SQLITE_SAVER = None
-
-        conn = sqlite3.connect(":memory:", check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-
-        from langgraph.checkpoint.sqlite import SqliteSaver
-
-        saver = SqliteSaver(conn)
-        tm._SQLITE_SAVER = saver
+        tm.reset_pg_checkpointer()
 
         # Set up SSE bus
         for mod in list(_sys.modules.keys()):

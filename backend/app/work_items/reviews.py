@@ -3,8 +3,7 @@
 Records human accuracy reviews against a work item, deriving the
 ``flagged_for_review`` state at write time (score < 90) and persisting a
 companion ``DecisionRecord`` (decision_type="review") in the same
-transaction so the review carries full provenance. Kept as its own
-module so ``service.py`` stays under the file-size limit.
+transaction so the review carries full provenance.
 """
 
 import uuid
@@ -15,25 +14,12 @@ from .mapping import row_to_review
 from .models import AccuracyReview, AccuracyReviewRequest
 from .service import UnknownWorkItemError
 
-#: Accuracy score below this threshold flags the review for human attention
-#: (PRD counter-metric SM-C1: 90% accuracy floor).
 FLAG_THRESHOLD = 90
 
 
-def record_review(request: AccuracyReviewRequest, work_item_id: str) -> AccuracyReview:
-    """Record a human accuracy review and its companion decision.
-
-    Args:
-        request: The validated review submission.
-        work_item_id: The work item being reviewed.
-
-    Returns:
-        The persisted ``AccuracyReview``.
-
-    Raises:
-        UnknownWorkItemError: If no work item with ``work_item_id`` exists.
-    """
-    if repository.get_work_item_rows(work_item_id) is None:
+async def record_review(request: AccuracyReviewRequest, work_item_id: str) -> AccuracyReview:
+    """Record a human accuracy review and its companion decision."""
+    if await repository.get_work_item_rows(work_item_id) is None:
         raise UnknownWorkItemError(f"Work item {work_item_id} not found")
 
     review_id = str(uuid.uuid4())
@@ -59,22 +45,19 @@ def record_review(request: AccuracyReviewRequest, work_item_id: str) -> Accuracy
         "alternatives": [],
         "decided_at": reviewed_at,
     }
-    repository.insert_review(review.model_dump(), decision)
+    await repository.insert_review(review.model_dump(), decision)
     return review
 
 
-def list_reviews(work_item_id: str) -> list[AccuracyReview]:
-    """Return accuracy reviews for one item, oldest first.
-
-    Raises:
-        UnknownWorkItemError: If no work item with ``work_item_id`` exists.
-    """
-    if repository.get_work_item_rows(work_item_id) is None:
+async def list_reviews(work_item_id: str) -> list[AccuracyReview]:
+    """Return accuracy reviews for one item, oldest first."""
+    if await repository.get_work_item_rows(work_item_id) is None:
         raise UnknownWorkItemError(f"Work item {work_item_id} not found")
-    return [row_to_review(row) for row in repository.list_reviews(work_item_id)]
+    rows = await repository.list_reviews(work_item_id)
+    return [row_to_review(row) for row in rows]
 
 
-def latest_review(work_item_id: str) -> AccuracyReview | None:
+async def latest_review(work_item_id: str) -> AccuracyReview | None:
     """Return the most recently submitted review, or None if there are none."""
-    reviews = list_reviews(work_item_id)
+    reviews = await list_reviews(work_item_id)
     return reviews[-1] if reviews else None

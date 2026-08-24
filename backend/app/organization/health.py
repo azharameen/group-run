@@ -1,6 +1,6 @@
 """Organization health derivation (Story 9.1).
 
-Read-only view over the 8.1 organization rows and 8.2 work items:
+Read-only view over the organization rows and work items:
 per-team capacity (active/idle/total agents) plus a workload state
 derived from open work items routed to the team's department.
 """
@@ -22,20 +22,13 @@ def _workload_state(
     return "active"
 
 
-def get_organization_health(org_id: str) -> OrganizationHealth | None:
-    """Assemble the health snapshot for one organization, or None if unknown.
-
-    Args:
-        org_id: The organization to inspect.
-
-    Returns:
-        The health tree, or ``None`` when the org does not exist.
-    """
-    rows = repository.get_organization_rows(org_id)
+async def get_organization_health(org_id: str) -> OrganizationHealth | None:
+    """Assemble the health snapshot for one organization, or None if unknown."""
+    rows = await repository.get_organization_rows(org_id)
     if rows is None:
         return None
     org_row = rows["org"]
-    open_by_department = work_items_repository.count_open_work_items_by_department(
+    open_by_department = await work_items_repository.count_open_work_items_by_department(
         org_id
     )
 

@@ -1,29 +1,17 @@
-import sqlite3
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 import app.services.interrupt_service as interrupt_module
-from unittest.mock import patch
-
 from app.services.interrupt_service import InterruptDeliveryError, InterruptService
 
 
 @pytest.fixture()
-def service(tmp_path, monkeypatch):
-    db_path = Path(tmp_path) / "threads.sqlite"
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-
-    class DummyCheckpointer:
-        def __init__(self, conn):
-            self.conn = conn
-
-    monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
+def service():
     InterruptService._instance = None
     svc = InterruptService.instance()
     yield svc
-    conn.close()
     InterruptService._instance = None
 
 

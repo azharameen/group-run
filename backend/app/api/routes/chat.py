@@ -36,7 +36,7 @@ async def _chat_stream_generator(text: str) -> AsyncGenerator[str, None]:
     emitted_done = False
 
     try:
-        supervisor = get_supervisor_graph()
+        supervisor = await get_supervisor_graph()
         async for state in supervisor.astream(
             input={"messages": [HumanMessage(content=text)]},
             config={"configurable": {"thread_id": thread_id}},

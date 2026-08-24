@@ -7,10 +7,10 @@ Covers acceptance criteria:
 - AC #6: 404 for unknown org_id, 400 for blank/over-long names
 """
 
-import sqlite3
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 from app.api.app import create_app
 from app.organization import repository as org_repo
 from app.organization import service as org_service
@@ -146,10 +146,10 @@ class TestService:
         """A storage failure mid-tree rolls back: no partial org remains (P1)."""
 
         def boom(conn, org_id, department_id, team_id, agent):
-            raise sqlite3.OperationalError("simulated storage failure")
+            raise SQLAlchemyError("simulated storage failure")
 
         monkeypatch.setattr(org_repo, "_insert_agent_row", boom)
-        with pytest.raises(sqlite3.OperationalError):
+        with pytest.raises(SQLAlchemyError):
             org_service.create_organization("Acme")
         assert org_service.list_organizations() == []
 

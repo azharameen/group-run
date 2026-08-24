@@ -23,7 +23,26 @@ class Settings(BaseSettings):
 
     langgraph_strict_msgpack: str = ""
 
-    storage_dir: str = ""
+    # ── Database (PostgreSQL) ────────────────────────────────────────────
+    # Runtime URL used by SQLAlchemy AsyncEngine and the LangGraph checkpointer.
+    # Local default targets the postgres service in docker-compose.yml.
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/app_db"
+
+    # Direct connection URL — consumed only by Alembic during schema migrations.
+    # Must be a psycopg v3 (synchronous) URL; do not point at a PgBouncer port.
+    database_direct_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/app_db"
+
+    # SSL mode: 'prefer' for local dev, 'require' for Supabase / cloud.
+    db_ssl_mode: str = "prefer"
+
+    # SQLAlchemy connection pool bounds.
+    db_pool_min_size: int = 5
+    db_pool_max_size: int = 20
+    db_pool_timeout: int = 30
+
+    # When true the application runs 'alembic upgrade head' at startup (dev mode).
+    # Set to false in production — migrations are applied by the CI/CD pipeline.
+    db_auto_migrate: bool = False
 
     # Agent timeout and retry configuration (AC: 1-2)
     agent_timeout_sec: int = 120
@@ -67,6 +86,10 @@ class Settings(BaseSettings):
             raise ValueError("TEAM_OVERLOAD_THRESHOLD must be non-negative")
         if self.blocked_phase_threshold_hours < 0:
             raise ValueError("BLOCKED_PHASE_THRESHOLD_HOURS must be non-negative")
+        if self.db_pool_min_size < 1:
+            raise ValueError("DB_POOL_MIN_SIZE must be at least 1")
+        if self.db_pool_max_size < self.db_pool_min_size:
+            raise ValueError("DB_POOL_MAX_SIZE must be greater than or equal to DB_POOL_MIN_SIZE")
         return self
 
     @model_validator(mode="after")
@@ -113,7 +136,6 @@ WORKSPACE_DIR = os.path.join(ROOT_DIR, "workspace")
 CONFIG_DIR = os.path.join(ROOT_DIR, "config")
 INSTRUCTIONS_DIR = os.path.join(ROOT_DIR, "instructions")
 KNOWLEDGE_BASE_DIR = os.path.join(ROOT_DIR, "knowledge-base")
-STORAGE_DIR = settings.storage_dir or os.path.join(ROOT_DIR, "storage")
 
 # ── Config file paths ────────────────────────────────────────────────────
 TEAMS_CONFIG_PATH = os.path.join(CONFIG_DIR, "teams.yaml")
@@ -122,3 +144,4 @@ MCP_CONFIG_PATH = os.path.join(CONFIG_DIR, "mcp.json")
 # ── Schema versions (must match config file schema_version fields) ────────
 TEAMS_SCHEMA_VERSION = "1.0"
 MCP_SCHEMA_VERSION = "1.0"
+

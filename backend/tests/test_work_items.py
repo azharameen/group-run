@@ -551,7 +551,7 @@ class TestRuntimeToolWiring:
         monkeypatch.setitem(sys.modules, "deepagents.backends", backends_module)
         monkeypatch.setitem(sys.modules, "deepagents.middleware", middleware_module)
         monkeypatch.setitem(sys.modules, "deepagents.middleware.skills", skills_middleware_module)
-        monkeypatch.setitem(sys.modules, "langgraph.checkpoint.sqlite", MagicMock())
+        monkeypatch.setitem(sys.modules, "langgraph.checkpoint.postgres", MagicMock())
 
         thread_manager_module = types.ModuleType("app.services.thread_manager")
         thread_manager_module.get_checkpointer = MagicMock(return_value=MagicMock())

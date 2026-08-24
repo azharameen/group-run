@@ -37,7 +37,7 @@ def test_skills_wiring_in_runtime(monkeypatch):
     monkeypatch.setitem(sys.modules, "deepagents.middleware.skills", skills_middleware_module)
 
     # Mock dependencies of runtime.py
-    monkeypatch.setitem(sys.modules, "langgraph.checkpoint.sqlite", MagicMock())
+    monkeypatch.setitem(sys.modules, "langgraph.checkpoint.postgres", MagicMock())
 
     # Mock thread_manager to avoid DB and module import issues
     thread_manager_module = types.ModuleType("app.services.thread_manager")
