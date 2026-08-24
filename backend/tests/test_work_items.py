@@ -8,8 +8,6 @@ Covers acceptance criteria:
 - AC #5: the runtime exposes submit_work_item to the deep agent
 """
 
-import sys
-import types
 from unittest.mock import MagicMock
 
 import pytest
@@ -580,11 +578,12 @@ class TestRuntimeToolWiring:
     """AC #5 — the deep agent runtime exposes submit_work_item."""
 
     def test_domain_tools_in_runtime(self, monkeypatch):
-        # Stub deepagents and capture the kwargs create_deep_agent receives.
-        deepagents_module = types.ModuleType("deepagents")
-        backends_module = types.ModuleType("deepagents.backends")
-        middleware_module = types.ModuleType("deepagents.middleware")
-        skills_middleware_module = types.ModuleType("deepagents.middleware.skills")
+        from unittest.mock import AsyncMock
+
+        import app.agent.runtime as runtime_mod
+        import app.services.thread_manager as tm
+        import deepagents
+        from app.config import settings
 
         captured_kwargs = {}
 
@@ -592,35 +591,16 @@ class TestRuntimeToolWiring:
             captured_kwargs.update(kwargs)
             return MagicMock()
 
-        deepagents_module.create_deep_agent = mock_create_deep_agent
-        deepagents_module.DeepAgentState = MagicMock()
-        backends_module.CompositeBackend = MagicMock()
-        backends_module.FilesystemBackend = MagicMock()
-        backends_module.StateBackend = MagicMock()
-        skills_middleware_module.SkillsMiddleware = MagicMock()
-
-        monkeypatch.setitem(sys.modules, "deepagents", deepagents_module)
-        monkeypatch.setitem(sys.modules, "deepagents.backends", backends_module)
-        monkeypatch.setitem(sys.modules, "deepagents.middleware", middleware_module)
-        monkeypatch.setitem(sys.modules, "deepagents.middleware.skills", skills_middleware_module)
-        monkeypatch.setitem(sys.modules, "langgraph.checkpoint.postgres", MagicMock())
-
-        from unittest.mock import AsyncMock
-
-        import app.services.thread_manager as tm
-
+        monkeypatch.setattr(deepagents, "create_deep_agent", mock_create_deep_agent)
         monkeypatch.setattr(tm, "get_pg_checkpointer", AsyncMock(return_value=MagicMock()))
-
-        from app.agent.runtime import get_deep_agent_runtime
-        from app.config import settings
 
         original_model = settings.deepagents_model
         settings.deepagents_model = "openai:test-model"
         try:
-            import app.agent.runtime as runtime_mod
-
+            if "general" not in runtime_mod._teams_config.get("teams", {}):
+                runtime_mod._reload_teams_config()
             monkeypatch.setattr(runtime_mod, "_load_mcp_tools", list)
-            get_deep_agent_runtime()
+            runtime_mod.get_deep_agent_runtime()
         finally:
             settings.deepagents_model = original_model
 
