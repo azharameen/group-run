@@ -32,9 +32,19 @@ def client(org_db, work_item_db):
 
 
 @pytest.fixture
-async def organization(org_db):
+def organization(org_db):
     """A default-structure organization to submit work items into."""
-    return await org_service.create_organization("Acme Robotics")
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        import nest_asyncio
+        nest_asyncio.apply()
+        return loop.run_until_complete(org_service.create_organization("Acme Robotics"))
+    return asyncio.run(org_service.create_organization("Acme Robotics"))
 
 
 class TestSubmitWorkItemService:
