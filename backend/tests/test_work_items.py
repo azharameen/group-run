@@ -32,19 +32,9 @@ def client(org_db, work_item_db):
 
 
 @pytest.fixture
-def organization(org_db):
+async def organization(org_db):
     """A default-structure organization to submit work items into."""
-    import asyncio
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        import nest_asyncio
-        nest_asyncio.apply()
-        return loop.run_until_complete(org_service.create_organization("Acme Robotics"))
-    return asyncio.run(org_service.create_organization("Acme Robotics"))
+    return await org_service.create_organization("Acme Robotics")
 
 
 class TestSubmitWorkItemService:
@@ -184,7 +174,8 @@ class TestTestingResetRoute:
 class TestWorkItemsApi:
     """AC #1 + AC #4 — the /api/work-items endpoints."""
 
-    def test_post_creates_work_item(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_post_creates_work_item(self, client, organization):
         response = client.post(
             "/api/work-items",
             json={"title": "Sensor fusion for AGV", "org_id": organization.org_id},
@@ -197,31 +188,36 @@ class TestWorkItemsApi:
         assert body["routing"]["decided_by"] == "chief_of_staff"
         assert body["source"] == "api"
 
-    def test_post_blank_title_400(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_post_blank_title_400(self, client, organization):
         response = client.post(
             "/api/work-items",
             json={"title": "   ", "org_id": organization.org_id},
         )
         assert response.status_code == 400
 
-    def test_post_overlong_title_400(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_post_overlong_title_400(self, client, organization):
         response = client.post(
             "/api/work-items", json={"title": "x" * 201, "org_id": organization.org_id}
         )
         assert response.status_code == 400
 
-    def test_post_unknown_org_404(self, client):
+    @pytest.mark.asyncio
+    async def test_post_unknown_org_404(self, client):
         response = client.post(
             "/api/work-items", json={"title": "T", "org_id": "nope"}
         )
         assert response.status_code == 404
 
-    def test_post_without_organization_404(self, client):
+    @pytest.mark.asyncio
+    async def test_post_without_organization_404(self, client):
         response = client.post("/api/work-items", json={"title": "T"})
         assert response.status_code == 404
         assert "organization" in response.json()["detail"].lower()
 
-    def test_list_and_get(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_list_and_get(self, client, organization):
         created = client.post(
             "/api/work-items",
             json={"title": "List me", "org_id": organization.org_id},
@@ -247,7 +243,8 @@ class TestWorkItemsApi:
         assert listing.status_code == 200
         assert listing.json()["count"] == 2
 
-    def test_list_unknown_org_404(self, client):
+    @pytest.mark.asyncio
+    async def test_list_unknown_org_404(self, client):
         response = client.get("/api/work-items", params={"org_id": "nope"})
         assert response.status_code == 404
 
@@ -439,7 +436,8 @@ class TestLifecycleHistory:
 class TestLifecycleApi:
     """Story 8.3 AC-1/AC-3/AC-5 — API error mapping and envelopes."""
 
-    def test_post_transition_201(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_post_transition_201(self, client, organization):
         created = client.post("/api/work-items", json={"title": "API item", "org_id": organization.org_id})
         item_id = created.json()["work_item"]["work_item_id"]
         response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "ideation"})
@@ -449,7 +447,8 @@ class TestLifecycleApi:
         assert body["event"]["event_type"] == "transition"
         assert body["event"]["to_status"] == "ideation"
 
-    def test_post_transition_handoff_updates_department(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_post_transition_handoff_updates_department(self, client, organization):
         created = client.post("/api/work-items", json={"title": "Handoff item", "org_id": organization.org_id})
         item_id = created.json()["work_item"]["work_item_id"]
         response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "development"})
@@ -459,7 +458,8 @@ class TestLifecycleApi:
         assert body["event"]["event_type"] == "handoff"
         assert body["event"]["decided_by"] == "chief_of_staff"
 
-    def test_transition_status_codes_for_invalid_transition_and_value_error(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_transition_status_codes_for_invalid_transition_and_value_error(self, client, organization):
         """Assert InvalidTransitionError returns HTTP 409 and generic ValueError returns HTTP 400."""
         created = client.post("/api/work-items", json={"title": "Transition Test", "org_id": organization.org_id})
         item_id = created.json()["work_item"]["work_item_id"]
@@ -472,31 +472,36 @@ class TestLifecycleApi:
         invalid_trans_res = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "new"})
         assert invalid_trans_res.status_code == 409
 
-    def test_post_transition_invalid_status_400(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_post_transition_invalid_status_400(self, client, organization):
         created = client.post("/api/work-items", json={"title": "Bad status", "org_id": organization.org_id})
         item_id = created.json()["work_item"]["work_item_id"]
         response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "shipped"})
         assert response.status_code == 400
         assert "shipped" in response.json()["detail"]
 
-    def test_post_transition_backward_409(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_post_transition_backward_409(self, client, organization):
         created = client.post("/api/work-items", json={"title": "Backward", "org_id": organization.org_id})
         item_id = created.json()["work_item"]["work_item_id"]
         client.post(f"/api/work-items/{item_id}/transitions", json={"status": "development"})
         response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "ideation"})
         assert response.status_code == 409
 
-    def test_post_transition_no_op_409(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_post_transition_no_op_409(self, client, organization):
         created = client.post("/api/work-items", json={"title": "No-op", "org_id": organization.org_id})
         item_id = created.json()["work_item"]["work_item_id"]
         response = client.post(f"/api/work-items/{item_id}/transitions", json={"status": "new"})
         assert response.status_code == 409
 
-    def test_post_transition_unknown_item_404(self, client, organization, org_db):
+    @pytest.mark.asyncio
+    async def test_post_transition_unknown_item_404(self, client, organization, org_db):
         response = client.post("/api/work-items/nope/transitions", json={"status": "ideation"})
         assert response.status_code == 404
 
-    def test_get_lifecycle_200(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_get_lifecycle_200(self, client, organization):
         created = client.post("/api/work-items", json={"title": "Lifecycle", "org_id": organization.org_id})
         item_id = created.json()["work_item"]["work_item_id"]
         client.post(f"/api/work-items/{item_id}/transitions", json={"status": "development"})
@@ -506,7 +511,8 @@ class TestLifecycleApi:
         assert body["count"] == 2
         assert [event["event_type"] for event in body["events"]] == ["created", "handoff"]
 
-    def test_get_lifecycle_unknown_item_404(self, client, organization, org_db):
+    @pytest.mark.asyncio
+    async def test_get_lifecycle_unknown_item_404(self, client, organization, org_db):
         response = client.get("/api/work-items/nope/lifecycle")
         assert response.status_code == 404
 
