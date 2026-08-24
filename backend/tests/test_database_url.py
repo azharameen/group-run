@@ -23,6 +23,22 @@ def test_normalize_sqlalchemy_postgres_url_accepts_quoted_plain_urls():
     assert url == "postgresql+asyncpg://postgres:secret@localhost:5432/app_db"
 
 
+def test_normalize_sqlalchemy_asyncpg_url_drops_psycopg_hostaddr(monkeypatch):
+    monkeypatch.setattr(
+        "app.db.url.socket.getaddrinfo",
+        lambda host, port, family: [
+            (socket.AF_INET, None, None, None, ("203.0.113.10", port)),
+        ],
+    )
+
+    url = normalize_sqlalchemy_postgres_url(
+        "postgresql://postgres:secret@db.example.com:5432/app_db",
+        drivername="postgresql+asyncpg",
+    )
+
+    assert "hostaddr" not in url
+
+
 def test_normalize_postgres_dsn_prefers_ipv4_hostaddr(monkeypatch):
     def fake_getaddrinfo(host, port, family):
         assert family == socket.AF_INET

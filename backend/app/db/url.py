@@ -44,4 +44,6 @@ def normalize_sqlalchemy_postgres_url(raw_url: str, *, drivername: str) -> str:
     """Return a normalized PostgreSQL URL for SQLAlchemy engine creation."""
 
     url = make_url(normalize_postgres_dsn(raw_url)).set(drivername=drivername)
+    if drivername == "postgresql+asyncpg" and "hostaddr" in url.query:
+        url = url.set(query={key: value for key, value in url.query.items() if key != "hostaddr"})
     return url.render_as_string(hide_password=False)
