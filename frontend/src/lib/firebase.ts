@@ -43,7 +43,7 @@ if (typeof window !== "undefined") {
 /**
  * Log a Firebase Analytics custom event safely.
  */
-export function trackEvent(eventName: string, eventParams?: Record<string, any>) {
+export function trackEvent(eventName: string, eventParams?: Record<string, unknown>) {
   if (analyticsInstance) {
     try {
       logEvent(analyticsInstance, eventName, eventParams);
