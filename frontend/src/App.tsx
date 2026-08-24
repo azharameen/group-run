@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -10,6 +10,7 @@ import {
 	WorkspaceProvider,
 	useWorkspaceContext,
 } from "@/context/WorkspaceContext";
+import { trackEvent } from "@/lib/firebase";
 
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -18,6 +19,7 @@ const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 const Organization = lazy(() => import("./pages/Organization"));
 
 function AppContent() {
+	const location = useLocation();
 	const {
 		activeThreadId,
 		setActiveThreadId,
@@ -30,6 +32,10 @@ function AppContent() {
 	} = useThreadContext();
 
 	const { isWorkspaceOpen, toggleWorkspace } = useWorkspaceContext();
+
+	useEffect(() => {
+		trackEvent("page_view", { page_path: location.pathname });
+	}, [location.pathname]);
 
 	return (
 		<SidebarProvider defaultOpen={false} className="flex h-full">
