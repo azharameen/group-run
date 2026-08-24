@@ -1,0 +1,180 @@
+site_name: "Group Run — Companion AI Platform"
+site_description: "Documentation for the Group Run multi-agent AI platform."
+site_author: "azharameen"
+site_url: "https://azharameen.github.io/group-run/"
+repo_url: "https://github.com/azharameen/group-run"
+repo_name: "azharameen/group-run"
+edit_uri: "edit/develop/docs/"
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/robot
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - toc.follow
+    - announce.dismiss
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Setup Guide: GETTING_STARTED.md
+      - Deployment: DEPLOYMENT.md
+  - Architecture:
+      - Overview: architecture.md
+      - Target Architecture: target-architecture.md
+      - Architecture Decisions: architecture-decisions.md
+      - Architecture Spine (BMad): architecture/spine.md
+  - Product:
+      - PRD: prd.md
+      - Product Context: product-context.md
+      - Features: features.md
+      - Feature Roadmap: feature-roadmap.md
+  - Project Planning:
+      - Epics Overview: epics/index.md
+      - Sprint 1: epics/sprint-1.md
+      - Tasks: tasks.md
+      - Milestone Tracker: milestone-tracker.md
+      - Phased Plan: phased-plan.md
+      - Current State Audit: current-state-audit.md
+      - Project Context (AI Rules): context/project-context.md
+  - API Reference:
+      - Interactive Swagger UI: api/swagger.md
+  - Backend:
+      - Agents: agents.md
+      - SSE Streaming: sse-streaming.md
+  - Frontend & UX:
+      - Frontend Plan: frontend-plan.md
+      - UI Design: ui-design.md
+  - Testing & Quality:
+      - Testing Guide: testing.md
+      - Performance Testing: performance-testing.md
+      - Code Review Guidelines: code-review-guidelines.md
+  - Standards:
+      - Coding Guidelines: coding-guidelines.md
+      - Technical Debt Policy: technical-debt-policy.md
+  - CI/CD & DevOps:
+      - Overview: cicd/overview.md
+  - For AI Agents:
+      - Context Guide: ai-agents/context-guide.md
+  - Community:
+      - Changelog: CHANGELOG.md
+      - Contributing: CONTRIBUTING.md
+      - License: LICENSE.md
+
+plugins:
+  - search:
+      lang: en
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+  - include-markdown:
+      opening_tag: "{!"
+      closing_tag: "!}"
+  - swagger-ui-tag:
+      background: ""
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      width: 100%
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+  - llmstxt:
+      markdown_description: |
+        Group Run is a multi-agent AI platform powered by LangGraph and DeepAgents.
+        Backend: FastAPI + LangGraph on GCP Cloud Run. Frontend: React + Vite on Firebase Hosting.
+        Agents follow a supervisor-router pattern defined in teams.yaml. MCP tools loaded at runtime from mcp.json.
+      full_output: true
+  - redirects:
+      redirect_maps: {}
+
+hooks:
+  - hooks/copy_bmad_artifacts.py
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/azharameen/group-run
+      name: GitHub
+  generator: false
+
+extra_css:
+  - stylesheets/extra.css
