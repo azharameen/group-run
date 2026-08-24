@@ -7,7 +7,7 @@ pyyaml>=6.0
 # against (create_deep_agent `memory=` file-list semantics). Newer 0.7.x
 # releases also expose `memory: list[str]`, but pin exactly so CI
 # resolves the same API the backend is tested against.
-deepagents==0.6.12
+deepagents==0.7.8
 langchain>=0.0.232
 langchain-openai>=0.1.0
 openai>=0.27.0
