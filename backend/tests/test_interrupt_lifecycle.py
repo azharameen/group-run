@@ -19,7 +19,6 @@ def ctx(monkeypatch):
 
     client = TestClient(create_app())
     yield {"client": client, "events": events, "svc": InterruptService.instance()}
-    conn.close()
     InterruptService._instance = None
 
 

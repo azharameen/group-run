@@ -475,49 +475,54 @@ class TestLifecycleApi:
 class TestTransitionWorkItemTool:
     """Story 8.3 AC-1 (chat) — the tool confirms in chat and never raises."""
 
-    def test_tool_success_confirmation(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_tool_success_confirmation(self, organization, work_item_db):
         from app.work_items.tools import transition_work_item
 
-        item = work_items_service.submit_work_item("Chat lifecycle", org_id=organization.org_id)
-        result = transition_work_item.invoke(
+        item = await work_items_service.submit_work_item("Chat lifecycle", org_id=organization.org_id)
+        result = await transition_work_item.ainvoke(
             {"work_item_id": item.work_item_id, "status": "ideation"}
         )
         assert "Chat lifecycle" in result
         assert "ideation" in result
         assert "ideation" in result  # department
 
-    def test_tool_handoff_note(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_tool_handoff_note(self, organization, work_item_db):
         from app.work_items.tools import transition_work_item
 
-        item = work_items_service.submit_work_item("Chat handoff", org_id=organization.org_id)
-        result = transition_work_item.invoke(
+        item = await work_items_service.submit_work_item("Chat handoff", org_id=organization.org_id)
+        result = await transition_work_item.ainvoke(
             {"work_item_id": item.work_item_id, "status": "development"}
         )
         assert "development" in result
         assert "technology" in result
         assert "Handoff" in result
 
-    def test_tool_unknown_item_returns_error_string(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_tool_unknown_item_returns_error_string(self, organization, work_item_db):
         from app.work_items.tools import transition_work_item
 
-        result = transition_work_item.invoke({"work_item_id": "nope", "status": "ideation"})
+        result = await transition_work_item.ainvoke({"work_item_id": "nope", "status": "ideation"})
         assert "Could not transition" in result
 
-    def test_tool_invalid_status_returns_error_string(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_tool_invalid_status_returns_error_string(self, organization, work_item_db):
         from app.work_items.tools import transition_work_item
 
-        item = work_items_service.submit_work_item("Chat invalid", org_id=organization.org_id)
-        result = transition_work_item.invoke(
+        item = await work_items_service.submit_work_item("Chat invalid", org_id=organization.org_id)
+        result = await transition_work_item.ainvoke(
             {"work_item_id": item.work_item_id, "status": "shipped"}
         )
         assert "Could not transition" in result
 
-    def test_tool_backward_returns_error_string(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_tool_backward_returns_error_string(self, organization, work_item_db):
         from app.work_items.tools import transition_work_item
 
-        item = work_items_service.submit_work_item("Chat backward", org_id=organization.org_id)
-        work_items_service.transition_work_item(item.work_item_id, "development")
-        result = transition_work_item.invoke(
+        item = await work_items_service.submit_work_item("Chat backward", org_id=organization.org_id)
+        await work_items_service.transition_work_item(item.work_item_id, "development")
+        result = await transition_work_item.ainvoke(
             {"work_item_id": item.work_item_id, "status": "ideation"}
         )
         assert "Could not transition" in result
@@ -599,67 +604,53 @@ class TestRuntimeToolWiring:
 class TestConcurrentTransitions:
     """AC: Concurrency tests firing simultaneous transitions."""
 
-    def test_simultaneous_identical_transitions(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_simultaneous_identical_transitions(self, organization, work_item_db):
         """Firing two simultaneous identical transitions on a work item guarantees exactly one succeeds."""
-        import concurrent.futures
+        import asyncio
 
-        item = work_items_service.submit_work_item(
+        item = await work_items_service.submit_work_item(
             "Concurrent transition item", org_id=organization.org_id
         )
 
-        def _do_transition():
-            return work_items_service.transition_work_item(item.work_item_id, "ideation")
+        res1, res2 = await asyncio.gather(
+            work_items_service.transition_work_item(item.work_item_id, "ideation"),
+            work_items_service.transition_work_item(item.work_item_id, "ideation"),
+            return_exceptions=True,
+        )
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            future1 = executor.submit(_do_transition)
-            future2 = executor.submit(_do_transition)
-
-            results = []
-            errors = []
-            for future in (future1, future2):
-                try:
-                    results.append(future.result())
-                except Exception as exc:
-                    errors.append(exc)
+        results = [r for r in (res1, res2) if not isinstance(r, Exception)]
+        errors = [r for r in (res1, res2) if isinstance(r, Exception)]
 
         assert len(results) == 1
         assert len(errors) == 1
         assert isinstance(errors[0], work_items_service.InvalidTransitionError)
 
         # Verify lifecycle history is consistent and clean (created + 1 transition)
-        history = work_items_service.get_lifecycle_history(item.work_item_id)
+        history = await work_items_service.get_lifecycle_history(item.work_item_id)
         assert len(history) == 2
         assert history[1].to_status == "ideation"
 
-    def test_simultaneous_conflicting_transitions(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_simultaneous_conflicting_transitions(self, organization, work_item_db):
         """Firing two simultaneous transitions to different phases executes atomically without state corruption."""
-        import concurrent.futures
+        import asyncio
 
-        item = work_items_service.submit_work_item(
+        item = await work_items_service.submit_work_item(
             "Conflicting transitions item", org_id=organization.org_id
         )
 
-        def _t_ideation():
-            return work_items_service.transition_work_item(item.work_item_id, "ideation")
+        res1, res2 = await asyncio.gather(
+            work_items_service.transition_work_item(item.work_item_id, "ideation"),
+            work_items_service.transition_work_item(item.work_item_id, "development"),
+            return_exceptions=True,
+        )
 
-        def _t_development():
-            return work_items_service.transition_work_item(item.work_item_id, "development")
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            future1 = executor.submit(_t_ideation)
-            future2 = executor.submit(_t_development)
-
-            results = []
-            errors = []
-            for future in (future1, future2):
-                try:
-                    results.append(future.result())
-                except Exception as exc:
-                    errors.append(exc)
+        results = [r for r in (res1, res2) if not isinstance(r, Exception)]
 
         # Either both succeed sequentially (new -> ideation -> development) or ideation is skipped/rejected
         # Total lifecycle events recorded should match the number of successful transitions + created
-        history = work_items_service.get_lifecycle_history(item.work_item_id)
+        history = await work_items_service.get_lifecycle_history(item.work_item_id)
         assert len(history) == len(results) + 1
-        updated = work_items_service.get_work_item(item.work_item_id)
+        updated = await work_items_service.get_work_item(item.work_item_id)
         assert updated.status == history[-1].to_status
