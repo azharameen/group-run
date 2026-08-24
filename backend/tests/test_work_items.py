@@ -13,6 +13,7 @@ import types
 from unittest.mock import MagicMock
 
 import pytest
+import pytest_asyncio
 from app.api.app import create_app
 from app.organization import service as org_service
 from app.work_items import service as work_items_service
@@ -33,7 +34,7 @@ def client(org_db, work_item_db):
     return TestClient(create_app())
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def organization(org_db):
     """A default-structure organization to submit work items into."""
     return await org_service.create_organization("Acme Robotics")
