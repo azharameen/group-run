@@ -8,8 +8,10 @@
 #   environment:  GitHub environment name (beta | production) for secret scoping.
 #
 # Secrets:
-#   DATABASE_DIRECT_URL: psycopg v3 direct connection URL (not a pooler).
-#                        Production (Supabase): port 5432 direct URL.
+#   DATABASE_DIRECT_URL: psycopg v3 migration URL. Supabase may use either
+#                        the direct endpoint (IPv6 / paid IPv4 add-on) or the
+#                        free Shared Pooler session-mode endpoint (IPv4, port
+#                        5432). Do not use transaction mode (port 6543).
 
 name: DB Migrate
 

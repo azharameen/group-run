@@ -13,7 +13,8 @@
 #   1.0.0 is a human declaration (Release-As: 1.0.0), never an accident.
 #
 # Required secrets (environment: production):
-#   PROD_DATABASE_DIRECT_URL  — Supabase direct port 5432 (for Alembic DDL)
+#   PROD_DATABASE_DIRECT_URL  — Supabase direct or free Shared Pooler session
+#                                mode port 5432 (for Alembic DDL)
 #   PROD_DATABASE_URL         — Supabase Transaction Pooler port 6543 (for runtime)
 #   GCP_SA_KEY                — GCP Service Account JSON
 #   GCP_PROJECT_ID            — GCP project ID
