@@ -45,6 +45,8 @@ jobs:
         run: pip install -r docs-requirements.txt
 
       - name: Build MkDocs site
+        env:
+          DISABLE_MKDOCS_2_WARNING: "true"
         run: mkdocs build --strict
 
       - name: Upload Pages artifact

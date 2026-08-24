@@ -8,8 +8,8 @@ The docs site auto-generates two files on every build:
 
 | File | URL | Best For |
 |---|---|---|
-| `llms.txt` | [`/llms.txt`](../llms.txt) | Fast ingestion — titles and descriptions only |
-| `llms-full.txt` | [`/llms-full.txt`](../llms-full.txt) | Deep context — full page content |
+| `llms.txt` | `https://azharameen.github.io/group-run/llms.txt` | Fast ingestion — titles and descriptions only |
+| `llms-full.txt` | `https://azharameen.github.io/group-run/llms-full.txt` | Deep context — full page content |
 
 ## How to Use
 
