@@ -4,7 +4,6 @@ import sys
 import types
 from unittest.mock import MagicMock
 
-import pytest
 
 def test_skills_wiring_in_runtime(monkeypatch):
     """Verify that 'skills' parameter is passed to create_deep_agent in runtime factory."""
@@ -39,24 +38,10 @@ def test_skills_wiring_in_runtime(monkeypatch):
     # Mock dependencies of runtime.py
     monkeypatch.setitem(sys.modules, "langgraph.checkpoint.postgres", MagicMock())
 
-    # Mock thread_manager to avoid DB and module import issues
-    thread_manager_module = types.ModuleType("app.services.thread_manager")
-    thread_manager_module.get_checkpointer = MagicMock(return_value=MagicMock())
-    thread_manager_module.get_async_checkpointer = MagicMock(return_value=MagicMock())
-    monkeypatch.setitem(sys.modules, "app.services.thread_manager", thread_manager_module)
+    from unittest.mock import AsyncMock
 
-    # Mock other sub-modules - remove cached modules first so mocks take effect
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in [
-            "app.agent.permissions", "app.agent.backends", "app.agent.context",
-            "app.agent.runtime"
-        ]):
-            del sys.modules[mod]
-    app_agent_backends = types.ModuleType("app.agent.backends")
-    app_agent_backends.build_agent_backend = MagicMock()
-    monkeypatch.setitem(sys.modules, "app.agent.backends", app_agent_backends)
-    monkeypatch.setitem(sys.modules, "app.agent.permissions", MagicMock())
-    monkeypatch.setitem(sys.modules, "app.agent.context", MagicMock())
+    import app.services.thread_manager as tm
+    monkeypatch.setattr(tm, "get_pg_checkpointer", AsyncMock(return_value=MagicMock()))
 
     from app.agent.runtime import get_deep_agent_runtime
     from app.config import settings
@@ -68,7 +53,7 @@ def test_skills_wiring_in_runtime(monkeypatch):
     try:
         # Mock _load_mcp_tools to avoid actual MCP loading
         import app.agent.runtime as runtime_mod
-        monkeypatch.setattr(runtime_mod, "_load_mcp_tools", lambda: [])
+        monkeypatch.setattr(runtime_mod, "_load_mcp_tools", list)
         
         get_deep_agent_runtime()
         
@@ -92,7 +77,6 @@ teams:
 """
     
     # We need to mock Path.read_text for the TEAMS_CONFIG_PATH
-    import app.config as config
     from pathlib import Path
     
     original_read_text = Path.read_text
