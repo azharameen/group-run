@@ -19,4 +19,5 @@ updates:
     groups:
       frontend-dev-deps:
         dependency-type: "development"
-        update-type: "version-update:semver-minor"
+        patterns:
+          - "*"

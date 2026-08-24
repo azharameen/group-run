@@ -1,16 +1,13 @@
----
-name: release-preview
-# Pre-merge version prediction for the production lane.
-# On every develop->main PR (and label change), comments the version the
-# release machine WILL cut, the commit evidence behind it, and a mismatch
-# alarm if a release:* label disagrees with the commits.
-#
-# Law: labels are human planning tools. The machine follows commits
-# (conventional) or an explicit `Release-As: X.Y.Z` footer. Never labels.
+name: "Release - Preview"
 
 on:
   pull_request:
+    branches: [main]
     types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
