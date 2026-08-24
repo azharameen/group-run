@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
+import asyncio
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +33,19 @@ os.environ.setdefault(
 )
 os.environ.setdefault("DB_SSL_MODE", "prefer")
 os.environ.setdefault("DB_AUTO_MIGRATE", "false")
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Share a single event loop across the entire test session.
+
+    Prevents SQLAlchemy AsyncEngine and connection pools from being split
+    across multiple event loops in pytest-asyncio runs.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture
