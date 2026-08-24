@@ -1,0 +1,64 @@
+# Group Run — Companion AI Platform
+
+> Documentation for the Group Run multi-agent AI platform.
+
+Group Run is a multi-agent AI platform powered by LangGraph and DeepAgents.
+Backend: FastAPI + LangGraph on GCP Cloud Run. Frontend: React + Vite on Firebase Hosting.
+Agents follow a supervisor-router pattern defined in teams.yaml.
+MCP tools are loaded at runtime from mcp.json.
+
+
+## Getting Started
+
+- [Setup Guide](https://azharameen.github.io/group-run/GETTING_STARTED/index.md)
+- [Deployment](https://azharameen.github.io/group-run/DEPLOYMENT/index.md)
+
+## Architecture
+
+- [Overview](https://azharameen.github.io/group-run/architecture/index.md)
+- [Target Architecture](https://azharameen.github.io/group-run/target-architecture/index.md)
+- [Architecture Decisions](https://azharameen.github.io/group-run/architecture-decisions/index.md)
+
+## Product
+
+- [PRD](https://azharameen.github.io/group-run/prd/index.md)
+- [Features](https://azharameen.github.io/group-run/features/index.md)
+- [Feature Roadmap](https://azharameen.github.io/group-run/feature-roadmap/index.md)
+
+## API Reference
+
+- [Interactive Swagger UI](https://azharameen.github.io/group-run/api/swagger/index.md)
+
+## Backend
+
+- [Agents](https://azharameen.github.io/group-run/agents/index.md)
+- [SSE Streaming](https://azharameen.github.io/group-run/sse-streaming/index.md)
+
+## Frontend
+
+- [Frontend Plan](https://azharameen.github.io/group-run/frontend-plan/index.md)
+- [UI Design](https://azharameen.github.io/group-run/ui-design/index.md)
+
+## Testing
+
+- [Testing Guide](https://azharameen.github.io/group-run/testing/index.md)
+- [Performance Testing](https://azharameen.github.io/group-run/performance-testing/index.md)
+
+## Standards
+
+- [Coding Guidelines](https://azharameen.github.io/group-run/coding-guidelines/index.md)
+- [Technical Debt Policy](https://azharameen.github.io/group-run/technical-debt-policy/index.md)
+
+## CI/CD
+
+- [Overview](https://azharameen.github.io/group-run/cicd/overview/index.md)
+
+## For AI Agents
+
+- [Context Guide](https://azharameen.github.io/group-run/ai-agents/context-guide/index.md)
+
+## Community
+
+- [Changelog](https://azharameen.github.io/group-run/CHANGELOG/index.md)
+- [Contributing](https://azharameen.github.io/group-run/CONTRIBUTING/index.md)
+
