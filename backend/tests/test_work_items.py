@@ -32,16 +32,17 @@ def client(org_db, work_item_db):
 
 
 @pytest.fixture
-def organization(org_db):
+async def organization(org_db):
     """A default-structure organization to submit work items into."""
-    return org_service.create_organization("Acme Robotics")
+    return await org_service.create_organization("Acme Robotics")
 
 
 class TestSubmitWorkItemService:
     """AC #1 — service-level create semantics."""
 
-    def test_create_defaults(self, organization, work_item_db):
-        item = work_items_service.submit_work_item(
+    @pytest.mark.asyncio
+    async def test_create_defaults(self, organization, work_item_db):
+        item = await work_items_service.submit_work_item(
             "Automated inventory scanner", org_id=organization.org_id
         )
         assert item.work_item_id
@@ -50,24 +51,28 @@ class TestSubmitWorkItemService:
         assert item.status == STATUS_NEW
         assert item.owner_agent_id == OWNER_AGENT_ID
 
-    def test_create_requires_an_organization(self, org_db, work_item_db):
+    @pytest.mark.asyncio
+    async def test_create_requires_an_organization(self, org_db, work_item_db):
         with pytest.raises(NoOrganizationError):
-            work_items_service.submit_work_item("Orphan idea")
+            await work_items_service.submit_work_item("Orphan idea")
 
-    def test_create_blank_title_rejected(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_create_blank_title_rejected(self, organization, work_item_db):
         with pytest.raises(ValueError):
-            work_items_service.submit_work_item("   ")
+            await work_items_service.submit_work_item("   ")
 
-    def test_create_unknown_organization(self, work_item_db):
+    @pytest.mark.asyncio
+    async def test_create_unknown_organization(self, work_item_db):
         with pytest.raises(UnknownOrganizationError):
-            work_items_service.submit_work_item("Ghost org item", org_id="does-not-exist")
+            await work_items_service.submit_work_item("Ghost org item", org_id="does-not-exist")
 
 
 class TestRouting:
     """AC #2 + AC #3 — deterministic routing with persisted provenance."""
 
-    def test_default_routing_low_confidence(self, organization, work_item_db):
-        item = work_items_service.submit_work_item(
+    @pytest.mark.asyncio
+    async def test_default_routing_low_confidence(self, organization, work_item_db):
+        item = await work_items_service.submit_work_item(
             "New concept", org_id=organization.org_id
         )
         assert item.department_id == "ideation"
@@ -77,8 +82,9 @@ class TestRouting:
         assert "ideation" in item.routing.reasoning
         assert item.routing.alternatives == ["technology"]
 
-    def test_explicit_valid_hint_high_confidence(self, organization, work_item_db):
-        item = work_items_service.submit_work_item(
+    @pytest.mark.asyncio
+    async def test_explicit_valid_hint_high_confidence(self, organization, work_item_db):
+        item = await work_items_service.submit_work_item(
             "Refactor build pipeline",
             org_id=organization.org_id,
             department="technology",
@@ -87,27 +93,30 @@ class TestRouting:
         assert item.routing.confidence == "high"
         assert item.routing.alternatives == ["ideation"]
 
-    def test_invalid_hint_falls_back_and_quotes_hint(self, organization, work_item_db):
-        item = work_items_service.submit_work_item(
+    @pytest.mark.asyncio
+    async def test_invalid_hint_falls_back_and_quotes_hint(self, organization, work_item_db):
+        item = await work_items_service.submit_work_item(
             "Mystery", org_id=organization.org_id, department="legal"
         )
         assert item.department_id == "ideation"
         assert item.routing.confidence == "low"
         assert "legal" in item.routing.reasoning
 
-    def test_blank_hint_treated_as_missing(self, organization, work_item_db):
-        item = work_items_service.submit_work_item(
+    @pytest.mark.asyncio
+    async def test_blank_hint_treated_as_missing(self, organization, work_item_db):
+        item = await work_items_service.submit_work_item(
             "Whitespace hint", org_id=organization.org_id, department="   "
         )
         assert item.department_id == "ideation"
         assert item.routing.confidence == "low"
         assert "No department specified" in item.routing.reasoning
 
-    def test_decision_persists_with_item(self, organization, work_item_db):
-        item = work_items_service.submit_work_item(
+    @pytest.mark.asyncio
+    async def test_decision_persists_with_item(self, organization, work_item_db):
+        item = await work_items_service.submit_work_item(
             "Persistence check", org_id=organization.org_id
         )
-        stored = work_items_service.get_work_item(item.work_item_id)
+        stored = await work_items_service.get_work_item(item.work_item_id)
         assert stored is not None
         assert stored.routing.model_dump() == item.routing.model_dump()
         assert stored.department_id == item.department_id
@@ -116,38 +125,41 @@ class TestRouting:
 class TestWorkItemListing:
     """AC #4 (data side) — ordering, filtering, missing items."""
 
-    def test_list_newest_first_and_filter(self, organization, org_db, work_item_db):
-        other_org = org_service.create_organization("Second Org")
-        work_items_service.submit_work_item("A", org_id=organization.org_id)
-        work_items_service.submit_work_item("B", org_id=organization.org_id)
-        work_items_service.submit_work_item("C", org_id=other_org.org_id)
+    @pytest.mark.asyncio
+    async def test_list_newest_first_and_filter(self, organization, org_db, work_item_db):
+        other_org = await org_service.create_organization("Second Org")
+        await work_items_service.submit_work_item("A", org_id=organization.org_id)
+        await work_items_service.submit_work_item("B", org_id=organization.org_id)
+        await work_items_service.submit_work_item("C", org_id=other_org.org_id)
 
-        org_items = work_items_service.list_work_items(organization.org_id)
+        org_items = await work_items_service.list_work_items(organization.org_id)
         assert [item.title for item in org_items] == ["B", "A"]
 
-        all_items = work_items_service.list_work_items()
+        all_items = await work_items_service.list_work_items()
         assert [item.title for item in all_items] == ["C", "B", "A"]
 
-    def test_missing_item_returns_none(self, work_item_db):
-        assert work_items_service.get_work_item("nope") is None
+    @pytest.mark.asyncio
+    async def test_missing_item_returns_none(self, work_item_db):
+        assert await work_items_service.get_work_item("nope") is None
 
 
 class TestTestingResetRoute:
     """Prerequisite for fresh state isolation: POST /api/testing/reset clears work items and orgs."""
 
-    def test_reset_route_clears_organizations_and_work_items(self, client, organization):
+    @pytest.mark.asyncio
+    async def test_reset_route_clears_organizations_and_work_items(self, client, organization):
         # Seed work item plus a lifecycle event
-        item = work_items_service.submit_work_item(
+        item = await work_items_service.submit_work_item(
             "Item to be reset", org_id=organization.org_id
         )
-        work_items_service.transition_work_item(item.work_item_id, "ideation")
+        await work_items_service.transition_work_item(item.work_item_id, "ideation")
 
         # Verify items, org, and lifecycle events exist
         assert client.get("/api/organizations").json()["count"] > 0
         assert client.get("/api/work-items").json()["count"] > 0
         from app.work_items import repository as work_items_repository
 
-        assert len(work_items_repository.list_lifecycle_events(item.work_item_id)) == 1
+        assert len(await work_items_repository.list_lifecycle_events(item.work_item_id)) == 1
 
         # Call reset route
         reset_res = client.post("/api/testing/reset")
@@ -156,7 +168,7 @@ class TestTestingResetRoute:
         # Assert work items, orgs, and lifecycle events are empty
         assert client.get("/api/organizations").json()["count"] == 0
         assert client.get("/api/work-items").json()["count"] == 0
-        assert len(work_items_repository.list_lifecycle_events(item.work_item_id)) == 0
+        assert len(await work_items_repository.list_lifecycle_events(item.work_item_id)) == 0
 
 
 class TestWorkItemsApi:
@@ -216,8 +228,9 @@ class TestWorkItemsApi:
 
         assert client.get("/api/work-items/missing").status_code == 404
 
-    def test_list_without_org_lists_all(self, client, organization, org_db):
-        other_org = org_service.create_organization("Other Org")
+    @pytest.mark.asyncio
+    async def test_list_without_org_lists_all(self, client, organization, org_db):
+        other_org = await org_service.create_organization("Other Org")
         client.post("/api/work-items", json={"title": "A", "org_id": organization.org_id})
         client.post("/api/work-items", json={"title": "B", "org_id": other_org.org_id})
         listing = client.get("/api/work-items")
@@ -238,10 +251,11 @@ class TestSubmitWorkItemTool:
         assert "submit_work_item" in [tool.name for tool in DOMAIN_TOOLS]
         assert "transition_work_item" in [tool.name for tool in DOMAIN_TOOLS]
 
-    def test_tool_success_confirmation(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_tool_success_confirmation(self, organization, work_item_db):
         from app.work_items.tools import submit_work_item
 
-        result = submit_work_item.invoke(
+        result = await submit_work_item.ainvoke(
             {"title": "Chat idea", "description": "detail"}
         )
         assert "Chat idea" in result
@@ -249,17 +263,19 @@ class TestSubmitWorkItemTool:
         assert "ideation" in result
         assert "Command Center" in result
 
-    def test_tool_without_organization_returns_error_string(self, org_db, work_item_db):
+    @pytest.mark.asyncio
+    async def test_tool_without_organization_returns_error_string(self, org_db, work_item_db):
         from app.work_items.tools import submit_work_item
 
-        result = submit_work_item.invoke({"title": "Orphan"})
+        result = await submit_work_item.ainvoke({"title": "Orphan"})
         assert "Could not submit" in result
         assert "organization" in result.lower()
 
-    def test_tool_blank_title_returns_error_string(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_tool_blank_title_returns_error_string(self, organization, work_item_db):
         from app.work_items.tools import submit_work_item
 
-        result = submit_work_item.invoke({"title": "   "})
+        result = await submit_work_item.ainvoke({"title": "   "})
         assert "Could not submit" in result
         assert "title" in result.lower()
 
@@ -267,12 +283,13 @@ class TestSubmitWorkItemTool:
 class TestLifecycleTransitions:
     """Story 8.3 AC-1/AC-2/AC-5 — service-level transition semantics."""
 
-    def _item(self, organization, work_item_db, **kwargs):
-        return work_items_service.submit_work_item("Lifecycle item", org_id=organization.org_id, **kwargs)
+    async def _item(self, organization, work_item_db, **kwargs):
+        return await work_items_service.submit_work_item("Lifecycle item", org_id=organization.org_id, **kwargs)
 
-    def test_forward_same_department(self, organization, work_item_db):
-        item = self._item(organization, work_item_db)
-        updated, event = work_items_service.transition_work_item(item.work_item_id, "ideation")
+    @pytest.mark.asyncio
+    async def test_forward_same_department(self, organization, work_item_db):
+        item = await self._item(organization, work_item_db)
+        updated, event = await work_items_service.transition_work_item(item.work_item_id, "ideation")
         assert updated.status == "ideation"
         assert updated.department_id == "ideation"
         assert event.event_type == "transition"
@@ -286,10 +303,11 @@ class TestLifecycleTransitions:
             "product_definition", "development", "testing", "deployment", "monitoring",
         ]
 
-    def test_cross_department_handoff_forces_cos(self, organization, work_item_db):
-        item = self._item(organization, work_item_db)
-        work_items_service.transition_work_item(item.work_item_id, "product_definition")
-        updated, event = work_items_service.transition_work_item(
+    @pytest.mark.asyncio
+    async def test_cross_department_handoff_forces_cos(self, organization, work_item_db):
+        item = await self._item(organization, work_item_db)
+        await work_items_service.transition_work_item(item.work_item_id, "product_definition")
+        updated, event = await work_items_service.transition_work_item(
             item.work_item_id, "development", decided_by="some_agent"
         )
         assert updated.status == "development"
@@ -301,61 +319,69 @@ class TestLifecycleTransitions:
         assert event.confidence == "high"
         assert "ideation" in event.reasoning and "technology" in event.reasoning
 
-    def test_forward_skip_allowed(self, organization, work_item_db):
-        item = self._item(organization, work_item_db)
-        updated, event = work_items_service.transition_work_item(item.work_item_id, "development")
+    @pytest.mark.asyncio
+    async def test_forward_skip_allowed(self, organization, work_item_db):
+        item = await self._item(organization, work_item_db)
+        updated, event = await work_items_service.transition_work_item(item.work_item_id, "development")
         assert updated.status == "development"
         assert updated.department_id == "technology"
         assert event.event_type == "handoff"
 
-    def test_backward_transition_rejected(self, organization, work_item_db):
-        item = self._item(organization, work_item_db)
-        work_items_service.transition_work_item(item.work_item_id, "development")
+    @pytest.mark.asyncio
+    async def test_backward_transition_rejected(self, organization, work_item_db):
+        item = await self._item(organization, work_item_db)
+        await work_items_service.transition_work_item(item.work_item_id, "development")
         with pytest.raises(work_items_service.InvalidTransitionError) as excinfo:
-            work_items_service.transition_work_item(item.work_item_id, "ideation")
+            await work_items_service.transition_work_item(item.work_item_id, "ideation")
         assert "development" in str(excinfo.value)
         assert "ideation" in str(excinfo.value)
         # No event written for the rejected transition.
-        assert len(work_items_service.get_lifecycle_history(item.work_item_id)) == 2
+        assert len(await work_items_service.get_lifecycle_history(item.work_item_id)) == 2
 
-    def test_no_op_transition_rejected(self, organization, work_item_db):
-        item = self._item(organization, work_item_db)
+    @pytest.mark.asyncio
+    async def test_no_op_transition_rejected(self, organization, work_item_db):
+        item = await self._item(organization, work_item_db)
         with pytest.raises(work_items_service.InvalidTransitionError):
-            work_items_service.transition_work_item(item.work_item_id, "new")
+            await work_items_service.transition_work_item(item.work_item_id, "new")
 
-    def test_invalid_status_rejected(self, organization, work_item_db):
-        item = self._item(organization, work_item_db)
+    @pytest.mark.asyncio
+    async def test_invalid_status_rejected(self, organization, work_item_db):
+        item = await self._item(organization, work_item_db)
         with pytest.raises(ValueError) as excinfo:
-            work_items_service.transition_work_item(item.work_item_id, "shipped")
+            await work_items_service.transition_work_item(item.work_item_id, "shipped")
         assert "shipped" in str(excinfo.value)
         assert "monitoring" in str(excinfo.value)
 
-    def test_unknown_item_rejected(self, work_item_db):
+    @pytest.mark.asyncio
+    async def test_unknown_item_rejected(self, work_item_db):
         with pytest.raises(work_items_service.UnknownWorkItemError):
-            work_items_service.transition_work_item("nope", "ideation")
+            await work_items_service.transition_work_item("nope", "ideation")
 
-    def test_non_cos_decider_low_confidence(self, organization, work_item_db):
-        item = self._item(organization, work_item_db)
-        _, event = work_items_service.transition_work_item(
+    @pytest.mark.asyncio
+    async def test_non_cos_decider_low_confidence(self, organization, work_item_db):
+        item = await self._item(organization, work_item_db)
+        _, event = await work_items_service.transition_work_item(
             item.work_item_id, "ideation", decided_by="some_agent"
         )
         assert event.decided_by == "some_agent"
         assert event.confidence == "low"
 
-    def test_custom_reasoning_preserved(self, organization, work_item_db):
-        item = self._item(organization, work_item_db)
-        _, event = work_items_service.transition_work_item(
+    @pytest.mark.asyncio
+    async def test_custom_reasoning_preserved(self, organization, work_item_db):
+        item = await self._item(organization, work_item_db)
+        _, event = await work_items_service.transition_work_item(
             item.work_item_id, "ideation", reasoning="Phase finished."
         )
         assert event.reasoning == "Phase finished."
 
-    def test_update_work_item_status_persists(self, organization, work_item_db):
+    @pytest.mark.asyncio
+    async def test_update_work_item_status_persists(self, organization, work_item_db):
         from app.work_items.lifecycle_repository import update_work_item_status
 
-        item = self._item(organization, work_item_db)
-        update_work_item_status(item.work_item_id, "development", "technology", "2025-01-01T00:00:00Z")
+        item = await self._item(organization, work_item_db)
+        await update_work_item_status(item.work_item_id, "development", "technology", "2025-01-01T00:00:00Z")
 
-        fetched = work_items_service.get_work_item(item.work_item_id)
+        fetched = await work_items_service.get_work_item(item.work_item_id)
         assert fetched is not None
         assert fetched.status == "development"
         assert fetched.department_id == "technology"
@@ -365,9 +391,10 @@ class TestLifecycleTransitions:
 class TestLifecycleHistory:
     """Story 8.3 AC-3 — full history oldest first, starting with creation."""
 
-    def test_created_event_synthesized_from_routing(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("History item", org_id=organization.org_id)
-        events = work_items_service.get_lifecycle_history(item.work_item_id)
+    @pytest.mark.asyncio
+    async def test_created_event_synthesized_from_routing(self, organization, work_item_db):
+        item = await work_items_service.submit_work_item("History item", org_id=organization.org_id)
+        events = await work_items_service.get_lifecycle_history(item.work_item_id)
         assert len(events) == 1
         created = events[0]
         assert created.event_type == "created"
@@ -378,12 +405,13 @@ class TestLifecycleHistory:
         assert created.decided_at == item.created_at
         assert created.confidence == "low"
 
-    def test_history_ordering_and_provenance(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("Ordered item", org_id=organization.org_id)
-        work_items_service.transition_work_item(item.work_item_id, "ideation")
-        work_items_service.transition_work_item(item.work_item_id, "development")
-        work_items_service.transition_work_item(item.work_item_id, "monitoring")
-        events = work_items_service.get_lifecycle_history(item.work_item_id)
+    @pytest.mark.asyncio
+    async def test_history_ordering_and_provenance(self, organization, work_item_db):
+        item = await work_items_service.submit_work_item("Ordered item", org_id=organization.org_id)
+        await work_items_service.transition_work_item(item.work_item_id, "ideation")
+        await work_items_service.transition_work_item(item.work_item_id, "development")
+        await work_items_service.transition_work_item(item.work_item_id, "monitoring")
+        events = await work_items_service.get_lifecycle_history(item.work_item_id)
         assert [event.event_type for event in events] == [
             "created", "transition", "handoff", "transition",
         ]
@@ -392,9 +420,10 @@ class TestLifecycleHistory:
         ]
         assert all(event.work_item_id == item.work_item_id for event in events)
 
-    def test_unknown_item_rejected(self, work_item_db):
+    @pytest.mark.asyncio
+    async def test_unknown_item_rejected(self, work_item_db):
         with pytest.raises(work_items_service.UnknownWorkItemError):
-            work_items_service.get_lifecycle_history("nope")
+            await work_items_service.get_lifecycle_history("nope")
 
 
 class TestLifecycleApi:
