@@ -340,13 +340,25 @@ def _memory_sources() -> list[str] | None:
 
 def _graph_checkpointer(thread_manager_module):
     """Resolve the checkpointer for the compiled deep agent graph."""
+    checkpointer = getattr(thread_manager_module, "_PG_CHECKPOINTER", None)
+    if checkpointer is not None:
+        return checkpointer
+
     try:
-        return thread_manager_module.get_pg_checkpointer()
-    except (AttributeError, RuntimeError):
-        logger.warning(
-            "Async checkpointer unavailable; compiling graph without checkpointer"
-        )
-        return None
+        asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            return asyncio.run(thread_manager_module.get_pg_checkpointer())
+        except RuntimeError:
+            logger.warning(
+                "Async checkpointer unavailable; compiling graph without checkpointer"
+            )
+            return None
+
+    logger.warning(
+        "Async checkpointer unavailable; compiling graph without checkpointer"
+    )
+    return None
 
 
 

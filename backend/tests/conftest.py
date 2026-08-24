@@ -23,13 +23,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Ensure the backend package is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 # Set required environment variables before any app imports.
 os.environ.setdefault("LANGGRAPH_STRICT_MSGPACK", "true")
 os.environ.setdefault(
-    "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/app_db_test"
+    "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5433/app_db_test"
 )
 os.environ.setdefault(
-    "DATABASE_DIRECT_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/app_db_test"
+    "DATABASE_DIRECT_URL", "postgresql+psycopg://postgres:postgres@localhost:5433/app_db_test"
 )
 os.environ.setdefault("DB_SSL_MODE", "prefer")
 os.environ.setdefault("DB_AUTO_MIGRATE", "false")
@@ -37,11 +40,9 @@ os.environ.setdefault("DB_AUTO_MIGRATE", "false")
 
 @pytest.fixture(scope="session")
 def event_loop():
-    """Share a single event loop across the entire test session.
-
-    Prevents SQLAlchemy AsyncEngine and connection pools from being split
-    across multiple event loops in pytest-asyncio runs.
-    """
+    """Share a single event loop across the entire test session."""
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
     yield loop
@@ -98,6 +99,23 @@ async def db_session():
         await session.begin_nested()
         yield session
         await session.rollback()
+
+
+@pytest.fixture(autouse=True)
+async def db_cleaner():
+    """Ensure a clean database state before each test."""
+    from sqlalchemy import text
+    from app.db.session import get_session_factory
+    async with get_session_factory()() as session:
+        for table in (
+            "accuracy_reviews", "org_alerts", "workflow_templates",
+            "decisions", "lifecycle_events", "routing_decisions",
+            "work_items", "agents", "teams", "departments",
+            "organizations", "interrupts",
+        ):
+            await session.execute(text(f"DELETE FROM {table}"))
+        await session.commit()
+    yield
 
 
 @pytest.fixture

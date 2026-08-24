@@ -123,7 +123,8 @@ async def _thread_stream_generator(
     from ...orchestrator.supervisor import get_supervisor_graph
 
     emitted_done = False
-    supervisor = get_supervisor_graph()
+    sup_res = get_supervisor_graph()
+    supervisor = await sup_res if hasattr(sup_res, "__await__") else sup_res
     try:
         final_state = await supervisor.ainvoke(
             input={"messages": [HumanMessage(content=text)]},

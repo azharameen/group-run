@@ -152,16 +152,20 @@ class TestChatStreamPerformance:
         _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
+        async def _error_astream(*args, **kwargs):
+            yield {"error": "mock agent failure", "routing_key": "general"}
 
         error_graph = MagicMock()
-        error_graph.astream = AsyncMock(side_effect=Exception("mock agent failure"))
+        error_graph.astream = _error_astream
 
-        monkeypatch.setattr(
-            "app.orchestrator.supervisor.get_supervisor_graph",
-            lambda: error_graph,
-        )
+        async def _async_error_graph():
+            return error_graph
 
         with TestClient(create_app()) as client:
+            monkeypatch.setattr(
+                "app.api.routes.chat.get_supervisor_graph",
+                _async_error_graph,
+            )
             resp = client.post("/api/chat/stream", json={"text": "trigger error"})
             assert resp.status_code == 200
             # Streaming endpoint — no X-Process-Time expected
@@ -218,7 +222,9 @@ class TestThreadCrudPerformance:
             durations = []
             for i in range(_ITERATIONS):
                 start = time.time()
-                resp = client.post("/api/threads", json={"title": f"Perf thread {i}"})
+                resp = client.post(
+                    "/api/threads", json={"title": f"Perf thread {i}"}
+                )
                 elapsed = (time.time() - start) * 1000
 
                 assert resp.status_code == 200
@@ -239,33 +245,22 @@ class TestInterruptApprovalPerformance:
     """Measure interrupt approval endpoint latency."""
 
     def test_interrupt_approval_latency(self, monkeypatch, tmp_path, patch_config):
-        """PATCH /api/interrupts/{id}/approve — measure approval response time."""
+        """PATCH /api/interrupts/{id}/approve — measure response time."""
         _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
-        monkeypatch.setattr(
-            "app.orchestrator.supervisor.get_supervisor_graph",
-            lambda: _fake_supervisor_graph(),
-        )
 
-        from app.services.interrupt_service import InterruptService
-        InterruptService._instance = None
-        svc = InterruptService.instance()
-
-        # Re-import the app factory: _clear_modules purged app.api.app and the
-        # routes, so the module-level create_app still references the OLD
-        # InterruptService class (unpatched, real DB). The fresh app is built
-        # from fresh modules that use the patched service.
         with TestClient(create_app()) as client:
             durations = []
+
             for i in range(_ITERATIONS):
-                # Create an interrupt first
+                # Seed an interrupt
                 create_resp = client.post(
                     "/api/interrupts/",
                     json={
                         "thread_id": f"perf-thread-{i}",
-                        "tool_name": "test_tool",
-                        "message": f"Test interrupt {i}",
+                        "tool_name": "write_file",
+                        "message": f"Perf interrupt {i}",
                     },
                 )
                 assert create_resp.status_code == 201
@@ -286,7 +281,7 @@ class TestInterruptApprovalPerformance:
             print("\n  === Interrupt Approval Performance ===")
             _print_metrics("  PATCH /api/interrupts/{id}/approve", durations)
 
-        conn.close()
+        from app.services.interrupt_service import InterruptService
         InterruptService._instance = None
 
 

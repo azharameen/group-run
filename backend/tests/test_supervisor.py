@@ -264,17 +264,18 @@ def test_user_friendly_error_rate_limit(monkeypatch: pytest.MonkeyPatch):
 # AC-1: Graph caching
 # ---------------------------------------------------------------------------
 
-def test_supervisor_graph_caching(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.asyncio
+async def test_supervisor_graph_caching(monkeypatch: pytest.MonkeyPatch):
     """get_supervisor_graph returns cached instance (AC-1)."""
     _clear_modules(monkeypatch)
     _stub_deepagents(monkeypatch)
 
     fake_checkpointer = Mock()
-    with patch("app.orchestrator.supervisor.get_async_checkpointer", return_value=fake_checkpointer):
+    with patch("app.orchestrator.supervisor.get_pg_checkpointer", AsyncMock(return_value=fake_checkpointer)):
         with patch("langgraph.graph.StateGraph.compile", return_value=Mock()):
             from app.orchestrator.supervisor import get_supervisor_graph
 
-            graph1 = get_supervisor_graph()
-            graph2 = get_supervisor_graph()
+            graph1 = await get_supervisor_graph()
+            graph2 = await get_supervisor_graph()
 
             assert graph1 is graph2

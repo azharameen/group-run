@@ -78,9 +78,10 @@ def get_engine() -> AsyncEngine:
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Return the shared async session factory."""
     global _session_factory
-    if _session_factory is None:
+    engine = get_engine()
+    if _session_factory is None or getattr(_session_factory, "kw", {}).get("bind") is not engine:
         _session_factory = async_sessionmaker(
-            get_engine(),
+            engine,
             expire_on_commit=False,
             autoflush=False,
         )

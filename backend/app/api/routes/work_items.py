@@ -7,6 +7,7 @@ Storage failures map to 500; 400 covers blank or over-long titles and descriptio
 from fastapi import APIRouter, HTTPException, Path, Query
 from sqlalchemy.exc import SQLAlchemyError
 
+from ...organization import service as org_service
 from ...organization.service import OrganizationIntegrityError
 from ...work_items import service
 from ...work_items.models import SubmitWorkItemRequest, TransitionWorkItemRequest
@@ -50,10 +51,8 @@ async def submit_work_item(request: SubmitWorkItemRequest) -> dict:
             department=request.department,
             template_id=request.template_id,
         )
-    except UnknownOrganizationError as exc:
+    except (UnknownOrganizationError, NoOrganizationError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except NoOrganizationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (SQLAlchemyError, OrganizationIntegrityError) as exc:
         raise HTTPException(
             status_code=500, detail="Failed to submit work item"
@@ -62,9 +61,15 @@ async def submit_work_item(request: SubmitWorkItemRequest) -> dict:
 
 
 @router.get("/work-items")
-async def list_work_items(org_id: str | None = Query(None)) -> dict:
-    """List work items, newest first."""
+async def list_work_items(
+    org_id: str | None = Query(default=None, max_length=64)
+) -> dict:
+    """List work items, optionally filtered by org_id."""
     try:
+        if org_id is not None:
+            org = await org_service.get_organization(org_id)
+            if org is None:
+                raise HTTPException(status_code=404, detail=f"Organization {org_id} not found")
         items = await service.list_work_items(org_id=org_id)
     except SQLAlchemyError as exc:
         raise HTTPException(
@@ -89,8 +94,8 @@ async def get_work_item(work_item_id: str = Path(..., max_length=64)) -> dict:
     return {"work_item": item.model_dump()}
 
 
-@router.post("/work-items/{work_item_id}/transition", status_code=200)
-@router.post("/work-items/{work_item_id}/transitions", status_code=200)
+@router.post("/work-items/{work_item_id}/transition", status_code=201)
+@router.post("/work-items/{work_item_id}/transitions", status_code=201)
 async def transition_work_item(
     request: TransitionWorkItemRequest,
     work_item_id: str = Path(..., max_length=64),
@@ -105,7 +110,9 @@ async def transition_work_item(
         )
     except UnknownWorkItemError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (ValueError, InvalidTransitionError) as exc:
+    except InvalidTransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(

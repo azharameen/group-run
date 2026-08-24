@@ -27,17 +27,18 @@ def client(org_db, work_item_db):
 
 
 @pytest.fixture
-def organization(org_db):
+async def organization(org_db):
     """A default-structure organization to submit work items into."""
-    return org_service.create_organization("Acme Robotics")
+    return await org_service.create_organization("Acme Robotics")
 
 
 class TestRecordReview:
     """Recording a review computes the flag and writes a decision."""
 
-    def test_record_review_happy_path_not_flagged(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
-        review = reviews_service.record_review(
+    @pytest.mark.asyncio
+    async def test_record_review_happy_path_not_flagged(self, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+        review = await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="user", accuracy_score=95, summary="Looks accurate."),
             item.work_item_id,
         )
@@ -47,26 +48,28 @@ class TestRecordReview:
         assert review.flagged_for_review is False
         assert review.reviewed_at
 
-    def test_flag_boundary_89_flagged_90_not(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
-        low = reviews_service.record_review(
+    @pytest.mark.asyncio
+    async def test_flag_boundary_89_flagged_90_not(self, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+        low = await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="user", accuracy_score=89, summary="Borderline."),
             item.work_item_id,
         )
-        high = reviews_service.record_review(
+        high = await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="user", accuracy_score=90, summary="Passing."),
             item.work_item_id,
         )
         assert low.flagged_for_review is True
         assert high.flagged_for_review is False
 
-    def test_decision_record_written_with_type_review(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
-        review = reviews_service.record_review(
+    @pytest.mark.asyncio
+    async def test_decision_record_written_with_type_review(self, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+        review = await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="reviewer_1", accuracy_score=70, summary="Weak sourcing."),
             item.work_item_id,
         )
-        records = decisions_service.list_decisions(item.work_item_id)
+        records = await decisions_service.list_decisions(item.work_item_id)
         review_decisions = [d for d in records if d.decision_type == "review"]
         assert len(review_decisions) == 1
         decision = review_decisions[0]
@@ -76,19 +79,21 @@ class TestRecordReview:
         assert decision.evidence == [f"accuracy_review:{review.review_id}"]
         assert decision.alternatives == []
 
-    def test_decision_confidence_high_when_not_flagged(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
-        reviews_service.record_review(
+    @pytest.mark.asyncio
+    async def test_decision_confidence_high_when_not_flagged(self, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+        await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="user", accuracy_score=95, summary="Solid."),
             item.work_item_id,
         )
-        records = decisions_service.list_decisions(item.work_item_id)
+        records = await decisions_service.list_decisions(item.work_item_id)
         review_decisions = [d for d in records if d.decision_type == "review"]
         assert review_decisions[0].confidence == "high"
 
-    def test_record_review_unknown_item_raises(self, work_item_db):
+    @pytest.mark.asyncio
+    async def test_record_review_unknown_item_raises(self):
         with pytest.raises(UnknownWorkItemError):
-            reviews_service.record_review(
+            await reviews_service.record_review(
                 AccuracyReviewRequest(reviewer="user", accuracy_score=80, summary="Orphan."),
                 "does-not-exist",
             )
@@ -97,49 +102,55 @@ class TestRecordReview:
 class TestListReviews:
     """Ordering, latest-drives-flag, and empty-list behavior."""
 
-    def test_list_returns_oldest_first(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
-        reviews_service.record_review(
+    @pytest.mark.asyncio
+    async def test_list_returns_oldest_first(self, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+        await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="user", accuracy_score=95, summary="First."),
             item.work_item_id,
         )
-        reviews_service.record_review(
+        await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="user", accuracy_score=70, summary="Second."),
             item.work_item_id,
         )
-        records = reviews_service.list_reviews(item.work_item_id)
+        records = await reviews_service.list_reviews(item.work_item_id)
         assert [r.summary for r in records] == ["First.", "Second."]
         assert records[0].reviewed_at <= records[1].reviewed_at
 
-    def test_latest_review_drives_the_flag(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
-        reviews_service.record_review(
+    @pytest.mark.asyncio
+    async def test_latest_review_drives_the_flag(self, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+        await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="user", accuracy_score=95, summary="First."),
             item.work_item_id,
         )
-        reviews_service.record_review(
+        await reviews_service.record_review(
             AccuracyReviewRequest(reviewer="user", accuracy_score=70, summary="Second."),
             item.work_item_id,
         )
-        latest = reviews_service.latest_review(item.work_item_id)
+        latest = await reviews_service.latest_review(item.work_item_id)
+        assert latest is not None
         assert latest.summary == "Second."
         assert latest.flagged_for_review is True
 
-    def test_empty_list_when_no_reviews(self, organization, work_item_db):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
-        assert reviews_service.list_reviews(item.work_item_id) == []
-        assert reviews_service.latest_review(item.work_item_id) is None
+    @pytest.mark.asyncio
+    async def test_empty_list_when_no_reviews(self, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+        assert await reviews_service.list_reviews(item.work_item_id) == []
+        assert await reviews_service.latest_review(item.work_item_id) is None
 
-    def test_list_unknown_work_item_raises(self, work_item_db):
+    @pytest.mark.asyncio
+    async def test_list_unknown_work_item_raises(self):
         with pytest.raises(UnknownWorkItemError):
-            reviews_service.list_reviews("does-not-exist")
+            await reviews_service.list_reviews("does-not-exist")
 
 
 class TestReviewsApi:
     """The /api/work-items/{id}/reviews endpoints."""
 
-    def test_post_creates_review(self, client, organization):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+    @pytest.mark.asyncio
+    async def test_post_creates_review(self, client, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
         response = client.post(
             f"/api/work-items/{item.work_item_id}/reviews",
             json={"reviewer": "user", "accuracy_score": 95, "summary": "Verified against source."},
@@ -150,8 +161,9 @@ class TestReviewsApi:
         assert body["flagged_for_review"] is False
         assert body["review_id"]
 
-    def test_post_flags_low_score(self, client, organization):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+    @pytest.mark.asyncio
+    async def test_post_flags_low_score(self, client, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
         response = client.post(
             f"/api/work-items/{item.work_item_id}/reviews",
             json={"reviewer": "user", "accuracy_score": 70, "summary": "Weak."},
@@ -166,32 +178,36 @@ class TestReviewsApi:
         )
         assert response.status_code == 404
 
-    def test_post_invalid_score_over_100_422(self, client, organization):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+    @pytest.mark.asyncio
+    async def test_post_invalid_score_over_100_422(self, client, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
         response = client.post(
             f"/api/work-items/{item.work_item_id}/reviews",
             json={"reviewer": "user", "accuracy_score": 101, "summary": "x"},
         )
         assert response.status_code == 422
 
-    def test_post_invalid_score_negative_422(self, client, organization):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+    @pytest.mark.asyncio
+    async def test_post_invalid_score_negative_422(self, client, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
         response = client.post(
             f"/api/work-items/{item.work_item_id}/reviews",
             json={"reviewer": "user", "accuracy_score": -1, "summary": "x"},
         )
         assert response.status_code == 422
 
-    def test_post_blank_summary_422(self, client, organization):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+    @pytest.mark.asyncio
+    async def test_post_blank_summary_422(self, client, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
         response = client.post(
             f"/api/work-items/{item.work_item_id}/reviews",
             json={"reviewer": "user", "accuracy_score": 80, "summary": "   "},
         )
         assert response.status_code == 422
 
-    def test_get_returns_reviews_oldest_first(self, client, organization):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+    @pytest.mark.asyncio
+    async def test_get_returns_reviews_oldest_first(self, client, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
         client.post(
             f"/api/work-items/{item.work_item_id}/reviews",
             json={"reviewer": "user", "accuracy_score": 95, "summary": "First."},
@@ -206,8 +222,9 @@ class TestReviewsApi:
         assert body["count"] == 2
         assert [r["summary"] for r in body["reviews"]] == ["First.", "Second."]
 
-    def test_get_empty_when_no_reviews(self, client, organization):
-        item = work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
+    @pytest.mark.asyncio
+    async def test_get_empty_when_no_reviews(self, client, organization):
+        item = await work_items_service.submit_work_item("Scanner", org_id=organization.org_id)
         response = client.get(f"/api/work-items/{item.work_item_id}/reviews")
         assert response.status_code == 200
         assert response.json() == {"reviews": [], "count": 0}

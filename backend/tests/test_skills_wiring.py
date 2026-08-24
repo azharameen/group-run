@@ -21,6 +21,7 @@ def test_skills_wiring_in_runtime(monkeypatch):
 
     deepagents_module.create_deep_agent = mock_create_deep_agent
     deepagents_module.DeepAgentState = MagicMock()
+    deepagents_module.FilesystemPermission = MagicMock()
 
     # Mock backends
     backends_module.CompositeBackend = MagicMock()
