@@ -2,9 +2,7 @@ name: "Deploy Docs to GitHub Pages"
 
 on:
   push:
-    # TEMP: trigger on every branch push for pipeline testing.
-    # Revert to branches: [develop, main] when tests pass.
-    branches: ['**']
+    branches: [develop, main]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
