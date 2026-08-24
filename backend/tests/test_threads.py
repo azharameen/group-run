@@ -9,33 +9,18 @@ from app.api.app import create_app
 
 
 def _patch_thread_storage(monkeypatch, tmp_path):
-    storage_dir = tmp_path / "storage"
-    storage_dir.mkdir()
-
-    monkeypatch.setattr("app.config.STORAGE_DIR", str(storage_dir))
-    monkeypatch.setattr("app.services.thread_manager.STORAGE_DIR", str(storage_dir))
-    monkeypatch.setattr("app.services.thread_manager._THREAD_DB_PATH", None)
-    monkeypatch.setattr("app.services.thread_manager._SQLITE_SAVER", None)
-    monkeypatch.setattr("app.services.thread_manager._ASYNC_SQLITE_SAVER", None)
+    import app.services.thread_manager as tm
+    tm._PG_CHECKPOINTER = None
+    tm._PG_CHECKPOINTER_CM = None
+    tm._PG_CHECKPOINTER_LOOP = None
 
 
 def _clear_cached_modules():
-    """Reset thread_manager singleton state in place (keeps module identity).
-
-    Historically this purged the module from sys.modules to force a
-    re-import with a fresh STORAGE_DIR.  That orphaned the function
-    references already held by imported app modules (lifespan + routes keep
-    pointing at the old module object's singletons), so the /messages route
-    could end up reading a dead checkpointer connection while writes went to
-    a different module's connection.  An in-place reset keeps a single module
-    instance, so every reference sees the same state.
-    """
+    """Reset thread_manager singleton state in place."""
     import app.services.thread_manager as tm
-
-    tm._THREAD_DB_PATH = None
-    tm._SQLITE_SAVER = None
-    tm._ASYNC_SQLITE_SAVER = None
-    tm._METADATA_CONN = None
+    tm._PG_CHECKPOINTER = None
+    tm._PG_CHECKPOINTER_CM = None
+    tm._PG_CHECKPOINTER_LOOP = None
 
 
 @pytest.fixture(autouse=True)
@@ -45,10 +30,9 @@ def _cleanup_thread_state():
     # Clean up singletons after test to prevent cross-test pollution
     try:
         import app.services.thread_manager as tm
-        tm._ASYNC_SQLITE_SAVER = None
-        tm._SQLITE_SAVER = None
-        tm._THREAD_DB_PATH = None
-        tm._METADATA_CONN = None
+        tm._PG_CHECKPOINTER = None
+        tm._PG_CHECKPOINTER_CM = None
+        tm._PG_CHECKPOINTER_LOOP = None
     except Exception:
         pass
     try:
@@ -469,34 +453,19 @@ def _reset_thread_singletons(monkeypatch):
     import app.services.thread_manager as tm
     import app.orchestrator.supervisor as sup
 
-    # Best-effort reap of a still-running aiosqlite worker thread.  The
-    # TestClient lifespan shutdown normally closes the connection on the
-    # correct loop already; this only matters if a test died mid-flight.
-    # (Closing on a fresh throwaway loop — the previous approach — crashed
-    # the aiosqlite worker thread with "Event loop is closed".)
-    from app.services.thread_manager import _discard_async_saver
-    _discard_async_saver(tm._ASYNC_SQLITE_SAVER)
-
-    tm._ASYNC_SQLITE_SAVER = None
-    tm._SQLITE_SAVER = None
-    tm._THREAD_DB_PATH = None
-    tm._METADATA_CONN = None
+    tm._PG_CHECKPOINTER = None
+    tm._PG_CHECKPOINTER_CM = None
+    tm._PG_CHECKPOINTER_LOOP = None
     sup._graph = None
     sup._agent = None
 
 
-def _real_supervisor_with_mock_agent(response_text: str):
-    """Build a real compiled supervisor graph with mocked agent nodes.
-
-    This validates the full checkpoint save/retrieve cycle while avoiding
-    the deepagents import issue. The graph compiles with a real checkpointer
-    (via get_async_checkpointer), so checkpoints are persisted and restored
-    through the actual LangGraph mechanism.
-    """
+async def _real_supervisor_with_mock_agent(response_text: str):
+    """Build a real compiled supervisor graph with mocked agent nodes."""
     from langchain_core.messages import AIMessage
     from langgraph.graph import StateGraph
     from app.orchestrator.supervisor import SupervisorState
-    from app.services.thread_manager import get_async_checkpointer
+    from app.services.thread_manager import get_pg_checkpointer
 
     async def mock_general(state: dict) -> dict:
         return {
@@ -510,7 +479,8 @@ def _real_supervisor_with_mock_agent(response_text: str):
     graph.set_entry_point("general")
     graph.add_edge("general", "__end__")
 
-    return graph.compile(checkpointer=get_async_checkpointer())
+    checkpointer = await get_pg_checkpointer()
+    return graph.compile(checkpointer=checkpointer)
 
 
 def test_checkpoint_messages_persist_and_restore(monkeypatch, tmp_path, patch_config):
@@ -705,48 +675,46 @@ def test_stream_error_then_done_event(monkeypatch, tmp_path, patch_config):
 # ── Service Layer Tests ───────────────────────────────────────────────────
 
 
-def test_create_thread_generates_uuid4(monkeypatch, tmp_path, patch_config):
+@pytest.mark.asyncio
+async def test_create_thread_generates_uuid4(monkeypatch, tmp_path, patch_config):
     _patch_thread_storage(monkeypatch, tmp_path)
     from app.services import thread_manager
 
-    thread = thread_manager.create_thread()
+    thread = await thread_manager.create_thread()
     assert len(thread["thread_id"].split("-")) == 5
     assert thread["title"] == "New Chat"
 
 
-def test_update_thread_only_allowed_fields(monkeypatch, tmp_path, patch_config):
+@pytest.mark.asyncio
+async def test_update_thread_only_allowed_fields(monkeypatch, tmp_path, patch_config):
     _patch_thread_storage(monkeypatch, tmp_path)
     from app.services import thread_manager
 
-    thread = thread_manager.create_thread(title="Orig")
-    updated = thread_manager.update_thread(thread["thread_id"], title="New", hacked="x")
+    thread = await thread_manager.create_thread(title="Orig")
+    updated = await thread_manager.update_thread(thread["thread_id"], title="New", hacked="x")
     assert updated["title"] == "New"
     assert "hacked" not in updated
 
 
-def test_touch_thread_updates_timestamp(monkeypatch, tmp_path, patch_config):
+@pytest.mark.asyncio
+async def test_touch_thread_updates_timestamp(monkeypatch, tmp_path, patch_config):
     _patch_thread_storage(monkeypatch, tmp_path)
-    from app.services import thread_manager
     import time
+    from app.services import thread_manager
 
-    thread = thread_manager.create_thread()
+    thread = await thread_manager.create_thread()
     before = thread["updated_at"]
     time.sleep(0.001)  # avoid same-microsecond comparison on fast runners
-    thread_manager.touch_thread(thread["thread_id"])
-    after = thread_manager.get_thread(thread["thread_id"])["updated_at"]
-    assert after != before
+    await thread_manager.touch_thread(thread["thread_id"])
+    fetched = await thread_manager.get_thread(thread["thread_id"])
+    assert fetched is not None
+    assert fetched["updated_at"] != before
 
 
 def test_row_dict_deserializes_json_fields(monkeypatch, tmp_path, patch_config):
-    _patch_thread_storage(monkeypatch, tmp_path)
     from app.services.thread_manager import _row_dict
-    import sqlite3
 
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("CREATE TABLE t (tags TEXT, agent_names TEXT)")
-    conn.execute("INSERT INTO t VALUES (?, ?)", ('["a"]', '["b"]'))
-    row = conn.execute("SELECT * FROM t").fetchone()
+    row = {"tags": '["a"]', "agent_names": '["b"]'}
     data = _row_dict(row)
     assert data["tags"] == ["a"]
     assert data["agent_names"] == ["b"]

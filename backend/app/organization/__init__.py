@@ -1,8 +1,8 @@
-"""Organization structure package (Story 8.1).
+"""Organization domain module.
 
-Canonical owner of the organization entity: Pydantic tree models and the
-pinned default structure (models), SQLite storage (repository), and the
-create/read service layer (service).
+Contains Pydantic models for the organization hierarchy,
+pinned default structure (models), PostgreSQL storage (repository), and the
+deterministic health evaluation logic (health.py).
 """
 
 from .models import (

@@ -9,14 +9,15 @@ router = APIRouter(prefix="/api/interrupts", tags=["interrupts"])
 
 
 @router.get("/pending")
-def list_pending() -> dict[str, list[dict]]:
-    return {"interrupts": InterruptService.instance().list_pending()}
+async def list_pending() -> dict[str, list[dict]]:
+    pending = await InterruptService.instance().list_pending()
+    return {"interrupts": pending}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def create_interrupt(payload: CreateInterruptRequest) -> InterruptResponse:
+async def create_interrupt(payload: CreateInterruptRequest) -> InterruptResponse:
     try:
-        interrupt = InterruptService.instance().create_interrupt(
+        interrupt = await InterruptService.instance().create_interrupt(
             payload.thread_id,
             payload.tool_name,
             payload.message,
@@ -32,16 +33,16 @@ def create_interrupt(payload: CreateInterruptRequest) -> InterruptResponse:
 
 
 @router.patch("/{interrupt_id}/approve")
-def approve_interrupt(interrupt_id: str, payload: InterruptDecisionRequest) -> InterruptResponse:
+async def approve_interrupt(interrupt_id: str, payload: InterruptDecisionRequest) -> InterruptResponse:
     try:
-        interrupt = InterruptService.instance().approve_interrupt(
+        interrupt = await InterruptService.instance().approve_interrupt(
             interrupt_id,
             payload.decision,
             payload.reason,
             reasoning=payload.reasoning,
         )
         if interrupt is None:
-            existing = InterruptService.instance().get_interrupt(interrupt_id)
+            existing = await InterruptService.instance().get_interrupt(interrupt_id)
             if existing is None:
                 raise HTTPException(status_code=404, detail="Interrupt not found")
             raise HTTPException(status_code=409, detail="Interrupt already resolved")
@@ -51,15 +52,15 @@ def approve_interrupt(interrupt_id: str, payload: InterruptDecisionRequest) -> I
 
 
 @router.patch("/{interrupt_id}/reject")
-def reject_interrupt(interrupt_id: str, payload: InterruptDecisionRequest) -> InterruptResponse:
+async def reject_interrupt(interrupt_id: str, payload: InterruptDecisionRequest) -> InterruptResponse:
     try:
-        interrupt = InterruptService.instance().reject_interrupt(
+        interrupt = await InterruptService.instance().reject_interrupt(
             interrupt_id,
             payload.reason,
             reasoning=payload.reasoning,
         )
         if interrupt is None:
-            existing = InterruptService.instance().get_interrupt(interrupt_id)
+            existing = await InterruptService.instance().get_interrupt(interrupt_id)
             if existing is None:
                 raise HTTPException(status_code=404, detail="Interrupt not found")
             raise HTTPException(status_code=409, detail="Interrupt already resolved")
@@ -78,7 +79,7 @@ async def resume_interrupt(interrupt_id: str, payload: ResumeInterruptRequest) -
     """
     from ...agent.runner import resume_agent
 
-    interrupt = InterruptService.instance().get_interrupt(interrupt_id)
+    interrupt = await InterruptService.instance().get_interrupt(interrupt_id)
     if interrupt is None:
         raise HTTPException(status_code=404, detail="Interrupt not found")
     if interrupt["status"] not in ("approved", "rejected"):

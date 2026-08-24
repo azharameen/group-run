@@ -56,13 +56,10 @@ outputs/
 workspace/ideas.yaml
 workspace/ideas/
 
-# Runtime SQLite databases (threads, work items) + WAL/SHM sidecars
-storage/*.sqlite
-storage/*.sqlite-shm
-storage/*.sqlite-wal
-storage/*.db
-storage/*.db-shm
-storage/*.db-wal
+# Local storage directory (temporary or legacy files)
+storage/*
+!storage/.gitkeep
+
 
 # Knowledge base generated content
 knowledge-base/processed/

@@ -5,11 +5,11 @@ import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, status
+from sqlalchemy import text
 
 from ...config import WORKSPACE_DIR
+from ...db.session import get_session_factory
 from ...orchestrator import supervisor as _sup
-from ...services.interrupt_service import InterruptService
-from ...services.thread_manager import get_checkpointer
 from ...storage.registry import save_idea_registry
 
 logger = logging.getLogger(__name__)
@@ -18,37 +18,40 @@ router = APIRouter(prefix="/api/testing", tags=["testing"])
 
 
 @router.post("/reset", status_code=status.HTTP_200_OK)
-def reset_test_state() -> dict[str, str]:
-    """Reset application state to clean baseline for E2E test isolation.
-
-    Clears:
-    - Thread metadata and LangGraph checkpointer tables (threads, checkpoints, writes, blobs)
-    - Interrupts table in SQLite
-    - Idea registry (ideas.yaml) and idea workspace directories
-    - Supervisor graph singleton cache
-    """
-    # 1. Reset threads & LangGraph checkpoints
+async def reset_test_state() -> dict[str, str]:
+    """Reset application state to clean baseline for E2E test isolation."""
+    # 1. Reset all PostgreSQL tables
+    tables = [
+        "interrupts",
+        "thread_metadata",
+        "checkpoints",
+        "checkpoint_blobs",
+        "checkpoint_writes",
+        "accuracy_reviews",
+        "workflow_templates",
+        "org_alerts",
+        "decisions",
+        "lifecycle_events",
+        "routing_decisions",
+        "work_items",
+        "agents",
+        "teams",
+        "departments",
+        "organizations",
+    ]
     try:
-        conn = get_checkpointer().conn
-        # Find all tables in checkpointer database
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [row[0] for row in cursor.fetchall()]
-        for table in tables:
-            if not table.startswith("sqlite_"):
-                conn.execute(f"DELETE FROM {table}")
-        conn.commit()
+        async with get_session_factory()() as session:
+            for table in tables:
+                try:
+                    await session.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
+                except Exception:  # noqa: BLE001, S110
+                    # Table might not exist yet if checkpointer hasn't initialized
+                    pass
+            await session.commit()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Error clearing thread checkpointer tables: %s", exc)
+        logger.warning("Error truncating PostgreSQL tables: %s", exc)
 
-    # 2. Reset interrupts table
-    try:
-        iconn = InterruptService.instance()._conn()
-        iconn.execute("DELETE FROM interrupts")
-        iconn.commit()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Error clearing interrupts table: %s", exc)
-
-    # 3. Reset idea registry and remove workspace/ideas subdirectories
+    # 2. Reset idea registry and remove workspace/ideas subdirectories
     try:
         save_idea_registry({"ideas": [], "next_id": 1})
         ideas_dir = Path(WORKSPACE_DIR) / "ideas"
@@ -61,31 +64,11 @@ def reset_test_state() -> dict[str, str]:
     except Exception as exc:  # noqa: BLE001
         logger.warning("Error resetting idea registry/workspace: %s", exc)
 
-    # 4. Reset supervisor graph cache
+    # 3. Reset supervisor graph cache
     _sup._graph = None
 
-    # 5. Clear connected SSE clients to avoid cross-test event pollution
+    # 4. Clear connected SSE clients to avoid cross-test event pollution
     from app.infrastructure.events.stream_bus import _bus
     _bus._clients.clear()
-
-    # 6. Reset organization DB tables
-    try:
-        from app.organization import repository as org_repo
-        conn = org_repo._get_conn()
-        for table in ("agents", "teams", "departments", "organizations"):
-            conn.execute(f"DELETE FROM {table}")
-        conn.commit()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Error resetting organization tables: %s", exc)
-
-    # 7. Reset work items DB tables
-    try:
-        from app.work_items import repository as work_items_repo
-        wconn = work_items_repo._get_conn()
-        for table in ("lifecycle_events", "routing_decisions", "work_items", "decisions", "workflow_templates", "accuracy_reviews"):
-            wconn.execute(f"DELETE FROM {table}")
-        wconn.commit()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Error resetting work items tables: %s", exc)
 
     return {"status": "ok", "message": "Test state reset successfully"}

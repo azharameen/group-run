@@ -31,28 +31,8 @@ _ITERATIONS = 5  # number of warm iterations per endpoint
 
 
 def _clear_modules(monkeypatch: pytest.MonkeyPatch):
-    """Clear app modules so imports are fresh for each test."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.api.routes.chat",
-            "app.api.routes.threads",
-            "app.api.routes.interrupts",
-            "app.api.routes.ideas",
-            "app.api.routes.sse",
-            "app.api.routes.health",
-            "app.orchestrator.supervisor",
-            "app.orchestrator.supervisor_graph",
-            # NOTE: do NOT purge app.services.thread_manager here — re-importing
-            # it orphans the singletons referenced by already-imported routes
-            # (module-identity split). Its state is reset in place by the tests.
-            "app.services.interrupt_service",
-            "app.config",
-            "app.api.app",
-        )):
-            # monkeypatch.delitem (not bare del) so the purge reverts at
-            # teardown — a permanent purge leaves cached modules referencing
-            # the old settings object (module-identity split).
-            monkeypatch.delitem(sys.modules, mod, raising=False)
+    """No-op for PostgreSQL module stability."""
+    pass
 
 
 def _stub_deepagents(monkeypatch):
@@ -109,16 +89,7 @@ def _fake_supervisor_graph(response_text: str = "mock response"):
 
 def _patch_thread_storage(monkeypatch, tmp_path):
     """Patch thread storage to use temp directory."""
-    import sqlite3
-
-    storage_dir = tmp_path / "storage"
-    storage_dir.mkdir()
-
-    monkeypatch.setattr("app.config.STORAGE_DIR", str(storage_dir))
-    monkeypatch.setattr("app.services.thread_manager.STORAGE_DIR", str(storage_dir))
-    monkeypatch.setattr("app.services.thread_manager._THREAD_DB_PATH", None)
-    monkeypatch.setattr("app.services.thread_manager._SQLITE_SAVER", None)
-    monkeypatch.setattr("app.services.thread_manager._ASYNC_SQLITE_SAVER", None)
+    monkeypatch.setattr("app.services.thread_manager._PG_CHECKPOINTER", None)
 
 
 def _print_metrics(name: str, durations: list[float]):
@@ -181,16 +152,20 @@ class TestChatStreamPerformance:
         _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
+        async def _error_astream(*args, **kwargs):
+            yield {"error": "mock agent failure", "routing_key": "general"}
 
         error_graph = MagicMock()
-        error_graph.astream = AsyncMock(side_effect=Exception("mock agent failure"))
+        error_graph.astream = _error_astream
 
-        monkeypatch.setattr(
-            "app.orchestrator.supervisor.get_supervisor_graph",
-            lambda: error_graph,
-        )
+        async def _async_error_graph():
+            return error_graph
 
         with TestClient(create_app()) as client:
+            monkeypatch.setattr(
+                "app.api.routes.chat.get_supervisor_graph",
+                _async_error_graph,
+            )
             resp = client.post("/api/chat/stream", json={"text": "trigger error"})
             assert resp.status_code == 200
             # Streaming endpoint — no X-Process-Time expected
@@ -247,7 +222,9 @@ class TestThreadCrudPerformance:
             durations = []
             for i in range(_ITERATIONS):
                 start = time.time()
-                resp = client.post("/api/threads", json={"title": f"Perf thread {i}"})
+                resp = client.post(
+                    "/api/threads", json={"title": f"Perf thread {i}"}
+                )
                 elapsed = (time.time() - start) * 1000
 
                 assert resp.status_code == 200
@@ -268,49 +245,22 @@ class TestInterruptApprovalPerformance:
     """Measure interrupt approval endpoint latency."""
 
     def test_interrupt_approval_latency(self, monkeypatch, tmp_path, patch_config):
-        """PATCH /api/interrupts/{id}/approve — measure approval response time."""
+        """PATCH /api/interrupts/{id}/approve — measure response time."""
         _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
-        monkeypatch.setattr(
-            "app.orchestrator.supervisor.get_supervisor_graph",
-            lambda: _fake_supervisor_graph(),
-        )
 
-        import app.services.interrupt_service as interrupt_module
-        import sqlite3
-
-        # Reset interrupt service singleton
-        from app.services.interrupt_service import InterruptService
-        InterruptService._instance = None
-
-        db_path = tmp_path / "perf_interrupts.sqlite"
-        conn = sqlite3.connect(str(db_path), check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-
-        # Reset the singleton before creating the app so the service binds to the
-        # temp database created for this test instead of the real production DB.
-        monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
-        svc = InterruptService.instance()
-        assert svc._conn() is conn
-
-        # Re-import the app factory: _clear_modules purged app.api.app and the
-        # routes, so the module-level create_app still references the OLD
-        # InterruptService class (unpatched, real DB). The fresh app is built
-        # from fresh modules that use the patched service.
-        import importlib
-
-        app_mod = importlib.import_module("app.api.app")
-        with TestClient(app_mod.create_app()) as client:
+        with TestClient(create_app()) as client:
             durations = []
+
             for i in range(_ITERATIONS):
-                # Create an interrupt first
+                # Seed an interrupt
                 create_resp = client.post(
                     "/api/interrupts/",
                     json={
                         "thread_id": f"perf-thread-{i}",
-                        "tool_name": "test_tool",
-                        "message": f"Test interrupt {i}",
+                        "tool_name": "write_file",
+                        "message": f"Perf interrupt {i}",
                     },
                 )
                 assert create_resp.status_code == 201
@@ -331,7 +281,7 @@ class TestInterruptApprovalPerformance:
             print("\n  === Interrupt Approval Performance ===")
             _print_metrics("  PATCH /api/interrupts/{id}/approve", durations)
 
-        conn.close()
+        from app.services.interrupt_service import InterruptService
         InterruptService._instance = None
 
 

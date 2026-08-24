@@ -1,5 +1,4 @@
 import queue
-import sqlite3
 import threading
 from pathlib import Path
 
@@ -11,18 +10,13 @@ import app.services.interrupt_service as interrupt_module
 from app.services.interrupt_service import InterruptService
 
 
-@pytest.fixture()
-def ctx(tmp_path, monkeypatch):
-    db_path = Path(tmp_path) / "interrupts.sqlite"
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-
-    class DummyCheckpointer:
-        def __init__(self, conn):
-            self.conn = conn
-
-    monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
-    monkeypatch.setattr(interrupt_module.sqlite3, "connect", lambda *args, **kwargs: conn)
+@pytest.fixture
+async def ctx(monkeypatch):
+    from sqlalchemy import text
+    from app.db.session import get_session_factory
+    async with get_session_factory()() as session:
+        await session.execute(text("DELETE FROM interrupts"))
+        await session.commit()
     InterruptService._instance = None
 
     events = []
@@ -30,7 +24,6 @@ def ctx(tmp_path, monkeypatch):
 
     client = TestClient(create_app())
     yield {"client": client, "events": events, "svc": InterruptService.instance()}
-    conn.close()
     InterruptService._instance = None
 
 
@@ -43,19 +36,25 @@ def _create_interrupt(ctx, thread_id="thread-1", tool_name="edit_file", message=
     return res.json()["interrupt"]
 
 
-def test_full_approve_lifecycle(ctx):
+@pytest.mark.asyncio
+async def test_full_approve_lifecycle(ctx):
     interrupt = _create_interrupt(ctx, tool_input={"path": "x.txt"})
     res = ctx["client"].patch(f"/api/interrupts/{interrupt['id']}/approve", json={"decision": "approved", "reason": "ok"})
     assert res.status_code == 200
-    assert ctx["svc"].get_interrupt(interrupt["id"])["status"] == "approved"
+    stored = await ctx["svc"].get_interrupt(interrupt["id"])
+    assert stored is not None
+    assert stored["status"] == "approved"
     assert [e[0] for e in ctx["events"]] == ["interrupt.created", "interrupt.approved"]
 
 
-def test_full_reject_lifecycle(ctx):
+@pytest.mark.asyncio
+async def test_full_reject_lifecycle(ctx):
     interrupt = _create_interrupt(ctx)
     res = ctx["client"].patch(f"/api/interrupts/{interrupt['id']}/reject", json={"decision": "rejected", "reason": "no"})
     assert res.status_code == 200
-    assert ctx["svc"].get_interrupt(interrupt["id"])["status"] == "rejected"
+    stored = await ctx["svc"].get_interrupt(interrupt["id"])
+    assert stored is not None
+    assert stored["status"] == "rejected"
     assert [e[0] for e in ctx["events"]] == ["interrupt.created", "interrupt.rejected"]
 
 
@@ -92,39 +91,22 @@ def test_pending_empty_when_all_resolved(ctx):
     assert res.json()["interrupts"] == []
 
 
-def test_concurrent_approve_reject(ctx):
-    """Test concurrent approve/reject at the service layer.
-    
-    TestClient doesn't support concurrent requests safely with SQLite,
-    so we test the atomic UPDATE guarantee directly via the service.
-    """
+@pytest.mark.asyncio
+async def test_concurrent_approve_reject(ctx):
+    import asyncio
     interrupt = _create_interrupt(ctx)
-    results = queue.Queue()
 
-    def approve():
-        try:
-            results.put(ctx["svc"].approve_interrupt(interrupt["id"], "approved", "ok"))
-        except Exception as e:
-            results.put(e)
-
-    def reject():
-        try:
-            results.put(ctx["svc"].reject_interrupt(interrupt["id"], "no"))
-        except Exception as e:
-            results.put(e)
-
-    threads = [threading.Thread(target=approve), threading.Thread(target=reject)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join(timeout=5)
-
-    results_list = [results.get() for _ in range(2)]
+    results = await asyncio.gather(
+        ctx["svc"].approve_interrupt(interrupt["id"], "approved", "ok"),
+        ctx["svc"].reject_interrupt(interrupt["id"], "no"),
+        return_exceptions=True,
+    )
     # Exactly one returns an interrupt dict, the other returns None
-    assert any(r is not None for r in results_list)
-    assert any(r is None for r in results_list)
-    # DB is consistent
-    assert ctx["svc"].get_interrupt(interrupt["id"])["status"] in ("approved", "rejected")
+    assert any(r is not None and not isinstance(r, Exception) for r in results)
+    assert any(r is None for r in results)
+    stored = await ctx["svc"].get_interrupt(interrupt["id"])
+    assert stored is not None
+    assert stored["status"] in ("approved", "rejected")
 
 
 def test_sse_events_have_matching_interrupt_ids(ctx):

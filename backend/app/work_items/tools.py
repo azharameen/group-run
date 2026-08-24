@@ -1,13 +1,11 @@
 """LangChain tools exposed to the deep agent runtime (Story 8.2).
 
-``DOMAIN_TOOLS`` are always appended to the runtime tool list (see
-``app.agent.runtime.get_deep_agent_runtime``) alongside MCP tools, so
-the Chief of Staff can accept work items from chat (PRD FR-3).
+``DOMAIN_TOOLS`` are always appended to the runtime tool list alongside MCP tools,
+so the Chief of Staff can accept work items from chat.
 """
 
-import sqlite3
-
 from langchain_core.tools import tool
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..organization.service import OrganizationIntegrityError
 from . import service
@@ -20,23 +18,12 @@ from .service import (
 
 
 @tool
-def submit_work_item(
+async def submit_work_item(
     title: str, description: str = "", department: str | None = None
 ) -> str:
-    """Submit a work item (idea, task, or feature) for the organization.
-
-    The Chief of Staff receives the item, creates it with status "new",
-    and routes it to a department. Pass `department` only when the user
-    clearly indicated which department owns the work ("ideation" for new
-    concepts and ideas, "technology" for build/test/deploy work).
-
-    Args:
-        title: Short title for the work item.
-        description: Full description of the work.
-        department: Optional department id to route the item to.
-    """
+    """Submit a work item (idea, task, or feature) for the organization."""
     try:
-        item = service.submit_work_item(
+        item = await service.submit_work_item(
             title, description, department=department, source="chat"
         )
     except (
@@ -44,7 +31,7 @@ def submit_work_item(
         UnknownOrganizationError,
         ValueError,
         RuntimeError,
-        sqlite3.Error,
+        SQLAlchemyError,
         OrganizationIntegrityError,
     ) as exc:
         return f"Could not submit the work item: {exc}"
@@ -55,19 +42,16 @@ def submit_work_item(
     )
 
 
-DOMAIN_TOOLS = [submit_work_item]
-
-
 @tool
-def transition_work_item(work_item_id: str, status: str, reasoning: str = "") -> str:
+async def transition_work_item(work_item_id: str, status: str, reasoning: str = "") -> str:
     """Advance a work item to a later lifecycle phase."""
     try:
-        item, event = service.transition_work_item(work_item_id, status, reasoning)
+        item, event = await service.transition_work_item(work_item_id, status, reasoning)
     except (
         UnknownWorkItemError,
         ValueError,
         InvalidTransitionError,
-        sqlite3.Error,
+        SQLAlchemyError,
         OrganizationIntegrityError,
     ) as exc:
         return f"Could not transition the work item: {exc}"

@@ -39,6 +39,8 @@ def row_to_work_item(rows: dict[str, Any]) -> WorkItem | None:
 
 def row_to_decision(row: Any) -> DecisionRecord:
     def parse(value: object) -> list[str]:
+        if isinstance(value, list):
+            return value
         try:
             decoded = json.loads(value if isinstance(value, str) else "[]")
             return decoded if isinstance(decoded, list) else []

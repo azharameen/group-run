@@ -560,6 +560,17 @@ Status/Issue Type/Sprint could NOT be set via available tools (no MCP project to
 - source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
   summary: Pre-existing test test_save_artifact_revision_trust_and_evidence_refs still uses trust value "verified", which is outside the new four-level TrustLevel contract.
   evidence: backend/tests/test_storage_artifacts.py passes "verified" and asserts it round-trips; TrustLevel is a type hint only, so the value persists.
+  evidence: decisions.py list_decisions scans routing_decisions and lifecycle_events fully and sorts in Python; fine at current scale but unbounded as history grows. Pre-existing endpoints (list_work_items_with_routing) have the same unbounded pattern.
+
+- source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
+  summary: Path traversal possible via unrestricted idea_id in idea_workspace path construction (pre-existing, now reachable from new artifact endpoints).
+  evidence: backend/app/storage/idea_workspace.py builds workspace paths from raw path parameters; new routes in app/api/routes/artifacts.py pass idea_id through without validation.
+- source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
+  summary: Concurrent save_artifact_revision calls can compute the same version and overwrite the shared artifact-revisions.yaml index.
+  evidence: backend/app/storage/artifacts.py computes version from in-memory list length and rewrites the whole YAML file with no locking (pre-existing pattern).
+- source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
+  summary: Pre-existing test test_save_artifact_revision_trust_and_evidence_refs still uses trust value "verified", which is outside the new four-level TrustLevel contract.
+  evidence: backend/tests/test_storage_artifacts.py passes "verified" and asserts it round-trips; TrustLevel is a type hint only, so the value persists.
 - source_spec: _bmad-output/implementation-artifacts/spec-10-2-persist-artifact-provenance-and-review-access.md
   summary: ArtifactDiffPanel shows "No artifact revisions" for a legitimate empty contentA/contentB instead of rendering the comparison.
   evidence: frontend/src/components/deepagents/ArtifactDiffPanel.tsx treats empty strings as missing revisions (pre-existing component, now used by ArtifactsPanel).
@@ -572,3 +583,8 @@ Status/Issue Type/Sprint could NOT be set via available tools (no MCP project to
 - source_spec: _bmad-output/implementation-artifacts/spec-10-3-support-accuracy-review-and-confidence-flagging.md
   summary: No fault-injection test verifying the review row and its DecisionRecord are written atomically (crash mid-transaction).
   evidence: test_reviews.py covers the success path (both rows present) and the rollback path (decision insert failure rolls back the review), but a true mid-transaction crash test would require fault-injection infrastructure that does not exist in this codebase.
+
+## Deferred from: PostgreSQL Migration Code Review (2026-08-24)
+
+- Native PostgreSQL `DateTime(timezone=True)` & `JSONB` ORM Types (`backend/app/db/models.py`) — Models currently declare timestamps and JSON fields as `Column(String)` and `Column(Text)` to preserve backward compatibility with existing raw dictionary repository return signatures. Revisit when migrating repository return signatures to full ORM entities.
+- Direct ORM Querying in Repositories (`backend/app/organization/repository.py`, `backend/app/work_items/repository.py`) — Repositories use `session.execute(text("..."))` raw SQL queries instead of ORM entity queries (`session.scalars(select(OrganizationModel))`) to match legacy dict-based return contracts. Revisit during full ORM model migration pass.

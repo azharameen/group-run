@@ -64,6 +64,7 @@ class SubmitWorkItemRequest(BaseModel):
     org_id: str | None = Field(default=None, max_length=64)
     department: str | None = Field(default=None, max_length=64)
     source: str | None = Field(default=None, max_length=64)
+    template_id: str | None = Field(default=None, max_length=64)
 
 
 class LifecycleEvent(BaseModel):

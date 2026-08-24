@@ -19,8 +19,14 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) forma
 - Dependabot auto-updates for Python (pip) and JavaScript (npm) dependencies
 - `branches: [main]` filter on production release workflow to prevent false triggers
 
+### Changed
+- Migrated database storage from SQLite to PostgreSQL (Docker Compose locally, Supabase in production)
+- Replaced SQLite storage with SQLAlchemy 2.0 AsyncEngine, asyncpg, and Alembic schema migrations
+- Added reusable GitHub Actions DB migration gate workflow (`db-migrate.yml`)
+- Removed all SQLite dependencies, connections, and storage files (Zero-SQLite policy)
+
 ### Fixed
 - Container startup crash: `teams.yaml` and `instructions/` now bundled inside Docker image
-- SQLite write path fixed to `/tmp/storage` (Cloud Run read-only filesystem)
 - Port binding updated to `${PORT}` env var for Cloud Run compatibility
 - Duplicate `pull_request` trigger removed from `release-beta.yml`
+

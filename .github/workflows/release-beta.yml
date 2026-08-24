@@ -1,8 +1,11 @@
-# Beta & Deployment Test Lane
+# Beta & Deployment Lane
 #
 # Flow:
-# 1. Manual trigger (workflow_dispatch) OR PRs (pre-merge testing) -> Builds & deploys to Cloud Run & Firebase Hosting.
-# 2. Merged PR into develop -> Computes beta tag, creates GitHub Release, and deploys to Cloud Run & Firebase Hosting.
+# 1. Push to develop (or manual trigger) ->
+#    a. DB Migration Gate: runs 'alembic upgrade head' against beta DB.
+#       If this step fails, the deploy is BLOCKED entirely.
+#    b. Build & deploy backend to Cloud Run (beta).
+#    c. Build & deploy frontend to Firebase Hosting.
 
 name: "Release - Beta & Deployment Test"
 
@@ -25,8 +28,25 @@ permissions:
   id-token: write
 
 jobs:
+  # ------------------------------------------------------------------
+  # DB Migration Gate (must succeed before deploy)
+  # ------------------------------------------------------------------
+  beta-db-migrate:
+    name: DB Migration (beta)
+    uses: ./.github/workflows/db-migrate.yml
+    with:
+      environment: beta
+    secrets:
+      DATABASE_DIRECT_URL: ${{ secrets.BETA_DATABASE_DIRECT_URL }}
+
+  # ------------------------------------------------------------------
+  # Backend & Frontend Deploy (depends on migration success)
+  # ------------------------------------------------------------------
   beta-deploy:
+    name: Deploy (beta)
+    needs: beta-db-migrate
     runs-on: ubuntu-latest
+    environment: beta
     env:
       HAS_GCP_KEY: ${{ secrets.GCP_SA_KEY != '' }}
     steps:
@@ -43,17 +63,6 @@ jobs:
             echo "tag=v1.0.0-preview.${{ github.run_number }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Tag and create prerelease (Merged PRs only)
-        if: github.event_name == 'pull_request' && github.event.action == 'closed'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.com"
-          git tag "${{ steps.version.outputs.tag }}" || true
-          git push origin "${{ steps.version.outputs.tag }}" || true
-          gh release create "${{ steps.version.outputs.tag }}" --prerelease --title "${{ steps.version.outputs.tag }}" --target develop --generate-notes || true
-
       - name: Authenticate to Google Cloud
         if: env.HAS_GCP_KEY == 'true'
         uses: google-github-actions/auth@v2
@@ -64,7 +73,7 @@ jobs:
         if: env.HAS_GCP_KEY == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build & Deploy Backend to GCP Cloud Run
+      - name: Build & Deploy Backend to GCP Cloud Run (beta)
         if: env.HAS_GCP_KEY == 'true'
         env:
           GCP_REGION: ${{ secrets.GCP_REGION }}
@@ -74,6 +83,10 @@ jobs:
             --region "${GCP_REGION:-asia-south1}" \
             --platform managed \
             --allow-unauthenticated \
+            --set-env-vars "DATABASE_URL=${{ secrets.BETA_DATABASE_URL }}" \
+            --set-env-vars "DB_SSL_MODE=require" \
+            --set-env-vars "DB_AUTO_MIGRATE=false" \
+            --set-env-vars "LANGGRAPH_STRICT_MSGPACK=true" \
             --min-instances 0 \
             --max-instances 2 \
             --cpu 0.5 \
@@ -94,10 +107,9 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy Frontend to Firebase Hosting
+      - name: Deploy Frontend to Firebase Hosting (beta)
         if: env.HAS_GCP_KEY == 'true'
         run: |
           echo "Target GCP Project ID: ${{ secrets.GCP_PROJECT_ID }}"
           npm install -g firebase-tools
           firebase deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }} --non-interactive || echo "Firebase Hosting skipped/uninitialized."
-

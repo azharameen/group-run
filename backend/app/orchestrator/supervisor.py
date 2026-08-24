@@ -1,16 +1,7 @@
-"""LangGraph supervisor graph — routes user intent to domain-specialist teams.
+"""Supervisor orchestrator graph.
 
-The supervisor is the top-level orchestration graph.  It receives user
-messages, classifies intent, and dispatches to team subgraphs.  For the
-initial EP-1 delivery there is a single "general" team acting as both the
-default and fallback route.
-
-Dependencies flow downward only:
-
-    API Routes -> Supervisor (this module) -> Agent Runtime -> Tools & Backends
-
-See architecture spine AD-1 (LangGraph sole orchestration), AD-3
-(SqliteSaver singleton), and AD-5 (astream v2).
+Combines agent execution, MCP tools, checkpoint persistence
+(AsyncPostgresSaver singleton), and AD-5 (astream v2).
 """
 
 from __future__ import annotations
@@ -28,7 +19,7 @@ from langgraph.graph.message import add_messages
 # We use Any here for version resilience — the consumer contract is astream().
 from ..agent.runtime import get_deep_agent_runtime
 from ..config import settings
-from ..services.thread_manager import get_async_checkpointer
+from ..services.thread_manager import get_pg_checkpointer
 
 logger = logging.getLogger(__name__)
 
@@ -313,23 +304,23 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
 # Graph builder
 # ---------------------------------------------------------------------------
 
-def get_supervisor_graph():
+async def get_supervisor_graph():
     """Build and return the compiled supervisor graph (cached singleton).
 
-    Uses the global SqliteSaver singleton checkpointer — never creates a
-    new one (AD-3).  The compiled graph is cached after first build so
+    Uses the AsyncPostgresSaver singleton checkpointer — never creates a
+    new one. The compiled graph is cached after first build so
     repeated requests don't reconstruct the StateGraph.
 
     Returns
     -------
     Compiled graph supporting ``ainvoke`` / ``astream(version="v2")``.
-    (Return type is ``Any`` for LangGraph version resilience — 0.6.x
-    internals use ``CompiledStateGraph`` rather than ``CompiledGraph``.)
     """
     global _graph
     if _graph is None:
         graph = StateGraph(SupervisorState)
         graph.add_node("general", supervisor_general)
         graph.set_entry_point("general")
-        _graph = graph.compile(checkpointer=get_async_checkpointer())
+        checkpointer = await get_pg_checkpointer()
+        _graph = graph.compile(checkpointer=checkpointer)
     return _graph
+

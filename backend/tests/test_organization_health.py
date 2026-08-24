@@ -34,16 +34,17 @@ def client(org_db, work_item_db):
     return TestClient(create_app())
 
 
-def _create_org() -> str:
+async def _create_org() -> str:
     """Create a default organization and return its id."""
-    return org_service.create_organization("Acme").org_id
+    org = await org_service.create_organization("Acme")
+    return org.org_id
 
 
-def _insert_work_item(org_id: str, department_id: str, status: str = "new") -> str:
+async def _insert_work_item(org_id: str, department_id: str, status: str = "new") -> str:
     """Insert a minimal work item routed to a department; return its id."""
     work_item_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
-    work_items_repo.insert_work_item(
+    await work_items_repo.insert_work_item(
         {
             "work_item_id": work_item_id,
             "org_id": org_id,
@@ -70,13 +71,14 @@ def _insert_work_item(org_id: str, department_id: str, status: str = "new") -> s
 class TestHealthService:
     """Service-level derivation of capacity and workload state."""
 
-    def test_happy_path_counts_and_workload(self, org_db, work_item_db):
-        org_id = _create_org()
-        _insert_work_item(org_id, "technology", "development")
-        _insert_work_item(org_id, "technology", "testing")
-        _insert_work_item(org_id, "ideation", "new")
+    @pytest.mark.asyncio
+    async def test_happy_path_counts_and_workload(self):
+        org_id = await _create_org()
+        await _insert_work_item(org_id, "technology", "development")
+        await _insert_work_item(org_id, "technology", "testing")
+        await _insert_work_item(org_id, "ideation", "new")
 
-        result = org_health.get_organization_health(org_id)
+        result = await org_health.get_organization_health(org_id)
 
         assert result is not None
         assert result.org_id == org_id
@@ -94,10 +96,11 @@ class TestHealthService:
         assert devops.open_work_items == 2
         assert devops.workload_state == "active"
 
-    def test_no_work_items_all_teams_idle(self, org_db, work_item_db):
-        org_id = _create_org()
+    @pytest.mark.asyncio
+    async def test_no_work_items_all_teams_idle(self):
+        org_id = await _create_org()
 
-        result = org_health.get_organization_health(org_id)
+        result = await org_health.get_organization_health(org_id)
 
         assert result is not None
         assert result.total_open_work_items == 0
@@ -106,21 +109,24 @@ class TestHealthService:
                 assert team.open_work_items == 0
                 assert team.workload_state == "idle"
 
-    def test_overload_threshold_boundary(self, org_db, work_item_db, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_overload_threshold_boundary(self, monkeypatch):
         monkeypatch.setattr(settings, "team_overload_threshold", 2)
-        org_id = _create_org()
+        org_id = await _create_org()
         for _ in range(2):
-            _insert_work_item(org_id, "technology")
+            await _insert_work_item(org_id, "technology")
 
-        at_threshold = org_health.get_organization_health(org_id)
+        at_threshold = await org_health.get_organization_health(org_id)
+        assert at_threshold is not None
         dev_at = next(
             t for d in at_threshold.departments for t in d.teams
             if t.team_id == "development-team"
         )
         assert dev_at.workload_state == "active"
 
-        _insert_work_item(org_id, "technology")
-        over_threshold = org_health.get_organization_health(org_id)
+        await _insert_work_item(org_id, "technology")
+        over_threshold = await org_health.get_organization_health(org_id)
+        assert over_threshold is not None
         dev_over = next(
             t for d in over_threshold.departments for t in d.teams
             if t.team_id == "development-team"
@@ -128,25 +134,28 @@ class TestHealthService:
         assert dev_over.open_work_items == 3
         assert dev_over.workload_state == "overloaded"
 
-    def test_monitoring_items_not_counted_open(self, org_db, work_item_db):
-        org_id = _create_org()
-        _insert_work_item(org_id, "technology", "monitoring")
+    @pytest.mark.asyncio
+    async def test_monitoring_items_not_counted_open(self):
+        org_id = await _create_org()
+        await _insert_work_item(org_id, "technology", "monitoring")
 
-        result = org_health.get_organization_health(org_id)
+        result = await org_health.get_organization_health(org_id)
 
         assert result is not None
         assert result.total_open_work_items == 0
 
-    def test_unknown_org_returns_none(self, org_db, work_item_db):
-        assert org_health.get_organization_health("does-not-exist") is None
+    @pytest.mark.asyncio
+    async def test_unknown_org_returns_none(self):
+        assert await org_health.get_organization_health("does-not-exist") is None
 
 
 class TestHealthAPI:
     """API contract for GET /api/organizations/{org_id}/health."""
 
-    def test_health_200_shape_and_snake_case(self, client):
-        org_id = _create_org()
-        _insert_work_item(org_id, "ideation")
+    @pytest.mark.asyncio
+    async def test_health_200_shape_and_snake_case(self, client):
+        org_id = await _create_org()
+        await _insert_work_item(org_id, "ideation")
 
         response = client.get(f"/api/organizations/{org_id}/health")
 

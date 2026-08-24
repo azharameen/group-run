@@ -1,8 +1,7 @@
 """Service layer for the organization structure (Story 8.1).
 
 Creates organizations from the pinned default structure and assembles
-the API tree (OrgTree) from stored rows. Synchronous by design — the
-routes call it directly, matching the ideas/threads storage pattern.
+the API tree (OrgTree) from stored rows.
 """
 
 import uuid
@@ -32,8 +31,6 @@ def _build_agent_order() -> dict[str, int]:
     return order
 
 
-#: Canonical orderings (Story 8.1 Dev Notes §2) so API arrays match the
-#: pinned structure instead of raw SQLite row order.
 DEPARTMENT_ORDER = {
     d["department_id"]: i for i, d in enumerate(DEFAULT_ORG_STRUCTURE["departments"])
 }
@@ -56,30 +53,22 @@ def _agent_from_row(row) -> OrgAgent:
     )
 
 
-def create_organization(name: str, description: str = "") -> Organization:
-    """Create an organization initialized with the pinned default structure.
-
-    The org row and all 24 structure rows persist as a single transaction
-    (review P1). Returns the full organization tree for the new org.
-    """
+async def create_organization(name: str, description: str = "") -> Organization:
+    """Create an organization initialized with the pinned default structure."""
     org_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
-    repository.insert_organization_tree(
+    await repository.insert_organization_tree(
         org_id, name, description, now, DEFAULT_ORG_STRUCTURE
     )
-    created = get_organization(org_id)
+    created = await get_organization(org_id)
     if created is None:
         raise RuntimeError(f"Organization {org_id} vanished after creation")
     return created
 
 
-def get_organization(org_id: str) -> Organization | None:
-    """Assemble the full organization tree, or None if the org is unknown.
-
-    Raises :class:`OrganizationIntegrityError` when the stored rows are
-    inconsistent (review P2) instead of crashing with StopIteration.
-    """
-    rows = repository.get_organization_rows(org_id)
+async def get_organization(org_id: str) -> Organization | None:
+    """Assemble the full organization tree, or None if the org is unknown."""
+    rows = await repository.get_organization_rows(org_id)
     if rows is None:
         return None
     org_row = rows["org"]
@@ -156,8 +145,9 @@ def get_organization(org_id: str) -> Organization | None:
     )
 
 
-def list_organizations() -> list[OrganizationSummary]:
+async def list_organizations() -> list[OrganizationSummary]:
     """Return organization summaries, most recently updated first."""
+    rows = await repository.list_organizations()
     return [
         OrganizationSummary(
             org_id=row["org_id"],
@@ -169,5 +159,5 @@ def list_organizations() -> list[OrganizationSummary]:
             team_count=row["team_count"],
             agent_count=row["agent_count"],
         )
-        for row in repository.list_organizations()
+        for row in rows
     ]

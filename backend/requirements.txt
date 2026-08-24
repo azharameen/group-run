@@ -17,4 +17,12 @@ pytest>=9.1.1
 pytest-asyncio>=1.4.0
 pytest-cov>=7.1.0
 langchain-mcp-adapters>=0.3.2
-langgraph-checkpoint-sqlite>=3.1.1
+# PostgreSQL async checkpointer — replaces langgraph-checkpoint-sqlite
+langgraph-checkpoint-postgres>=2.0.0
+# SQLAlchemy async engine with asyncpg driver
+sqlalchemy[asyncio]>=2.0.30
+asyncpg>=0.29.0
+# psycopg v3 — used by Alembic for DDL (direct connection, not pooled)
+psycopg[binary]>=3.1.18
+# Schema migrations
+alembic>=1.13.0

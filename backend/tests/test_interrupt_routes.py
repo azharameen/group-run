@@ -1,44 +1,37 @@
-import sqlite3
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from unittest.mock import patch
-
 from app.api.app import create_app
 import app.services.interrupt_service as interrupt_module
 from app.services.interrupt_service import InterruptService
 
 
-@pytest.fixture()
-def client(tmp_path, monkeypatch):
-    db_path = Path(tmp_path) / "interrupts.sqlite"
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-
-    class DummyCheckpointer:
-        def __init__(self, conn):
-            self.conn = conn
-
-    monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
-    monkeypatch.setattr(interrupt_module.sqlite3, "connect", lambda *args, **kwargs: conn)
+@pytest.fixture
+async def client():
+    from sqlalchemy import text
+    from app.db.session import get_session_factory
+    async with get_session_factory()() as session:
+        await session.execute(text("DELETE FROM interrupts"))
+        await session.commit()
     InterruptService._instance = None
     client = TestClient(create_app())
     yield client
-    conn.close()
     InterruptService._instance = None
 
 
-def test_list_pending_empty(client):
+@pytest.mark.asyncio
+async def test_list_pending_empty(client):
     res = client.get("/api/interrupts/pending")
     assert res.status_code == 200
     assert res.json() == {"interrupts": []}
 
 
-def test_list_pending_with_data(client):
-    interrupt = InterruptService.instance().create_interrupt(
+@pytest.mark.asyncio
+async def test_list_pending_with_data(client):
+    interrupt = await InterruptService.instance().create_interrupt(
         "thread-1", "write_file", "Need approval", {"path": "x.txt"}
     )
     res = client.get("/api/interrupts/pending")
@@ -76,8 +69,9 @@ def test_create_interrupt_missing_fields(client):
     assert client.post("/api/interrupts/", json={"tool_name": "edit_file", "message": "Approve?"}).status_code == 422
 
 
-def test_approve_interrupt_valid(client):
-    interrupt = InterruptService.instance().create_interrupt("thread-1", "edit_file", "Approve me")
+@pytest.mark.asyncio
+async def test_approve_interrupt_valid(client):
+    interrupt = await InterruptService.instance().create_interrupt("thread-1", "edit_file", "Approve me")
     res = client.patch(
         f"/api/interrupts/{interrupt['id']}/approve",
         json={"decision": "approved", "reason": "ok", "reasoning": "This change is safe."},
@@ -92,15 +86,17 @@ def test_approve_interrupt_not_found(client):
     assert res.status_code == 404
 
 
-def test_approve_interrupt_already_resolved(client):
-    interrupt = InterruptService.instance().create_interrupt("thread-1", "edit_file", "Approve me")
+@pytest.mark.asyncio
+async def test_approve_interrupt_already_resolved(client):
+    interrupt = await InterruptService.instance().create_interrupt("thread-1", "edit_file", "Approve me")
     client.patch(f"/api/interrupts/{interrupt['id']}/approve", json={"decision": "approved", "reason": "ok"})
     res = client.patch(f"/api/interrupts/{interrupt['id']}/approve", json={"decision": "approved", "reason": "again"})
     assert res.status_code == 409
 
 
-def test_reject_interrupt_valid(client):
-    interrupt = InterruptService.instance().create_interrupt("thread-1", "delete", "Reject me")
+@pytest.mark.asyncio
+async def test_reject_interrupt_valid(client):
+    interrupt = await InterruptService.instance().create_interrupt("thread-1", "delete", "Reject me")
     res = client.patch(
         f"/api/interrupts/{interrupt['id']}/reject",
         json={"decision": "rejected", "reason": "no", "reasoning": "This is a dangerous deletion."},
@@ -115,8 +111,9 @@ def test_reject_interrupt_not_found(client):
     assert res.status_code == 404
 
 
-def test_reject_interrupt_already_resolved(client):
-    interrupt = InterruptService.instance().create_interrupt("thread-1", "delete", "Reject me")
+@pytest.mark.asyncio
+async def test_reject_interrupt_already_resolved(client):
+    interrupt = await InterruptService.instance().create_interrupt("thread-1", "delete", "Reject me")
     client.patch(f"/api/interrupts/{interrupt['id']}/reject", json={"decision": "rejected", "reason": "no"})
     res = client.patch(f"/api/interrupts/{interrupt['id']}/reject", json={"decision": "rejected", "reason": "again"})
     assert res.status_code == 409
@@ -124,8 +121,8 @@ def test_reject_interrupt_already_resolved(client):
 
 # ── Resume endpoint (Story 8.4) ─────────────────────────────────────────────
 
-def _resolved_interrupt(client, status="approved"):
-    interrupt = InterruptService.instance().create_interrupt("thread-1", "write_file", "Approve?", {"path": "x.txt"})
+async def _resolved_interrupt(client, status="approved"):
+    interrupt = await InterruptService.instance().create_interrupt("thread-1", "write_file", "Approve?", {"path": "x.txt"})
     if status == "approved":
         client.patch(f"/api/interrupts/{interrupt['id']}/approve", json={"decision": "approved", "reason": "ok"})
     else:
@@ -138,15 +135,17 @@ def test_resume_unknown_interrupt_404(client):
     assert res.status_code == 404
 
 
-def test_resume_pending_interrupt_409(client):
-    interrupt = InterruptService.instance().create_interrupt("thread-1", "write_file", "Approve?")
+@pytest.mark.asyncio
+async def test_resume_pending_interrupt_409(client):
+    interrupt = await InterruptService.instance().create_interrupt("thread-1", "write_file", "Approve?")
     res = client.post(f"/api/interrupts/{interrupt['id']}/resume", json={})
     assert res.status_code == 409
     assert "not resolved" in res.json()["detail"]
 
 
-def test_resume_approve_builds_approve_decision(client):
-    interrupt = _resolved_interrupt(client, "approved")
+@pytest.mark.asyncio
+async def test_resume_approve_builds_approve_decision(client):
+    interrupt = await _resolved_interrupt(client, "approved")
     with patch("app.agent.runner.resume_agent", new=AsyncMock(return_value={"output": "done"})) as mock_resume:
         res = client.post(f"/api/interrupts/{interrupt['id']}/resume", json={})
     assert res.status_code == 200
@@ -154,16 +153,18 @@ def test_resume_approve_builds_approve_decision(client):
     assert res.json()["response"] == "done"
 
 
-def test_resume_reject_builds_reject_decision(client):
-    interrupt = _resolved_interrupt(client, "rejected")
+@pytest.mark.asyncio
+async def test_resume_reject_builds_reject_decision(client):
+    interrupt = await _resolved_interrupt(client, "rejected")
     with patch("app.agent.runner.resume_agent", new=AsyncMock(return_value={"output": "ok"})) as mock_resume:
         res = client.post(f"/api/interrupts/{interrupt['id']}/resume", json={})
     assert res.status_code == 200
     mock_resume.assert_awaited_once_with(interrupt["thread_id"], [{"type": "reject", "message": "no"}])
 
 
-def test_resume_no_checkpoint_409(client):
-    interrupt = _resolved_interrupt(client, "approved")
+@pytest.mark.asyncio
+async def test_resume_no_checkpoint_409(client):
+    interrupt = await _resolved_interrupt(client, "approved")
     with patch("app.agent.runner.resume_agent", new=AsyncMock(side_effect=RuntimeError("no checkpoint"))):
         res = client.post(f"/api/interrupts/{interrupt['id']}/resume", json={})
     assert res.status_code == 409

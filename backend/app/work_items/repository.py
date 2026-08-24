@@ -1,284 +1,243 @@
-"""SQLite repository for work items and routing decisions (Story 8.2).
-Dedicated ``storage/work_items.sqlite`` file, module-singleton
-connection mirroring :mod:`app.organization.repository` (AD-3: one
-storage file per entity — never shared with threads.sqlite).
+"""PostgreSQL repository for work items and routing decisions (Story 8.2).
+
+Full async implementation using SQLAlchemy AsyncSession with a shared connection pool.
 """
+
 import json
-import sqlite3
-import threading
-from pathlib import Path
+import uuid
 from typing import Any
 
-from ..config import STORAGE_DIR
+from sqlalchemy import text
+
+from ..db.session import get_session_factory
 from .models import LIFECYCLE_PHASES
 
-_OPEN_LIFECYCLE_PHASES = tuple(
-    phase for phase in LIFECYCLE_PHASES if phase != "monitoring"
-)
+_OPEN_LIFECYCLE_PHASES = tuple(phase for phase in LIFECYCLE_PHASES if phase != "monitoring")
 
-_WORK_ITEM_DB_PATH: Path | None = None
-_WORK_ITEM_CONN: sqlite3.Connection | None = None
-_CONN_LOCK = threading.Lock()
-def _get_db_path() -> Path:
-    """Return the work_items.sqlite path, creating the storage dir."""
-    global _WORK_ITEM_DB_PATH
-    if _WORK_ITEM_DB_PATH is None:
-        _WORK_ITEM_DB_PATH = Path(STORAGE_DIR) / "work_items.sqlite"
-        _WORK_ITEM_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    return _WORK_ITEM_DB_PATH
-def _init_schema(conn: sqlite3.Connection) -> None:
-    """Create the work item tables if they do not exist yet."""
-    try:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS work_items (
-                work_item_id TEXT PRIMARY KEY,
-                org_id TEXT NOT NULL,
-                title TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                status TEXT NOT NULL DEFAULT 'new',
-                owner_agent_id TEXT NOT NULL,
-                source TEXT NOT NULL DEFAULT 'api',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-                ,department_id TEXT NOT NULL DEFAULT 'ideation'
-            );
-            CREATE TABLE IF NOT EXISTS routing_decisions (
-                work_item_id TEXT PRIMARY KEY,
-                department_id TEXT NOT NULL,
-                decided_by TEXT NOT NULL,
-                decided_at TEXT NOT NULL,
-                confidence TEXT NOT NULL,
-                reasoning TEXT NOT NULL,
-                alternatives TEXT NOT NULL DEFAULT '[]'
-            );
-            CREATE INDEX IF NOT EXISTS idx_work_items_org_created
-                ON work_items (org_id, created_at DESC);
-            CREATE TABLE IF NOT EXISTS lifecycle_events (
-                event_id TEXT PRIMARY KEY,
-                work_item_id TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                from_status TEXT NOT NULL,
-                to_status TEXT NOT NULL,
-                from_department TEXT NOT NULL,
-                to_department TEXT NOT NULL,
-                decided_by TEXT NOT NULL,
-                decided_at TEXT NOT NULL,
-                confidence TEXT NOT NULL,
-                reasoning TEXT NOT NULL,
-                alternatives TEXT NOT NULL DEFAULT '[]'
-            );
-            CREATE INDEX IF NOT EXISTS idx_lifecycle_events_item_time
-                ON lifecycle_events (work_item_id, decided_at);
-            CREATE TABLE IF NOT EXISTS decisions (
-                decision_id TEXT PRIMARY KEY, work_item_id TEXT NOT NULL,
-                agent_id TEXT NOT NULL, decision_type TEXT NOT NULL,
-                reasoning TEXT NOT NULL, evidence TEXT NOT NULL DEFAULT '[]',
-                confidence TEXT NOT NULL, alternatives TEXT NOT NULL DEFAULT '[]',
-                decided_at TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_decisions_item_time
-                ON decisions (work_item_id, decided_at);
-            CREATE INDEX IF NOT EXISTS idx_decisions_agent_time
-                ON decisions (agent_id, decided_at);
-            CREATE TABLE IF NOT EXISTS org_alerts (
-                alert_id TEXT PRIMARY KEY,
-                org_id TEXT NOT NULL,
-                work_item_id TEXT NOT NULL,
-                phase TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                raised_at TEXT NOT NULL
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_org_alerts_dedupe
-                ON org_alerts (org_id, work_item_id, phase);
-            CREATE TABLE IF NOT EXISTS workflow_templates (
-                template_id TEXT PRIMARY KEY,
-                org_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                source_work_item_id TEXT NOT NULL,
-                phases TEXT NOT NULL,
-                departments TEXT NOT NULL,
-                usage_count INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                last_used_at TEXT
-            );
-            CREATE INDEX IF NOT EXISTS idx_workflow_templates_org
-                ON workflow_templates (org_id);
-            CREATE TABLE IF NOT EXISTS accuracy_reviews (
-                review_id TEXT PRIMARY KEY,
-                work_item_id TEXT NOT NULL,
-                reviewer TEXT NOT NULL,
-                accuracy_score INTEGER NOT NULL,
-                summary TEXT NOT NULL,
-                flagged_for_review INTEGER NOT NULL,
-                reviewed_at TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_accuracy_reviews_item_time
-                ON accuracy_reviews (work_item_id, reviewed_at);
-            """
-        )
-        columns = {row[1] for row in conn.execute("PRAGMA table_info(work_items)")}
-        if "department_id" not in columns:
-            conn.execute("ALTER TABLE work_items ADD COLUMN department_id TEXT NOT NULL DEFAULT 'ideation'")
-            conn.execute(
-                "UPDATE work_items SET department_id = (SELECT department_id FROM "
-                "routing_decisions WHERE routing_decisions.work_item_id = work_items.work_item_id)"
+
+# ── Internal helpers ──────────────────────────────────────────────────────
+
+
+def _deserialize(row: dict[str, Any], *json_fields: str) -> dict[str, Any]:
+    """Deserialize JSON string fields in a row dict."""
+    for field in json_fields:
+        if field in row:
+            val = row[field]
+            if isinstance(val, str):
+                try:
+                    row[field] = json.loads(val)
+                except (json.JSONDecodeError, TypeError):
+                    row[field] = []
+            elif val is None:
+                row[field] = []
+    return row
+
+
+# ── Work Items ─────────────────────────────────────────────────────────────
+
+
+async def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
+    """Insert a work item and its routing decision in one transaction."""
+    async with get_session_factory()() as session:
+        try:
+            await session.execute(
+                text(
+                    "INSERT INTO work_items "
+                    "(work_item_id, org_id, title, description, status, owner_agent_id, "
+                    "source, created_at, updated_at, department_id, template_id) "
+                    "VALUES (:work_item_id, :org_id, :title, :description, :status, "
+                    ":owner_agent_id, :source, :created_at, :updated_at, :department_id, :template_id)"
+                ),
+                {
+                    "work_item_id": item["work_item_id"],
+                    "org_id": item["org_id"],
+                    "title": item["title"],
+                    "description": item["description"],
+                    "status": item["status"],
+                    "owner_agent_id": item["owner_agent_id"],
+                    "source": item["source"],
+                    "created_at": item["created_at"],
+                    "updated_at": item["updated_at"],
+                    "department_id": routing["department_id"],
+                    "template_id": item.get("template_id"),
+                },
             )
-        if "template_id" not in columns:
-            conn.execute("ALTER TABLE work_items ADD COLUMN template_id TEXT")
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-def _get_conn() -> sqlite3.Connection:
-    """Return the singleton connection, lazily opening it with WAL mode."""
-    global _WORK_ITEM_CONN
-    with _CONN_LOCK:
-        if _WORK_ITEM_CONN is None:
-            db_path = _get_db_path()
-            _WORK_ITEM_CONN = sqlite3.connect(str(db_path), check_same_thread=False)
-            _WORK_ITEM_CONN.execute("PRAGMA journal_mode=WAL")
-            _WORK_ITEM_CONN.row_factory = sqlite3.Row
-            _init_schema(_WORK_ITEM_CONN)
-    return _WORK_ITEM_CONN
-def _routing_map(conn: sqlite3.Connection, work_item_ids: list[str]) -> dict[str, sqlite3.Row]:
-    """Fetch routing decision rows for the given ids in one query."""
-    if not work_item_ids:
-        return {}
-    placeholders = ",".join("?" for _ in work_item_ids)
-    rows = conn.execute(
-        f"SELECT * FROM routing_decisions WHERE work_item_id IN ({placeholders})",
-        work_item_ids,
-    ).fetchall()
-    return {row["work_item_id"]: row for row in rows}
-def insert_work_item(item: dict[str, Any], routing: dict[str, Any]) -> None:
-    """Insert a work item and its routing decision in one transaction.
-    Rolls back on any error so a failed submit never leaves a work
-    item behind without its routing decision.
-    """
-    conn = _get_conn()
-    try:
-        conn.execute(
-            "INSERT INTO work_items (work_item_id, org_id, title, description,"
-            " status, owner_agent_id, source, created_at, updated_at, department_id, template_id)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                item["work_item_id"],
-                item["org_id"],
-                item["title"],
-                item["description"],
-                item["status"],
-                item["owner_agent_id"],
-                item["source"],
-                item["created_at"],
-                item["updated_at"],
-                routing["department_id"],
-                item.get("template_id"),
+            await session.execute(
+                text(
+                    "INSERT INTO routing_decisions "
+                    "(work_item_id, department_id, decided_by, decided_at, confidence, reasoning, alternatives) "
+                    "VALUES (:work_item_id, :department_id, :decided_by, :decided_at, "
+                    ":confidence, :reasoning, :alternatives)"
+                ),
+                {
+                    "work_item_id": item["work_item_id"],
+                    "department_id": routing["department_id"],
+                    "decided_by": routing["decided_by"],
+                    "decided_at": routing["decided_at"],
+                    "confidence": routing["confidence"],
+                    "reasoning": routing["reasoning"],
+                    "alternatives": json.dumps(routing["alternatives"]),
+                },
+            )
+            await _insert_decision_within_session(
+                session,
+                {
+                    "decision_id": str(uuid.uuid4()),
+                    "work_item_id": item["work_item_id"],
+                    "agent_id": routing["decided_by"],
+                    "decision_type": "routing",
+                    "reasoning": routing["reasoning"],
+                    "evidence": [],
+                    "confidence": routing["confidence"],
+                    "alternatives": routing["alternatives"],
+                    "decided_at": routing["decided_at"],
+                },
+            )
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_work_item_rows(work_item_id: str) -> dict[str, Any] | None:
+    """Return the work item and routing decision rows, or None."""
+    async with get_session_factory()() as session:
+        item_result = await session.execute(
+            text("SELECT * FROM work_items WHERE work_item_id = :id"),
+            {"id": work_item_id},
+        )
+        item = item_result.mappings().one_or_none()
+        if item is None:
+            return None
+        routing_result = await session.execute(
+            text("SELECT * FROM routing_decisions WHERE work_item_id = :id"),
+            {"id": work_item_id},
+        )
+        routing = routing_result.mappings().one_or_none()
+    return {"item": dict(item), "routing": dict(routing) if routing else None}
+
+
+async def list_work_items_with_routing(org_id: str | None = None) -> list[dict[str, Any]]:
+    """Return work items (newest first) paired with their routing rows."""
+    async with get_session_factory()() as session:
+        if org_id is None:
+            item_result = await session.execute(
+                text("SELECT * FROM work_items ORDER BY created_at DESC, work_item_id DESC")
+            )
+        else:
+            item_result = await session.execute(
+                text(
+                    "SELECT * FROM work_items WHERE org_id = :org_id "
+                    "ORDER BY created_at DESC, work_item_id DESC"
+                ),
+                {"org_id": org_id},
+            )
+        items = [dict(r) for r in item_result.mappings()]
+
+        if not items:
+            return []
+
+        ids = [it["work_item_id"] for it in items]
+        placeholders = ", ".join(f":id_{i}" for i in range(len(ids)))
+        routing_result = await session.execute(
+            text(f"SELECT * FROM routing_decisions WHERE work_item_id IN ({placeholders})"),
+            {f"id_{i}": wid for i, wid in enumerate(ids)},
+        )
+        routing_map = {r["work_item_id"]: dict(r) for r in routing_result.mappings()}
+
+    return [{"item": it, "routing": routing_map.get(it["work_item_id"])} for it in items]
+
+
+async def count_open_work_items_by_department(org_id: str) -> dict[str, int]:
+    """Count open items per department for one organization."""
+    placeholders = ", ".join(f":ph_{i}" for i in range(len(_OPEN_LIFECYCLE_PHASES)))
+    params = {"org_id": org_id}
+    params.update({f"ph_{i}": ph for i, ph in enumerate(_OPEN_LIFECYCLE_PHASES)})
+    async with get_session_factory()() as session:
+        result = await session.execute(
+            text(
+                f"SELECT department_id, COUNT(*) AS n FROM work_items "
+                f"WHERE org_id = :org_id AND status IN ({placeholders}) "
+                f"GROUP BY department_id"
             ),
+            params,
         )
-        conn.execute(
-            "INSERT INTO routing_decisions (work_item_id, department_id,"
-            " decided_by, decided_at, confidence, reasoning, alternatives)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (
-                item["work_item_id"],
-                routing["department_id"],
-                routing["decided_by"],
-                routing["decided_at"],
-                routing["confidence"],
-                routing["reasoning"],
-                json.dumps(routing["alternatives"]),
-            ),
-        )
-        insert_decision({
-            "decision_id": str(__import__("uuid").uuid4()),
-            "work_item_id": item["work_item_id"], "agent_id": routing["decided_by"],
-            "decision_type": "routing", "reasoning": routing["reasoning"],
-            "evidence": [], "confidence": routing["confidence"],
-            "alternatives": routing["alternatives"], "decided_at": routing["decided_at"],
-        }, commit=False)
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-def get_work_item_rows(work_item_id: str) -> dict[str, Any] | None:
-    """Return the work item row and its routing decision row, or None."""
-    conn = _get_conn()
-    item = conn.execute(
-        "SELECT * FROM work_items WHERE work_item_id = ?", (work_item_id,)
-    ).fetchone()
-    if item is None:
-        return None
-    routing = conn.execute(
-        "SELECT * FROM routing_decisions WHERE work_item_id = ?", (work_item_id,)
-    ).fetchone()
-    return {"item": item, "routing": routing}
-def list_work_items_with_routing(org_id: str | None = None) -> list[dict[str, Any]]:
-    """Return work items (newest first) paired with their routing rows.
-    ``org_id=None`` lists across all organizations.
-    """
-    conn = _get_conn()
-    if org_id is None:
-        item_rows = conn.execute(
-            "SELECT * FROM work_items ORDER BY created_at DESC, rowid DESC"
-        ).fetchall()
-    else:
-        item_rows = conn.execute(
-            "SELECT * FROM work_items WHERE org_id = ?"
-            " ORDER BY created_at DESC, rowid DESC",
-            (org_id,),
-        ).fetchall()
-    routing = _routing_map(conn, [row["work_item_id"] for row in item_rows])
-    return [
-        {"item": row, "routing": routing.get(row["work_item_id"])} for row in item_rows
-    ]
-def count_open_work_items_by_department(org_id: str) -> dict[str, int]:
-    """Count open work items per department for one organization.
-
-    Open means the item is in a lifecycle phase other than ``monitoring``
-    (the terminal phase). Returns ``{department_id: count}`` with only
-    departments that have at least one open item.
-    """
-    conn = _get_conn()
-    rows = conn.execute(
-        "SELECT department_id, COUNT(*) AS n FROM work_items"
-        f" WHERE org_id = ? AND status IN ({','.join('?' for _ in _OPEN_LIFECYCLE_PHASES)})"
-        " GROUP BY department_id",
-        (org_id, *_OPEN_LIFECYCLE_PHASES),
-    ).fetchall()
-    return {row["department_id"]: row["n"] for row in rows}
+        return {r["department_id"]: r["n"] for r in result.mappings()}
 
 
-def insert_decision(decision: dict[str, Any], commit: bool = True) -> None:
-    conn = _get_conn()
-    try:
-        conn.execute(
-            "INSERT INTO decisions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (decision["decision_id"], decision["work_item_id"], decision["agent_id"],
-             decision["decision_type"], decision["reasoning"], json.dumps(decision.get("evidence", [])),
-             decision["confidence"], json.dumps(decision.get("alternatives", [])),
-             decision["decided_at"]),
-        )
-        if commit:
-            conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+# ── Decisions ─────────────────────────────────────────────────────────────
 
 
-def list_decisions(work_item_id=None, agent_id=None, from_ts=None, to_ts=None):
-    conn = _get_conn()
-    clauses, values = [], []
-    for column, value, operator in (("work_item_id", work_item_id, "="), ("agent_id", agent_id, "="),
-                                    ("decided_at", from_ts, ">="), ("decided_at", to_ts, "<=")):
+async def _insert_decision_within_session(session: Any, decision: dict[str, Any]) -> None:
+    """Insert a decision within an already-open session (no commit)."""
+    await session.execute(
+        text(
+            "INSERT INTO decisions "
+            "(decision_id, work_item_id, agent_id, decision_type, reasoning, "
+            "evidence, confidence, alternatives, decided_at) "
+            "VALUES (:decision_id, :work_item_id, :agent_id, :decision_type, :reasoning, "
+            ":evidence, :confidence, :alternatives, :decided_at)"
+        ),
+        {
+            "decision_id": decision["decision_id"],
+            "work_item_id": decision["work_item_id"],
+            "agent_id": decision["agent_id"],
+            "decision_type": decision["decision_type"],
+            "reasoning": decision["reasoning"],
+            "evidence": json.dumps(decision.get("evidence", [])),
+            "confidence": decision["confidence"],
+            "alternatives": json.dumps(decision.get("alternatives", [])),
+            "decided_at": decision["decided_at"],
+        },
+    )
+
+
+async def insert_decision(decision: dict[str, Any]) -> None:
+    """Insert an agent decision record."""
+    async with get_session_factory()() as session:
+        try:
+            await _insert_decision_within_session(session, decision)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def list_decisions(
+    work_item_id: str | None = None,
+    agent_id: str | None = None,
+    from_ts: str | None = None,
+    to_ts: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return decision records, optionally filtered."""
+    clauses, params = [], {}
+    for column, value, operator in (
+        ("work_item_id", work_item_id, "="),
+        ("agent_id", agent_id, "="),
+        ("decided_at", from_ts, ">="),
+        ("decided_at", to_ts, "<="),
+    ):
         if value is not None:
-            clauses.append(f"{column} {operator} ?")
-            values.append(value)
+            key = f"p_{column}_{operator.replace('>', 'gt').replace('<', 'lt').replace('=', 'eq')}"
+            clauses.append(f"{column} {operator} :{key}")
+            params[key] = value
+
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
-    return conn.execute(f"SELECT * FROM decisions{where} ORDER BY decided_at ASC, rowid ASC", values).fetchall()
+    async with get_session_factory()() as session:
+        result = await session.execute(
+            text(f"SELECT * FROM decisions{where} ORDER BY decided_at ASC, decision_id ASC"),
+            params,
+        )
+        rows = [dict(r) for r in result.mappings()]
+    for row in rows:
+        _deserialize(row, "evidence", "alternatives")
+    return rows
 
 
-def insert_template(
+# ── Templates ─────────────────────────────────────────────────────────────
+
+
+async def insert_template(
     template_id: str,
     org_id: str,
     name: str,
@@ -288,139 +247,197 @@ def insert_template(
     created_at: str,
 ) -> None:
     """Insert a workflow template."""
-    conn = _get_conn()
-    try:
-        conn.execute(
-            "INSERT INTO workflow_templates (template_id, org_id, name,"
-            " source_work_item_id, phases, departments, usage_count, created_at, last_used_at)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                template_id,
-                org_id,
-                name,
-                source_work_item_id,
-                json.dumps(phases),
-                json.dumps(departments),
-                0,
-                created_at,
-                None,
-            ),
-        )
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-
-
-def insert_review(review: dict[str, Any], decision: dict[str, Any]) -> None:
-    """Insert an accuracy review and its companion decision in one transaction.
-
-    Rolls back on any error so a review never persists without the
-    provenance decision that backs it (spec: transactional pair, same
-    pattern as :func:`insert_work_item`).
-    """
-    conn = _get_conn()
-    try:
-        conn.execute(
-            "INSERT INTO accuracy_reviews (review_id, work_item_id, reviewer,"
-            " accuracy_score, summary, flagged_for_review, reviewed_at)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (
-                review["review_id"],
-                review["work_item_id"],
-                review["reviewer"],
-                review["accuracy_score"],
-                review["summary"],
-                1 if review["flagged_for_review"] else 0,
-                review["reviewed_at"],
-            ),
-        )
-        insert_decision(decision, commit=False)
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-
-
-def list_templates(org_id: str) -> list[sqlite3.Row]:
-    """List all templates for an organization."""
-    conn = _get_conn()
-    return conn.execute(
-        "SELECT * FROM workflow_templates WHERE org_id = ?"
-        " ORDER BY created_at DESC",
-        (org_id,),
-    ).fetchall()
-
-
-def get_template(template_id: str) -> sqlite3.Row | None:
-    """Fetch a single template by id, or None."""
-    conn = _get_conn()
-    return conn.execute(
-        "SELECT * FROM workflow_templates WHERE template_id = ?",
-        (template_id,),
-    ).fetchone()
-
-
-def record_template_usage(template_id: str, now: str) -> None:
-    """Increment usage_count and set last_used_at for a template."""
-    conn = _get_conn()
-    try:
-        conn.execute(
-            "UPDATE workflow_templates SET usage_count = usage_count + 1,"
-            " last_used_at = ? WHERE template_id = ?",
-            (now, template_id),
-        )
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-
-
-def list_reviews(work_item_id: str) -> list[sqlite3.Row]:
-    """Return accuracy review rows for one item, oldest reviewed first."""
-    conn = _get_conn()
-    return conn.execute(
-        "SELECT * FROM accuracy_reviews WHERE work_item_id = ?"
-        " ORDER BY reviewed_at ASC, rowid ASC",
-        (work_item_id,),
-    ).fetchall()
-
-
-def __getattr__(name: str) -> Any:
-    if name in (
-        "insert_lifecycle_event",
-        "list_lifecycle_events",
-        "record_transition",
-        "update_work_item_status",
-        "insert_org_alert",
-        "list_org_alerts",
-        "has_org_alert",
-        "record_reassignment",
-        "record_escalation",
-    ):
-        from . import lifecycle_repository
-        return getattr(lifecycle_repository, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def _reset_work_item_db(conn: sqlite3.Connection | None = None) -> None:
-    """Reset the repository singletons (test hook).
-    Closes the current connection (best effort) and replaces the globals
-    in place — the module is never purged from ``sys.modules``, mirroring
-    the organization repository reset rationale. When ``conn`` is
-    provided it becomes the active connection (schema initialized);
-    otherwise the next access reopens the file-backed database.
-    """
-    global _WORK_ITEM_DB_PATH, _WORK_ITEM_CONN
-    if _WORK_ITEM_CONN is not None and _WORK_ITEM_CONN is not conn:
+    async with get_session_factory()() as session:
         try:
-            _WORK_ITEM_CONN.close()
-        except sqlite3.Error:
-            pass
-    _WORK_ITEM_DB_PATH = None
-    if conn is None:
-        _WORK_ITEM_CONN = None
-        return
-    conn.row_factory = sqlite3.Row
-    _init_schema(conn)
-    _WORK_ITEM_CONN = conn
+            await session.execute(
+                text(
+                    "INSERT INTO workflow_templates "
+                    "(template_id, org_id, name, source_work_item_id, phases, departments, "
+                    "usage_count, created_at, last_used_at) "
+                    "VALUES (:template_id, :org_id, :name, :source_work_item_id, :phases, "
+                    ":departments, 0, :created_at, NULL)"
+                ),
+                {
+                    "template_id": template_id,
+                    "org_id": org_id,
+                    "name": name,
+                    "source_work_item_id": source_work_item_id,
+                    "phases": json.dumps(phases),
+                    "departments": json.dumps(departments),
+                    "created_at": created_at,
+                },
+            )
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def list_templates(org_id: str) -> list[dict[str, Any]]:
+    """List all templates for an organization."""
+    async with get_session_factory()() as session:
+        result = await session.execute(
+            text(
+                "SELECT * FROM workflow_templates WHERE org_id = :org_id "
+                "ORDER BY created_at DESC"
+            ),
+            {"org_id": org_id},
+        )
+        rows = [dict(r) for r in result.mappings()]
+    for row in rows:
+        _deserialize(row, "phases", "departments")
+    return rows
+
+
+async def get_template(template_id: str) -> dict[str, Any] | None:
+    """Fetch a single template by id, or None."""
+    async with get_session_factory()() as session:
+        result = await session.execute(
+            text("SELECT * FROM workflow_templates WHERE template_id = :id"),
+            {"id": template_id},
+        )
+        row = result.mappings().one_or_none()
+    if row is None:
+        return None
+    data = dict(row)
+    _deserialize(data, "phases", "departments")
+    return data
+
+
+async def record_template_usage(template_id: str, now: str) -> None:
+    """Increment usage_count and set last_used_at for a template."""
+    async with get_session_factory()() as session:
+        try:
+            await session.execute(
+                text(
+                    "UPDATE workflow_templates "
+                    "SET usage_count = usage_count + 1, last_used_at = :now "
+                    "WHERE template_id = :id"
+                ),
+                {"now": now, "id": template_id},
+            )
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+# ── Reviews ───────────────────────────────────────────────────────────────
+
+
+async def insert_review(review: dict[str, Any], decision: dict[str, Any]) -> None:
+    """Insert an accuracy review and its companion decision in one transaction."""
+    async with get_session_factory()() as session:
+        try:
+            await session.execute(
+                text(
+                    "INSERT INTO accuracy_reviews "
+                    "(review_id, work_item_id, reviewer, accuracy_score, summary, "
+                    "flagged_for_review, reviewed_at) "
+                    "VALUES (:review_id, :work_item_id, :reviewer, :accuracy_score, "
+                    ":summary, :flagged_for_review, :reviewed_at)"
+                ),
+                {
+                    "review_id": review["review_id"],
+                    "work_item_id": review["work_item_id"],
+                    "reviewer": review["reviewer"],
+                    "accuracy_score": review["accuracy_score"],
+                    "summary": review["summary"],
+                    "flagged_for_review": bool(review["flagged_for_review"]),
+                    "reviewed_at": review["reviewed_at"],
+                },
+            )
+            await _insert_decision_within_session(session, decision)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def list_reviews(work_item_id: str) -> list[dict[str, Any]]:
+    """Return accuracy review rows for one item, oldest reviewed first."""
+    async with get_session_factory()() as session:
+        result = await session.execute(
+            text(
+                "SELECT * FROM accuracy_reviews WHERE work_item_id = :id "
+                "ORDER BY reviewed_at ASC, review_id ASC"
+            ),
+            {"id": work_item_id},
+        )
+        return [dict(r) for r in result.mappings()]
+
+
+# ── Lifecycle (delegated from lifecycle_repository) ───────────────────────
+
+
+async def insert_lifecycle_event(event: dict[str, Any]) -> None:
+    from . import lifecycle_repository
+    await lifecycle_repository.insert_lifecycle_event(event)
+
+
+async def list_lifecycle_events(work_item_id: str) -> list[dict[str, Any]]:
+    from . import lifecycle_repository
+    return await lifecycle_repository.list_lifecycle_events(work_item_id)
+
+
+async def update_work_item_status(
+    work_item_id: str,
+    status: str,
+    department_id: str,
+    updated_at: str,
+    expected_status: str | None = None,
+) -> None:
+    from . import lifecycle_repository
+    await lifecycle_repository.update_work_item_status(
+        work_item_id, status, department_id, updated_at, expected_status=expected_status
+    )
+
+
+async def record_transition(
+    work_item_id: str,
+    status: str,
+    department_id: str,
+    updated_at: str,
+    event: dict[str, Any],
+    expected_status: str | None = None,
+    decision: dict[str, Any] | None = None,
+) -> None:
+    from . import lifecycle_repository
+    await lifecycle_repository.record_transition(
+        work_item_id, status, department_id, updated_at, event,
+        expected_status=expected_status, decision=decision,
+    )
+
+
+async def record_reassignment(
+    work_item_id: str,
+    owner_agent_id: str,
+    updated_at: str,
+    event: dict[str, Any],
+    previous_owner_agent_id: str | None = None,
+) -> None:
+    from . import lifecycle_repository
+    await lifecycle_repository.record_reassignment(
+        work_item_id, owner_agent_id, updated_at, event,
+        previous_owner_agent_id=previous_owner_agent_id,
+    )
+
+
+async def insert_org_alert(alert: dict[str, Any]) -> None:
+    from . import lifecycle_repository
+    await lifecycle_repository.insert_org_alert(alert)
+
+
+async def list_org_alerts(org_id: str) -> list[dict[str, Any]]:
+    from . import lifecycle_repository
+    return await lifecycle_repository.list_org_alerts(org_id)
+
+
+async def has_org_alert(org_id: str, work_item_id: str, phase: str) -> bool:
+    from . import lifecycle_repository
+    return await lifecycle_repository.has_org_alert(org_id, work_item_id, phase)
+
+
+async def record_escalation(alert: dict[str, Any], event: dict[str, Any]) -> None:
+    from . import lifecycle_repository
+    await lifecycle_repository.record_escalation(alert, event)

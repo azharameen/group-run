@@ -1,4 +1,3 @@
-import sqlite3
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,21 +9,16 @@ from app.api.routes.sse import sse
 from app.services.interrupt_service import InterruptService
 
 
-@pytest.fixture()
-def service(tmp_path, monkeypatch):
-    db_path = Path(tmp_path) / "interrupts.sqlite"
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-
-    class DummyCheckpointer:
-        def __init__(self, conn):
-            self.conn = conn
-
-    monkeypatch.setattr(InterruptService, "_conn", lambda self: conn)
+@pytest.fixture
+async def service(monkeypatch):
+    from sqlalchemy import text
+    from app.db.session import get_session_factory
+    async with get_session_factory()() as session:
+        await session.execute(text("DELETE FROM interrupts"))
+        await session.commit()
     InterruptService._instance = None
     svc = InterruptService.instance()
     yield svc
-    conn.close()
     InterruptService._instance = None
 
 
@@ -36,9 +30,10 @@ async def test_sse_endpoint_returns_streaming_response():
     assert result.media_type == "text/event-stream"
 
 
-def test_create_interrupt_publishes_event(service):
+@pytest.mark.asyncio
+async def test_create_interrupt_publishes_event(service):
     with patch.object(interrupt_module._bus, "publish") as publish:
-        interrupt = service.create_interrupt("thread-1", "write_file", "Need approval", {"path": "x.txt"})
+        interrupt = await service.create_interrupt("thread-1", "write_file", "Need approval", {"path": "x.txt"})
 
     publish.assert_called_once()
     event_type, payload = publish.call_args.args
@@ -47,27 +42,31 @@ def test_create_interrupt_publishes_event(service):
     assert payload["interrupt"]["id"] == interrupt["id"]
 
 
-def test_approve_interrupt_publishes_event(service):
-    interrupt = service.create_interrupt("thread-2", "edit_file", "Approve me")
+@pytest.mark.asyncio
+async def test_approve_interrupt_publishes_event(service):
+    interrupt = await service.create_interrupt("thread-2", "edit_file", "Approve me")
     with patch.object(interrupt_module._bus, "publish") as publish:
-        updated = service.approve_interrupt(interrupt["id"], "approved", "ok")
+        updated = await service.approve_interrupt(interrupt["id"], "approved", "ok")
 
     publish.assert_called_once()
     event_type, payload = publish.call_args.args
     assert event_type == "interrupt.approved"
     assert payload["thread_id"] == "thread-2"
     assert payload["interrupt"]["status"] == "approved"
+    assert updated is not None
     assert updated["id"] == interrupt["id"]
 
 
-def test_reject_interrupt_publishes_event(service):
-    interrupt = service.create_interrupt("thread-3", "delete", "Reject me")
+@pytest.mark.asyncio
+async def test_reject_interrupt_publishes_event(service):
+    interrupt = await service.create_interrupt("thread-3", "delete", "Reject me")
     with patch.object(interrupt_module._bus, "publish") as publish:
-        updated = service.reject_interrupt(interrupt["id"], "no")
+        updated = await service.reject_interrupt(interrupt["id"], "no")
 
     publish.assert_called_once()
     event_type, payload = publish.call_args.args
     assert event_type == "interrupt.rejected"
     assert payload["thread_id"] == "thread-3"
     assert payload["interrupt"]["status"] == "rejected"
+    assert updated is not None
     assert updated["id"] == interrupt["id"]
