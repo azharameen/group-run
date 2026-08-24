@@ -124,7 +124,6 @@ plugins:
         Group Run is a multi-agent AI platform powered by LangGraph and DeepAgents.
         Backend: FastAPI + LangGraph on GCP Cloud Run. Frontend: React + Vite on Firebase Hosting.
         Agents follow a supervisor-router pattern defined in teams.yaml. MCP tools loaded at runtime from mcp.json.
-      full_output: true
   - redirects:
       redirect_maps: {}
 
