@@ -28,6 +28,7 @@ _logger = logging.getLogger(__name__)
 
 _PG_CHECKPOINTER = None
 _PG_CHECKPOINTER_CM = None
+_PG_CHECKPOINTER_LOOP: asyncio.AbstractEventLoop | None = None
 _CHECKPOINTER_LOCK = asyncio.Lock()
 
 
@@ -38,7 +39,17 @@ async def get_pg_checkpointer():
     checkpoint tables (checkpoints, checkpoint_writes, etc.) exist.
     Must be called from an async context.
     """
-    global _PG_CHECKPOINTER, _PG_CHECKPOINTER_CM
+    global _PG_CHECKPOINTER, _PG_CHECKPOINTER_CM, _PG_CHECKPOINTER_LOOP
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+
+    if _PG_CHECKPOINTER is not None and current_loop is not None and _PG_CHECKPOINTER_LOOP is not current_loop:
+        _PG_CHECKPOINTER = None
+        _PG_CHECKPOINTER_CM = None
+        _PG_CHECKPOINTER_LOOP = None
+
     if _PG_CHECKPOINTER is None:
         async with _CHECKPOINTER_LOCK:
             if _PG_CHECKPOINTER is None:
@@ -56,17 +67,19 @@ async def get_pg_checkpointer():
                     await cp.setup()
                     _PG_CHECKPOINTER_CM = cm
                     _PG_CHECKPOINTER = cp
+                    _PG_CHECKPOINTER_LOOP = current_loop
                     _logger.info("[ThreadManager] AsyncPostgresSaver initialized")
                 except Exception:
                     _PG_CHECKPOINTER = None
                     _PG_CHECKPOINTER_CM = None
+                    _PG_CHECKPOINTER_LOOP = None
                     raise
     return _PG_CHECKPOINTER
 
 
 async def close_pg_checkpointer() -> None:
     """Close active checkpointer connections cleanly."""
-    global _PG_CHECKPOINTER, _PG_CHECKPOINTER_CM
+    global _PG_CHECKPOINTER, _PG_CHECKPOINTER_CM, _PG_CHECKPOINTER_LOOP
     if _PG_CHECKPOINTER_CM is not None:
         try:
             await _PG_CHECKPOINTER_CM.__aexit__(None, None, None)
@@ -75,13 +88,15 @@ async def close_pg_checkpointer() -> None:
         finally:
             _PG_CHECKPOINTER = None
             _PG_CHECKPOINTER_CM = None
+            _PG_CHECKPOINTER_LOOP = None
 
 
 def reset_pg_checkpointer() -> None:
     """Reset the checkpointer singleton reference."""
-    global _PG_CHECKPOINTER, _PG_CHECKPOINTER_CM
+    global _PG_CHECKPOINTER, _PG_CHECKPOINTER_CM, _PG_CHECKPOINTER_LOOP
     _PG_CHECKPOINTER = None
     _PG_CHECKPOINTER_CM = None
+    _PG_CHECKPOINTER_LOOP = None
 
 
 # ── Thread Metadata CRUD ──────────────────────────────────────────────────

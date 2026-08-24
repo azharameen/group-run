@@ -30,6 +30,7 @@ _logger = logging.getLogger(__name__)
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
+_engine_loop: asyncio.AbstractEventLoop | None = None
 _engine_lock = asyncio.Lock()
 
 
@@ -40,7 +41,16 @@ def get_engine() -> AsyncEngine:
     Call ``await dispose_engine()`` during application shutdown to release
     all pooled connections cleanly.
     """
-    global _engine
+    global _engine, _session_factory, _engine_loop
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+
+    if _engine is not None and current_loop is not None and _engine_loop is not current_loop:
+        _engine = None
+        _session_factory = None
+
     if _engine is None:
         connect_args: dict = {}
         ssl_mode = (settings.db_ssl_mode or "").lower()
@@ -56,6 +66,7 @@ def get_engine() -> AsyncEngine:
             connect_args=connect_args,
             echo=False,
         )
+        _engine_loop = current_loop
         _logger.info(
             "PostgreSQL async engine created (pool_size=%d, max_overflow=%d)",
             settings.db_pool_min_size,
