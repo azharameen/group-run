@@ -18,6 +18,7 @@ WORKDIR /app
 ENV PATH="/opt/venv/bin:$PATH"
 ENV LANGGRAPH_STRICT_MSGPACK=true
 ENV APP_ROOT_DIR=/app
+ENV STORAGE_DIR=/tmp/storage
 ENV PYTHONUNBUFFERED=1
 
 COPY --from=builder /opt/venv /opt/venv
@@ -27,10 +28,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY app/ ./app/
+COPY config/ ./config/
+COPY instructions/ ./instructions/
+RUN mkdir -p /tmp/storage /tmp/workspace /tmp/knowledge-base
 
-EXPOSE 8000
+ENV PORT=8080
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT}/api/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

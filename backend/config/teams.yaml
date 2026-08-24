@@ -1,0 +1,46 @@
+# Companion Platform - Team Configuration
+# ===========================================================================
+# This file defines domain-specialist teams for the LangGraph Supervisor.
+# The supervisor routes user intent to teams via tool calling based on
+# routing_keys. Each team contains agents, tools, and a subgraph structure.
+#
+# Schema Version: 1.0
+# Loading Precedence (AD-14): teams.yaml → mcp.json → DB overlay → env vars
+# ===========================================================================
+
+schema_version: "1.0"
+
+teams:
+  # General Assistant - Default/Fallback Team
+  # Serves as the catch-all for general inquiries and unclassified intents.
+  general:
+    name: "General Assistant"
+    description: "Default team for general inquiries and fallback routing."
+
+    # Agents within this team. Each becomes a DeepAgents agent instance.
+    agents:
+      - name: "general-assistant"
+        role: "assistant"
+        model: "auto"  # inherits from platform default
+
+    # Tool identifiers available to this team.
+    # Actual tool registration happens at runtime (ST-1.6+).
+    tools:
+      - "search"
+      - "knowledge_base"
+
+    # Subgraph structure defines how agents within this team are wired.
+    # Supported types: sequential, parallel, conditional
+    subgraph:
+      type: "sequential"  # agents run in sequence
+      nodes:
+        - "general-assistant"
+
+    # Keywords the supervisor matches against user intent to route here.
+    # Add new keys to expand this team's routing surface.
+    routing_keys:
+      - "general"
+      - "default"
+      - "fallback"
+      - "help"
+      - "greeting"

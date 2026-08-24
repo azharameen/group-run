@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "servers": [
+    {
+      "name": "example-stdio-server",
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server_example"
+      ],
+      "timeout": 15,
+      "options": {}
+    },
+    {
+      "name": "example-http-server",
+      "transport": "http",
+      "url": "http://localhost:3001/mcp",
+      "timeout": 10,
+      "options": {
+        "headers": {}
+      }
+    }
+  ]
+}
