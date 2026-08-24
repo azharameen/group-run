@@ -8,7 +8,7 @@ pyyaml>=6.0.3
 # releases also expose `memory: list[str]`, but pin exactly so CI
 # resolves the same API the backend is tested against.
 deepagents==0.7.8
-langchain>=0.0.232
+langchain>=1.3.16
 langchain-openai>=0.1.0
 openai>=0.27.0
 httpx>=0.28.0
