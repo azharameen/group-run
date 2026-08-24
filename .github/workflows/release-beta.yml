@@ -10,6 +10,9 @@ on:
   workflow_dispatch: {}
   push:
     branches: [develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
