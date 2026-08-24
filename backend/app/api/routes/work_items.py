@@ -90,6 +90,7 @@ async def get_work_item(work_item_id: str = Path(..., max_length=64)) -> dict:
 
 
 @router.post("/work-items/{work_item_id}/transition", status_code=200)
+@router.post("/work-items/{work_item_id}/transitions", status_code=200)
 async def transition_work_item(
     request: TransitionWorkItemRequest,
     work_item_id: str = Path(..., max_length=64),
@@ -114,6 +115,7 @@ async def transition_work_item(
 
 
 @router.get("/work-items/{work_item_id}/history")
+@router.get("/work-items/{work_item_id}/lifecycle")
 async def get_work_item_history(work_item_id: str = Path(..., max_length=64)) -> dict:
     """Return the audit trail of lifecycle events for a work item."""
     try:
@@ -124,4 +126,8 @@ async def get_work_item_history(work_item_id: str = Path(..., max_length=64)) ->
         raise HTTPException(
             status_code=500, detail="Failed to load work item history"
         ) from exc
-    return {"history": [event.model_dump() for event in events], "count": len(events)}
+    return {
+        "events": [event.model_dump() for event in events],
+        "history": [event.model_dump() for event in events],
+        "count": len(events),
+    }
