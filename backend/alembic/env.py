@@ -14,17 +14,19 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 from logging.config import fileConfig
+from pathlib import Path
+
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
 
 # ── Make the backend package importable from the alembic directory ────────
 _backend_dir = Path(__file__).resolve().parent.parent  # .../backend/
 sys.path.insert(0, str(_backend_dir))
 
-from app.db.models import Base  # noqa: E402  — must come after sys.path insert
+from app.db.models import Base
+from app.db.url import normalize_sqlalchemy_postgres_url
 
 # ── Alembic Config object (provides access to alembic.ini values) ────────
 config = context.config
@@ -47,8 +49,7 @@ def _get_url() -> str:
             "DATABASE_DIRECT_URL (or DATABASE_URL) must be set for Alembic migrations. "
             "Check your .env file or CI secrets."
         )
-    # Convert asyncpg URL to psycopg (sync) if caller accidentally set the async URL.
-    return url.replace("+asyncpg", "+psycopg").replace("postgresql+psycopg2", "postgresql+psycopg")
+    return normalize_sqlalchemy_postgres_url(url, drivername="postgresql+psycopg")
 
 
 def run_migrations_offline() -> None:

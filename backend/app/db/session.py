@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from ..config import settings
+from .url import normalize_sqlalchemy_postgres_url
 
 _logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ def get_engine() -> AsyncEngine:
             connect_args["ssl"] = ssl_mode
 
         _engine = create_async_engine(
-            settings.database_url,
+            normalize_sqlalchemy_postgres_url(settings.database_url, drivername="postgresql+asyncpg"),
             pool_size=settings.db_pool_min_size,
             max_overflow=max(0, settings.db_pool_max_size - settings.db_pool_min_size),
             pool_timeout=settings.db_pool_timeout,

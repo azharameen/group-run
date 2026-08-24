@@ -21,6 +21,7 @@ from sqlalchemy import text
 
 from ..config import settings
 from ..db.session import get_session_factory
+from ..db.url import normalize_postgres_dsn
 
 _logger = logging.getLogger(__name__)
 
@@ -55,11 +56,7 @@ async def get_pg_checkpointer():
             if _PG_CHECKPOINTER is None:
                 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-                db_url = settings.database_url
-                pg_url = (
-                    db_url.replace("postgresql+asyncpg://", "postgresql://")
-                    .replace("postgresql+psycopg://", "postgresql://")
-                )
+                pg_url = normalize_postgres_dsn(settings.database_url)
 
                 try:
                     cm = AsyncPostgresSaver.from_conn_string(pg_url)
