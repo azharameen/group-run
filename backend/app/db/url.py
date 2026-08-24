@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import socket
+
 from sqlalchemy.engine import make_url
 
 
@@ -25,6 +27,16 @@ def normalize_postgres_dsn(raw_url: str) -> str:
     cleaned = cleaned.replace("postgresql+psycopg://", "postgresql://")
 
     url = make_url(cleaned).set(drivername="postgresql")
+    host = url.host
+    if host:
+        try:
+            for family, _, _, _, sockaddr in socket.getaddrinfo(host, url.port or 5432, socket.AF_INET):
+                if family == socket.AF_INET and sockaddr:
+                    ipv4 = sockaddr[0]
+                    url = url.set(query={**url.query, "hostaddr": ipv4})
+                    break
+        except OSError:
+            pass
     return url.render_as_string(hide_password=False)
 
 
