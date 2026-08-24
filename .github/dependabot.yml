@@ -1,0 +1,22 @@
+# Dependabot update strategy
+# - weekly cadence for both ecosystems
+# - npm dev-dependencies minor/patch are grouped into one PR
+# - MAJOR updates (e.g. vite 5 -> 8) always land as standalone PRs
+#   for human review — they are upgrade stories, not chores
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      frontend-dev-deps:
+        dependency-type: "development"
+        update-type: "version-update:semver-minor"

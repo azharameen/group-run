@@ -25,6 +25,8 @@ vi.mock('@/api/client', () => ({
   addIdeaComment: vi.fn(),
   connectSSE: vi.fn(() => ({ close: vi.fn() })),
   fetchPendingInterrupts: vi.fn(),
+  fetchIdeaRevisions: vi.fn().mockResolvedValue([]),
+  fetchArtifactDiff: vi.fn().mockResolvedValue({ artifact_name: '', available: false, revisions: [] }),
 }));
 
 vi.mock('@/api/deepagents', () => ({

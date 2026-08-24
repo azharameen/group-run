@@ -1,7 +1,13 @@
 import os
 from pathlib import Path
 
-from app.storage.artifacts import save_artifact_revision, load_artifact_revisions
+import pytest
+from app.storage.artifacts import (
+    _artifact_index_path,
+    load_artifact_revisions,
+    save_artifact_revision,
+)
+from app.storage.base import write_yaml
 from app.storage.idea_workspace import load_idea_yaml, save_idea_yaml
 
 
@@ -132,3 +138,89 @@ def test_save_artifact_revision_trust_and_evidence_refs(patch_config):
     idea_data = load_idea_yaml(idea_id, "idea.yaml")
     meta = idea_data["artifact_revisions"][artifact_name]
     assert meta["trust"] == "verified"
+
+
+def test_save_artifact_revision_persists_agent_id(patch_config):
+    idea_id = "IDEA-0001"
+    artifact_name = "patent-claims"
+
+    save_idea_yaml(idea_id, "idea.yaml", {})
+
+    record = save_artifact_revision(
+        idea_id=idea_id,
+        artifact_name=artifact_name,
+        content="Claim 1",
+        provenance="agent",
+        agent_id="deepagents",
+    )
+
+    assert record["agent_id"] == "deepagents"
+
+    revisions = load_artifact_revisions(idea_id)
+    assert revisions[0]["agent_id"] == "deepagents"
+
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    meta = idea_data["artifact_revisions"][artifact_name]
+    assert meta["agent_id"] == "deepagents"
+
+
+def test_save_artifact_revision_defaults_agent_id_to_unknown(patch_config):
+    idea_id = "IDEA-0001"
+    artifact_name = "patent-claims"
+
+    save_idea_yaml(idea_id, "idea.yaml", {})
+
+    record = save_artifact_revision(
+        idea_id=idea_id,
+        artifact_name=artifact_name,
+        content="Claim 1",
+        provenance="user",
+    )
+
+    assert record["agent_id"] == "unknown"
+
+
+@pytest.mark.parametrize("trust", ["generated", "trusted", "verified-tool-call", "fallback"])
+def test_save_artifact_revision_accepts_all_trust_levels(patch_config, trust):
+    idea_id = "IDEA-0001"
+    artifact_name = "patent-claims"
+
+    save_idea_yaml(idea_id, "idea.yaml", {})
+
+    record = save_artifact_revision(
+        idea_id=idea_id,
+        artifact_name=artifact_name,
+        content="Claim 1",
+        provenance="agent",
+        trust=trust,
+    )
+
+    assert record["trust"] == trust
+
+    idea_data = load_idea_yaml(idea_id, "idea.yaml")
+    meta = idea_data["artifact_revisions"][artifact_name]
+    assert meta["trust"] == trust
+
+
+def test_legacy_revision_without_agent_id_loads(patch_config):
+    idea_id = "IDEA-0001"
+    artifact_name = "patent-claims"
+
+    save_idea_yaml(idea_id, "idea.yaml", {})
+
+    record = save_artifact_revision(
+        idea_id=idea_id,
+        artifact_name=artifact_name,
+        content="Claim 1",
+        provenance="agent",
+    )
+    # Simulate a legacy record written before agent_id existed
+    del record["agent_id"]
+    revisions = load_artifact_revisions(idea_id)
+    revisions[0].pop("agent_id", None)
+    write_yaml(str(_artifact_index_path(idea_id)), revisions)
+
+    loaded = load_artifact_revisions(idea_id)
+    assert len(loaded) == 1
+    assert loaded[0]["artifact_name"] == artifact_name
+    assert loaded[0].get("agent_id") is None
