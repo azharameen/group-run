@@ -53,6 +53,39 @@ export interface ArtifactRevision {
   evidence_refs: string[];
 }
 
+export interface MaturityRecord {
+  stage: string;
+  criteria: string[];
+  evidence_refs: string[];
+  recorded_by: string;
+  recorded_at: string;
+}
+
+export interface IdeaMaturity {
+  idea_id: string;
+  stage: string;
+  current: MaturityRecord | null;
+  history: MaturityRecord[];
+  next_stage: string | null;
+  stage_criteria: Record<string, string[]>;
+}
+
+export async function fetchIdeaMaturity(ideaId: string, options?: RequestOptions): Promise<IdeaMaturity> {
+  return request<IdeaMaturity>(`/ideas/${ideaId}/maturity`, options);
+}
+
+export async function recordIdeaMaturity(
+  ideaId: string,
+  body: { stage: string; criteria: string[]; evidence_refs: string[]; recorded_by: string },
+  options?: RequestOptions,
+): Promise<{ idea_id: string; stage: string; record: MaturityRecord }> {
+  return request(`/ideas/${ideaId}/maturity`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    ...options,
+  });
+}
+
 export async function fetchIdeas(options?: RequestOptions): Promise<IdeaListItem[]> {
   const data = await request<{ ideas: IdeaListItem[] }>(`/ideas`, options);
   return data.ideas;
