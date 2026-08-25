@@ -66,12 +66,13 @@ export function startTrace(traceName: string): { stop: () => void } | null {
       stop: () => {
         try {
           t.stop();
-        } catch {
-          /* ignore duplicate stop calls */
+        } catch (err) {
+          console.warn(`Failed to stop performance trace '${traceName}':`, err);
         }
       },
     };
-  } catch {
+  } catch (err) {
+    console.warn("Failed to start performance trace:", err);
     return null;
   }
 }

@@ -41,6 +41,7 @@ async def get_pg_checkpointer():
     Must be called from an async context.
     """
     global _PG_CHECKPOINTER, _PG_CHECKPOINTER_CM, _PG_CHECKPOINTER_LOOP
+    cm = None
     try:
         current_loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -55,18 +56,38 @@ async def get_pg_checkpointer():
         async with _CHECKPOINTER_LOCK:
             if _PG_CHECKPOINTER is None:
                 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+                from psycopg import AsyncConnection
+                from psycopg.rows import dict_row
 
                 pg_url = normalize_postgres_dsn(settings.database_url)
 
                 try:
-                    cm = AsyncPostgresSaver.from_conn_string(pg_url)
-                    cp = await cm.__aenter__()
+                    # Disable psycopg named prepared statements because the
+                    # Supabase transaction pooler reuses connections across
+                    # transactions and can otherwise reuse statement names.
+                    cm = await AsyncConnection.connect(
+                        pg_url,
+                        autocommit=True,
+                        prepare_threshold=None,
+                        row_factory=dict_row,
+                        connect_timeout=10,
+                    )
+                    cp = AsyncPostgresSaver(cm)
                     await cp.setup()
                     _PG_CHECKPOINTER_CM = cm
                     _PG_CHECKPOINTER = cp
                     _PG_CHECKPOINTER_LOOP = current_loop
                     _logger.info("[ThreadManager] AsyncPostgresSaver initialized")
+                except asyncio.CancelledError:
+                    if cm is not None:
+                        await asyncio.shield(cm.close())
+                    _PG_CHECKPOINTER = None
+                    _PG_CHECKPOINTER_CM = None
+                    _PG_CHECKPOINTER_LOOP = None
+                    raise
                 except Exception:
+                    if cm is not None:
+                        await cm.close()
                     _PG_CHECKPOINTER = None
                     _PG_CHECKPOINTER_CM = None
                     _PG_CHECKPOINTER_LOOP = None

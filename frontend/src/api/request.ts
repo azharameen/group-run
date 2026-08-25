@@ -1,4 +1,5 @@
 import { formatApiError } from './errors';
+import { reportError } from '@/lib/error-reporting';
 
 const API_BASE = '/api';
 
@@ -51,8 +52,9 @@ export async function request<T>(path: string, options?: RequestOptions): Promis
     return await res.json();
   } catch (error) {
     if (timedOut) {
-      throw new Error(`API timeout after ${timeoutMs} ms`);
+      throw reportError(`API timeout: ${path}`, new Error(`API timeout after ${timeoutMs} ms`));
     }
+    reportError(`API request failed: ${path}`, error);
     throw error;
   } finally {
     clearTimeout(timeoutId);
