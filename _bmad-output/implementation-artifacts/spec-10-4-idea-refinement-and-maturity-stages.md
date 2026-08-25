@@ -2,8 +2,9 @@
 title: 'Story 10.4: Introduce idea refinement and maturity stages'
 type: 'feature'
 created: '2026-08-25'
-status: 'in-review'
+status: 'done'
 baseline_revision: '3d3fdb8dec7d2bf185582be3cc5f7dbf01b5afaf'
+final_revision: '556f02cbdaf7e8a726c0e4f35f7d581a890beb09'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -157,3 +158,31 @@ history:
 - `python -m ruff check backend` -- expected: clean
 - `python scripts/forbidden_imports.py` -- expected: PASS
 - `cd frontend && npx tsc -b --noEmit && npx vitest run src/components/idea-detail/MaturityPanel.test.tsx --no-file-parallelism` -- expected: pass
+
+## Auto Run Result
+
+**Status:** done
+
+**Summary:** Ideas now progress through forward-only, human-attested maturity stages (`raw` → `refined` → `validated` → `ready-for-planning`). State is an auditable transition history in a per-idea `maturity.yaml` (N records ⇔ stage N; legacy ideas read as `raw` with no migration), exposed via `GET/POST /api/ideas/{id}/maturity` (404 unknown idea, 400 bad id, 409 invalid/unknown-stage transition, 422 invalid body) and a new **Maturity** tab on the Idea Detail page with a stage stepper, next-stage criteria, a transition dialog (one-per-line criteria + evidence, client-side validation), and the full transition history.
+
+**Files changed:**
+- `backend/app/services/idea_maturity.py` (new) — stage model, `get_maturity`, `transition_stage`, corrupt-file tolerance.
+- `backend/app/api/routes/maturity.py` (new) — `GET/POST /api/ideas/{id}/maturity` with validated request body (known stage, non-blank, capped lists/items).
+- `backend/tests/test_idea_maturity.py` (new) — 21 tests covering the full I/O matrix incl. corruption and size caps.
+- `backend/app/api/app.py` — registered maturity router.
+- `frontend/src/api/ideas.ts` — `MaturityRecord`/`IdeaMaturity` types + `fetchIdeaMaturity`/`recordIdeaMaturity`.
+- `frontend/src/components/idea-detail/MaturityPanel.tsx` (new) — stepper, criteria, transition dialog, history.
+- `frontend/src/components/idea-detail/MaturityPanel.test.tsx` (new) — 6 tests.
+- `frontend/src/pages/IdeaDetail.tsx` — Maturity tab (panel keyed per idea).
+- `_bmad-output/implementation-artifacts/deferred-work.md` — 3 deferred entries.
+
+**Review findings:** 17 unique after dedup (Edge Case Hunter 13 + in-session adversarial general pass ~14; the Blind Hunter subagent failed twice on tooling and was performed in-session instead). 6 patched (corrupt-file 500 tolerance, size caps, per-idea panel remount, dead state, label a11y, misleading comment), 3 deferred to `deferred-work.md`, 4 rejected, 0 intent_gap, 0 bad_spec.
+
+**Follow-up review recommended:** false — all patches were small, localized, and each is covered by a new or existing test; full suites re-ran green post-patch.
+
+**Verification:**
+- `python -m pytest backend -q` → 516 passed.
+- `python -m ruff check` (changed files) → clean; `python scripts/forbidden_imports.py` → PASS.
+- `npx tsc -b --noEmit` → clean; `npx vitest run` → 301 passed (27 files); MaturityPanel 6/6.
+
+**Residual risks:** Deferred items — the unlocked read-modify-write of `maturity.yaml` (pre-existing pattern shared by all idea workspace writers; concurrent transitions could lose a record), no in-panel refresh after a 409, and the informational redundant `stage` key.
