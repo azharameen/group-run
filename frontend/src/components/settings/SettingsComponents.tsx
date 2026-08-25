@@ -250,7 +250,6 @@ export function ProviderSettings() {
   const [endpoint, setEndpoint] = React.useState("")
   const [model, setModel] = React.useState(OPENAI_MODELS[0].value)
   const [credential, setCredential] = React.useState("")
-  const [adminToken, setAdminToken] = React.useState("")
   const [loading, setLoading] = React.useState(true)
   const [busy, setBusy] = React.useState(false)
   const [testing, setTesting] = React.useState(false)
@@ -301,7 +300,7 @@ export function ProviderSettings() {
   const handleSave = async () => {
     setBusy(true); setError(""); setMessage("")
     try {
-      const saved = await saveProvider(input(), adminToken, providerId)
+      const saved = await saveProvider(input(), providerId)
       setProviderId(saved.provider_id)
       setMessage("Provider saved. Activate it when ready.")
       await load()
@@ -314,7 +313,7 @@ export function ProviderSettings() {
     if (!providerId) { setError("Save this provider before testing it."); return }
     setTesting(true); setError(""); setMessage("")
     try {
-      const result = await testProvider(providerId, adminToken, credential ? { api_key: credential } : undefined)
+      const result = await testProvider(providerId, credential ? { api_key: credential } : undefined)
       if (!result.success) throw new Error(result.message)
       setMessage(result.message)
     } catch (err) {
@@ -325,7 +324,7 @@ export function ProviderSettings() {
   const handleActivate = async () => {
     if (!providerId) { setError("Save this provider before activating it."); return }
     setBusy(true); setError(""); setMessage("")
-    try { await activateProvider(providerId, adminToken); setMessage("Provider activated."); await load() }
+    try { await activateProvider(providerId); setMessage("Provider activated."); await load() }
     catch (err) { setError(err instanceof Error ? err.message : "Unable to activate provider") }
     finally { setBusy(false) }
   }
@@ -333,7 +332,7 @@ export function ProviderSettings() {
   const handleDelete = async () => {
     if (!providerId) return
     setBusy(true); setError(""); setMessage("")
-    try { await deleteProvider(providerId, adminToken); setProviderId(undefined); setCredential(""); setMessage("Provider deleted."); await load() }
+    try { await deleteProvider(providerId); setProviderId(undefined); setCredential(""); setMessage("Provider deleted."); await load() }
     catch (err) { setError(err instanceof Error ? err.message : "Unable to delete provider") }
     finally { setBusy(false) }
   }
@@ -350,10 +349,6 @@ export function ProviderSettings() {
       {loading ? <p className="text-sm text-muted-foreground">Loading providers...</p> : null}
       {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
       {message ? <p role="status" className="text-sm text-green-600">{message}</p> : null}
-      <div className="space-y-1">
-        <label className="text-xs font-semibold text-muted-foreground">Operator token</label>
-        <Input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="PROVIDER_CONFIG_ADMIN_TOKEN" />
-      </div>
       <Tabs value={activeProvider} onValueChange={selectProvider}>
         <TabsList className="w-full">
           {LLM_PROVIDERS.map((provider) => (

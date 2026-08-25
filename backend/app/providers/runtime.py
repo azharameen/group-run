@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from ..agent.test_model import TEST_MODEL_SENTINEL, resolve_chat_model
 from ..config import settings
 from .adapters import ProviderDefinition, get_adapter
-from .encryption import CredentialEncryption
 
 _active_provider: dict[str, Any] | None = None
 
@@ -28,12 +28,8 @@ def get_configured_chat_model(configured_model: str | None = None) -> Any:
     if model == TEST_MODEL_SENTINEL:
         return resolve_chat_model(model)
     if _active_provider:
-        encrypted = _active_provider.get("credentials_encrypted")
-        credentials = (
-            CredentialEncryption(settings.provider_config_encryption_key).decrypt(encrypted)
-            if encrypted
-            else {}
-        )
+        raw_credentials = _active_provider.get("credentials")
+        credentials = json.loads(raw_credentials) if raw_credentials else {}
         definition = ProviderDefinition(
             provider=_active_provider["provider"],
             endpoint=_active_provider.get("endpoint", ""),

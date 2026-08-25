@@ -23,7 +23,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("endpoint", sa.String(), nullable=False),
         sa.Column("model", sa.String(), nullable=False),
-        sa.Column("credentials_encrypted", sa.Text(), nullable=True),
+        sa.Column("credentials", sa.Text(), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("created_at", sa.String(), nullable=False),
         sa.Column("updated_at", sa.String(), nullable=False),

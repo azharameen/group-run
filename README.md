@@ -24,15 +24,9 @@ The frontend is available at **http://localhost:3000** and the backend API at **
 ### Configure an LLM provider
 
 Provider settings are app-wide and are managed from **Settings → Provider**.
-Set `PROVIDER_CONFIG_ADMIN_TOKEN` and a stable Fernet
-`PROVIDER_CONFIG_ENCRYPTION_KEY` in the backend deployment (generate the latter
-with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
-Enter the admin token in the settings panel to save, test, activate, or delete
-an OpenAI, Google Gemini, or Ollama configuration. The API exposes read-only
-provider metadata publicly, while every secret-bearing operation requires the
-`X-Provider-Config-Admin-Token` header. Credentials are encrypted in PostgreSQL and are never returned by the API. Keep
-both deployment values stable across revisions; changing the encryption key
-makes existing saved credentials unreadable.
+Enter the endpoint, model, and credential in the settings panel to save, test,
+activate, or delete an OpenAI, Google Gemini, or Ollama configuration. Provider
+configuration is stored directly in PostgreSQL.
 
 For a step-by-step local development setup (without Docker), see [Getting Started](docs/GETTING_STARTED.md).
 

@@ -21,7 +21,7 @@ class ProviderRepository(IProviderRepository):
         async with get_session_factory()() as session:
             result = await session.execute(text(
                 "SELECT provider_id, provider, name, endpoint, model, is_active, "
-                "created_at, updated_at, (credentials_encrypted IS NOT NULL) AS has_credentials "
+                "created_at, updated_at, (credentials IS NOT NULL) AS has_credentials "
                 "FROM provider_configs ORDER BY created_at, provider_id"
             ))
             return [dict(row) for row in result.mappings()]
@@ -29,7 +29,7 @@ class ProviderRepository(IProviderRepository):
     async def get(self, provider_id: str, include_credentials: bool = False) -> dict[str, Any] | None:
         columns = "*" if include_credentials else (
             "provider_id, provider, name, endpoint, model, is_active, created_at, updated_at, "
-            "(credentials_encrypted IS NOT NULL) AS has_credentials"
+            "(credentials IS NOT NULL) AS has_credentials"
         )
         async with get_session_factory()() as session:
             result = await session.execute(
@@ -48,11 +48,11 @@ class ProviderRepository(IProviderRepository):
             await session.execute(text(
                 """
                 INSERT INTO provider_configs
-                    (provider_id, provider, name, endpoint, model, credentials_encrypted, is_active, created_at, updated_at)
-                VALUES (:provider_id, :provider, :name, :endpoint, :model, :credentials_encrypted, :is_active, :created_at, :updated_at)
+                    (provider_id, provider, name, endpoint, model, credentials, is_active, created_at, updated_at)
+                VALUES (:provider_id, :provider, :name, :endpoint, :model, :credentials, :is_active, :created_at, :updated_at)
                 ON CONFLICT (provider_id) DO UPDATE SET
                     provider = EXCLUDED.provider, name = EXCLUDED.name, endpoint = EXCLUDED.endpoint,
-                    model = EXCLUDED.model, credentials_encrypted = COALESCE(EXCLUDED.credentials_encrypted, provider_configs.credentials_encrypted),
+                    model = EXCLUDED.model, credentials = COALESCE(EXCLUDED.credentials, provider_configs.credentials),
                     is_active = EXCLUDED.is_active, updated_at = EXCLUDED.updated_at
                 """
             ), {**values, "provider_id": provider_id, "created_at": now, "updated_at": now})

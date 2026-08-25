@@ -11,10 +11,6 @@ class Settings(BaseSettings):
     openai_api_base: str = ""
     openai_model_name: str = ""
     deepagents_model: str = ""
-    # App-wide provider administration. Mutations require the deployment token;
-    # credentials are encrypted at rest with this Fernet key.
-    provider_config_admin_token: str = ""
-    provider_config_encryption_key: str = ""
     langsmith_api_key: str = ""
     langsmith_project: str = "ideator"
     langsmith_endpoint: str = "https://api.smith.langchain.com"

@@ -30,34 +30,27 @@ export interface ProviderTestResult {
   message: string;
 }
 
-const adminHeaders = (token?: string): HeadersInit =>
-  token ? { 'X-Provider-Config-Admin-Token': token } : {};
-
 export const fetchProviders = () =>
   request<{ providers: ProviderConfig[]; count: number }>('/providers');
 
-export const saveProvider = (input: ProviderInput, token?: string, id?: string) =>
+export const saveProvider = (input: ProviderInput, id?: string) =>
   request<ProviderConfig>(id ? `/providers/${encodeURIComponent(id)}` : '/providers', {
     method: id ? 'PUT' : 'POST',
-    headers: adminHeaders(token),
     body: JSON.stringify(input),
   });
 
-export const activateProvider = (id: string, token?: string) =>
+export const activateProvider = (id: string) =>
   request<ProviderConfig>(`/providers/${encodeURIComponent(id)}/activate`, {
     method: 'POST',
-    headers: adminHeaders(token),
   });
 
-export const testProvider = (id: string, token?: string, credentials?: Record<string, string>) =>
+export const testProvider = (id: string, credentials?: Record<string, string>) =>
   request<ProviderTestResult>(`/providers/${encodeURIComponent(id)}/test`, {
     method: 'POST',
-    headers: adminHeaders(token),
     body: JSON.stringify(credentials ? { credentials } : {}),
   });
 
-export const deleteProvider = (id: string, token?: string) =>
+export const deleteProvider = (id: string) =>
   request<void>(`/providers/${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    headers: adminHeaders(token),
   });

@@ -255,22 +255,12 @@ credentials and connection strings in **Environment secrets**, not variables:
 
 | Environment | Required secrets |
 |-------------|------------------|
-| `beta` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `BETA_DATABASE_DIRECT_URL`, `BETA_DATABASE_URL`, `PROVIDER_CONFIG_ADMIN_TOKEN`, `PROVIDER_CONFIG_ENCRYPTION_KEY` |
-| `production` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `PROD_DATABASE_DIRECT_URL`, `PROD_DATABASE_URL`, `PROVIDER_CONFIG_ADMIN_TOKEN`, `PROVIDER_CONFIG_ENCRYPTION_KEY` |
+| `beta` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `BETA_DATABASE_DIRECT_URL`, `BETA_DATABASE_URL` |
+| `production` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `PROD_DATABASE_DIRECT_URL`, `PROD_DATABASE_URL` |
 
-`PROVIDER_CONFIG_ADMIN_TOKEN` protects provider save/test/activate/delete
-operations. `PROVIDER_CONFIG_ENCRYPTION_KEY` must be one stable Fernet key,
-shared by all revisions that use the same database. Generate it with:
-
-```bash
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-After deployment, open **Settings → Provider**, enter the operator token, choose
-OpenAI, Google Gemini, or Ollama, enter the endpoint/model/credential, test it,
-save it, and activate it. Provider credentials are persisted encrypted in
-PostgreSQL and are write-only through the API. Do not put provider API keys in
-Firebase Remote Config or frontend build variables.
+After deployment, open **Settings → Provider**, choose OpenAI, Google Gemini, or
+Ollama, enter the endpoint/model/credential, test it, save it, and activate it.
+Provider configuration is stored directly in PostgreSQL.
 
 `GCP_REGION` is optional and defaults to `asia-south1`. Optional deployment
 variables are `GCP_PROJECT_ID` and `CLOUD_RUN_SERVICE`; the workflows default

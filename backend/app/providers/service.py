@@ -1,12 +1,11 @@
-"""Provider configuration service: validation, encryption and safe projections."""
+"""Provider configuration service and validation."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from ..config import settings
 from .adapters import SUPPORTED_PROVIDERS, ProviderDefinition, get_adapter
-from .encryption import CredentialEncryption
 from .repository import ProviderRepository
 from .runtime import refresh_active_provider
 
@@ -19,17 +18,8 @@ DEFAULT_ENDPOINTS = {
 
 
 class ProviderConfigService:
-    def __init__(self, repository: ProviderRepository | None = None, encryption: CredentialEncryption | None = None):
+    def __init__(self, repository: ProviderRepository | None = None):
         self.repository = repository or ProviderRepository()
-        # Reading metadata must remain available when the deployment has not
-        # configured an encryption key yet; writes and stored-credential tests
-        # fail explicitly through _encryptor().
-        self.encryption = encryption
-
-    def _encryptor(self) -> CredentialEncryption:
-        if self.encryption is None:
-            self.encryption = CredentialEncryption(settings.provider_config_encryption_key)
-        return self.encryption
 
     @staticmethod
     def _validate(payload: dict[str, Any]) -> tuple[str, str, str, str, dict[str, Any] | None]:
@@ -67,7 +57,6 @@ class ProviderConfigService:
 
     async def save(self, payload: dict[str, Any], provider_id: str | None = None) -> dict[str, Any]:
         provider, name, endpoint, model, credentials = self._validate(payload)
-        encrypted = self._encryptor().encrypt(credentials) if credentials is not None else None
         is_active = payload.get("is_active")
         if is_active is None and provider_id:
             existing = await self.repository.get(provider_id)
@@ -77,7 +66,7 @@ class ProviderConfigService:
             "name": name,
             "endpoint": endpoint,
             "model": model,
-            "credentials_encrypted": encrypted,
+            "credentials": json.dumps(credentials, sort_keys=True) if credentials is not None else None,
             "is_active": bool(is_active),
         }, provider_id)
         if record.get("is_active"):
@@ -101,11 +90,11 @@ class ProviderConfigService:
         record = await self.repository.get(provider_id, include_credentials=True)
         if not record:
             raise LookupError("Provider not found")
-        if credentials is None and not record.get("credentials_encrypted"):
+        if credentials is None and not record.get("credentials"):
             stored = {}
         elif credentials is not None:
             stored = credentials
         else:
-            stored = self._encryptor().decrypt(record["credentials_encrypted"])
+            stored = json.loads(record["credentials"])
         definition = ProviderDefinition(record["provider"], record["endpoint"], record["model"], stored)
         return await get_adapter(record["provider"]).test_connection(definition)

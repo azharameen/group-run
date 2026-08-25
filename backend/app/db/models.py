@@ -270,7 +270,7 @@ class ThreadMetadataModel(Base):
 
 
 class ProviderConfigModel(Base):
-    """App-wide LLM provider metadata and encrypted credentials."""
+    """App-wide LLM provider metadata and credentials."""
 
     __tablename__ = "provider_configs"
 
@@ -279,7 +279,7 @@ class ProviderConfigModel(Base):
     name = Column(String, nullable=False)
     endpoint = Column(String, nullable=False)
     model = Column(String, nullable=False)
-    credentials_encrypted = Column(Text, nullable=True)
+    credentials = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, server_default="false")
     created_at = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)

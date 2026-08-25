@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import hmac
 import logging
 
-from fastapi import APIRouter, Header, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Response
 
-from ...config import settings
 from ...providers.service import ProviderConfigService
 from ..schemas import (
     ProviderConfigRequest,
@@ -20,18 +18,6 @@ from ..schemas import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/providers", tags=["providers"])
 service = ProviderConfigService()
-
-
-def _require_operator(token: str | None) -> None:
-    """Protect all secret-bearing operations while authentication is deferred."""
-    expected = settings.provider_config_admin_token
-    if not expected:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Provider administration is not enabled; configure PROVIDER_CONFIG_ADMIN_TOKEN",
-        )
-    if not token or not hmac.compare_digest(token, expected):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid provider admin token")
 
 
 def _safe(record: dict) -> ProviderConfigResponse:
@@ -60,9 +46,7 @@ async def get_provider(provider_id: str) -> ProviderConfigResponse:
 @router.post("", response_model=ProviderConfigResponse, status_code=201)
 async def create_provider(
     payload: ProviderConfigRequest,
-    x_provider_config_admin_token: str | None = Header(default=None),
 ) -> ProviderConfigResponse:
-    _require_operator(x_provider_config_admin_token)
     try:
         return _safe(await service.save(payload.model_dump()))
     except (ValueError, RuntimeError) as exc:
@@ -74,9 +58,7 @@ async def create_provider(
 async def update_provider(
     provider_id: str,
     payload: ProviderConfigRequest,
-    x_provider_config_admin_token: str | None = Header(default=None),
 ) -> ProviderConfigResponse:
-    _require_operator(x_provider_config_admin_token)
     if not await service.get_safe(provider_id):
         raise HTTPException(status_code=404, detail="Provider not found")
     try:
@@ -88,9 +70,7 @@ async def update_provider(
 @router.delete("/{provider_id}", status_code=204)
 async def delete_provider(
     provider_id: str,
-    x_provider_config_admin_token: str | None = Header(default=None),
 ) -> Response:
-    _require_operator(x_provider_config_admin_token)
     if not await service.delete(provider_id):
         raise HTTPException(status_code=404, detail="Provider not found")
     return Response(status_code=204)
@@ -99,9 +79,7 @@ async def delete_provider(
 @router.post("/{provider_id}/activate", response_model=ProviderConfigResponse)
 async def activate_provider(
     provider_id: str,
-    x_provider_config_admin_token: str | None = Header(default=None),
 ) -> ProviderConfigResponse:
-    _require_operator(x_provider_config_admin_token)
     record = await service.activate(provider_id)
     if not record:
         raise HTTPException(status_code=404, detail="Provider not found")
@@ -112,9 +90,7 @@ async def activate_provider(
 async def test_provider(
     provider_id: str,
     payload: ProviderCredentialsRequest | None = None,
-    x_provider_config_admin_token: str | None = Header(default=None),
 ) -> ProviderTestResponse:
-    _require_operator(x_provider_config_admin_token)
     try:
         record = await service.get_safe(provider_id)
         if not record:
