@@ -53,6 +53,7 @@ jobs:
           PROD_DATABASE_DIRECT_URL: ${{ secrets.PROD_DATABASE_DIRECT_URL }}
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_BASE: ${{ vars.OPENAI_API_BASE || 'https://api.openai.com/v1' }}
         run: |
           set -euo pipefail
           missing=()
@@ -63,6 +64,11 @@ jobs:
             printf '::error::Missing required production deployment configuration: %s\n' "${missing[*]}"
             exit 1
           fi
+
+          printf 'Validating OpenAI-compatible provider authentication at %s\n' "$OPENAI_API_BASE"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $OPENAI_API_KEY" \
+            "${OPENAI_API_BASE%/}/models" > /dev/null
 
   # ------------------------------------------------------------------
   # DB Migration Gate (must succeed before release & deploy)
