@@ -117,9 +117,10 @@ async def lifespan(_app: FastAPI):
     get_engine()
     logger.info("[Startup] PostgreSQL engine initialized")
 
-    # 3. Initialize AsyncPostgresSaver for LangGraph checkpointing
-    await get_pg_checkpointer()
-    logger.info("[Startup] AsyncPostgresSaver ready")
+    # Checkpointer initialization is lazy so Cloud Run can bind its port even
+    # when an external database is temporarily unavailable. The readiness
+    # endpoint and request path still surface database failures explicitly.
+    logger.info("[Startup] PostgreSQL checkpointer will initialize on demand")
 
     yield
 

@@ -153,6 +153,8 @@ jobs:
           echo "REVISION=$REVISION" >> "$GITHUB_ENV"
           curl --fail --silent --show-error --retry 10 --retry-delay 5 \
             "$BACKEND_URL/api/health"
+          curl --fail --silent --show-error --retry 10 --retry-delay 5 \
+            "$BACKEND_URL/api/ready"
           {
             echo "### Production deployment"
             echo ""
