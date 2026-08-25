@@ -14,7 +14,19 @@ import {
 
 interface ArtifactsPanelProps {
   ideaId: string;
+  research?: IdeaResearch;
 }
+
+interface IdeaResearch {
+  state: string;
+  error?: string;
+  artifact_names?: string[];
+  expected_artifacts?: string[];
+  completed_artifacts?: string[];
+  updated_at?: number;
+}
+
+const EXPECTED_ARTIFACTS = ["market-summary", "competitors", "prior-art", "feasibility", "target-audience"];
 
 const trustVariant = (trust: string): "default" | "secondary" | "destructive" | "outline" => {
   if (trust === "fallback") return "destructive";
@@ -23,7 +35,7 @@ const trustVariant = (trust: string): "default" | "secondary" | "destructive" | 
   return "outline";
 };
 
-export function ArtifactsPanel({ ideaId }: ArtifactsPanelProps) {
+export function ArtifactsPanel({ ideaId, research }: ArtifactsPanelProps) {
   const [revisions, setRevisions] = useState<ArtifactRevision[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [comparison, setComparison] = useState<Record<string, unknown> | null>(null);
@@ -43,7 +55,7 @@ export function ArtifactsPanel({ ideaId }: ArtifactsPanelProps) {
     return () => {
       active = false;
     };
-  }, [ideaId]);
+  }, [ideaId, research?.state, research?.updated_at, research?.completed_artifacts?.join(",")]);
 
   const latestByArtifact = useMemo(() => {
     const grouped = new Map<string, ArtifactRevision[]>();
@@ -70,9 +82,20 @@ export function ArtifactsPanel({ ideaId }: ArtifactsPanelProps) {
     }
   };
 
-  if (error) return <p className="text-sm text-destructive" role="alert">{error}</p>;
+  const expected = research?.expected_artifacts || research?.artifact_names || EXPECTED_ARTIFACTS;
+  const completed = research?.completed_artifacts || [];
+  const missing = expected.filter((name) => !completed.includes(name));
+  const showStatus = Boolean(research && research.state !== "completed");
+
+  if (error) return <div className="space-y-3">
+    {showStatus && <ResearchStatus research={research!} expected={expected} completed={completed} missing={missing} />}
+    <p className="text-sm text-destructive" role="alert">{error}</p>
+  </div>;
   if (!revisions.length) {
-    return <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No artifact revisions available.</CardContent></Card>;
+    return <div className="space-y-3">
+      {showStatus && <ResearchStatus research={research!} expected={expected} completed={completed} missing={missing} />}
+      <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No artifact revisions available.</CardContent></Card>
+    </div>;
   }
 
   return (
@@ -96,7 +119,7 @@ export function ArtifactsPanel({ ideaId }: ArtifactsPanelProps) {
                 <span className="text-muted-foreground">{new Date(latest.timestamp).toLocaleString()}</span>
               </div>
               <p className="font-mono text-muted-foreground">{latest.provenance}</p>
-              {latest.evidence_refs.length > 0 && (
+              {Array.isArray(latest.evidence_refs) && latest.evidence_refs.length > 0 && (
                 <ul className="space-y-1">
                   {latest.evidence_refs.map((reference) => (
                     <li key={reference} className="flex items-center gap-1">
@@ -126,8 +149,31 @@ export function ArtifactsPanel({ ideaId }: ArtifactsPanelProps) {
           )}
         </DialogContent>
       </Dialog>
+      {showStatus && <ResearchStatus research={research!} expected={expected} completed={completed} missing={missing} />}
     </>
   );
+}
+
+function ResearchStatus({
+  research,
+  expected,
+  completed,
+  missing,
+}: {
+  research: IdeaResearch;
+  expected: string[];
+  completed: string[];
+  missing: string[];
+}) {
+  const unsuccessful = research.state === "failed" || research.state === "incomplete" || research.state === "cancelled";
+  return <Card data-testid="research-status">
+    <CardHeader className="p-4 pb-2"><CardTitle className={unsuccessful ? "text-sm text-destructive" : "text-sm"}>Research {research.state}</CardTitle></CardHeader>
+    <CardContent className="p-4 pt-1 space-y-2 text-xs">
+      <p>Artifacts completed: {completed.length} of {expected.length}</p>
+      {missing.length > 0 && <p>Missing: {missing.join(", ")}</p>}
+      {research.error && <p className="text-destructive">{research.error}</p>}
+    </CardContent>
+  </Card>;
 }
 
 export default ArtifactsPanel;

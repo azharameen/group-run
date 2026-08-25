@@ -10,6 +10,7 @@ import uuid
 from datetime import UTC, datetime
 
 from . import repository
+from .idea_mapping import validate_work_item_id
 from .mapping import row_to_review
 from .models import AccuracyReview, AccuracyReviewRequest
 from .service import UnknownWorkItemError
@@ -19,6 +20,7 @@ FLAG_THRESHOLD = 90
 
 async def record_review(request: AccuracyReviewRequest, work_item_id: str) -> AccuracyReview:
     """Record a human accuracy review and its companion decision."""
+    validate_work_item_id(work_item_id)
     if await repository.get_work_item_rows(work_item_id) is None:
         raise UnknownWorkItemError(f"Work item {work_item_id} not found")
 
@@ -51,6 +53,7 @@ async def record_review(request: AccuracyReviewRequest, work_item_id: str) -> Ac
 
 async def list_reviews(work_item_id: str) -> list[AccuracyReview]:
     """Return accuracy reviews for one item, oldest first."""
+    validate_work_item_id(work_item_id)
     if await repository.get_work_item_rows(work_item_id) is None:
         raise UnknownWorkItemError(f"Work item {work_item_id} not found")
     rows = await repository.list_reviews(work_item_id)

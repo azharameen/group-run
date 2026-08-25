@@ -46,6 +46,10 @@ class Settings(BaseSettings):
 
     # Agent timeout and retry configuration (AC: 1-2)
     agent_timeout_sec: int = 120
+    # Maximum wall-clock time allocated to the automatic Idea Team packet.
+    research_time_budget_sec: int = 300
+    # Stable checkpoint namespace for automatic Idea Team research.
+    research_thread_id: str = "idea-team-research"
 
     # Team overload threshold for organization health (Story 9.1): a team is
     # "overloaded" when its department's open work items exceed this count.
@@ -86,6 +90,10 @@ class Settings(BaseSettings):
             raise ValueError("TEAM_OVERLOAD_THRESHOLD must be non-negative")
         if self.blocked_phase_threshold_hours < 0:
             raise ValueError("BLOCKED_PHASE_THRESHOLD_HOURS must be non-negative")
+        if self.research_time_budget_sec < 1:
+            raise ValueError("RESEARCH_TIME_BUDGET_SEC must be at least 1")
+        if not self.research_thread_id.strip():
+            raise ValueError("RESEARCH_THREAD_ID must be non-empty")
         if self.db_pool_min_size < 1:
             raise ValueError("DB_POOL_MIN_SIZE must be at least 1")
         if self.db_pool_max_size < self.db_pool_min_size:

@@ -78,6 +78,8 @@ export interface StreamEvent {
     retryable: boolean;
   };
   routing_key?: string;
+  idea_id?: string;
+  research?: Record<string, unknown>;
 }
 
 export interface ThreadMetadata {
@@ -204,6 +206,9 @@ export function connectSSE(
   const knownEvents = [
     'idea.created', 'idea.transition', 'idea.scored',
     'agent.progress',
+    'research.initializing', 'research.running', 'research.completed',
+    'research.failed', 'research.incomplete', 'research.cancelled',
+    'research.progress',
   ];
 
   knownEvents.forEach((eventName) => {
@@ -224,6 +229,8 @@ export function connectSSE(
       const type = data?.type;
       if (type?.startsWith('interrupt.')) {
         onInterruptEvent?.(type, data);
+      } else if (type && knownEvents.includes(type)) {
+        onEvent(type, data);
       }
     } catch {
       // ignore parse errors

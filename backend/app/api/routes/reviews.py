@@ -16,6 +16,8 @@ async def list_reviews(work_item_id: str) -> dict:
         records = await reviews.list_reviews(work_item_id)
     except UnknownWorkItemError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=500, detail="Failed to load reviews") from exc
     return {"reviews": [r.model_dump() for r in records], "count": len(records)}
@@ -27,6 +29,8 @@ async def create_review(work_item_id: str, request: AccuracyReviewRequest) -> di
         record = await reviews.record_review(request, work_item_id)
     except UnknownWorkItemError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=500, detail="Failed to record review") from exc
     return {"review": record.model_dump()}

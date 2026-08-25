@@ -5,6 +5,7 @@ import uuid
 from datetime import UTC, datetime
 
 from . import repository
+from .idea_mapping import validate_work_item_id
 from .mapping import row_to_decision
 from .models import DecisionRecord, RecordDecisionRequest
 from .service import UnknownWorkItemError
@@ -19,6 +20,7 @@ def _decode(raw):
 
 
 async def record_decision(request: RecordDecisionRequest) -> DecisionRecord:
+    validate_work_item_id(request.work_item_id)
     if await repository.get_work_item_rows(request.work_item_id) is None:
         raise UnknownWorkItemError(f"Work item {request.work_item_id} not found")
     record = DecisionRecord(
@@ -31,6 +33,8 @@ async def record_decision(request: RecordDecisionRequest) -> DecisionRecord:
 
 
 async def list_decisions(work_item_id=None, agent_id=None, from_ts=None, to_ts=None):
+    if work_item_id:
+        validate_work_item_id(work_item_id)
     if work_item_id and await repository.get_work_item_rows(work_item_id) is None:
         raise UnknownWorkItemError(f"Work item {work_item_id} not found")
     rows = await repository.list_decisions(work_item_id, agent_id, from_ts, to_ts)

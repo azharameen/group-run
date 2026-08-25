@@ -9,7 +9,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ...organization import service as org_service
 from ...organization.service import OrganizationIntegrityError
+from ...storage.idea_workspace import load_idea_yaml
 from ...work_items import service
+from ...work_items.idea_mapping import get_idea_id_for_work_item, validate_work_item_id
 from ...work_items.models import SubmitWorkItemRequest, TransitionWorkItemRequest
 from ...work_items.service import (
     InvalidTransitionError,
@@ -75,23 +77,18 @@ async def list_work_items(
         raise HTTPException(
             status_code=500, detail="Failed to list work items"
         ) from exc
-    return {"work_items": [item.model_dump() for item in items], "count": len(items)}
-
-
-@router.get("/work-items/{work_item_id}")
-async def get_work_item(work_item_id: str = Path(..., max_length=64)) -> dict:
-    """Fetch a single work item with its routing decision."""
-    try:
-        item = await service.get_work_item(work_item_id)
-    except SQLAlchemyError as exc:
-        raise HTTPException(
-            status_code=500, detail="Failed to load work item"
-        ) from exc
-    if item is None:
-        raise HTTPException(
-            status_code=404, detail=f"Work item {work_item_id} not found"
+    work_items = []
+    for item in items:
+        idea_id = get_idea_id_for_work_item(item.work_item_id)
+        metadata = load_idea_yaml(idea_id, "idea.yaml") if idea_id else {}
+        work_items.append(
+            {
+                **item.model_dump(),
+                "idea_id": idea_id,
+                "research": metadata.get("research"),
+            }
         )
-    return {"work_item": item.model_dump()}
+    return {"work_items": work_items, "count": len(work_items)}
 
 
 @router.post("/work-items/{work_item_id}/transition", status_code=201)
@@ -102,6 +99,7 @@ async def transition_work_item(
 ) -> dict:
     """Advance a work item's status through its lifecycle."""
     try:
+        validate_work_item_id(work_item_id)
         item, event = await service.transition_work_item(
             work_item_id,
             request.status,
@@ -118,7 +116,54 @@ async def transition_work_item(
         raise HTTPException(
             status_code=500, detail="Failed to transition work item"
         ) from exc
-    return {"work_item": item.model_dump(), "event": event.model_dump()}
+    response = item.model_dump()
+    idea_id = get_idea_id_for_work_item(work_item_id)
+    metadata = load_idea_yaml(idea_id, "idea.yaml") if idea_id else {}
+    return {
+        "work_item": {**response, "idea_id": idea_id, "research": metadata.get("research")},
+        "event": event.model_dump(),
+    }
+
+
+@router.get("/work-items/{work_item_id}/research")
+async def get_work_item_research(work_item_id: str = Path(..., max_length=64)) -> dict:
+    """Return explicit Idea Team lifecycle state and filesystem artifacts."""
+    try:
+        validate_work_item_id(work_item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    idea_id = get_idea_id_for_work_item(work_item_id)
+    metadata = load_idea_yaml(idea_id, "idea.yaml") if idea_id else None
+    if metadata is None:
+        raise HTTPException(status_code=404, detail=f"Research for {work_item_id} not found")
+    return {
+        "work_item_id": work_item_id,
+        "idea_id": idea_id,
+        "research": metadata.get("research"),
+    }
+
+
+@router.get("/work-items/{work_item_id}")
+async def get_work_item(work_item_id: str = Path(..., max_length=64)) -> dict:
+    """Fetch a single work item with its routing decision and research state."""
+    try:
+        validate_work_item_id(work_item_id)
+        item = await service.get_work_item(work_item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=500, detail="Failed to load work item") from exc
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"Work item {work_item_id} not found")
+    idea_id = get_idea_id_for_work_item(work_item_id)
+    metadata = load_idea_yaml(idea_id, "idea.yaml") if idea_id else {}
+    return {
+        "work_item": {
+            **item.model_dump(),
+            "idea_id": idea_id,
+            "research": metadata.get("research"),
+        }
+    }
 
 
 @router.get("/work-items/{work_item_id}/history")
@@ -126,7 +171,10 @@ async def transition_work_item(
 async def get_work_item_history(work_item_id: str = Path(..., max_length=64)) -> dict:
     """Return the audit trail of lifecycle events for a work item."""
     try:
+        validate_work_item_id(work_item_id)
         events = await service.get_lifecycle_history(work_item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except UnknownWorkItemError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except SQLAlchemyError as exc:

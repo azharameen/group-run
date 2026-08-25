@@ -2,6 +2,7 @@ import { request, RequestOptions } from './request';
 
 export interface IdeaListItem {
   idea_id: string;
+  work_item_id?: string;
   title: string;
   created_at: string;
   updated_at: string;
@@ -16,6 +17,14 @@ export interface IdeaData {
   source_evidence?: string[];
   created_at?: string;
   updated_at?: string;
+  research?: {
+    state: string;
+    artifact_names?: string[];
+    expected_artifacts?: string[];
+    completed_artifacts?: string[];
+    error?: string;
+    updated_at?: number;
+  };
   [key: string]: unknown;
 }
 

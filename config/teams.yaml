@@ -44,3 +44,28 @@ teams:
       - "fallback"
       - "help"
       - "greeting"
+
+  idea:
+    name: "Idea Team"
+    description: "Research market demand, competition, prior art, feasibility, and target audience."
+    agents:
+      - name: "market-researcher"
+        role: "market research analyst"
+        description: "Compiles source-backed market and competitor evidence."
+        model: "auto"
+      - name: "feasibility-analyst"
+        role: "technical feasibility analyst"
+        description: "Assesses implementation feasibility and target audience."
+        model: "auto"
+    tools:
+      - "search"
+      - "knowledge_base"
+    subgraph:
+      type: "sequential"
+      nodes:
+        - "market-researcher"
+        - "feasibility-analyst"
+    routing_keys:
+      - "ideation"
+      - "idea_research"
+      - "market_research"
