@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -138,10 +138,11 @@ jobs:
             --set-env-vars "OPENAI_API_BASE=$OPENAI_API_BASE" \
             --set-env-vars "OPENAI_MODEL_NAME=$OPENAI_MODEL_NAME" \
             --set-env-vars "DEEPAGENTS_MODEL=$DEEPAGENTS_MODEL" \
-            --min-instances 1 \
-            --max-instances 10 \
+            --min-instances 0 \
+            --max-instances 3 \
             --cpu 1 \
-            --memory 512Mi
+            --memory 512Mi \
+            --concurrency 20
 
           BACKEND_URL="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
             --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
@@ -166,7 +167,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: 'npm'
