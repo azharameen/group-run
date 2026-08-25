@@ -151,7 +151,7 @@ docker exec -it ideator-frontend /bin/sh
 
 ### Frontend
 
-- **Build stage:** Node.js 20 — installs deps and runs `npm run build`
+- **Build stage:** Node.js 24 LTS — installs deps and runs `npm run build`
 - **Production stage:** nginx — serves `dist/` static files
 - **Build args:** `VITE_API_URL` passed during build for production API URL
 
@@ -223,3 +223,49 @@ The project uses GitHub Actions for CI (runs on push/PR to main):
 E2E tests (Playwright) are not yet integrated into CI — run locally or in staging.
 
 See `.github/workflows/ci.yml` for pipeline configuration.
+
+## Cloud deployment
+
+Merges to `develop` run **Release - Beta & Deployment Test**. A merged pull request to `main` runs **Release - Production**. Both workflows:
+
+1. Validate all required configuration before changing the database.
+1. Run the Alembic migration gate.
+1. Deploy the backend to Cloud Run.
+1. Build and deploy the frontend to Firebase Hosting.
+1. Verify the backend at `/api/health` and the hosted frontend with HTTP smoke checks.
+
+Beta and production intentionally share the same Cloud Run service (`backend-service`), Firebase Hosting target, and database for now. This is not concurrent isolation: the most recent successful beta or production deployment owns the live revision and frontend. Configure a required reviewer on the `production` GitHub Environment before using the production workflow.
+
+### GitHub Environment configuration
+
+Create `beta` and `production` Environments in repository settings. Put credentials and connection strings in **Environment secrets**, not variables:
+
+| Environment  | Required secrets                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| `beta`       | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `BETA_DATABASE_DIRECT_URL`, `BETA_DATABASE_URL`, `OPENAI_API_KEY` |
+| `production` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `PROD_DATABASE_DIRECT_URL`, `PROD_DATABASE_URL`, `OPENAI_API_KEY` |
+
+`GCP_REGION` is optional and defaults to `asia-south1`. Optional Environment variables are `GCP_PROJECT_ID`, `CLOUD_RUN_SERVICE`, `OPENAI_API_BASE`, `OPENAI_MODEL_NAME`, and `DEEPAGENTS_MODEL`; the workflows default to the current shared service and `gpt-4o-mini` settings when omitted. Use the same infrastructure values in both Environments until beta needs independent resources.
+
+### Verify and troubleshoot a deployment
+
+Open the completed workflow run and confirm the migration, Cloud Run, Firebase, and smoke-check steps are green. The run summary contains the backend URL and shared-target warning. Then use the URL from the summary:
+
+```bash
+curl -fsS "https://<cloud-run-url>/api/health"
+curl -fsS "https://<firebase-project-id>.web.app/"
+```
+
+Finally open the Firebase URL in a browser and send a chat message. A real agent response verifies that the runtime `OPENAI_API_KEY` and model settings were injected into Cloud Run.
+
+### Rollback
+
+For a backend rollback, list revisions and move traffic to the last known good revision:
+
+```bash
+gcloud run revisions list --service backend-service --region asia-south1
+gcloud run services update-traffic backend-service \
+  --region asia-south1 --to-revisions <known-good-revision>=100
+```
+
+For frontend rollback, use the Firebase Hosting release history in the Firebase console and select the last known good release. Database migrations are forward-only; restore a database backup or apply a reviewed corrective migration rather than attempting to reverse production schema changes.

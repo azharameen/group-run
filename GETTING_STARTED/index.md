@@ -7,7 +7,7 @@ Get the Companion application running on your local machine in 15 minutes.
 Install these before starting:
 
 - **Python 3.12+** — [python.org](https://www.python.org/downloads/)
-- **Node.js 20+** — [nodejs.org](https://nodejs.org/)
+- **Node.js 24 LTS** — [nodejs.org](https://nodejs.org/)
 - **Git** — [git-scm.com](https://git-scm.com/)
 
 ### Windows-Specific Notes
