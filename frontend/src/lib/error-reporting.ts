@@ -12,7 +12,7 @@ function toError(reason: unknown): Error {
 
 export function reportError(source: string, reason: unknown, fatal = false): Error {
   const error = toError(reason);
-  console.error(`[${source}]`, error);
+  console.error('Application error from %s', source, error);
   trackException(error, fatal);
   return error;
 }
