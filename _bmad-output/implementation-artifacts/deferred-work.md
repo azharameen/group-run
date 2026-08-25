@@ -588,3 +588,15 @@ Status/Issue Type/Sprint could NOT be set via available tools (no MCP project to
 
 - Native PostgreSQL `DateTime(timezone=True)` & `JSONB` ORM Types (`backend/app/db/models.py`) — Models currently declare timestamps and JSON fields as `Column(String)` and `Column(Text)` to preserve backward compatibility with existing raw dictionary repository return signatures. Revisit when migrating repository return signatures to full ORM entities.
 - Direct ORM Querying in Repositories (`backend/app/organization/repository.py`, `backend/app/work_items/repository.py`) — Repositories use `session.execute(text("..."))` raw SQL queries instead of ORM entity queries (`session.scalars(select(OrganizationModel))`) to match legacy dict-based return contracts. Revisit during full ORM model migration pass.
+
+## Deferred from: code review of spec-10-4-idea-refinement-and-maturity-stages.md (2026-08-25)
+
+- source_spec: _bmad-output/implementation-artifacts/spec-10-4-idea-refinement-and-maturity-stages.md
+  summary: transition_stage performs an unlocked read-modify-write of maturity.yaml (three reads + whole-file rewrite), so two concurrent transitions can silently lose one record.
+  evidence: backend/app/services/idea_maturity.py reads idea.yaml/maturity.yaml and rewrites the whole file without coordination; pre-existing pattern across all idea workspace writers (ideas.py, artifacts.py) — fix needs workspace-level write coordination.
+- source_spec: _bmad-output/implementation-artifacts/spec-10-4-idea-refinement-and-maturity-stages.md
+  summary: MaturityPanel does not refresh after a 409 conflict, so the panel shows the stale stage until the user switches tabs (which remounts and re-fetches).
+  evidence: frontend/src/components/idea-detail/MaturityPanel.tsx only calls load() after a successful submission; minor UX gap, the conflicting write is safely rejected server-side.
+- source_spec: _bmad-output/implementation-artifacts/spec-10-4-idea-refinement-and-maturity-stages.md
+  summary: maturity.yaml persists a redundant top-level `stage` key alongside `history`, although the stage is always derived from the last history entry on read.
+  evidence: backend/app/services/idea_maturity.py writes {"stage": target, "history": [...]} in transition_stage but _load derives stage from history and never reads the stored key — kept as an informational field for human-readable files.

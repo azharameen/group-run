@@ -24,6 +24,7 @@ from .routes.health import router as health_router
 from .routes.ideas import router as ideas_router
 from .routes.interrupts import router as interrupts_router
 from .routes.knowledge_base import router as knowledge_base_router
+from .routes.maturity import router as maturity_router
 from .routes.mcp import router as mcp_router
 from .routes.organizations import router as organizations_router
 from .routes.reviews import router as reviews_router
@@ -195,6 +196,8 @@ def create_app() -> FastAPI:
         return response
 
     app.include_router(health_router)
+    # Idea maturity routes extend the /ideas API surface (story 10.4).
+    app.include_router(maturity_router)
     app.include_router(ideas_router)
     app.include_router(knowledge_base_router)
     app.include_router(chat_router)
