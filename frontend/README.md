@@ -4,7 +4,7 @@ React frontend for the Companion agentic platform. Built with Vite, TypeScript (
 
 ## Prerequisites
 
-- **Node.js 20+**
+- **Node.js 24 LTS**
 - **npm**
 
 ## Setup

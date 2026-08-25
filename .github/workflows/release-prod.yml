@@ -5,8 +5,11 @@
 #      If this step fails, the release and deploy are BLOCKED entirely.
 #   2. release-please opens (or updates) the "chore(main): release x.y.z" PR.
 #      MERGING THAT PR IS THE RELEASE: tag vX.Y.Z + CHANGELOG.md + GitHub Release.
-#   3. Deploy backend to Cloud Run (production).
-#   4. Deploy frontend to Firebase Hosting (production).
+#   3. Deploy backend to the shared Cloud Run service.
+#   4. Deploy frontend to the shared Firebase Hosting target.
+#
+# Shared-target mode: beta and production intentionally use the same
+# infrastructure until beta has users. Production requires environment approval.
 #
 # Version law (see .release-please-config.json):
 #   fix:/perf: -> patch | feat: -> minor | breaking -> minor while < 1.0.0
@@ -37,11 +40,36 @@ permissions:
   id-token: write
 
 jobs:
+  prod-config:
+    name: Validate deployment configuration (production)
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Require deployment secrets
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+          PROD_DATABASE_DIRECT_URL: ${{ secrets.PROD_DATABASE_DIRECT_URL }}
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in GCP_SA_KEY GCP_PROJECT_ID PROD_DATABASE_DIRECT_URL PROD_DATABASE_URL OPENAI_API_KEY; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Missing required production deployment configuration: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
   # ------------------------------------------------------------------
   # DB Migration Gate (must succeed before release & deploy)
   # ------------------------------------------------------------------
   prod-db-migrate:
     name: DB Migration (production)
+    needs: prod-config
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     uses: ./.github/workflows/db-migrate.yml
     with:
@@ -70,54 +98,90 @@ jobs:
     needs: [prod-db-migrate, release-please]
     runs-on: ubuntu-latest
     environment: production
-    env:
-      HAS_GCP_KEY: ${{ secrets.GCP_SA_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Authenticate to Google Cloud
-        if: env.HAS_GCP_KEY == 'true'
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        if: env.HAS_GCP_KEY == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build & Deploy Backend to GCP Cloud Run (production)
-        if: env.HAS_GCP_KEY == 'true'
+      - name: Build & Deploy Backend to shared Cloud Run service (production)
         env:
-          GCP_REGION: ${{ secrets.GCP_REGION }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ secrets.GCP_REGION || vars.GCP_REGION || 'asia-south1' }}
+          CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'backend-service' }}
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_BASE: ${{ vars.OPENAI_API_BASE || 'https://api.openai.com/v1' }}
+          OPENAI_MODEL_NAME: ${{ vars.OPENAI_MODEL_NAME || 'gpt-4o-mini' }}
+          DEEPAGENTS_MODEL: ${{ vars.DEEPAGENTS_MODEL || 'openai:gpt-4o-mini' }}
         run: |
-          gcloud run deploy backend-service \
+          set -euo pipefail
+          gcloud run deploy "$CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
             --source backend/ \
-            --region "${GCP_REGION:-asia-south1}" \
+            --region "$GCP_REGION" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" \
+            --set-env-vars "DATABASE_URL=$DATABASE_URL" \
             --set-env-vars "DB_SSL_MODE=require" \
             --set-env-vars "DB_AUTO_MIGRATE=false" \
             --set-env-vars "LANGGRAPH_STRICT_MSGPACK=true" \
+            --set-env-vars "APP_ROOT_DIR=/app" \
+            --set-env-vars "OPENAI_API_KEY=$OPENAI_API_KEY" \
+            --set-env-vars "OPENAI_API_BASE=$OPENAI_API_BASE" \
+            --set-env-vars "OPENAI_MODEL_NAME=$OPENAI_MODEL_NAME" \
+            --set-env-vars "DEEPAGENTS_MODEL=$DEEPAGENTS_MODEL" \
             --min-instances 1 \
             --max-instances 10 \
             --cpu 1 \
             --memory 512Mi
 
+          BACKEND_URL="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
+            --format='value(status.url)')"
+          REVISION="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
+            --format='value(status.latestReadyRevisionName)')"
+          echo "BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
+          echo "REVISION=$REVISION" >> "$GITHUB_ENV"
+          curl --fail --silent --show-error --retry 10 --retry-delay 5 \
+            "$BACKEND_URL/api/health"
+          {
+            echo "### Production deployment"
+            echo ""
+            echo "- Shared Cloud Run service: \`$CLOUD_RUN_SERVICE\`"
+            echo "- Backend URL: $BACKEND_URL"
+            echo "- Revision: \`$REVISION\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Shared-target mode: production deployment currently owns the shared revision"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Set up Node.js
-        if: env.HAS_GCP_KEY == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
       - name: Build & Deploy Frontend to Firebase Hosting (production)
-        if: env.HAS_GCP_KEY == 'true'
+        env:
+          VITE_API_URL: /api
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
         run: |
+          set -euo pipefail
           npm install -g firebase-tools
           npm ci --prefix frontend
           npm run build --prefix frontend
-          firebase deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }} --non-interactive
+          firebase deploy --only hosting --project "$GCP_PROJECT_ID" --non-interactive
+          curl --fail --silent --show-error "https://${GCP_PROJECT_ID}.web.app/"
+          {
+            echo "- Frontend URL: https://${GCP_PROJECT_ID}.web.app/"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
