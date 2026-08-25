@@ -105,6 +105,13 @@ Check service status:
 docker compose ps
 ```
 
+Unexpected backend request failures are logged with a request ID and returned
+as a safe HTTP 500 response instead of terminating the server. The frontend
+logs uncaught browser errors, rejected promises, failed API requests, and
+React render failures through the browser console and Firebase exception
+events. These handlers report failures; they do not turn failed operations
+into successful results.
+
 ## Operations
 
 ### View Logs

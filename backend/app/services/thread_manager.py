@@ -57,6 +57,7 @@ async def get_pg_checkpointer():
             if _PG_CHECKPOINTER is None:
                 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
                 from psycopg import AsyncConnection
+                from psycopg.rows import dict_row
 
                 pg_url = normalize_postgres_dsn(settings.database_url)
 
@@ -64,13 +65,26 @@ async def get_pg_checkpointer():
                     # Disable psycopg named prepared statements because the
                     # Supabase transaction pooler reuses connections across
                     # transactions and can otherwise reuse statement names.
-                    cm = await AsyncConnection.connect(pg_url, prepare_threshold=None)
+                    cm = await AsyncConnection.connect(
+                        pg_url,
+                        autocommit=True,
+                        prepare_threshold=None,
+                        row_factory=dict_row,
+                        connect_timeout=10,
+                    )
                     cp = AsyncPostgresSaver(cm)
                     await cp.setup()
                     _PG_CHECKPOINTER_CM = cm
                     _PG_CHECKPOINTER = cp
                     _PG_CHECKPOINTER_LOOP = current_loop
                     _logger.info("[ThreadManager] AsyncPostgresSaver initialized")
+                except asyncio.CancelledError:
+                    if cm is not None:
+                        await asyncio.shield(cm.close())
+                    _PG_CHECKPOINTER = None
+                    _PG_CHECKPOINTER_CM = None
+                    _PG_CHECKPOINTER_LOOP = None
+                    raise
                 except Exception:
                     if cm is not None:
                         await cm.close()

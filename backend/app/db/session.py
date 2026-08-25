@@ -55,7 +55,7 @@ def get_engine() -> AsyncEngine:
     if _engine is None:
         # Supabase's transaction pooler (PgBouncer) does not preserve
         # prepared statements between transactions.
-        connect_args: dict = {"statement_cache_size": 0}
+        connect_args: dict = {"statement_cache_size": 0, "timeout": 10}
         ssl_mode = (settings.db_ssl_mode or "").lower()
         if ssl_mode in ("require", "verify-ca", "verify-full"):
             connect_args["ssl"] = ssl_mode

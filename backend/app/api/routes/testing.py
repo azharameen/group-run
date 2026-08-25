@@ -44,9 +44,11 @@ async def reset_test_state() -> dict[str, str]:
             for table in tables:
                 try:
                     await session.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
-                except Exception:  # noqa: BLE001, S110
-                    # Table might not exist yet if checkpointer hasn't initialized
-                    pass
+                except Exception as exc:  # noqa: BLE001
+                    # A missing optional table must not abort the transaction for
+                    # every table that follows.
+                    await session.rollback()
+                    logger.warning("Could not truncate test table %s: %s", table, exc)
             await session.commit()
     except Exception as exc:  # noqa: BLE001
         logger.warning("Error truncating PostgreSQL tables: %s", exc)

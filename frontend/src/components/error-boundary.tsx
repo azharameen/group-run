@@ -1,7 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { trackException } from "@/lib/firebase";
+import { reportError } from "@/lib/error-reporting";
 
 interface Props {
 	children: ReactNode;
@@ -23,8 +23,8 @@ export class ErrorBoundary extends Component<Props, State> {
 	}
 
 	public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-		console.error("Uncaught Error Boundary catch:", error, errorInfo);
-		trackException(error, true);
+		reportError("React error boundary", error, true);
+		console.error("React error boundary details:", errorInfo);
 	}
 
 	public render() {

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import subprocess
 import sys
+import uuid
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from time import time
@@ -10,11 +11,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 from ..config import settings
 from ..infrastructure.observability import configure_langsmith_tracing
-from ..services.thread_manager import close_pg_checkpointer, get_pg_checkpointer, reset_pg_checkpointer
+from ..services.thread_manager import close_pg_checkpointer, reset_pg_checkpointer
 from .routes.artifacts import router as artifacts_router
 from .routes.chat import router as chat_router
 from .routes.config import router as config_router
@@ -160,6 +161,38 @@ def create_app() -> FastAPI:
 
     # Timing middleware — adds X-Process-Time header to non-streaming responses
     app.add_middleware(TimingMiddleware)
+
+    @app.middleware("http")
+    async def capture_unhandled_exceptions(request: Request, call_next):
+        request_id = uuid.uuid4().hex
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception(
+                "Unhandled request exception request_id=%s method=%s path=%s",
+                request_id,
+                request.method,
+                request.url.path,
+            )
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "detail": "Internal server error",
+                    "request_id": request_id,
+                },
+                headers={"X-Request-ID": request_id},
+            )
+
+        if response.status_code >= 500:
+            logger.error(
+                "Request returned server error request_id=%s method=%s path=%s status=%s",
+                request_id,
+                request.method,
+                request.url.path,
+                response.status_code,
+            )
+        response.headers["X-Request-ID"] = request_id
+        return response
 
     app.include_router(health_router)
     app.include_router(ideas_router)
