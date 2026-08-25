@@ -4,7 +4,7 @@ A general-purpose multi-agent orchestration system built on LangGraph and DeepAg
 
 ## Quick Start
 
-Prerequisites: **Python 3.12+**, **Node.js 20+**, **Docker & Docker Compose**.
+Prerequisites: **Python 3.12+**, **Node.js 24 LTS**, **Docker & Docker Compose**.
 
 ```bash
 # 1. Clone and enter the repository

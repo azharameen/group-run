@@ -4,8 +4,11 @@
 # 1. Push to develop (or manual trigger) ->
 #    a. DB Migration Gate: runs 'alembic upgrade head' against beta DB.
 #       If this step fails, the deploy is BLOCKED entirely.
-#    b. Build & deploy backend to Cloud Run (beta).
-#    c. Build & deploy frontend to Firebase Hosting.
+#    b. Build & deploy backend to the shared Cloud Run service.
+#    c. Build & deploy frontend to the shared Firebase Hosting target.
+#
+# Shared-target mode: beta and production intentionally use the same
+# infrastructure until beta has users. The last successful deploy owns traffic.
 
 name: "Release - Beta & Deployment Test"
 
@@ -28,11 +31,35 @@ permissions:
   id-token: write
 
 jobs:
+  beta-config:
+    name: Validate deployment configuration (beta)
+    runs-on: ubuntu-latest
+    environment: beta
+    steps:
+      - name: Require deployment secrets
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+          BETA_DATABASE_DIRECT_URL: ${{ secrets.BETA_DATABASE_DIRECT_URL }}
+          BETA_DATABASE_URL: ${{ secrets.BETA_DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in GCP_SA_KEY GCP_PROJECT_ID BETA_DATABASE_DIRECT_URL BETA_DATABASE_URL OPENAI_API_KEY; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Missing required beta deployment configuration: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
   # ------------------------------------------------------------------
   # DB Migration Gate (must succeed before deploy)
   # ------------------------------------------------------------------
   beta-db-migrate:
     name: DB Migration (beta)
+    needs: beta-config
     uses: ./.github/workflows/db-migrate.yml
     with:
       environment: beta
@@ -47,8 +74,6 @@ jobs:
     needs: beta-db-migrate
     runs-on: ubuntu-latest
     environment: beta
-    env:
-      HAS_GCP_KEY: ${{ secrets.GCP_SA_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,38 +89,69 @@ jobs:
           fi
 
       - name: Authenticate to Google Cloud
-        if: env.HAS_GCP_KEY == 'true'
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        if: env.HAS_GCP_KEY == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build & Deploy Backend to GCP Cloud Run (beta)
-        if: env.HAS_GCP_KEY == 'true'
+      - name: Build & Deploy Backend to shared Cloud Run service (beta)
         env:
-          GCP_REGION: ${{ secrets.GCP_REGION }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ secrets.GCP_REGION || vars.GCP_REGION || 'asia-south1' }}
+          CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'backend-service' }}
+          DATABASE_URL: ${{ secrets.BETA_DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_BASE: ${{ vars.OPENAI_API_BASE || 'https://api.openai.com/v1' }}
+          OPENAI_MODEL_NAME: ${{ vars.OPENAI_MODEL_NAME || 'gpt-4o-mini' }}
+          DEEPAGENTS_MODEL: ${{ vars.DEEPAGENTS_MODEL || 'openai:gpt-4o-mini' }}
         run: |
-          gcloud run deploy backend-service \
+          set -euo pipefail
+          gcloud run deploy "$CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
             --source backend/ \
-            --region "${GCP_REGION:-asia-south1}" \
+            --region "$GCP_REGION" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "DATABASE_URL=${{ secrets.BETA_DATABASE_URL }}" \
+            --set-env-vars "DATABASE_URL=$DATABASE_URL" \
             --set-env-vars "DB_SSL_MODE=require" \
             --set-env-vars "DB_AUTO_MIGRATE=false" \
             --set-env-vars "LANGGRAPH_STRICT_MSGPACK=true" \
+            --set-env-vars "APP_ROOT_DIR=/app" \
+            --set-env-vars "OPENAI_API_KEY=$OPENAI_API_KEY" \
+            --set-env-vars "OPENAI_API_BASE=$OPENAI_API_BASE" \
+            --set-env-vars "OPENAI_MODEL_NAME=$OPENAI_MODEL_NAME" \
+            --set-env-vars "DEEPAGENTS_MODEL=$DEEPAGENTS_MODEL" \
             --min-instances 0 \
             --max-instances 2 \
             --cpu 0.5 \
             --memory 256Mi
 
+          BACKEND_URL="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
+            --format='value(status.url)')"
+          REVISION="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
+            --format='value(status.latestReadyRevisionName)')"
+          echo "BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
+          echo "REVISION=$REVISION" >> "$GITHUB_ENV"
+          curl --fail --silent --show-error --retry 10 --retry-delay 5 \
+            "$BACKEND_URL/api/health"
+          {
+            echo "### Beta deployment"
+            echo ""
+            echo "- Shared Cloud Run service: \`$CLOUD_RUN_SERVICE\`"
+            echo "- Backend URL: $BACKEND_URL"
+            echo "- Revision: \`$REVISION\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Shared-target mode: beta deployment currently owns the shared revision"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -103,13 +159,21 @@ jobs:
         working-directory: frontend
         env:
           VITE_APP_VERSION: ${{ steps.version.outputs.tag }}
+          VITE_API_URL: /api
         run: |
           npm ci
           npm run build
 
       - name: Deploy Frontend to Firebase Hosting (beta)
-        if: env.HAS_GCP_KEY == 'true'
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
         run: |
-          echo "Target GCP Project ID: ${{ secrets.GCP_PROJECT_ID }}"
+          set -euo pipefail
+          echo "Deploying shared Firebase Hosting target in project $GCP_PROJECT_ID"
           npm install -g firebase-tools
-          firebase deploy --only hosting --project ${{ secrets.GCP_PROJECT_ID }} --non-interactive || echo "Firebase Hosting skipped/uninitialized."
+          firebase deploy --only hosting --project "$GCP_PROJECT_ID" --non-interactive
+          curl --fail --silent --show-error "https://${GCP_PROJECT_ID}.web.app/"
+          {
+            echo "- Frontend URL: https://${GCP_PROJECT_ID}.web.app/"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

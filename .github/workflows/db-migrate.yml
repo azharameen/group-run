@@ -66,4 +66,6 @@ jobs:
           DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
         run: |
           alembic current --verbose
+          echo "### Database migration (${{ inputs.environment }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Migration head: \`$(alembic heads | tr '\n' ' ')\`" >> "$GITHUB_STEP_SUMMARY"
           echo 'Migration completed successfully.'
