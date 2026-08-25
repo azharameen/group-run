@@ -267,3 +267,28 @@ class ThreadMetadataModel(Base):
     __table_args__ = (
         Index("idx_thread_metadata_updated", "updated_at"),
     )
+
+
+class ProviderConfigModel(Base):
+    """App-wide LLM provider metadata and encrypted credentials."""
+
+    __tablename__ = "provider_configs"
+
+    provider_id = Column(String, primary_key=True)
+    provider = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    endpoint = Column(String, nullable=False)
+    model = Column(String, nullable=False)
+    credentials_encrypted = Column(Text, nullable=True)
+    is_active = Column(Boolean, nullable=False, server_default="false")
+    created_at = Column(String, nullable=False)
+    updated_at = Column(String, nullable=False)
+
+    __table_args__ = (
+        Index(
+            "uq_provider_configs_active",
+            "is_active",
+            unique=True,
+            postgresql_where=is_active.is_(True),
+        ),
+    )

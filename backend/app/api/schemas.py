@@ -158,6 +158,48 @@ class TeamConfigResponse(BaseModel):
     teams: dict[str, TeamDefinition]
 
 
+# ── Provider configuration schemas ──────────────────────────────────────────
+
+
+class ProviderConfigRequest(BaseModel):
+    provider: str = Field(..., min_length=1, max_length=32)
+    name: str | None = Field(default=None, max_length=120)
+    endpoint: str | None = Field(default=None, max_length=500)
+    model: str = Field(..., min_length=1, max_length=200)
+    credentials: dict[str, Any] | None = None
+    api_key: str | None = Field(default=None, max_length=1000)
+    is_active: bool | None = None
+
+
+class ProviderCredentialsRequest(BaseModel):
+    credentials: dict[str, Any] | None = None
+    api_key: str | None = Field(default=None, max_length=1000)
+
+
+class ProviderConfigResponse(BaseModel):
+    provider_id: str
+    provider: str
+    name: str
+    endpoint: str
+    model: str
+    is_active: bool
+    has_credentials: bool = False
+    created_at: str
+    updated_at: str
+
+
+class ProviderListResponse(BaseModel):
+    providers: list[ProviderConfigResponse] = Field(default_factory=list)
+    count: int = 0
+
+
+class ProviderTestResponse(BaseModel):
+    provider_id: str
+    provider: str
+    success: bool
+    message: str
+
+
 # ── Knowledge Base schemas ─────────────────────────────────────────────────
 
 

@@ -2,8 +2,6 @@ import * as React from "react"
 import {
   Pencil,
   LogOut,
-  Eye,
-  EyeOff,
   Check,
   Globe,
   Cpu,
@@ -26,6 +24,15 @@ import {
   DEFAULT_PROVIDER_CONFIGS,
   DEFAULT_ACCOUNT_PROFILE,
 } from "@/constants/settings"
+import {
+  activateProvider,
+  deleteProvider,
+  fetchProviders,
+  saveProvider,
+  testProvider,
+  type ProviderConfig,
+  type ProviderName,
+} from "@/api/providers"
 
 // -------------------------------------------------------------
 // 1. Account Settings
@@ -237,29 +244,98 @@ export function PreferenceSettings() {
 // 3. Provider Settings
 // -------------------------------------------------------------
 export function ProviderSettings() {
-  const [activeProvider, setActiveProvider] = React.useState<"openai" | "ollama" | "custom">("openai")
-  
-  // State for OpenAI inputs
-  const [showOpenAIKey, setShowOpenAIKey] = React.useState(false)
-  const [openaiKey, setOpenaiKey] = React.useState("")
-  const [openaiModel, setOpenaiModel] = React.useState(OPENAI_MODELS[0].value)
+  const [providers, setProviders] = React.useState<ProviderConfig[]>([])
+  const [activeProvider, setActiveProvider] = React.useState<ProviderName>("openai")
+  const [providerId, setProviderId] = React.useState<string>()
+  const [endpoint, setEndpoint] = React.useState("")
+  const [model, setModel] = React.useState(OPENAI_MODELS[0].value)
+  const [credential, setCredential] = React.useState("")
+  const [adminToken, setAdminToken] = React.useState("")
+  const [loading, setLoading] = React.useState(true)
+  const [busy, setBusy] = React.useState(false)
+  const [testing, setTesting] = React.useState(false)
+  const [error, setError] = React.useState("")
+  const [message, setMessage] = React.useState("")
 
-  // State for Ollama inputs
-  const [ollamaUrl, setOllamaUrl] = React.useState(DEFAULT_PROVIDER_CONFIGS.ollama.baseUrl)
-  const [ollamaModel, setOllamaModel] = React.useState(DEFAULT_PROVIDER_CONFIGS.ollama.defaultModel)
-  const [ollamaStatus, setOllamaStatus] = React.useState<"idle" | "testing" | "success" | "error">("idle")
+  const load = React.useCallback(async () => {
+    setLoading(true)
+    try {
+      const result = await fetchProviders()
+      setProviders(result.providers)
+      const active = result.providers.find((p) => p.is_active)
+      if (active) {
+        setActiveProvider(active.provider)
+        setProviderId(active.provider_id)
+        setEndpoint(active.endpoint)
+        setModel(active.model)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load providers")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  // State for Custom Endpoint inputs
-  const [customUrl, setCustomUrl] = React.useState("")
-  const [customKey, setCustomKey] = React.useState("")
-  const [showCustomKey, setShowCustomKey] = React.useState(false)
-  const [customModel, setCustomModel] = React.useState("")
+  React.useEffect(() => { void load() }, [load])
 
-  const handleTestOllama = () => {
-    setOllamaStatus("testing")
-    setTimeout(() => {
-      setOllamaStatus("success")
-    }, 1200)
+  const selectProvider = (value: string) => {
+    const provider = value as ProviderName
+    setActiveProvider(provider)
+    const existing = providers.find((p) => p.provider === provider)
+    setProviderId(existing?.provider_id)
+    setEndpoint(existing?.endpoint ?? (provider === "ollama" ? DEFAULT_PROVIDER_CONFIGS.ollama.baseUrl : ""))
+    setModel(existing?.model ?? (provider === "ollama" ? DEFAULT_PROVIDER_CONFIGS.ollama.defaultModel : OPENAI_MODELS[0].value))
+    setCredential("")
+    setError("")
+    setMessage("")
+  }
+
+  const input = () => ({
+    provider: activeProvider,
+    endpoint: endpoint || undefined,
+    model,
+    credentials: credential ? { api_key: credential } : undefined,
+    is_active: providers.find((p) => p.provider_id === providerId)?.is_active ?? false,
+  })
+
+  const handleSave = async () => {
+    setBusy(true); setError(""); setMessage("")
+    try {
+      const saved = await saveProvider(input(), adminToken, providerId)
+      setProviderId(saved.provider_id)
+      setMessage("Provider saved. Activate it when ready.")
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save provider")
+    } finally { setBusy(false) }
+  }
+
+  const handleTest = async () => {
+    if (!providerId) { setError("Save this provider before testing it."); return }
+    setTesting(true); setError(""); setMessage("")
+    try {
+      const result = await testProvider(providerId, adminToken, credential ? { api_key: credential } : undefined)
+      if (!result.success) throw new Error(result.message)
+      setMessage(result.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Provider test failed")
+    } finally { setTesting(false) }
+  }
+
+  const handleActivate = async () => {
+    if (!providerId) { setError("Save this provider before activating it."); return }
+    setBusy(true); setError(""); setMessage("")
+    try { await activateProvider(providerId, adminToken); setMessage("Provider activated."); await load() }
+    catch (err) { setError(err instanceof Error ? err.message : "Unable to activate provider") }
+    finally { setBusy(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!providerId) return
+    setBusy(true); setError(""); setMessage("")
+    try { await deleteProvider(providerId, adminToken); setProviderId(undefined); setCredential(""); setMessage("Provider deleted."); await load() }
+    catch (err) { setError(err instanceof Error ? err.message : "Unable to delete provider") }
+    finally { setBusy(false) }
   }
 
   return (
@@ -271,8 +347,14 @@ export function ProviderSettings() {
         </p>
       </div>
 
-      {/* Provider Selector Tabs — using shadcn Tabs */}
-      <Tabs value={activeProvider} onValueChange={(v) => setActiveProvider(v as "openai" | "ollama" | "custom")}>
+      {loading ? <p className="text-sm text-muted-foreground">Loading providers...</p> : null}
+      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
+      {message ? <p role="status" className="text-sm text-green-600">{message}</p> : null}
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-muted-foreground">Operator token</label>
+        <Input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="PROVIDER_CONFIG_ADMIN_TOKEN" />
+      </div>
+      <Tabs value={activeProvider} onValueChange={selectProvider}>
         <TabsList className="w-full">
           {LLM_PROVIDERS.map((provider) => (
             <TabsTrigger key={provider.value} value={provider.value} className="flex-1">
@@ -291,31 +373,23 @@ export function ProviderSettings() {
             </div>
 
             <div className="space-y-3">
+             <Input type="url" placeholder="https://api.openai.com/v1" value={endpoint} onChange={(e) => setEndpoint(e.target.value)} />
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground">API Key</label>
                 <div className="relative">
                   <Input
-                    type={showOpenAIKey ? "text" : "password"}
-                    placeholder="sk-..."
-                    value={openaiKey}
-                    onChange={(e) => setOpenaiKey(e.target.value)}
+                    type="password"
+                    placeholder="Leave blank to keep the saved key"
+                    value={credential}
+                    onChange={(e) => setCredential(e.target.value)}
                     className="pr-10 border-border/80 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowOpenAIKey(!showOpenAIKey)}
-                    className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
-                  >
-                    {showOpenAIKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
                 </div>
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground">Default Model</label>
-                <Select value={openaiModel} onValueChange={setOpenaiModel}>
+                <Select                 value={model} onValueChange={setModel}>
                   <SelectTrigger className="w-full border-border/80">
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
@@ -330,6 +404,14 @@ export function ProviderSettings() {
            </div>
         </TabsContent>
 
+        <TabsContent value="google">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-foreground font-medium text-sm"><Globe className="h-4.5 w-4.5 text-blue-500" /><span>Google Gemini</span></div>
+            <Input type="url" placeholder="https://generativelanguage.googleapis.com" value={endpoint} onChange={(e) => setEndpoint(e.target.value)} />
+            <Input type="password" placeholder="Google API key" value={credential} onChange={(e) => setCredential(e.target.value)} />
+            <Input placeholder="gemini-2.0-flash" value={model} onChange={(e) => setModel(e.target.value)} />
+          </div>
+        </TabsContent>
         <TabsContent value="ollama">
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-foreground font-medium text-sm">
@@ -343,8 +425,8 @@ export function ProviderSettings() {
                 <Input
                   type="text"
                   placeholder="http://localhost:11434"
-                  value={ollamaUrl}
-                  onChange={(e) => setOllamaUrl(e.target.value)}
+                  value={endpoint}
+                  onChange={(e) => setEndpoint(e.target.value)}
                   className="border-border/80 focus-visible:ring-orange-500/20 focus-visible:border-orange-500"
                 />
               </div>
@@ -354,8 +436,8 @@ export function ProviderSettings() {
                 <Input
                   type="text"
                   placeholder="llama3, mistral, etc."
-                  value={ollamaModel}
-                  onChange={(e) => setOllamaModel(e.target.value)}
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
                   className="border-border/80 focus-visible:ring-orange-500/20 focus-visible:border-orange-500"
                 />
               </div>
@@ -365,84 +447,26 @@ export function ProviderSettings() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={handleTestOllama}
-                  disabled={ollamaStatus === "testing"}
+                  onClick={handleTest}
+                  disabled={testing}
                   className="h-8 border-border/80 text-xs font-medium shadow-none hover:bg-muted/40"
                 >
-                  {ollamaStatus === "testing" ? "Testing..." : "Test Connection"}
+                  {testing ? "Testing..." : "Test Connection"}
                 </Button>
 
-                {ollamaStatus === "success" && (
-                  <span className="text-xs text-green-600 font-medium flex items-center gap-1.5 animate-fade-in">
-                    <Check className="h-4.5 w-4.5" /> Ollama connected successfully
-                  </span>
-                )}
               </div>
             </div>
            </div>
         </TabsContent>
 
-        <TabsContent value="custom">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-foreground font-medium text-sm">
-              <Globe className="h-4.5 w-4.5 text-blue-500" />
-              <span>Custom API / Proxy Endpoint</span>
-            </div>
-
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Endpoint Base URL</label>
-                <Input
-                  type="url"
-                  placeholder="https://api.yourproxy.com/v1"
-                  value={customUrl}
-                  onChange={(e) => setCustomUrl(e.target.value)}
-                  className="border-border/80 focus-visible:ring-blue-500/20 focus-visible:border-blue-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">API Key (If required)</label>
-                <div className="relative">
-                  <Input
-                    type={showCustomKey ? "text" : "password"}
-                    placeholder="API credential key"
-                    value={customKey}
-                    onChange={(e) => setCustomKey(e.target.value)}
-                    className="pr-10 border-border/80 focus-visible:ring-blue-500/20 focus-visible:border-blue-500"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowCustomKey(!showCustomKey)}
-                    className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
-                  >
-                    {showCustomKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Model Name Mapping</label>
-                <Input
-                  type="text"
-                  placeholder="meta-llama/Llama-3-70b-chat-hf"
-                  value={customModel}
-                  onChange={(e) => setCustomModel(e.target.value)}
-                  className="border-border/80 focus-visible:ring-blue-500/20 focus-visible:border-blue-500"
-                />
-              </div>
-            </div>
-           </div>
-        </TabsContent>
       </div>
       </Tabs>
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button variant="default" className="h-9 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-sm transition-all border-none">
-          Save Settings
-        </Button>
+        <Button variant="outline" onClick={handleTest} disabled={busy || testing}>Test</Button>
+        <Button variant="outline" onClick={handleActivate} disabled={busy || !providerId}>Activate</Button>
+        <Button variant="outline" onClick={handleDelete} disabled={busy || !providerId}>Delete</Button>
+        <Button onClick={handleSave} disabled={busy}>{busy ? "Saving..." : "Save Settings"}</Button>
       </div>
     </div>
   )

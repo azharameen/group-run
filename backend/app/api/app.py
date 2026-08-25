@@ -26,6 +26,7 @@ from .routes.interrupts import router as interrupts_router
 from .routes.knowledge_base import router as knowledge_base_router
 from .routes.mcp import router as mcp_router
 from .routes.organizations import router as organizations_router
+from .routes.providers import router as providers_router
 from .routes.reviews import router as reviews_router
 from .routes.sse import router as sse_router
 from .routes.testing import router as testing_router
@@ -117,6 +118,11 @@ async def lifespan(_app: FastAPI):
     from ..db.session import dispose_engine, get_engine, reset_engine
     get_engine()
     logger.info("[Startup] PostgreSQL engine initialized")
+    try:
+        from .routes.providers import service as provider_service
+        await provider_service.refresh_runtime()
+    except Exception:
+        logger.warning("[Startup] Could not load active provider configuration", exc_info=True)
 
     # Checkpointer initialization is lazy so Cloud Run can bind its port even
     # when an external database is temporarily unavailable. The readiness
@@ -201,6 +207,7 @@ def create_app() -> FastAPI:
     app.include_router(interrupts_router)
     app.include_router(mcp_router)
     app.include_router(organizations_router)
+    app.include_router(providers_router)
     app.include_router(decisions_router)
     app.include_router(artifacts_router)
     app.include_router(work_item_templates_router)

@@ -49,6 +49,7 @@ export async function request<T>(path: string, options?: RequestOptions): Promis
       throw new Error(formatApiError(res.status, text));
     }
 
+    if (res.status === 204) return undefined as T;
     return await res.json();
   } catch (error) {
     if (timedOut) {

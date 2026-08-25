@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 
 from ..config import TEAMS_CONFIG_PATH, settings
+from ..providers.runtime import get_configured_chat_model, has_active_provider
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ def build_agent_subagents(team_name: str = "general") -> list[dict[str, Any]]:
             continue
         model = agent_entry.get("model", "auto")
         if model == "auto":
-            model = settings.deepagents_model
+            model = get_configured_chat_model() if has_active_provider() else settings.deepagents_model
         system_prompt = agent_entry.get(
             "system_prompt",
             f"{team_description} You are {name}.",
