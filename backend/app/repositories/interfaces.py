@@ -228,3 +228,22 @@ class IThreadMetadataRepository(ABC):
 
     @abstractmethod
     async def touch(self, thread_id: str, updated_at: str) -> None: ...
+
+
+class IProviderRepository(ABC):
+    """Read-safe persistence contract for app-wide provider configurations."""
+
+    @abstractmethod
+    async def list(self) -> list[dict[str, Any]]: ...
+
+    @abstractmethod
+    async def get(self, provider_id: str, include_credentials: bool = False) -> dict[str, Any] | None: ...
+
+    @abstractmethod
+    async def save(self, values: dict[str, Any], provider_id: str | None = None) -> dict[str, Any]: ...
+
+    @abstractmethod
+    async def delete(self, provider_id: str) -> bool: ...
+
+    @abstractmethod
+    async def activate(self, provider_id: str) -> dict[str, Any] | None: ...

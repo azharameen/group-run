@@ -28,7 +28,7 @@ export const OPENAI_MODELS: ModelOption[] = [
 
 // ─── LLM Provider Options ─────────────────────────────────────────────────────
 
-export type LLMProvider = "openai" | "ollama" | "custom";
+export type LLMProvider = "openai" | "google" | "ollama";
 
 export interface LLMProviderOption {
 	value: LLMProvider;
@@ -37,8 +37,8 @@ export interface LLMProviderOption {
 
 export const LLM_PROVIDERS: LLMProviderOption[] = [
 	{ value: "openai", label: "OpenAI" },
+	{ value: "google", label: "Google Gemini" },
 	{ value: "ollama", label: "Ollama (Local)" },
-	{ value: "custom", label: "Custom Endpoint" },
 ];
 
 // ─── Default Account Profile ──────────────────────────────────────────────────

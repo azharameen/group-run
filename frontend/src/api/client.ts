@@ -1,4 +1,5 @@
 export * from './request';
+export * from './providers';
 export * from './ideas';
 export * from './threads';
 export * from './knowledge';

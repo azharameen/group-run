@@ -144,4 +144,3 @@ MCP_CONFIG_PATH = os.path.join(CONFIG_DIR, "mcp.json")
 # ── Schema versions (must match config file schema_version fields) ────────
 TEAMS_SCHEMA_VERSION = "1.0"
 MCP_SCHEMA_VERSION = "1.0"
-

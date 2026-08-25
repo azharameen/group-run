@@ -50,19 +50,17 @@ Create `.env` from `.env.example` in the project root:
 cp .env.example .env
 ```
 
-Required for agent features:
+Required for local agent features:
 
 | Variable | Purpose | Example |
 |----------|---------|---------|
-| `OPENAI_API_KEY` | LLM API key | `sk-...` |
-| `OPENAI_MODEL_NAME` | Model to use | `gpt-4o` |
 | `LANGGRAPH_STRICT_MSGPACK` | **Must be `true`** | `true` |
 
 Optional:
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `DEEPAGENTS_MODEL` | Override model | Auto-derived from `OPENAI_MODEL_NAME` |
+| `DEEPAGENTS_MODEL` | Deterministic CI/test model override | Empty |
 | `MCP_SERVERS` | MCP server JSON config | Empty (no MCP tools) |
 | `AGENT_TIMEOUT_SEC` | Agent operation timeout | `120` |
 
@@ -214,7 +212,8 @@ Both services are on the default `compose` network. The frontend reaches the bac
 
 - Check logs: `docker compose logs backend`
 - Common cause: `LANGGRAPH_STRICT_MSGPACK` not set to `true`
-- Common cause: Missing or invalid `OPENAI_API_KEY`
+- Common cause: No provider is configured in **Settings → Provider**, or the
+  saved provider credentials were rejected.
 
 ## CI/CD
 
@@ -256,13 +255,17 @@ credentials and connection strings in **Environment secrets**, not variables:
 
 | Environment | Required secrets |
 |-------------|------------------|
-| `beta` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `BETA_DATABASE_DIRECT_URL`, `BETA_DATABASE_URL`, `OPENAI_API_KEY` |
-| `production` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `PROD_DATABASE_DIRECT_URL`, `PROD_DATABASE_URL`, `OPENAI_API_KEY` |
+| `beta` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `BETA_DATABASE_DIRECT_URL`, `BETA_DATABASE_URL` |
+| `production` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `PROD_DATABASE_DIRECT_URL`, `PROD_DATABASE_URL` |
 
-`GCP_REGION` is optional and defaults to `asia-south1`. Optional
-Environment variables are `GCP_PROJECT_ID`, `CLOUD_RUN_SERVICE`,
-`OPENAI_API_BASE`, `OPENAI_MODEL_NAME`, and `DEEPAGENTS_MODEL`; the workflows
-default to the current shared service and `gpt-4o-mini` settings when omitted.
+After deployment, open **Settings → Provider**, choose OpenAI, Google Gemini, or
+Ollama, enter the endpoint/model/credential, test it, save it, and activate it.
+Provider configuration is stored directly in PostgreSQL.
+
+`GCP_REGION` is optional and defaults to `asia-south1`. Optional deployment
+variables are `GCP_PROJECT_ID` and `CLOUD_RUN_SERVICE`; the workflows default
+to the current shared service when omitted. Provider endpoint, model, and
+credentials are configured after deployment through **Settings → Provider**.
 Use the same infrastructure values in both Environments until beta needs
 independent resources.
 
@@ -277,9 +280,9 @@ curl -fsS "https://<cloud-run-url>/api/health"
 curl -fsS "https://<firebase-project-id>.web.app/"
 ```
 
-Finally open the Firebase URL in a browser and send a chat message. A real
-agent response verifies that the runtime `OPENAI_API_KEY` and model settings
-were injected into Cloud Run.
+Finally open the Firebase URL in a browser, configure and activate a provider,
+then send a chat message. A real agent response verifies database persistence,
+credential decryption, provider connectivity, and runtime model construction.
 
 ### Rollback
 

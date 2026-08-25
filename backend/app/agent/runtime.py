@@ -19,12 +19,12 @@ from ..config import (
     settings,
 )
 from ..config_schemas import validate_mcp_config, validate_teams_config
+from ..providers.runtime import get_configured_chat_model, has_active_provider
 from ..work_items.tools import DOMAIN_TOOLS
 from .backends import build_agent_backend
 from .context import DeepAgentContext
 from .permissions import build_agent_permissions
 from .subagents import build_agent_subagents
-from .test_model import resolve_chat_model
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +378,7 @@ def get_deep_agent_runtime(team_name: str = "general"):
         ValueError: If the named team is not defined in teams.yaml.
         RuntimeError: If DeepAgents model configuration is missing.
     """
-    if not settings.deepagents_model:
+    if not settings.deepagents_model and not has_active_provider():
         raise RuntimeError("DeepAgents model configuration is required.")
 
     # Validate team exists
@@ -413,7 +413,7 @@ def get_deep_agent_runtime(team_name: str = "general"):
     # E2E runs never make a live LLM call; otherwise the string is passed
     # through for ``create_deep_agent`` to instantiate the real provider.
     return create_deep_agent(
-        model=resolve_chat_model(settings.deepagents_model),
+        model=get_configured_chat_model(settings.deepagents_model),
         system_prompt=_load_system_prompt(team_description),
         backend=build_agent_backend(),
         permissions=build_agent_permissions(),

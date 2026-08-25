@@ -13,13 +13,20 @@ git clone <repo-url> && cd <repo-directory>
 # 2. Configure environment
 cp .env.example .env  # Unix/macOS
 # Copy-Item .env.example .env  # Windows PowerShell
-# Edit .env — at minimum set OPENAI_API_KEY and OPENAI_MODEL_NAME
+# Edit .env — set provider administration secrets (see below)
 
 # 3. Start both services with Docker Compose
 docker compose up --build
 ```
 
 The frontend is available at **http://localhost:3000** and the backend API at **http://localhost:8000**.
+
+### Configure an LLM provider
+
+Provider settings are app-wide and are managed from **Settings → Provider**.
+Enter the endpoint, model, and credential in the settings panel to save, test,
+activate, or delete an OpenAI, Google Gemini, or Ollama configuration. Provider
+configuration is stored directly in PostgreSQL.
 
 For a step-by-step local development setup (without Docker), see [Getting Started](docs/GETTING_STARTED.md).
 
@@ -28,7 +35,7 @@ For a step-by-step local development setup (without Docker), see [Getting Starte
 | Guide | Description |
 |-------|-------------|
 | [Getting Started](docs/GETTING_STARTED.md) | 15-minute developer onboarding |
-| [Deployment](docs/DEPLOYMENT.md) | Docker Compose deployment guide |
+| [Deployment](docs/DEPLOYMENT.md) | Docker Compose, Cloud Run, and Firebase deployment guide |
 | [Architecture](docs/architecture.md) | System architecture and design |
 | [SSE & Streaming](docs/sse-streaming.md) | SSE and streaming edge cases, reconnect semantics, and error propagation |
 | [Features](docs/features.md) | Feature inventory and status |
