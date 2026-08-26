@@ -133,12 +133,6 @@ async function warmUpFrontend(): Promise<void> {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
-    page.on('pageerror', (error) => console.log(`[warm-up pageerror] ${error.message}`));
-    page.on('console', (message) => {
-      if (message.type() === 'error') {
-        console.log(`[warm-up console.error] ${message.text()}`);
-      }
-    });
     await page.goto(`${FRONTEND_URL}/sign-in`, {
       waitUntil: 'domcontentloaded',
       timeout: WARMUP_TIMEOUT_MS,
@@ -165,13 +159,7 @@ async function warmUpFrontend(): Promise<void> {
       });
       // The 'load' event can be held hostage by the long-lived /api/sse
       // connection, so a page-specific readiness locator is the signal.
-      try {
-        await page.locator(visit.ready).waitFor({ state: 'visible', timeout: WARMUP_TIMEOUT_MS });
-      } catch (error) {
-        console.log(`[warm-up diagnostics] URL: ${page.url()}`);
-        console.log(`[warm-up diagnostics] Body: ${(await page.locator('body').innerText()).slice(0, 1000)}`);
-        throw error;
-      }
+      await page.locator(visit.ready).waitFor({ state: 'visible', timeout: WARMUP_TIMEOUT_MS });
     }
 
     // /ideas/:id needs a real idea to render; create one, warm the

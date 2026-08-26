@@ -28,7 +28,6 @@ const firebaseConfig = {
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
 export const auth = getAuth(firebaseApp)
 export const firestore = getFirestore(firebaseApp)
-export const authPersistenceReady = setPersistence(auth, browserLocalPersistence)
 
 if (import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL) {
   connectAuthEmulator(auth, import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL, {
@@ -40,6 +39,8 @@ if (import.meta.env.VITE_FIRESTORE_EMULATOR_HOST) {
   const [host, port] = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST.split(":")
   connectFirestoreEmulator(firestore, host, Number(port))
 }
+
+export const authPersistenceReady = setPersistence(auth, browserLocalPersistence)
 
 let analyticsInstance: Analytics | null = null
 let perfInstance: FirebasePerformance | null = null
