@@ -15,13 +15,9 @@ import {
 	SidebarRail,
 } from "@/components/ui/sidebar";
 import { type ThreadMetadata } from "@/api/client";
+import { useAuth } from "@/context/AuthContext";
 
 const data = {
-	user: {
-		name: "Engineer",
-		email: "engineer@companion.ai",
-		avatar: "/avatars/user.jpg",
-	},
 	navMain: [
 		{
 			title: "Home",
@@ -58,6 +54,8 @@ export function AppSidebar({
 	onSelectThread?: (threadId: string | null) => void;
 	onThreadsUpdate?: (threads: ThreadMetadata[]) => void;
 }) {
+	const { user } = useAuth();
+
 	return (
 		<Sidebar collapsible="icon" {...props}>
 			<SidebarHeader>
@@ -89,7 +87,13 @@ export function AppSidebar({
 				/>
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser user={data.user} />
+				<NavUser
+					user={{
+						name: user?.display_name || "Companion user",
+						email: user?.email || "",
+						avatar: user?.photo_url || "",
+					}}
+				/>
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>

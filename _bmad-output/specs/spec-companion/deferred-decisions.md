@@ -5,7 +5,8 @@
 | **Postgres migration** | SQLite sufficient for solo dev + small team. No measurable bottleneck yet. | Connection contention, WAL lock waits > 100ms p99, or multi-instance deployment need |
 | **Code execution sandbox** | High complexity (container runtime, seccomp, resource limits). Not needed for core chat/ideas flow. | User requests agent code execution feature |
 | **Major version upgrades** (React 19, Tailwind 4, Vite 8, DeepAgents 0.7, LangGraph 1.2) | Current versions work. Breaking changes add migration risk. | Quarterly review — upgrade if security patches or critical bugs |
-| **JWT authentication** | Session-based auth sufficient for now. | Multi-tenant deployment or mobile API consumers |
+| **Role and tenant authorization** | Firebase authentication is adopted, but all authenticated users currently share platform access. | Product requires admin/member roles or organization isolation |
+| **Firebase App Check and MFA** | Authentication, CSP, revocation checks, and rules are the current security boundary. | Abuse telemetry or account-risk requirements justify attestation/MFA |
 | **Database-backed persistent data** | Workspace filesystem works. Dual-write adds complexity. | After LangGraph migration is stable and tested |
 | **Connector framework** (Slack, Gmail, Azure DevOps, etc.) | MCP covers the integration pattern. Specific connectors are feature work, not architecture. | User requests specific connector |
 | **Multi-tenant support** | Solo dev + small team doesn't need it. | Product requires tenant isolation |

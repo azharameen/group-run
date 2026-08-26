@@ -28,6 +28,22 @@ class SendMessageRequest(BaseModel):
     idea_id: str | None = Field(default=None, max_length=64)
 
 
+class UserProfile(BaseModel):
+    uid: str
+    email: str | None = None
+    display_name: str | None = None
+    photo_url: str | None = None
+    provider: str
+    created_at: str
+    updated_at: str
+    last_sign_in_at: str
+
+
+class AuthBootstrapResponse(BaseModel):
+    user: UserProfile
+    is_new_user: bool
+
+
 class Interrupt(BaseModel):
     id: str
     thread_id: str

@@ -238,6 +238,18 @@ Config reload merges DB overlay on top of the file base. File changes require ex
   - **CI gating:** e2e gates `develop` (unchanged, post-#57 path filters); `main` stays ungated per AD-16, revisit at v1.0.0.
 - **Enforcement:** standing AC line in `_bmad/custom/bmad-create-story.toml` (persistent fact); the full contract lives in `docs/testing.md` (delivered with #61).
 
+### AD-22 — Firebase Bearer Authentication and User Profiles [ADOPTED]
+
+- **Binds:** browser/native identity, every FastAPI route, SSE transport, and user-profile storage
+- **Prevents:** anonymous API access, client-asserted identity, token leakage, unauthenticated streams, and cross-user profile access
+- **Rule:**
+  - Google-only Firebase Authentication issues short-lived ID-token JWTs. Web and future native clients send the current token as `Authorization: Bearer`; Firebase SDK owns refresh-token persistence and automatic ID-token rotation.
+  - FastAPI verifies every non-health `/api` request, including SSE. `/api/health`, `/api/ready`, and CORS preflight are the only public exceptions. Missing, invalid, expired, revoked, or disabled identities fail closed with sanitized 401 responses.
+  - `users/{uid}` in Firestore is the canonical user profile. Backend bootstrap atomically creates or refreshes it from verified claims. Firestore Rules permit only the owner to read and update explicitly mutable fields; clients cannot create/delete profiles or alter identity/audit fields.
+  - Browser SSE uses authenticated Fetch/Web Streams rather than native `EventSource`, because native `EventSource` cannot send the Bearer header.
+  - All authenticated users have equal platform access in this release. Custom claims remain available for future roles; organization/tenant isolation, App Check, and MFA require separate adopted decisions.
+  - Bearer-token browser exposure is mitigated with CSP, dependency auditing, token redaction, no unsafe HTML, and one forced-refresh retry before terminal sign-out.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -254,7 +266,7 @@ Config reload merges DB overlay on top of the file base. File changes require ex
 | **State mutation — transactional boundary** | Agent graph runs are atomic (LangGraph checkpoint). Runtime state writes happen before/after graph execution, not mid-step. |
 | **Logging** | Structured JSON logging. `structlog` for Python, `console` for frontend. Level: INFO production, DEBUG development. |
 | **Config** | Environment variables for secrets. YAML/JSON for structured config. No hardcoded secrets. All config schemas include `schema_version` field. |
-| **Auth** | API key authentication for backend. Session-based for frontend auth (deferred: JWT migration). |
+| **Auth** | Google Firebase Auth; short-lived Bearer ID-token JWTs verified by FastAPI. Health/readiness/preflight only are public. |
 | **File paths** | `APP_ROOT_DIR` env var pins workspace root in Docker. Never use `pathlib.Path(__file__).parent` for workspace resolution. |
 
 ## Stack
@@ -444,7 +456,7 @@ ideator/
 | **Postgres migration** | SQLite sufficient for solo dev + small team. No measurable bottleneck yet. | Connection contention, WAL lock waits > 100ms p99, or multi-instance deployment need |
 | **Code execution sandbox** | High complexity (container runtime, seccomp, resource limits). Not needed for core chat/ideas flow. | User requests agent code execution feature |
 | **Major version upgrades** (React 19, Tailwind 4, Vite 8, DeepAgents 0.7, LangGraph 1.2) | Current versions work. Breaking changes add migration risk. | Quarterly review — upgrade if security patches or critical bugs |
-| **JWT authentication** | Session-based auth sufficient for now. | Multi-tenant deployment or mobile API consumers |
+| **Role and tenant authorization** | Firebase identity is implemented; equal platform access is sufficient for this release. | Admin/member roles or organization isolation required |
 | **Database-backed persistent data** | Workspace filesystem works. Dual-write adds complexity. | After LangGraph migration is stable and tested |
 | **Connector framework** (Slack, Gmail, Azure DevOps, etc.) | MCP covers the integration pattern. Specific connectors are feature work, not architecture. | User requests specific connector |
 | **Sandbox for agent code execution** | Security and complexity not justified yet. | User requests agent-generated code execution |

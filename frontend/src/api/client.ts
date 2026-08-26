@@ -7,6 +7,7 @@ export * from './config';
 export * from './organizations';
 export * from './workItems';
 export * from './errors';
+export * from './auth';
 
 // Re-export interrupt-specific functions for direct import
 export {

@@ -34,7 +34,7 @@ describe('mcp.ts API module', () => {
 
       const servers = await fetchMCPServers();
       expect(servers).toEqual(mockServers);
-      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/');
+      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/', expect.any(Object));
     });
 
     it('throws error on non-ok HTTP response', async () => {
@@ -48,7 +48,7 @@ describe('mcp.ts API module', () => {
       );
 
       await expect(fetchMCPServers()).rejects.toThrow(
-        'Failed to fetch MCP servers: 500 Internal Server Error',
+        'API 500: Internal Server Error',
       );
     });
 
@@ -95,11 +95,10 @@ describe('mcp.ts API module', () => {
 
       const result = await addMCPServer('test-server', 'http://localhost:9000');
       expect(result).toEqual(mockServer);
-      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/', {
+      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/', expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'test-server', url: 'http://localhost:9000', timeout: 10 }),
-      });
+      }));
     });
 
     it('adds an MCP server with custom timeout', async () => {
@@ -120,11 +119,10 @@ describe('mcp.ts API module', () => {
 
       const result = await addMCPServer('test-server', 'http://localhost:9000', 25);
       expect(result).toEqual(mockServer);
-      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/', {
+      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/', expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'test-server', url: 'http://localhost:9000', timeout: 25 }),
-      });
+      }));
     });
 
     it('throws error with detail message on non-ok HTTP response', async () => {
@@ -138,7 +136,7 @@ describe('mcp.ts API module', () => {
       );
 
       await expect(addMCPServer('test-server', 'http://localhost:9000')).rejects.toThrow(
-        'Server name already exists',
+        'API 400: Server name already exists',
       );
     });
 
@@ -203,13 +201,14 @@ describe('mcp.ts API module', () => {
         'fetch',
         vi.fn().mockResolvedValue({
           ok: true,
+          status: 204,
         }),
       );
 
       await removeMCPServer('server name/1');
-      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/server%20name%2F1', {
+      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/server%20name%2F1', expect.objectContaining({
         method: 'DELETE',
-      });
+      }));
     });
 
     it('throws error with detail message on non-ok response', async () => {
@@ -222,7 +221,7 @@ describe('mcp.ts API module', () => {
         }),
       );
 
-      await expect(removeMCPServer('test-server')).rejects.toThrow('Server not found');
+      await expect(removeMCPServer('test-server')).rejects.toThrow('API 404: Server not found');
     });
 
     it('throws error with statusText fallback on non-ok response without detail', async () => {
@@ -271,9 +270,9 @@ describe('mcp.ts API module', () => {
 
       const status = await pingMCPServer('server 1/test');
       expect(status).toEqual(mockStatus);
-      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/server%201%2Ftest/health', {
+      expect(fetch).toHaveBeenCalledWith('/api/mcp/servers/server%201%2Ftest/health', expect.objectContaining({
         method: 'POST',
-      });
+      }));
     });
 
     it('throws error with detail message on non-ok response', async () => {
@@ -286,7 +285,7 @@ describe('mcp.ts API module', () => {
         }),
       );
 
-      await expect(pingMCPServer('test-server')).rejects.toThrow('Service Unavailable');
+      await expect(pingMCPServer('test-server')).rejects.toThrow('API 503: Service Unavailable');
     });
 
     it('throws error with statusText fallback when response is non-ok and not JSON', async () => {

@@ -20,12 +20,12 @@ test.describe('HITL Interrupts', () => {
   });
 
   async function createInterruptViaApi(
-    api: { baseUrl: string },
+    api: { baseUrl: string; authHeaders: () => Record<string, string> },
     threadId: string
   ): Promise<string> {
     const response = await fetch(`${api.baseUrl}/api/interrupts/`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({
         thread_id: threadId,
         tool_name: 'write_file',
@@ -40,10 +40,10 @@ test.describe('HITL Interrupts', () => {
     return body.interrupt.id as string;
   }
 
-  async function createThread(api: { baseUrl: string }): Promise<string> {
+  async function createThread(api: { baseUrl: string; authHeaders: () => Record<string, string> }): Promise<string> {
     const response = await fetch(`${api.baseUrl}/api/threads`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({ title: 'HITL Thread', idea_id: null }),
     });
     const body = await response.json();
@@ -135,7 +135,7 @@ test.describe('HITL Interrupts', () => {
 
     const resume = await fetch(`${api.baseUrl}/api/interrupts/${interruptId}/resume`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({}),
     });
     expect(resume.status).toBe(409);

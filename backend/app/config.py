@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     # raises an escalation alert.
     blocked_phase_threshold_hours: int = 24
 
+    firebase_project_id: str = ""
+
     # Compute .env path relative to this file (backend/app/config.py -> repo root)
     model_config = SettingsConfigDict(
         env_prefix="",
@@ -125,6 +127,9 @@ if settings.openai_api_base and not os.environ.get("OPENAI_API_BASE"):
     os.environ["OPENAI_API_BASE"] = settings.openai_api_base
 if settings.openai_model_name and not os.environ.get("OPENAI_MODEL_NAME"):
     os.environ["OPENAI_MODEL_NAME"] = settings.openai_model_name
+if settings.firebase_project_id:
+    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", settings.firebase_project_id)
+    os.environ.setdefault("GCLOUD_PROJECT", settings.firebase_project_id)
 
 # ROOT_DIR must point at the directory that directly contains workspace/,
 # config/, instructions/, and knowledge-base/.

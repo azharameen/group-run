@@ -43,9 +43,7 @@ describe('deepagents.ts API module', () => {
       await expect(promise).resolves.toEqual(mockInterrupts);
       expect(fetch).toHaveBeenCalledWith(
         '/api/interrupts/pending',
-        expect.objectContaining({
-          headers: { 'Content-Type': 'application/json' },
-        }),
+        expect.any(Object),
       );
     });
 
@@ -134,7 +132,6 @@ describe('deepagents.ts API module', () => {
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify({ decision: 'approved', reason: 'Looks good', reasoning: 'Looks good' }),
-          headers: { 'Content-Type': 'application/json' },
         }),
       );
     });
@@ -204,7 +201,6 @@ describe('deepagents.ts API module', () => {
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify({ decision: 'rejected', reason: 'Unsafe action', reasoning: 'Unsafe action' }),
-          headers: { 'Content-Type': 'application/json' },
         }),
       );
     });

@@ -15,12 +15,12 @@ test.describe('Ideas CRUD', () => {
   });
 
   async function createIdeaViaApi(
-    api: { baseUrl: string },
+    api: { baseUrl: string; authHeaders: () => Record<string, string> },
     title: string
   ): Promise<string> {
     const response = await fetch(`${api.baseUrl}/api/ideas`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({ title, signal_text: 'E2E test signal' }),
     });
     if (!response.ok) {

@@ -13,6 +13,7 @@
 | **Provenance Everywhere** | Every artifact, event, and decision carries provenance metadata. |
 | **Test Coverage** | All new features must have tests. Run `pytest backend/tests` before committing. |
 | **No Sandbox Execution** | Shell execution and code runners are explicitly deferred. |
+| **Authentication by Default** | All non-health `/api` routes, including SSE and test-support routes, require a verified Firebase principal. |
 
 ### 1.2 File Size Targets
 

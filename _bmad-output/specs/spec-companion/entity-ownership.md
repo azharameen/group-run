@@ -11,5 +11,6 @@ Each entity type has exactly one canonical owner and storage backend. No other l
 | `team_definition` | Config loader | `config/teams.yaml` | File read at startup/reload |
 | `mcp_server` (platform) | Config loader | `config/mcp.json` | File read at startup |
 | `mcp_server` (user) | MCP API | SQLite | SQLAlchemy repository |
-| `user_preference` | Auth API | SQLite | SQLAlchemy repository |
+| `user_profile` | Auth API | Firestore `users/{uid}` | Firebase Admin SDK bootstrap; owner-only allowlisted client updates |
+| `firebase_identity` | Firebase Authentication | Firebase Auth | Google provider and Firebase SDK/Admin SDK |
 | `approval_request` | HITL middleware | SQLite | SQLAlchemy repository |

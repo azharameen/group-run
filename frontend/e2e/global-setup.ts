@@ -23,11 +23,38 @@
  */
 
 import { chromium } from '@playwright/test';
+import { initializeApp } from 'firebase/app';
+import {
+  connectAuthEmulator,
+  getAuth,
+  GoogleAuthProvider,
+  signInWithCredential,
+} from 'firebase/auth';
 
 const API_BASE_URL = process.env.PLAYWRIGHT_API_BASE_URL || 'http://localhost:8000';
 const FRONTEND_URL = process.env.PLAYWRIGHT_DEV_BASE_URL || 'http://localhost:3000';
 const HEALTH_TIMEOUT_MS = 30_000;
 const WARMUP_TIMEOUT_MS = 120_000;
+let authorization = '';
+
+async function authenticateWithEmulator(): Promise<void> {
+  const app = initializeApp(
+    { apiKey: 'fake-api-key', projectId: 'demo-companion-auth' },
+    'playwright-global-setup',
+  );
+  const auth = getAuth(app);
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  const credential = GoogleAuthProvider.credential(
+    JSON.stringify({
+      sub: 'playwright-warmup-user',
+      email: 'warmup@example.com',
+      email_verified: true,
+      name: 'Warmup User',
+    }),
+  );
+  const result = await signInWithCredential(auth, credential);
+  authorization = `Bearer ${await result.user.getIdToken()}`;
+}
 
 async function waitForHealthy(): Promise<void> {
   const deadline = Date.now() + HEALTH_TIMEOUT_MS;
@@ -49,7 +76,7 @@ async function waitForHealthy(): Promise<void> {
 async function createThread(): Promise<string> {
   const response = await fetch(`${API_BASE_URL}/api/threads`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: authorization },
     body: JSON.stringify({ title: 'Warmup Thread', idea_id: null }),
   });
   if (!response.ok) {
@@ -62,7 +89,7 @@ async function createThread(): Promise<string> {
 async function drainSseStream(url: string, body: unknown): Promise<void> {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: authorization },
     body: JSON.stringify(body),
   });
   if (!response.ok || !response.body) {
@@ -82,7 +109,7 @@ async function drainSseStream(url: string, body: unknown): Promise<void> {
 async function createIdea(): Promise<string> {
   const response = await fetch(`${API_BASE_URL}/api/ideas`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: authorization },
     body: JSON.stringify({ title: 'Warmup Idea', signal_text: 'warmup' }),
   });
   if (!response.ok) {
@@ -106,6 +133,28 @@ async function warmUpFrontend(): Promise<void> {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
+    page.on('response', (response) => {
+      if (response.url().includes('/api/auth/bootstrap')) {
+        console.log(`[warm-up auth bootstrap] ${response.status()}`);
+      }
+    });
+    await page.goto(`${FRONTEND_URL}/sign-in`, {
+      waitUntil: 'domcontentloaded',
+      timeout: WARMUP_TIMEOUT_MS,
+    });
+    const signedIn = page.waitForURL((url) => url.pathname !== '/sign-in', {
+      timeout: WARMUP_TIMEOUT_MS,
+    });
+    await page.evaluate(async () => {
+      const modulePath = '/src/lib/firebase-emulator-testing.ts';
+      const { signInWithGoogleEmulatorForTesting } = await import(/* @vite-ignore */ modulePath);
+      await signInWithGoogleEmulatorForTesting({
+        sub: 'playwright-warmup-user',
+        email: 'warmup@example.com',
+        name: 'Warmup User',
+      });
+    });
+    await signedIn;
     for (const visit of visited) {
       await page.goto(`${FRONTEND_URL}${visit.path}`, {
         waitUntil: 'domcontentloaded',
@@ -129,7 +178,10 @@ async function warmUpFrontend(): Promise<void> {
   } finally {
     await browser.close();
     if (ideaId) {
-      const del = await fetch(`${API_BASE_URL}/api/ideas/${ideaId}`, { method: 'DELETE' });
+      const del = await fetch(`${API_BASE_URL}/api/ideas/${ideaId}`, {
+        method: 'DELETE',
+        headers: { Authorization: authorization },
+      });
       if (!del.ok) {
         console.warn(`[global-setup] Warm-up idea cleanup failed: ${del.status}`);
       }
@@ -140,6 +192,7 @@ async function warmUpFrontend(): Promise<void> {
 export default async function globalSetup(): Promise<void> {
   const startedAt = Date.now();
   await waitForHealthy();
+  await authenticateWithEmulator();
 
   const warmupDeadline = Date.now() + WARMUP_TIMEOUT_MS;
   try {
@@ -168,7 +221,10 @@ export default async function globalSetup(): Promise<void> {
   }
 
   // Reset application state after warm-up so the test run starts from a completely clean slate
-  const resetResp = await fetch(`${API_BASE_URL}/api/testing/reset`, { method: 'POST' });
+  const resetResp = await fetch(`${API_BASE_URL}/api/testing/reset`, {
+    method: 'POST',
+    headers: { Authorization: authorization },
+  });
   if (!resetResp.ok) {
     console.warn(`[global-setup] Post-warmup reset failed: ${resetResp.status}`);
   }

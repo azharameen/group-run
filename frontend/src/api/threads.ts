@@ -1,6 +1,4 @@
-import { request, RequestOptions } from './request';
-
-const API_BASE = '/api';
+import { authenticatedFetch, request, RequestOptions } from './request';
 
 export type StreamEventType =
   | 'reasoning'
@@ -179,13 +177,10 @@ export async function rejectInterrupt(
 }
 
 export async function resumeInterrupt(id: string): Promise<ResumeResponse> {
-  const res = await fetch(`${API_BASE}/interrupts/${id}/resume`, {
+  return request<ResumeResponse>(`/interrupts/${id}/resume`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
   });
-  if (!res.ok) throw new Error(`resumeInterrupt ${res.status}`);
-  return res.json();
 }
 
 export interface SSEPayload extends Record<string, unknown> {
@@ -201,52 +196,82 @@ export function connectSSE(
   onEvent: (event: string, data: SSEPayload) => void,
   onError?: (err: Event) => void,
   onInterruptEvent?: (eventType: string, payload: SSEPayload) => void,
-): EventSource {
-  const es = new EventSource(`${API_BASE}/sse`);
+): Pick<EventSource, 'close'> {
+  let closed = false;
+  let activeController: AbortController | null = null;
+  let reconnectAttempt = 0;
+  let reconnectTimer: number | null = null;
 
-  const knownEvents = [
-    'idea.created', 'idea.transition', 'idea.scored',
-    'agent.progress',
-    'research.initializing', 'research.running', 'research.completed',
-    'research.failed', 'research.incomplete', 'research.cancelled',
-    'research.progress',
-    'validation.initializing', 'validation.running', 'validation.completed',
-    'validation.failed', 'validation.incomplete', 'validation.cancelled',
-    'validation.progress',
-  ];
-
-  knownEvents.forEach((eventName) => {
-    es.addEventListener(eventName, (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as SSEPayload;
-        onEvent(eventName, data);
-      } catch {
-        // ignore parse errors
-      }
-    });
-  });
-
-  // StreamBus publishes generic `message` events for interrupts
-  es.onmessage = (e: MessageEvent) => {
+  const dispatchFrame = (frame: string) => {
+    let eventName = 'message';
+    const dataLines: string[] = [];
+    for (const line of frame.split(/\r?\n/)) {
+      if (line.startsWith('event:')) eventName = line.slice(6).trim();
+      if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
+    }
+    if (dataLines.length === 0) return;
     try {
-      const data = JSON.parse(e.data) as SSEPayload;
-      const type = data?.type;
-      if (type?.startsWith('interrupt.')) {
+      const data = JSON.parse(dataLines.join('\n')) as SSEPayload;
+      const type = typeof data.type === 'string' ? data.type : eventName;
+      if (type.startsWith('interrupt.')) {
         onInterruptEvent?.(type, data);
-      } else if (type && knownEvents.includes(type)) {
-        onEvent(type, data);
+      } else {
+        onEvent(eventName, data);
       }
     } catch {
-      // ignore parse errors
+      // Ignore malformed frames and continue the stream.
     }
   };
 
-  es.onerror = (err) => {
-    console.error('SSE error:', err);
-    onError?.(err);
+  const connect = async () => {
+    if (closed) return;
+    activeController = new AbortController();
+    try {
+      const response = await authenticatedFetch('/sse', {
+        headers: { Accept: 'text/event-stream' },
+        signal: activeController.signal,
+      });
+      if (!response.ok || !response.body) throw new Error('SSE connection failed');
+
+      reconnectAttempt = 0;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (!closed) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split(/\r?\n\r?\n/);
+        buffer = frames.pop() ?? '';
+        frames.forEach(dispatchFrame);
+      }
+    } catch {
+      if (!closed && !activeController?.signal.aborted) {
+        onError?.(new Event('error'));
+      }
+    }
+
+    if (!closed) {
+      const delay = Math.min(1000 * 2 ** reconnectAttempt++, 15000);
+      reconnectTimer = window.setTimeout(() => void connect(), delay);
+    }
   };
 
-  return es;
+  const reconnectForToken = () => {
+    if (closed) return;
+    activeController?.abort();
+  };
+  window.addEventListener('companion:id-token-changed', reconnectForToken);
+  void connect();
+
+  return {
+    close: () => {
+      closed = true;
+      activeController?.abort();
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+      window.removeEventListener('companion:id-token-changed', reconnectForToken);
+    },
+  };
 }
 
 export async function streamChat(
@@ -254,9 +279,8 @@ export async function streamChat(
   onEvent: (event: StreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/chat/stream`, {
+  const res = await authenticatedFetch('/chat/stream', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, sender: 'user' }),
     signal,
   });
@@ -296,9 +320,7 @@ export async function streamChat(
 }
 
 export async function listThreads(signal?: AbortSignal): Promise<ThreadMetadata[]> {
-  const res = await fetch(`${API_BASE}/threads`, { signal });
-  if (!res.ok) throw new Error(`listThreads ${res.status}`);
-  const data = await res.json();
+  const data = await request<{ threads?: ThreadMetadata[] }>('/threads', { signal });
   return (data.threads ?? []) as ThreadMetadata[];
 }
 
@@ -306,14 +328,11 @@ export async function createThread(
   req: CreateThreadRequest,
   signal?: AbortSignal,
 ): Promise<ThreadMetadata> {
-  const res = await fetch(`${API_BASE}/threads`, {
+  const data = await request<{ thread: ThreadMetadata }>('/threads', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
     signal,
   });
-  if (!res.ok) throw new Error(`createThread ${res.status}`);
-  const data = await res.json();
   return data.thread as ThreadMetadata;
 }
 
@@ -321,9 +340,7 @@ export async function getThread(
   threadId: string,
   signal?: AbortSignal,
 ): Promise<ThreadMetadata> {
-  const res = await fetch(`${API_BASE}/threads/${threadId}`, { signal });
-  if (!res.ok) throw new Error(`getThread ${res.status}`);
-  const data = await res.json();
+  const data = await request<{ thread: ThreadMetadata }>(`/threads/${threadId}`, { signal });
   return data.thread as ThreadMetadata;
 }
 
@@ -332,14 +349,11 @@ export async function updateThread(
   req: UpdateThreadRequest,
   signal?: AbortSignal,
 ): Promise<ThreadMetadata> {
-  const res = await fetch(`${API_BASE}/threads/${threadId}`, {
+  const data = await request<{ thread: ThreadMetadata }>(`/threads/${threadId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
     signal,
   });
-  if (!res.ok) throw new Error(`updateThread ${res.status}`);
-  const data = await res.json();
   return data.thread as ThreadMetadata;
 }
 
@@ -347,11 +361,10 @@ export async function deleteThread(
   threadId: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/threads/${threadId}`, {
+  await request<void>(`/threads/${threadId}`, {
     method: 'DELETE',
     signal,
   });
-  if (!res.ok) throw new Error(`deleteThread ${res.status}`);
 }
 
 export async function streamThreadMessage(
@@ -361,9 +374,8 @@ export async function streamThreadMessage(
   onEvent?: (event: StreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/threads/${threadId}/stream`, {
+  const res = await authenticatedFetch(`/threads/${threadId}/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, idea_id: ideaId ?? null }),
     signal,
   });
@@ -403,7 +415,8 @@ export async function getThreadMessages(
   threadId: string,
   signal?: AbortSignal,
 ): Promise<{ messages: ThreadMessage[]; count: number }> {
-  const res = await fetch(`${API_BASE}/threads/${threadId}/messages`, { signal });
-  if (!res.ok) throw new Error(`getThreadMessages ${res.status}`);
-  return res.json();
+  return request<{ messages: ThreadMessage[]; count: number }>(
+    `/threads/${threadId}/messages`,
+    { signal },
+  );
 }

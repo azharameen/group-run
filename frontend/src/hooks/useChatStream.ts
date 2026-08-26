@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
 	connectSSE,
+	fetchPendingInterrupts,
 	streamThreadMessage,
 	getThreadMessages,
 	listThreads,
@@ -78,19 +79,6 @@ export function useChatStream({
 		[groupedMessages, searchQuery],
 	);
 
-	// Fetch initial tasks (one-time bootstrap only)
-	useEffect(() => {
-		fetch(`/api/agent-tasks`)
-			.then((res) => (res.ok ? res.json() : null))
-			.then((data) => {
-				if (data?.tasks) {
-					setTasks(data.tasks);
-					setTaskStats({ completed: data.completed, total: data.total });
-				}
-			})
-			.catch((err) => console.error("Error fetching agent tasks:", err));
-	}, []);
-
 	// SSE: background agent.progress events + tasks_update + interrupts
 	useEffect(() => {
 		const es = connectSSE(
@@ -116,18 +104,12 @@ export function useChatStream({
 			async () => {
 				// On SSE reconnect, fetch pending interrupts to reconcile state
 				try {
-					const res = await fetch("/api/interrupts/pending");
-					if (res.ok) {
-						const data = await res.json();
-						const interrupts = data.interrupts || [];
-						if (interrupts.length > 0) {
-							// Restore the most recent pending interrupt
-							const latest = interrupts[interrupts.length - 1];
-							activeInterruptIdRef.current = latest.id;
-							setPendingInterrupt(latest);
-						} else {
-							// No pending interrupts — clear stale state
-						}
+					const interrupts = await fetchPendingInterrupts();
+					if (interrupts.length > 0) {
+						// Restore the most recent pending interrupt
+						const latest = interrupts[interrupts.length - 1];
+						activeInterruptIdRef.current = latest.id;
+						setPendingInterrupt(latest);
 					}
 				} catch {
 					// Silently fail — SSE will catch up with new events

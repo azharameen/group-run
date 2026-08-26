@@ -4,9 +4,21 @@ import { fetchOrganizations } from '../api/organizations';
 import { fetchIdeas } from '../api/ideas';
 import { fetchKnowledgeBase } from '../api/knowledge';
 
+const { getIdToken } = vi.hoisted(() => ({
+  getIdToken: vi.fn().mockResolvedValue('firebase-id-token'),
+}));
+
+vi.mock('@/lib/firebase', () => ({
+  auth: {
+    currentUser: { getIdToken },
+  },
+}));
+
 describe('request API helper', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    getIdToken.mockClear();
+    getIdToken.mockResolvedValue('firebase-id-token');
   });
 
   afterEach(() => {
@@ -26,11 +38,10 @@ describe('request API helper', () => {
 
     const promise = request('/test');
     await expect(promise).resolves.toEqual(mockData);
-    expect(fetch).toHaveBeenCalledWith(
-      '/api/test',
-      expect.objectContaining({
-        headers: { 'Content-Type': 'application/json' },
-      }),
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    expect(fetch).toHaveBeenCalledWith('/api/test', expect.any(Object));
+    expect(new Headers(options?.headers).get('Authorization')).toBe(
+      'Bearer firebase-id-token',
     );
   });
 
@@ -62,9 +73,9 @@ describe('request API helper', () => {
     );
 
     const promise = request('/test');
-    vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS);
-
-    await expect(promise).rejects.toThrow('API timeout after 30000 ms');
+    const assertion = expect(promise).rejects.toThrow('API timeout after 30000 ms');
+    await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT_MS);
+    await assertion;
   });
 
   it('times out after custom timeoutMs when provided', async () => {
@@ -82,9 +93,9 @@ describe('request API helper', () => {
     );
 
     const promise = request('/test', { timeoutMs: 5000 });
-    vi.advanceTimersByTime(5000);
-
-    await expect(promise).rejects.toThrow('API timeout after 5000 ms');
+    const assertion = expect(promise).rejects.toThrow('API timeout after 5000 ms');
+    await vi.advanceTimersByTimeAsync(5000);
+    await assertion;
   });
 
   it('supports caller-provided AbortSignal aborting request before timeout', async () => {
@@ -103,10 +114,12 @@ describe('request API helper', () => {
 
     const callerController = new AbortController();
     const promise = request('/test', { signal: callerController.signal, timeoutMs: 30000 });
+    const assertion = expect(promise).rejects.toThrow('User aborted');
 
+    await Promise.resolve();
     callerController.abort();
 
-    await expect(promise).rejects.toThrow('User aborted');
+    await assertion;
   });
 
   it('omits Content-Type header when body is FormData', async () => {
@@ -124,9 +137,29 @@ describe('request API helper', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/upload',
       expect.objectContaining({
-        headers: {},
+        headers: expect.any(Headers),
       }),
     );
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    expect(new Headers(options?.headers).has('Content-Type')).toBe(false);
+  });
+
+  it('force-refreshes the token once after a 401 response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 401 })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true }),
+        }),
+    );
+
+    await expect(request('/test')).resolves.toEqual({ success: true });
+    expect(getIdToken).toHaveBeenNthCalledWith(1, false);
+    expect(getIdToken).toHaveBeenNthCalledWith(2, true);
   });
 
   it('works with API modules like fetchOrganizations, fetchIdeas, fetchKnowledgeBase when custom timeout is passed', async () => {
@@ -144,15 +177,18 @@ describe('request API helper', () => {
     );
 
     const promiseOrg = fetchOrganizations({ timeoutMs: 1000 });
-    vi.advanceTimersByTime(1000);
-    await expect(promiseOrg).rejects.toThrow('API timeout after 1000 ms');
+    const assertionOrg = expect(promiseOrg).rejects.toThrow('API timeout after 1000 ms');
+    await vi.advanceTimersByTimeAsync(1000);
+    await assertionOrg;
 
     const promiseIdea = fetchIdeas({ timeoutMs: 2000 });
-    vi.advanceTimersByTime(2000);
-    await expect(promiseIdea).rejects.toThrow('API timeout after 2000 ms');
+    const assertionIdea = expect(promiseIdea).rejects.toThrow('API timeout after 2000 ms');
+    await vi.advanceTimersByTimeAsync(2000);
+    await assertionIdea;
 
     const promiseKb = fetchKnowledgeBase({ timeoutMs: 3000 });
-    vi.advanceTimersByTime(3000);
-    await expect(promiseKb).rejects.toThrow('API timeout after 3000 ms');
+    const assertionKb = expect(promiseKb).rejects.toThrow('API timeout after 3000 ms');
+    await vi.advanceTimersByTimeAsync(3000);
+    await assertionKb;
   });
 });

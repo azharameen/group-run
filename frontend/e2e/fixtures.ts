@@ -23,6 +23,10 @@ export interface ApiHelpers {
   waitForHealthy: (timeoutMs?: number) => Promise<void>;
   /** Reset backend application state to a clean, deterministic baseline. */
   resetState: () => Promise<void>;
+  /** Set the Firebase emulator ID token used by protected API helpers. */
+  setIdToken: (token: string) => void;
+  /** Return headers containing the current Firebase emulator ID token. */
+  authHeaders: () => Record<string, string>;
 }
 
 type Fixtures = {
@@ -30,15 +34,21 @@ type Fixtures = {
   api: ApiHelpers;
   /** Auto-use fixture that resets application state before every test. */
   autoResetState: void;
+  /** Auto-use fixture that signs the browser into the Firebase Auth emulator. */
+  authenticatedSession: void;
 };
 
 export const test = base.extend<Fixtures>({
   // eslint-disable-next-line no-empty-pattern
   api: async ({}, use) => {
     const baseUrl = process.env.PLAYWRIGHT_API_BASE_URL || 'http://localhost:8000';
+    let idToken = '';
+
+    const authHeaders = (): Record<string, string> =>
+      idToken ? { Authorization: `Bearer ${idToken}` } : {};
 
     const getJson = async <T,>(path: string): Promise<T> => {
-      const response = await fetch(`${baseUrl}${path}`);
+      const response = await fetch(`${baseUrl}${path}`, { headers: authHeaders() });
       if (!response.ok) {
         throw new Error(`GET ${path} failed with status ${response.status}`);
       }
@@ -52,7 +62,7 @@ export const test = base.extend<Fixtures>({
     const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(body),
       });
       if (!response.ok) {
@@ -87,18 +97,56 @@ export const test = base.extend<Fixtures>({
     const resetState = async (): Promise<void> => {
       const response = await fetch(`${baseUrl}/api/testing/reset`, {
         method: 'POST',
+        headers: authHeaders(),
       });
       if (!response.ok) {
         throw new Error(`POST /api/testing/reset failed with status ${response.status}`);
       }
     };
 
-    await use({ baseUrl, getJson, postJson, waitForHealthy, resetState });
+    await use({
+      baseUrl,
+      getJson,
+      postJson,
+      waitForHealthy,
+      resetState,
+      setIdToken: (token) => {
+        idToken = token;
+      },
+      authHeaders,
+    });
   },
 
-  autoResetState: [
-    async ({ api }, use) => {
+  authenticatedSession: [
+    async ({ page, api }, use) => {
       await api.waitForHealthy();
+      await page.goto('/sign-in');
+      const signedIn = page.waitForURL((url) => url.pathname !== '/sign-in');
+      await page.evaluate(async () => {
+        const modulePath = '/src/lib/firebase-emulator-testing.ts';
+        const { signInWithGoogleEmulatorForTesting } = await import(/* @vite-ignore */ modulePath);
+        await signInWithGoogleEmulatorForTesting({
+          sub: 'playwright-user',
+          email: 'playwright@example.com',
+          name: 'Playwright User',
+          picture: 'https://example.com/playwright.png',
+        });
+      });
+      await signedIn;
+      const idToken = await page.evaluate(async () => {
+        const modulePath = '/src/lib/firebase.ts';
+        const { auth } = await import(/* @vite-ignore */ modulePath);
+        if (!auth.currentUser) throw new Error('Firebase emulator user was not restored');
+        return auth.currentUser.getIdToken(true);
+      });
+      api.setIdToken(idToken);
+      await use();
+    },
+    { auto: true },
+  ],
+
+  autoResetState: [
+    async ({ api, authenticatedSession: _authenticatedSession }, use) => {
       await api.resetState();
       await use();
     },
