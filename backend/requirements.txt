@@ -10,8 +10,8 @@ pyyaml>=6.0.3
 deepagents==0.7.8
 langchain>=1.3.16
 langchain-openai>=1.6.0
-langchain-google-genai>=2.1.0
-langchain-ollama>=0.3.0
+langchain-google-genai>=4.3.5
+langchain-ollama>=1.1.0
 openai>=3.3.1
 httpx>=0.28.1
 sse-starlette>=3.4.8
@@ -20,11 +20,11 @@ pytest-asyncio>=1.4.0
 pytest-cov>=7.1.0
 langchain-mcp-adapters>=0.3.2
 # PostgreSQL async checkpointer — replaces langgraph-checkpoint-sqlite
-langgraph-checkpoint-postgres>=2.0.0
+langgraph-checkpoint-postgres>=3.1.2
 # SQLAlchemy async engine with asyncpg driver
-sqlalchemy[asyncio]>=2.0.30
-asyncpg>=0.29.0
+sqlalchemy[asyncio]>=2.0.52
+asyncpg>=0.31.0
 # psycopg v3 — used by Alembic for DDL (direct connection, not pooled)
-psycopg[binary]>=3.1.18
+psycopg[binary]>=3.3.4
 # Schema migrations
-alembic>=1.13.0
+alembic>=1.19.1
