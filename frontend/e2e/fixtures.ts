@@ -134,7 +134,7 @@ export const test = base.extend<Fixtures>({
         const modulePath = '/src/lib/firebase.ts';
         const { auth } = await import(/* @vite-ignore */ modulePath);
         if (!auth.currentUser) throw new Error('Firebase emulator user was not restored');
-        return auth.currentUser.getIdToken();
+        return auth.currentUser.getIdToken(true);
       });
       api.setIdToken(idToken);
       await use();
