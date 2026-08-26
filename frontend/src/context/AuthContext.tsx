@@ -72,14 +72,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void authPersistenceReady.then(async () => {
       if (!active) return
-      try {
-        await getRedirectResult(auth)
-      } catch (error) {
-        sessionStorage.removeItem(SIGN_IN_PENDING_KEY)
-        const safeError = toSafeAuthError(error)
-        toast({ variant: "destructive", ...safeError })
-      }
-
       unsubscribe = onIdTokenChanged(auth, async (nextFirebaseUser) => {
         const generation = ++generationRef.current
         window.dispatchEvent(new Event("companion:id-token-changed"))
@@ -117,6 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
         }
       })
+
+      try {
+        await getRedirectResult(auth)
+      } catch (error) {
+        sessionStorage.removeItem(SIGN_IN_PENDING_KEY)
+        const safeError = toSafeAuthError(error)
+        toast({ variant: "destructive", ...safeError })
+      }
     })
 
     return () => {
