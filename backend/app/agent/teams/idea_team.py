@@ -18,6 +18,21 @@ from ...storage.idea_workspace import (
     save_idea_yaml,
     workspace_transaction,
 )
+from .idea_validation import (
+    VALIDATION_ARTIFACT,
+    NoveltyValidationError,
+    run_idea_validation,
+    validation_status,
+)
+
+__all__ = [
+    "IDEA_ARTIFACTS",
+    "VALIDATION_ARTIFACT",
+    "NoveltyValidationError",
+    "run_idea_research",
+    "run_idea_validation",
+    "validation_status",
+]
 
 IDEA_ARTIFACTS = (
     "market-summary",

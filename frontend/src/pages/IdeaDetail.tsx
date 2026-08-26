@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { IdeaActionsHeader } from "../components/idea-detail/IdeaActionsHeader";
 import { ArtifactsPanel } from "../components/idea-detail/ArtifactsPanel";
 import { MaturityPanel } from "../components/idea-detail/MaturityPanel";
+import { NoveltyAssessmentPanel } from "../components/idea-detail/NoveltyAssessmentPanel";
 
 export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: string) => void; }) {
 	const { ideaId } = useParams<{ ideaId: string }>();
@@ -166,6 +167,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 						<TabsTrigger value="filesystem" data-testid="tab-filesystem" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Filesystem</TabsTrigger>
 						<TabsTrigger value="comments" data-testid="tab-comments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Comments</TabsTrigger>
 						<TabsTrigger value="artifacts" data-testid="tab-artifacts" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Artifacts</TabsTrigger>
+						<TabsTrigger value="novelty" data-testid="tab-novelty" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Novelty</TabsTrigger>
 						<TabsTrigger value="maturity" data-testid="tab-maturity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Maturity</TabsTrigger>
 					</TabsList>
 					<TabsContent value="overview" className="space-y-6 pt-4">
@@ -204,6 +206,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 						</Card>
 					</TabsContent>
 					<TabsContent value="artifacts" className="space-y-4 pt-4"><ArtifactsPanel ideaId={ideaId || ""} research={idea?.research} /></TabsContent>
+					<TabsContent value="novelty" className="space-y-4 pt-4"><NoveltyAssessmentPanel validation={idea?.validation} workItemId={idea?.work_item_id} /></TabsContent>
 					<TabsContent value="maturity" className="space-y-4 pt-4"><MaturityPanel key={ideaId || ""} ideaId={ideaId || ""} /></TabsContent>
 				</Tabs>
 			</div>

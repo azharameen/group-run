@@ -83,6 +83,23 @@ def save_idea_yaml(idea_id: str, filename: str, data: Any):
         write_yaml(_idea_file_path(idea_id, filename), data)
 
 
+def load_validation_metadata(idea_id: str) -> dict[str, Any] | None:
+    """Read the validation summary kept with the canonical idea metadata."""
+    idea = load_idea_yaml(idea_id, "idea.yaml")
+    value = idea.get("validation") if isinstance(idea, dict) else None
+    return value if isinstance(value, dict) else None
+
+
+def save_validation_metadata(idea_id: str, validation: dict[str, Any]) -> dict[str, Any]:
+    """Persist validation state in idea.yaml; artifact files remain canonical."""
+    if not isinstance(validation, dict):
+        raise TypeError("validation metadata must be an object")
+    idea = load_idea_yaml(idea_id, "idea.yaml") or {"idea_id": idea_id}
+    idea["validation"] = validation
+    save_idea_yaml(idea_id, "idea.yaml", idea)
+    return validation
+
+
 def create_idea_folder(idea_id: str) -> str:
     with workspace_transaction(idea_id):
         folder = idea_folder_path(idea_id)

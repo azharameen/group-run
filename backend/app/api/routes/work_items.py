@@ -12,7 +12,11 @@ from ...organization.service import OrganizationIntegrityError
 from ...storage.idea_workspace import load_idea_yaml
 from ...work_items import service
 from ...work_items.idea_mapping import get_idea_id_for_work_item, validate_work_item_id
-from ...work_items.models import SubmitWorkItemRequest, TransitionWorkItemRequest
+from ...work_items.models import (
+    NoveltyValidationRequest,
+    SubmitWorkItemRequest,
+    TransitionWorkItemRequest,
+)
 from ...work_items.service import (
     InvalidTransitionError,
     NoOrganizationError,
@@ -86,6 +90,7 @@ async def list_work_items(
                 **item.model_dump(),
                 "idea_id": idea_id,
                 "research": metadata.get("research"),
+                "validation": metadata.get("validation"),
             }
         )
     return {"work_items": work_items, "count": len(work_items)}
@@ -120,7 +125,12 @@ async def transition_work_item(
     idea_id = get_idea_id_for_work_item(work_item_id)
     metadata = load_idea_yaml(idea_id, "idea.yaml") if idea_id else {}
     return {
-        "work_item": {**response, "idea_id": idea_id, "research": metadata.get("research")},
+        "work_item": {
+            **response,
+            "idea_id": idea_id,
+            "research": metadata.get("research"),
+            "validation": metadata.get("validation"),
+        },
         "event": event.model_dump(),
     }
 
@@ -140,6 +150,61 @@ async def get_work_item_research(work_item_id: str = Path(..., max_length=64)) -
         "work_item_id": work_item_id,
         "idea_id": idea_id,
         "research": metadata.get("research"),
+        "validation": metadata.get("validation"),
+    }
+
+
+@router.post("/work-items/{work_item_id}/validation")
+@router.post("/work-items/{work_item_id}/novelty-validation")
+@router.post("/work-items/{work_item_id}/novelty-assessment")
+async def trigger_work_item_validation(
+    request: NoveltyValidationRequest | None = None,
+    work_item_id: str = Path(..., max_length=64),
+) -> dict:
+    """Run the bounded Idea Team validation for a mapped idea."""
+    try:
+        validate_work_item_id(work_item_id)
+        idea_id, validation = await service.run_work_item_validation(
+            work_item_id,
+            time_budget_sec=request.time_budget_sec if request else None,
+            agent_id=request.agent_id if request else "idea-team-validator",
+        )
+    except UnknownWorkItemError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=500, detail="Failed to validate work item") from exc
+    return {
+        "work_item_id": work_item_id,
+        "idea_id": idea_id,
+        "validation": validation,
+        "lifecycle_status": (await service.get_work_item(work_item_id)).status,
+    }
+
+
+@router.get("/work-items/{work_item_id}/validation")
+@router.get("/work-items/{work_item_id}/novelty-validation")
+@router.get("/work-items/{work_item_id}/novelty-assessment")
+async def get_work_item_validation(work_item_id: str = Path(..., max_length=64)) -> dict:
+    """Read validation status and summary from the canonical idea workspace."""
+    try:
+        validate_work_item_id(work_item_id)
+        idea_id, validation = service.get_work_item_validation(work_item_id)
+        item = await service.get_work_item(work_item_id)
+    except UnknownWorkItemError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=500, detail="Failed to load validation") from exc
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"Work item {work_item_id} not found")
+    return {
+        "work_item_id": work_item_id,
+        "idea_id": idea_id,
+        "validation": validation,
+        "lifecycle_status": item.status,
     }
 
 
@@ -162,6 +227,7 @@ async def get_work_item(work_item_id: str = Path(..., max_length=64)) -> dict:
             **item.model_dump(),
             "idea_id": idea_id,
             "research": metadata.get("research"),
+            "validation": metadata.get("validation"),
         }
     }
 

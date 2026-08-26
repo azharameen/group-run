@@ -10,6 +10,7 @@ export interface IdeaListItem {
 
 export interface IdeaData {
   idea_id: string;
+  work_item_id?: string;
   title: string;
   signal_text?: string;
   problem_statement?: string;
@@ -25,7 +26,42 @@ export interface IdeaData {
     error?: string;
     updated_at?: number;
   };
+  validation?: ValidationStatus;
   [key: string]: unknown;
+}
+
+export type PatentabilityOutcome = 'likely' | 'uncertain' | 'unlikely';
+export type FtoRisk = 'low' | 'moderate' | 'high' | 'unknown';
+export type ValidationState = 'unknown' | 'initializing' | 'running' | 'completed' | 'failed' | 'incomplete' | 'cancelled';
+
+export interface NoveltyAssessmentSummary {
+  novelty_score: number;
+  patentability_score: number;
+  patentability_outcome: PatentabilityOutcome;
+  fto_risk: FtoRisk;
+  fto_analysis: string;
+  confidence: number;
+  rationale: string;
+  prior_art_refs: string[];
+  source_refs: string[];
+  provenance: string;
+  agent_id: string;
+  assessed_at: string;
+  artifact_name: string;
+  artifact_version?: number | null;
+}
+
+export interface ValidationStatus {
+  state: ValidationState;
+  idea_id: string;
+  work_item_id?: string | null;
+  expected_artifacts?: string[];
+  completed_artifacts?: string[];
+  error?: string;
+  retryable?: boolean | null;
+  updated_at?: number;
+  summary?: NoveltyAssessmentSummary | null;
+  artifact?: Record<string, unknown>;
 }
 
 export interface IdeaDetail {
@@ -112,6 +148,17 @@ export async function fetchIdeaFiles(ideaId: string, options?: RequestOptions): 
 export async function fetchIdeaRevisions(ideaId: string, options?: RequestOptions): Promise<ArtifactRevision[]> {
   const res = await request<{ idea_id: string; revisions: ArtifactRevision[] }>(`/ideas/${ideaId}/revisions`, options);
   return res.revisions || [];
+}
+
+export async function fetchIdeaValidation(
+  ideaId: string,
+  options?: RequestOptions,
+): Promise<ValidationStatus> {
+  const res = await request<{ idea_id: string; validation: ValidationStatus }>(
+    `/ideas/${encodeURIComponent(ideaId)}/validation`,
+    options,
+  );
+  return res.validation;
 }
 
 export async function fetchArtifactDiff(ideaId: string, artifactName: string, options?: RequestOptions): Promise<Record<string, unknown>> {

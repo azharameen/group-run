@@ -27,6 +27,8 @@ TEAMS_YAML_SCHEMA = {
                 "properties": {
                     "name": {"type": "string", "minLength": 1},
                     "description": {"type": "string"},
+                    "validation_role": {"type": "string"},
+                    "validation_prompt": {"type": "string"},
                     "agents": {
                         "type": "array",
                         "minItems": 1,

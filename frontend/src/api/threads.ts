@@ -80,6 +80,7 @@ export interface StreamEvent {
   routing_key?: string;
   idea_id?: string;
   research?: Record<string, unknown>;
+  validation?: Record<string, unknown>;
 }
 
 export interface ThreadMetadata {
@@ -209,6 +210,9 @@ export function connectSSE(
     'research.initializing', 'research.running', 'research.completed',
     'research.failed', 'research.incomplete', 'research.cancelled',
     'research.progress',
+    'validation.initializing', 'validation.running', 'validation.completed',
+    'validation.failed', 'validation.incomplete', 'validation.cancelled',
+    'validation.progress',
   ];
 
   knownEvents.forEach((eventName) => {

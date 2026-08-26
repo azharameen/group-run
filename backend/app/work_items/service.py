@@ -7,7 +7,11 @@ from datetime import UTC, datetime
 from ..organization import service as org_service
 from ..organization.models import Organization
 from . import repository
-from .idea_mapping import ensure_idea_for_work_item, validate_work_item_id
+from .idea_mapping import (
+    ensure_idea_for_work_item,
+    get_idea_id_for_work_item,
+    validate_work_item_id,
+)
 from .lifecycle import LIFECYCLE_PHASES, PHASE_DEPARTMENT
 from .mapping import row_to_work_item
 from .models import (
@@ -126,6 +130,59 @@ async def list_work_items(org_id: str | None = None) -> list[WorkItem]:
         for work_item in (row_to_work_item(row) for row in rows)
         if work_item is not None
     ]
+
+
+async def run_work_item_validation(
+    work_item_id: str,
+    *,
+    validator=None,
+    time_budget_sec: int | None = None,
+    agent_id: str = "idea-team-validator",
+) -> tuple[str | None, dict]:
+    """Run validation for the idea mapped to a work item without changing lifecycle."""
+    validate_work_item_id(work_item_id)
+    item = await get_work_item(work_item_id)
+    if item is None:
+        raise UnknownWorkItemError(f"Work item {work_item_id} not found")
+    idea_id = get_idea_id_for_work_item(work_item_id)
+    if not idea_id:
+        return None, {
+            "state": "failed",
+            "idea_id": "",
+            "work_item_id": work_item_id,
+            "expected_artifacts": ["novelty-assessment"],
+            "completed_artifacts": [],
+            "error": "No idea is mapped to this work item",
+            "retryable": False,
+        }
+    from ..agent.teams.idea_validation import run_idea_validation
+
+    result = await run_idea_validation(
+        idea_id,
+        f"{item.title}\n{item.description}",
+        validator=validator,
+        time_budget_sec=time_budget_sec,
+        agent_id=agent_id,
+        work_item_id=work_item_id,
+    )
+    return idea_id, result
+
+
+def get_work_item_validation(work_item_id: str) -> tuple[str | None, dict]:
+    """Read validation state from the mapped idea's canonical workspace."""
+    validate_work_item_id(work_item_id)
+    idea_id = get_idea_id_for_work_item(work_item_id)
+    if not idea_id:
+        return None, {
+            "state": "unknown",
+            "idea_id": "",
+            "work_item_id": work_item_id,
+            "expected_artifacts": ["novelty-assessment"],
+            "completed_artifacts": [],
+        }
+    from ..agent.teams.idea_validation import validation_status
+
+    return idea_id, validation_status(idea_id, work_item_id)
 
 
 def _parse_alternatives(raw: object) -> list[str]:

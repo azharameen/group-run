@@ -48,6 +48,8 @@ teams:
   idea:
     name: "Idea Team"
     description: "Research market demand, competition, prior art, feasibility, and target audience."
+    validation_role: "novelty-patentability-validator"
+    validation_prompt: "Assess novelty, possible patentability, and freedom-to-operate from supplied prior-art evidence. Return strict JSON and never provide legal certainty."
     agents:
       - name: "market-researcher"
         role: "market research analyst"
