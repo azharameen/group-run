@@ -134,13 +134,14 @@ def draft_patent_section(
         idea_folder.mkdir(parents=True, exist_ok=True)
         file_path = idea_folder / f"{section_name}.md"
         write_markdown(str(file_path), content)
+        source_evidence = (load_idea_yaml(idea_id, "idea.yaml") or {}).get("source_evidence", [])
         save_artifact_revision(
             idea_id,
             section_name,
             content,
             provenance=f"artifact:{idea_id}:{section_name}",
             trust="generated",
-            evidence_refs=(load_idea_yaml(idea_id, "idea.yaml") or {}).get("source_evidence", []),
+            evidence_refs=source_evidence or None,
             agent_id="deepagents",
         )
 
