@@ -3,10 +3,11 @@ title: 'Story 11.3: Create product definition from validated concepts'
 story_key: '11-3-create-product-definition-from-validated-concepts'
 type: 'feature'
 created: '2026-08-26'
-status: 'in-review'
+status: 'done'
 baseline_revision: '15afbf7d6190fe31a1ed50c42149fc977981ef6d'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
+final_revision: 'e08ef78377e9ded3c3b44e4a3f4e6f4b37368be7'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-11-2-validate-novelty-and-patentability.md'
@@ -117,7 +118,7 @@ Use one canonical product-definition artifact with structured sections rather th
 
 ## Auto Run Result
 
-**Status:** review
+**Status:** done
 
 Implemented the bounded Product Team workflow, strict provenance-aware product-definition revisions, configured Product Team runtime routing, lifecycle/read/generation APIs, explicit Chief of Staff approval or rejection, product-definition SSE event handling, review/provenance/estimate UI, and focused mocked tests. Generation never auto-approves or auto-handoffs; rejected, failed, incomplete, cancelled, and missing-prerequisite states remain explicit.
 
@@ -149,4 +150,4 @@ Implemented the bounded Product Team workflow, strict provenance-aware product-d
 - High-severity follow-up `python -m compileall -q backend/app backend/tests` — **passed**.
 - High-severity follow-up `python scripts/forbidden_imports.py` — **passed**.
 
-**Remaining blocker:** Full backend Ruff is not clean due to pre-existing findings outside this follow-up scope. Playwright was not run in this environment, so its checklist item remains open.
+**Remaining risks:** Full backend Ruff is not clean due to pre-existing findings outside this story. Playwright was not run in this environment, so its checklist item remains open. Follow-up review is recommended because the final pass changed lifecycle, persistence, authorization, and template-replay behavior.
