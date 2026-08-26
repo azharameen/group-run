@@ -236,3 +236,19 @@ ______________________________________________________________________
 - Positive: Simpler runtime; no Docker-in-Docker or sandbox infrastructure
 - Negative: Cannot run generated Python scripts or validate code-based inventions automatically
 - Negative: Must add sandbox if code generation/validation becomes a requirement
+
+______________________________________________________________________
+
+## ADR-016: Firebase Authentication and Firestore User Profiles
+
+**Context**: The browser, hybrid, and future native clients require one identity contract. Native `EventSource` cannot attach authentication headers, and client-generated profile identity cannot be trusted.
+
+**Decision**: Use Google-only Firebase Authentication. Clients send short-lived Firebase ID tokens as Bearer tokens; FastAPI verifies every `/api` request except health, readiness, and CORS preflight, including authenticated Fetch/Web Streams SSE. `POST /api/auth/bootstrap` atomically creates or refreshes `users/{uid}` from verified claims. Firestore Security Rules allow only the owner to read and update allowlisted mutable profile fields. All authenticated users currently have equal platform access.
+
+**Consequences**:
+
+- Positive: one automatically refreshed identity mechanism across web and mobile clients
+- Positive: revoked/disabled accounts and invalid tokens fail closed at the API boundary
+- Positive: profile identity and audit fields remain server-controlled
+- Negative: browser Bearer tokens increase XSS sensitivity, mitigated through restrictive CSP, dependency auditing, token redaction, and avoiding unsafe HTML
+- Deferred: custom-claim roles, tenant isolation, App Check, and MFA

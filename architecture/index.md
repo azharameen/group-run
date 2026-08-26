@@ -14,6 +14,7 @@ The **Agentic Organization Platform** is a general-purpose multi-agent orchestra
 - **Teams of AI agents** work on work items in parallel
 - **Work Items** (ideas, tasks, projects, documents) map 1:1 or 1:N to threads
 - **True event streaming** — UI binds to `astream_events()` output
+- **Firebase-authenticated access** — Google identity protects REST and SSE APIs
 
 > **Origin**: This platform evolved from the Siemens Patent Ideator (an 18-state FSM patent pipeline). The FSM, patent-specific subagents, scoring engine, and YAML-based storage are being phased out in favor of a general-purpose, graph-based orchestration layer.
 
@@ -27,8 +28,17 @@ The **Agentic Organization Platform** is a general-purpose multi-agent orchestra
 | **True streaming**                 | Events are pushed to the frontend as they arrive from `astream_events()`. No collect-then-deliver pattern.                                                              |
 | **Domain-agnostic core**           | The platform core (threads, teams, @mentions, work items) has no domain-specific logic. Domains are configured via YAML team/agent definitions.                         |
 | **Decoupled work items**           | Work items are domain objects (persisted separately) that link to threads. Multiple threads can map to one work item.                                                   |
+| **Authenticated by default**       | Firebase ID-token Bearer authentication protects every API except health/readiness/preflight. Firestore rules independently protect owner profiles.                     |
 
-### 1.2 High-Level Architecture
+### 1.2 Authentication boundary
+
+- The Firebase JavaScript SDK manages browser persistence and automatic ID-token refresh; refresh tokens are never sent to FastAPI.
+- FastAPI verifies the Bearer token before handlers run and attaches a typed principal. One forced token refresh/retry is allowed after a 401; a repeated 401 signs the user out.
+- `POST /api/auth/bootstrap` derives identity only from verified claims and atomically provisions `users/{uid}` in Firestore.
+- SSE uses authenticated Fetch/Web Streams and reconnects after token rotation.
+- Cloud Run uses Application Default Credentials. Local and CI environments use Firebase emulators or developer ADC; service-account JSON is never committed.
+
+### 1.3 High-Level Architecture
 
 ```
 graph TB

@@ -13,6 +13,20 @@
 
 ______________________________________________________________________
 
+## 0. Authentication and Authorization
+
+- ✅ Google-only Firebase sign-in with persistent, automatically refreshed sessions
+- ✅ Adaptive shadcn/Tailwind sign-in page with desktop image panel
+- ✅ Protected frontend routes, destination restoration, user navigation, and sign-out
+- ✅ FastAPI Bearer-token verification for REST and streaming APIs
+- ✅ Public `/api/health` and `/api/ready`; all other APIs authenticated
+- ✅ Atomic Firestore `users/{uid}` profile bootstrap from verified claims
+- ✅ Owner-only Firestore Rules with immutable identity/audit fields
+- ✅ Sanitized success, failure, and session-expiry toasts; no raw auth errors
+- 📋 Roles, tenant isolation, App Check, and MFA are future authorization milestones
+
+______________________________________________________________________
+
 ## 1. Agent Runtime (DeepAgents)
 
 ### 1.1 Runtime Factory

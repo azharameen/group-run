@@ -6,13 +6,14 @@
 
 ### 1.1 Core Rules
 
-| Rule                       | Description                                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Single Responsibility**  | Each file has one job. Route files < 150 lines, services < 200 lines, agent runtime < 200 lines. |
-| **Explicit Over Implicit** | No silent fallback to fabricated output. Every failure is an explicit error/retry state.         |
-| **Provenance Everywhere**  | Every artifact, event, and decision carries provenance metadata.                                 |
-| **Test Coverage**          | All new features must have tests. Run `pytest backend/tests` before committing.                  |
-| **No Sandbox Execution**   | Shell execution and code runners are explicitly deferred.                                        |
+| Rule                          | Description                                                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Single Responsibility**     | Each file has one job. Route files < 150 lines, services < 200 lines, agent runtime < 200 lines.            |
+| **Explicit Over Implicit**    | No silent fallback to fabricated output. Every failure is an explicit error/retry state.                    |
+| **Provenance Everywhere**     | Every artifact, event, and decision carries provenance metadata.                                            |
+| **Test Coverage**             | All new features must have tests. Run `pytest backend/tests` before committing.                             |
+| **No Sandbox Execution**      | Shell execution and code runners are explicitly deferred.                                                   |
+| **Authentication by Default** | All non-health `/api` routes, including SSE and test-support routes, require a verified Firebase principal. |
 
 ### 1.2 File Size Targets
 
