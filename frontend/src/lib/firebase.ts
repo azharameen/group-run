@@ -43,8 +43,11 @@ if (import.meta.env.VITE_FIRESTORE_EMULATOR_HOST) {
 
 let analyticsInstance: Analytics | null = null
 let perfInstance: FirebasePerformance | null = null
+const isFirebaseEmulator = Boolean(
+  import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL || import.meta.env.VITE_FIRESTORE_EMULATOR_HOST,
+)
 
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && !isFirebaseEmulator) {
   void isSupported().then((supported) => {
     if (supported) {
       analyticsInstance = getAnalytics(firebaseApp)
