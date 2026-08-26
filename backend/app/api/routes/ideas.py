@@ -8,6 +8,7 @@ import anyio.to_thread
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from ...agent.teams.idea_validation import validation_status
 from ...storage.idea_workspace import create_idea_folder
 from ...storage.registry import load_idea_registry, save_idea_registry
 from ...storage.yaml_io import (
@@ -171,6 +172,17 @@ async def get_idea(idea_id: str) -> dict:
 async def get_idea_files(idea_id: str) -> dict:
     _validate_idea_id(idea_id)
     return await anyio.to_thread.run_sync(_get_idea_files_sync, idea_id)
+
+
+@router.get("/ideas/{idea_id}/validation")
+async def get_idea_validation(idea_id: str) -> dict:
+    """Read novelty validation metadata for an idea directly."""
+    _validate_idea_id(idea_id)
+    _idea_exists(idea_id)
+    return {
+        "idea_id": idea_id,
+        "validation": await anyio.to_thread.run_sync(validation_status, idea_id),
+    }
 
 @router.post("/ideas")
 async def create_idea(payload: CreateIdeaRequest) -> dict:

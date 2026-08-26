@@ -5,9 +5,10 @@ decision recorded by the Chief of Staff, and the request model served
 by the /api/work-items endpoints.
 """
 
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
 
 from . import lifecycle
 
@@ -19,6 +20,14 @@ RoutingConfidence = Literal["high", "low"]
 
 #: Trust classification for generated artifacts.
 TrustLevel = Literal["generated", "trusted", "verified-tool-call", "fallback"]
+
+# Structured Idea Team validation vocabulary.  These are deliberately closed
+# sets so an assessment cannot be mistaken for legal certainty.
+ValidationState = Literal[
+    "unknown", "initializing", "running", "completed", "failed", "incomplete", "cancelled"
+]
+PatentabilityOutcome = Literal["likely", "uncertain", "unlikely"]
+FtoRisk = Literal["low", "moderate", "high", "unknown"]
 
 #: Status a work item is created with. Lifecycle transitions beyond
 #: ``new`` are Story 8.3 scope — 8.2 only ever creates items.
@@ -184,3 +193,80 @@ class AccuracyReviewRequest(BaseModel):
         if not value.strip():
             raise ValueError("summary must not be blank")
         return value
+
+
+class NoveltyAssessmentSummary(BaseModel):
+    """A provider-supplied, evidence-backed novelty decision-support summary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    novelty_score: StrictInt = Field(..., ge=1, le=10)
+    patentability_score: StrictInt = Field(..., ge=1, le=10)
+    patentability_outcome: PatentabilityOutcome
+    fto_risk: FtoRisk
+    fto_analysis: str = Field(..., min_length=1)
+    confidence: StrictInt = Field(..., ge=1, le=10)
+    rationale: str = Field(..., min_length=1)
+    prior_art_refs: list[str] = Field(..., min_length=1)
+    source_refs: list[str] = Field(..., min_length=1)
+    provenance: str = Field(..., min_length=1)
+    agent_id: str = Field(..., min_length=1)
+    assessed_at: str = Field(..., min_length=1)
+    artifact_name: Literal["novelty-assessment"] = "novelty-assessment"
+    artifact_version: int | None = Field(default=None, ge=1)
+
+    @field_validator(
+        "fto_analysis", "rationale", "provenance", "agent_id", "assessed_at", mode="before"
+    )
+    @classmethod
+    def _non_blank(cls, value: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("value must not be blank")
+        return value.strip()
+
+    @field_validator("prior_art_refs", "source_refs")
+    @classmethod
+    def _refs_not_blank(cls, value: list[str]) -> list[str]:
+        if not value or any(not isinstance(ref, str) or not ref.strip() for ref in value):
+            raise ValueError("references must contain non-empty strings")
+        return [ref.strip() for ref in value]
+
+    @field_validator("assessed_at")
+    @classmethod
+    def _timestamp_is_valid(cls, value: str) -> str:
+        try:
+            datetime.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("assessed_at must be an ISO timestamp") from exc
+        return value
+
+
+class ValidationStatus(BaseModel):
+    """Persisted validation lifecycle state exposed by work-item APIs."""
+
+    state: ValidationState
+    idea_id: str
+    work_item_id: str | None = None
+    expected_artifacts: list[str] = Field(default_factory=lambda: ["novelty-assessment"])
+    completed_artifacts: list[str] = Field(default_factory=list)
+    error: str | None = None
+    retryable: bool | None = None
+    updated_at: float | None = None
+    summary: NoveltyAssessmentSummary | None = None
+    artifact: dict[str, object] | None = None
+
+
+class NoveltyValidationRequest(BaseModel):
+    """Optional trigger controls for an Idea Team novelty validation run."""
+
+    agent_id: str = Field(default="idea-team-validator", min_length=1, max_length=100)
+    time_budget_sec: int | None = Field(default=None, ge=1, le=3600)
+
+
+class NoveltyValidationResponse(BaseModel):
+    """Response returned after triggering or reading novelty validation."""
+
+    work_item_id: str
+    idea_id: str | None
+    validation: ValidationStatus
+    lifecycle_status: str | None = None

@@ -1,4 +1,5 @@
 import { request, RequestOptions } from './request';
+import type { ValidationStatus } from './ideas';
 
 export type RoutingConfidence = 'high' | 'low';
 export const LIFECYCLE_PHASES = [
@@ -47,6 +48,16 @@ export interface WorkItem {
   created_at: string;
   updated_at: string;
   template_id?: string | null;
+  idea_id?: string | null;
+  research?: Record<string, unknown> | null;
+  validation?: ValidationStatus | null;
+}
+
+export interface WorkItemValidationResponse {
+  work_item_id: string;
+  idea_id: string | null;
+  validation: ValidationStatus;
+  lifecycle_status: string | null;
 }
 
 export interface SubmitWorkItemPayload {
@@ -81,6 +92,27 @@ export async function fetchWorkItem(workItemId: string, options?: RequestOptions
     options,
   );
   return data.work_item;
+}
+
+export async function fetchWorkItemValidation(
+  workItemId: string,
+  options?: RequestOptions,
+): Promise<WorkItemValidationResponse> {
+  return request<WorkItemValidationResponse>(
+    `/work-items/${encodeURIComponent(workItemId)}/validation`,
+    options,
+  );
+}
+
+export async function triggerWorkItemValidation(
+  workItemId: string,
+  payload: { agent_id?: string; time_budget_sec?: number } = {},
+  options?: RequestOptions,
+): Promise<WorkItemValidationResponse> {
+  return request<WorkItemValidationResponse>(
+    `/work-items/${encodeURIComponent(workItemId)}/validation`,
+    { method: 'POST', body: JSON.stringify(payload), ...options },
+  );
 }
 
 export async function transitionWorkItem(

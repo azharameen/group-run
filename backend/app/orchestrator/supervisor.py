@@ -17,7 +17,7 @@ from langgraph.graph.message import add_messages
 
 # NOTE: LangGraph 0.6.x compile() returns CompiledStateGraph internally.
 # We use Any here for version resilience — the consumer contract is astream().
-from ..agent.runtime import get_deep_agent_runtime
+from ..agent.runtime import _teams_config, get_deep_agent_runtime
 from ..config import settings
 from ..services.thread_manager import get_pg_checkpointer
 
@@ -137,6 +137,32 @@ async def invoke_idea_team_research(concept: str, *, idea_id: str) -> Any:
         config={
             "recursion_limit": 50,
             "configurable": {"thread_id": thread_id, "team": "idea"},
+        },
+    )
+
+
+async def invoke_idea_team_validation(context: str, *, idea_id: str) -> Any:
+    """Invoke the Idea Team's validation role with a strict JSON contract."""
+    agent = get_deep_agent_runtime("idea")
+    thread_id = f"{idea_research_thread_id(idea_id)}:validation"
+    idea_config = _teams_config.get("teams", {}).get("idea", {})
+    role = idea_config.get("validation_role", "novelty-patentability-validator")
+    configured_prompt = idea_config.get("validation_prompt", "")
+    prompt = (
+        f"Act as the {role}. Use only the supplied completed "
+        "Story 11.1 prior-art evidence. Return ONLY one JSON object with keys "
+        "novelty_score (1-10), patentability_score (1-10), "
+        "patentability_outcome (likely|uncertain|unlikely), "
+        "fto_risk (low|moderate|high|unknown), fto_analysis, confidence (1-10), "
+        "rationale, prior_art_refs (non-empty strings), source_refs (non-empty "
+        "strings), and provenance. Do not claim legal certainty or human approval.\n\n"
+        f"{configured_prompt}\n\n{context}"
+    )
+    return await agent.ainvoke(
+        {"messages": [{"role": "user", "content": prompt}]},
+        config={
+            "recursion_limit": 50,
+            "configurable": {"thread_id": thread_id, "team": "idea", "role": "validator"},
         },
     )
 

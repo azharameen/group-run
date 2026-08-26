@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     agent_timeout_sec: int = 120
     # Maximum wall-clock time allocated to the automatic Idea Team packet.
     research_time_budget_sec: int = 300
+    # Optional override for novelty validation; unset reuses the research budget.
+    validation_time_budget_sec: int | None = None
     # Stable checkpoint namespace for automatic Idea Team research.
     research_thread_id: str = "idea-team-research"
 
@@ -92,6 +94,8 @@ class Settings(BaseSettings):
             raise ValueError("BLOCKED_PHASE_THRESHOLD_HOURS must be non-negative")
         if self.research_time_budget_sec < 1:
             raise ValueError("RESEARCH_TIME_BUDGET_SEC must be at least 1")
+        if self.validation_time_budget_sec is not None and self.validation_time_budget_sec < 1:
+            raise ValueError("VALIDATION_TIME_BUDGET_SEC must be at least 1")
         if not self.research_thread_id.strip():
             raise ValueError("RESEARCH_THREAD_ID must be non-empty")
         if self.db_pool_min_size < 1:
