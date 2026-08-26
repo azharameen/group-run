@@ -27,7 +27,7 @@ Group Run is a production-ready AI platform where teams of specialized agents co
 | Service | URL |
 |---|---|
 | Backend API (Cloud Run) | [https://backend-service-601546984807.asia-south1.run.app/api/health](https://backend-service-601546984807.asia-south1.run.app/api/health) |
-| API Docs (Scalar) | [Interactive API Reference](https://azharameen.github.io/group-run/api/scalar/) |
+| API Docs (Scalar) | [Backend Scalar UI](https://backend-service-601546984807.asia-south1.run.app/scalar) · [MkDocs reference](https://azharameen.github.io/group-run/api/scalar/) |
 
 ## Tech Stack
 
