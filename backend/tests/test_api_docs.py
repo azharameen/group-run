@@ -19,6 +19,9 @@ class TestApiDocumentation:
         assert scalar_response.status_code == 200
         assert "Scalar.createApiReference" in scalar_response.text
         assert "/openapi.json" in scalar_response.text
+        assert scalar_response.text.index('id="app"') < scalar_response.text.index(
+            "Scalar.createApiReference"
+        )
         assert docs_response.status_code == 404
         assert redoc_response.status_code == 404
 
