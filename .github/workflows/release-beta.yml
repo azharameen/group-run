@@ -172,10 +172,15 @@ jobs:
         run: |
           set -euo pipefail
           echo "Deploying shared Firebase Hosting target in project $GCP_PROJECT_ID"
-          if ! gcloud services describe firestore.googleapis.com \
+          ACTIVE_ACCOUNT="$(gcloud auth list \
+            --filter='status:ACTIVE' \
+            --format='value(account)' | head -n 1)"
+          echo "Google Cloud deployment identity: $ACTIVE_ACCOUNT"
+          if ! FIRESTORE_STATUS="$(gcloud services describe firestore.googleapis.com \
             --project "$GCP_PROJECT_ID" \
-            --format='value(config.name)' >/dev/null 2>&1; then
-            echo "::error::The deployment service account cannot read Firestore API status. Grant roles/serviceusage.serviceUsageConsumer on project $GCP_PROJECT_ID, then rerun this workflow."
+            --format='value(config.name)' 2>&1)"; then
+            printf '%s\n' "$FIRESTORE_STATUS" >&2
+            echo "::error::Unable to read Firestore API status as $ACTIVE_ACCOUNT in project $GCP_PROJECT_ID. The Google Cloud error above identifies whether the API is disabled or the identity lacks roles/serviceusage.serviceUsageConsumer."
             exit 1
           fi
           npm exec --prefix frontend -- firebase deploy \
