@@ -5,6 +5,7 @@ Full async implementation using SQLAlchemy AsyncSession with a shared connection
 
 import json
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy import text
@@ -197,6 +198,93 @@ async def insert_decision(decision: dict[str, Any]) -> None:
     async with get_session_factory()() as session:
         try:
             await _insert_decision_within_session(session, decision)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def insert_product_definition_decision_if_absent(decision: dict[str, Any]) -> bool:
+    """Insert one product-definition decision under a work-item compare-and-set."""
+    async with get_session_factory()() as session:
+        try:
+            # Lock the work-item row so concurrent approve/reject requests serialize
+            # even when they arrive in different application workers.
+            await session.execute(
+                text("SELECT work_item_id FROM work_items WHERE work_item_id = :id FOR UPDATE"),
+                {"id": decision["work_item_id"]},
+            )
+            existing = await session.execute(
+                text(
+                    "SELECT 1 FROM decisions "
+                    "WHERE work_item_id = :id AND decision_type IN ('handoff', 'review') "
+                    "AND evidence = :evidence LIMIT 1"
+                ),
+                {
+                    "id": decision["work_item_id"],
+                    "evidence": json.dumps(decision.get("evidence", [])),
+                },
+            )
+            if existing.first() is not None:
+                await session.rollback()
+                return False
+            await _insert_decision_within_session(session, decision)
+            await session.commit()
+            return True
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def has_product_definition_approval(
+    work_item_id: str,
+    evidence: list[str],
+    *,
+    agent_id: str = "chief_of_staff",
+) -> bool:
+    """Return whether the exact audited Chief of Staff approval exists."""
+    async with get_session_factory()() as session:
+        result = await session.execute(
+            text(
+                "SELECT 1 FROM decisions "
+                "WHERE work_item_id = :id AND agent_id = :agent_id "
+                "AND decision_type = 'handoff' AND evidence = :evidence LIMIT 1"
+            ),
+            {
+                "id": work_item_id,
+                "agent_id": agent_id,
+                "evidence": json.dumps(evidence),
+            },
+        )
+        return result.first() is not None
+
+
+async def record_product_definition_decision_with_workspace(
+    decision: dict[str, Any],
+    workspace_action: Callable[[], None],
+) -> None:
+    """Persist a product-definition decision before committing its workspace update."""
+    async with get_session_factory()() as session:
+        try:
+            await session.execute(
+                text("SELECT work_item_id FROM work_items WHERE work_item_id = :id FOR UPDATE"),
+                {"id": decision["work_item_id"]},
+            )
+            existing = await session.execute(
+                text(
+                    "SELECT 1 FROM decisions "
+                    "WHERE work_item_id = :id AND decision_type IN ('handoff', 'review') "
+                    "AND evidence = :evidence LIMIT 1"
+                ),
+                {
+                    "id": decision["work_item_id"],
+                    "evidence": json.dumps(decision.get("evidence", [])),
+                },
+            )
+            if existing.first() is not None:
+                raise ValueError("product-definition decision already recorded")
+            await _insert_decision_within_session(session, decision)
+            workspace_action()
             await session.commit()
         except Exception:
             await session.rollback()
@@ -406,6 +494,31 @@ async def record_transition(
     await lifecycle_repository.record_transition(
         work_item_id, status, department_id, updated_at, event,
         expected_status=expected_status, decision=decision,
+    )
+
+
+async def record_transition_with_workspace(
+    work_item_id: str,
+    status: str,
+    department_id: str,
+    updated_at: str,
+    event: dict[str, Any],
+    *,
+    expected_status: str,
+    decision: dict[str, Any],
+    workspace_action: Callable[[], None],
+) -> None:
+    from . import lifecycle_repository
+
+    await lifecycle_repository.record_transition_with_workspace(
+        work_item_id,
+        status,
+        department_id,
+        updated_at,
+        event,
+        expected_status=expected_status,
+        decision=decision,
+        workspace_action=workspace_action,
     )
 
 

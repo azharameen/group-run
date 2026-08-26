@@ -101,6 +101,8 @@ async def replay_work_item_template(
         item, events = await templates_service.replay_template(
             template_id, title, description
         )
+    except templates_service.InvalidTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except SQLAlchemyError as exc:

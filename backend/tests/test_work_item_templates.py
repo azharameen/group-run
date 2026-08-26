@@ -9,14 +9,12 @@ Covers acceptance criteria:
 - API shape: 201/400/404/500 error mapping, snake_case keys
 """
 
-import json
-
 import pytest
 from app.api.app import create_app
 from app.organization import service as org_service
+from app.work_items import repository as work_items_repository
 from app.work_items import service as work_items_service
 from app.work_items import templates as templates_service
-from app.work_items.models import OWNER_AGENT_ID, STATUS_NEW
 from app.work_items.service import UnknownWorkItemError
 from fastapi.testclient import TestClient
 
@@ -45,30 +43,14 @@ class TestTemplateSaveService:
         await work_items_service.transition_work_item(
             item.work_item_id, "ideation"
         )
-        await work_items_service.transition_work_item(
-            item.work_item_id, "product_definition"
-        )
-        await work_items_service.transition_work_item(
-            item.work_item_id, "development"
-        )
 
         template = await templates_service.save_template(item.work_item_id, "Build workflow")
         assert template.template_id
         assert template.org_id == organization.org_id
         assert template.name == "Build workflow"
         assert template.source_work_item_id == item.work_item_id
-        assert template.phases == [
-            "new",
-            "ideation",
-            "product_definition",
-            "development",
-        ]
-        assert template.departments == [
-            "ideation",
-            "ideation",
-            "ideation",
-            "technology",
-        ]
+        assert template.phases == ["new", "ideation"]
+        assert template.departments == ["ideation", "ideation"]
         assert template.usage_count == 0
         assert template.last_used_at is None
 
@@ -104,12 +86,6 @@ class TestTemplateReplayService:
         await work_items_service.transition_work_item(
             source_item.work_item_id, "ideation"
         )
-        await work_items_service.transition_work_item(
-            source_item.work_item_id, "product_definition"
-        )
-        await work_items_service.transition_work_item(
-            source_item.work_item_id, "development"
-        )
 
         template = await templates_service.save_template(
             source_item.work_item_id, "Build workflow"
@@ -125,46 +101,55 @@ class TestTemplateReplayService:
         assert new_item.template_id == template.template_id
         assert new_item.source == f"template:{template.template_id}"
 
-        assert new_item.status == "development"
-        assert new_item.department_id == "technology"
+        assert new_item.status == "ideation"
+        assert new_item.department_id == "ideation"
 
-        assert len(events) == 3
+        assert len(events) == 1
         assert events[0].from_status == "new"
         assert events[0].to_status == "ideation"
-        assert events[1].from_status == "ideation"
-        assert events[1].to_status == "product_definition"
-        assert events[2].from_status == "product_definition"
-        assert events[2].to_status == "development"
 
         assert "Replayed template" in events[0].reasoning
         assert template.name in events[0].reasoning
 
     @pytest.mark.asyncio
-    async def test_replay_terminal_phase(self, organization):
-        """Terminal phase (monitoring) is handled correctly."""
+    async def test_replay_rejects_product_definition_to_technology_template(
+        self, organization
+    ):
+        """Templates cannot synthesize the required audited handoff approval."""
         source_item = await work_items_service.submit_work_item(
             "Monitored system", org_id=organization.org_id
         )
-        for phase in [
-            "ideation",
-            "product_definition",
-            "development",
-            "testing",
-            "deployment",
-            "monitoring",
-        ]:
-            await work_items_service.transition_work_item(source_item.work_item_id, phase)
-
-        template = await templates_service.save_template(
-            source_item.work_item_id, "Full lifecycle"
+        template_id = "template-with-handoff"
+        await work_items_repository.insert_template(
+            template_id=template_id,
+            org_id=organization.org_id,
+            name="Full lifecycle",
+            source_work_item_id=source_item.work_item_id,
+            phases=[
+                "new",
+                "ideation",
+                "product_definition",
+                "development",
+                "testing",
+                "deployment",
+                "monitoring",
+            ],
+            departments=[
+                "ideation",
+                "ideation",
+                "ideation",
+                "technology",
+                "technology",
+                "technology",
+                "technology",
+            ],
+            created_at="2026-08-26T00:00:00+00:00",
         )
 
-        new_item, events = await templates_service.replay_template(
-            template.template_id, "Monitored replay", ""
-        )
-
-        assert new_item.status == "monitoring"
-        assert len(events) == 6
+        with pytest.raises(templates_service.InvalidTemplateError, match="audited"):
+            await templates_service.replay_template(
+                template_id, "Monitored replay", ""
+            )
 
     @pytest.mark.asyncio
     async def test_replay_updates_usage_metadata(self, organization):
@@ -383,3 +368,26 @@ class TestTemplateReplayAPI:
         )
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_replay_handoff_template_returns_clear_400(self, client, organization):
+        source_item = await work_items_service.submit_work_item(
+            "Source", org_id=organization.org_id
+        )
+        template_id = "api-template-with-handoff"
+        await work_items_repository.insert_template(
+            template_id=template_id,
+            org_id=organization.org_id,
+            name="Handoff template",
+            source_work_item_id=source_item.work_item_id,
+            phases=["new", "ideation", "product_definition", "development"],
+            departments=["ideation", "ideation", "ideation", "technology"],
+            created_at="2026-08-26T00:00:00+00:00",
+        )
+
+        response = client.post(
+            f"/api/work-items/templates/{template_id}/replay",
+            json={"title": "Replay", "description": ""},
+        )
+        assert response.status_code == 400
+        assert "audited Chief of Staff approval" in response.json()["detail"]

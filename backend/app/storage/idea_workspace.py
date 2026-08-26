@@ -57,7 +57,7 @@ def workspace_transaction(idea_id: str) -> Generator[str, None, None]:
 
     try:
         yield folder
-    except Exception:
+    except BaseException:
         if existed:
             if os.path.exists(folder):
                 shutil.rmtree(folder)

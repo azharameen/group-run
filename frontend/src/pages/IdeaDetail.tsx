@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { FileText, Target, AlertTriangle, Lightbulb, Loader2, SendHorizonal } from "lucide-react";
 import { fetchIdeaDetail, fetchIdeaFiles, deleteIdea, addIdeaComment, connectSSE, type IdeaDetail as IdeaDetailType, type IdeaFile } from "../api/client";
@@ -25,6 +25,7 @@ import { IdeaActionsHeader } from "../components/idea-detail/IdeaActionsHeader";
 import { ArtifactsPanel } from "../components/idea-detail/ArtifactsPanel";
 import { MaturityPanel } from "../components/idea-detail/MaturityPanel";
 import { NoveltyAssessmentPanel } from "../components/idea-detail/NoveltyAssessmentPanel";
+import { ProductDefinitionPanel } from "../components/idea-detail/ProductDefinitionPanel";
 
 export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: string) => void; }) {
 	const { ideaId } = useParams<{ ideaId: string }>();
@@ -37,10 +38,14 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 	const [error, setError] = useState("");
 	const [interrupts, setInterrupts] = useState<InterruptItem[]>([]);
 	const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+	const loadGeneration = useRef(0);
+	const mounted = useRef(true);
 	const { toast } = useToast();
 
 	const loadData = async () => {
 		if (!ideaId) return;
+		const generation = ++loadGeneration.current;
+		const isCurrent = () => mounted.current && generation === loadGeneration.current;
 		try {
 			const [detailResult, filesResult, interruptsResult] = await Promise.allSettled([
 				fetchIdeaDetail(ideaId),
@@ -48,6 +53,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 				fetchPendingInterrupts(),
 			]);
 
+			if (!isCurrent()) return;
 			if (detailResult.status === "fulfilled") {
 				setDetail(detailResult.value);
 				setError("");
@@ -58,25 +64,37 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 				setError(detailResult.reason instanceof Error ? detailResult.reason.message : "Failed to load idea.");
 			}
 
+			if (!isCurrent()) return;
 			if (filesResult.status === "fulfilled") {
 				setFiles(filesResult.value);
 			} else {
 				setFiles([]);
 			}
 
+			if (!isCurrent()) return;
 			if (interruptsResult.status === "fulfilled") {
 				setInterrupts(interruptsResult.value);
 			} else {
 				setInterrupts([]);
 			}
 		} catch (err: unknown) {
+			if (!isCurrent()) return;
 			setError(err instanceof Error ? err.message : "Failed to load idea.");
 		} finally {
-			setLoading(false);
+			if (isCurrent()) setLoading(false);
 		}
 	};
 
 	useEffect(() => {
+		mounted.current = true;
+		return () => {
+			mounted.current = false;
+			loadGeneration.current += 1;
+		};
+	}, []);
+
+	useEffect(() => {
+		setLoading(true);
 		loadData();
 		if (!ideaId) return;
 
@@ -168,6 +186,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 						<TabsTrigger value="comments" data-testid="tab-comments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Comments</TabsTrigger>
 						<TabsTrigger value="artifacts" data-testid="tab-artifacts" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Artifacts</TabsTrigger>
 						<TabsTrigger value="novelty" data-testid="tab-novelty" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Novelty</TabsTrigger>
+						<TabsTrigger value="product-definition" data-testid="tab-product-definition" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Product Definition</TabsTrigger>
 						<TabsTrigger value="maturity" data-testid="tab-maturity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs font-medium transition-all gap-1.5">Maturity</TabsTrigger>
 					</TabsList>
 					<TabsContent value="overview" className="space-y-6 pt-4">
@@ -207,6 +226,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 					</TabsContent>
 					<TabsContent value="artifacts" className="space-y-4 pt-4"><ArtifactsPanel ideaId={ideaId || ""} research={idea?.research} /></TabsContent>
 					<TabsContent value="novelty" className="space-y-4 pt-4"><NoveltyAssessmentPanel validation={idea?.validation} workItemId={idea?.work_item_id} /></TabsContent>
+					<TabsContent value="product-definition" className="space-y-4 pt-4"><ProductDefinitionPanel productDefinition={idea?.product_definition} workItemId={idea?.work_item_id} onUpdated={loadData} /></TabsContent>
 					<TabsContent value="maturity" className="space-y-4 pt-4"><MaturityPanel key={ideaId || ""} ideaId={ideaId || ""} /></TabsContent>
 				</Tabs>
 			</div>

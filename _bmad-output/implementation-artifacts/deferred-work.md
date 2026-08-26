@@ -600,3 +600,9 @@ Status/Issue Type/Sprint could NOT be set via available tools (no MCP project to
 - source_spec: _bmad-output/implementation-artifacts/spec-10-4-idea-refinement-and-maturity-stages.md
   summary: maturity.yaml persists a redundant top-level `stage` key alongside `history`, although the stage is always derived from the last history entry on read.
   evidence: backend/app/services/idea_maturity.py writes {"stage": target, "history": [...]} in transition_stage but _load derives stage from history and never reads the stored key — kept as an informational field for human-readable files.
+
+## Deferred from: Story 11.3 board sync (2026-08-26)
+
+- source_spec: _bmad-output/implementation-artifacts/spec-11-3-create-product-definition-from-validated-concepts.md
+  summary: Story 11.3 and Epic 11 could not be moved from Backlog to In Progress on the Group Run board.
+  evidence: `gh project item-edit` for story issue #48 failed with `Unauthorized: As an Enterprise Managed User, you cannot access this content`; the epic update was not attempted because it uses the same unavailable ProjectV2 mutation.

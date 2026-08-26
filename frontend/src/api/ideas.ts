@@ -1,4 +1,5 @@
 import { request, RequestOptions } from './request';
+import type { ProductDefinitionStatus } from './workItems';
 
 export interface IdeaListItem {
   idea_id: string;
@@ -27,6 +28,7 @@ export interface IdeaData {
     updated_at?: number;
   };
   validation?: ValidationStatus;
+  product_definition?: ProductDefinitionStatus | null;
   [key: string]: unknown;
 }
 
@@ -159,6 +161,14 @@ export async function fetchIdeaValidation(
     options,
   );
   return res.validation;
+}
+
+export async function fetchIdeaProductDefinition(
+  ideaId: string,
+  options?: RequestOptions,
+): Promise<ProductDefinitionStatus | null> {
+  const detail = await fetchIdeaDetail(ideaId, options);
+  return detail.idea.product_definition ?? null;
 }
 
 export async function fetchArtifactDiff(ideaId: string, artifactName: string, options?: RequestOptions): Promise<Record<string, unknown>> {

@@ -71,3 +71,24 @@ teams:
       - "ideation"
       - "idea_research"
       - "market_research"
+
+  product:
+    name: "Product Team"
+    description: "Translate validated concepts into evidence-backed product definitions and roadmaps."
+    definition_role: "product-definition-lead"
+    definition_prompt: "Create a reviewable definition from the completed novelty assessment; keep estimates generated and explain their basis."
+    agents:
+      - name: "product-definition-lead"
+        role: "product definition lead"
+        description: "Creates requirements, user stories, roadmap estimates, and measurable outcomes."
+        model: "auto"
+    tools:
+      - "knowledge_base"
+    subgraph:
+      type: "sequential"
+      nodes:
+        - "product-definition-lead"
+    routing_keys:
+      - "product_definition"
+      - "product_definition_generation"
+      - "roadmap_planning"
