@@ -312,20 +312,15 @@ class TestLifecycleTransitions:
         ]
 
     @pytest.mark.asyncio
-    async def test_cross_department_handoff_forces_cos(self, organization, work_item_db):
+    async def test_product_definition_handoff_requires_approved_definition(
+        self, organization, work_item_db
+    ):
         item = await self._item(organization, work_item_db)
         await work_items_service.transition_work_item(item.work_item_id, "product_definition")
-        updated, event = await work_items_service.transition_work_item(
-            item.work_item_id, "development", decided_by="some_agent"
-        )
-        assert updated.status == "development"
-        assert updated.department_id == "technology"
-        assert event.event_type == "handoff"
-        assert event.from_department == "ideation"
-        assert event.to_department == "technology"
-        assert event.decided_by == OWNER_AGENT_ID
-        assert event.confidence == "high"
-        assert "ideation" in event.reasoning and "technology" in event.reasoning
+        with pytest.raises(work_items_service.InvalidTransitionError, match="approval"):
+            await work_items_service.transition_work_item(
+                item.work_item_id, "development", decided_by="some_agent"
+            )
 
     @pytest.mark.asyncio
     async def test_forward_skip_allowed(self, organization, work_item_db):

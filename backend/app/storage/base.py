@@ -2,9 +2,23 @@
 
 import os
 import tempfile
+import time
 from typing import Any
 
 import yaml
+
+
+def _replace_atomically(tmp_file: str, path: str) -> None:
+    """Replace a workspace file, tolerating transient Windows file locks."""
+    attempts = 1 if os.name != "nt" else 8
+    for attempt in range(attempts):
+        try:
+            os.replace(tmp_file, path)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.025 * (2**attempt))
 
 
 def read_yaml(path: str) -> Any:
@@ -21,7 +35,7 @@ def write_yaml(path: str, data: Any):
         with tempfile.NamedTemporaryFile("w", dir=dir_name or ".", delete=False, encoding="utf-8") as handle:
             tmp_file = handle.name
             yaml.dump(data, handle, default_flow_style=False, allow_unicode=True, sort_keys=False)
-        os.replace(tmp_file, path)
+        _replace_atomically(tmp_file, path)
     except Exception:
         if tmp_file and os.path.exists(tmp_file):
             try:
@@ -45,7 +59,7 @@ def write_markdown(path: str, content: str):
         with tempfile.NamedTemporaryFile("w", dir=dir_name or ".", delete=False, encoding="utf-8") as handle:
             tmp_file = handle.name
             handle.write(content)
-        os.replace(tmp_file, path)
+        _replace_atomically(tmp_file, path)
     except Exception:
         if tmp_file and os.path.exists(tmp_file):
             try:

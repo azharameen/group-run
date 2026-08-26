@@ -137,6 +137,14 @@ def org_db():
 
 
 @pytest.fixture
+async def organization(org_db):
+    """Create a default organization for cross-module work-item tests."""
+    from app.organization import service as org_service
+
+    return await org_service.create_organization("Acme Robotics")
+
+
+@pytest.fixture
 def work_item_db():
     """Stub fixture for legacy test compatibility."""
     return None

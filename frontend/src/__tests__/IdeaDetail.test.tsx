@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import IdeaDetail from '@/pages/IdeaDetail';
 import * as apiClient from '@/api/client';
@@ -293,5 +293,27 @@ describe('IdeaDetail', () => {
     await waitFor(() => {
       expect(apiClient.deleteIdea).toHaveBeenCalledWith('idea-123');
     });
+  });
+
+  test('does not let a stale SSE refresh overwrite newer detail state', async () => {
+    let refresh: (() => void) | undefined;
+    let resolveInitial!: (value: IdeaDetailType) => void;
+    const initial = new Promise<IdeaDetailType>((resolve) => { resolveInitial = resolve; });
+    const newer = { ...mockDetail, idea: { ...mockDetail.idea, title: 'Newer Idea' } };
+    vi.mocked(apiClient.fetchIdeaDetail)
+      .mockReturnValueOnce(initial)
+      .mockResolvedValueOnce(newer);
+    vi.mocked(apiClient.connectSSE).mockImplementation((onEvent) => {
+      refresh = () => onEvent('product-definition.completed', {});
+      return { close: vi.fn() } as unknown as EventSource;
+    });
+
+    render(<IdeaDetail />);
+    await waitFor(() => expect(refresh).toBeDefined());
+    await act(async () => refresh?.());
+    await waitFor(() => expect(screen.getByTestId('header-title')).toHaveTextContent('Newer Idea'));
+
+    await act(async () => resolveInitial(mockDetail));
+    expect(screen.getByTestId('header-title')).toHaveTextContent('Newer Idea');
   });
 });

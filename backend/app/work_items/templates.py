@@ -10,6 +10,10 @@ from .models import LifecycleEvent, WorkflowTemplate, WorkItem
 from .service import UnknownWorkItemError
 
 
+class InvalidTemplateError(ValueError):
+    """A persisted template cannot be replayed without bypassing approval."""
+
+
 async def save_template(work_item_id: str, name: str) -> WorkflowTemplate:
     """Capture a work item's phase sequence as a named template."""
     item = await service.get_work_item(work_item_id)
@@ -82,6 +86,14 @@ async def replay_template(
     phases = template_row["phases"] if isinstance(template_row["phases"], list) else json.loads(template_row["phases"])
     org_id = template_row["org_id"]
     template_name = template_row["name"]
+    technology_phases = {
+        phase for phase in phases if PHASE_DEPARTMENT.get(phase) == "technology"
+    }
+    if "product_definition" in phases and technology_phases:
+        raise InvalidTemplateError(
+            "Template replay cannot bypass audited Chief of Staff approval for "
+            "the product-definition to Technology handoff"
+        )
 
     item = await service.submit_work_item(
         title=title,

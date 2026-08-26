@@ -1,44 +1,51 @@
 # Epic 11 Context: Idea Research and Product Definition
-
-<!-- Generated from planning artifacts. Regenerate with compile-epic-context if planning docs change. -->
+<!-- generated comment -->
 
 ## Goal
 
-Convert a validated idea into an evidence-backed, structured product definition that is ready for delivery. The Ideation Department should autonomously research demand, competition, prior art, feasibility, and audience; assess novelty and possible patentability; then have the Product Team produce requirements, roadmap direction, effort estimates, and success measures. The Chief of Staff must be able to review the resulting packet and approve its handoff to Technology.
+Convert a validated idea into an evidence-backed product definition that is ready for delivery planning and an approved handoff to the Technology Department. The epic covers autonomous concept research, novelty and patentability validation, and translation of an approved concept into requirements, roadmap direction, success measures, and effort estimates.
 
 ## Stories
 
-- Story 11.1: Research the concept and compile market evidence
-- Story 11.2: Validate novelty and patentability
-- Story 11.3: Create product definition from validated concepts
+- **11.1 — Research the concept and compile market evidence:** Produce reviewable market, competitor, and feasibility research with provenance.
+- **11.2 — Validate novelty and patentability:** Produce a referenced novelty and patentability assessment with confidence.
+- **11.3 — Create product definition from validated concepts:** Produce the product definition and secure approval for the Technology handoff.
 
 ## Requirements & Constraints
 
-- When a Work Item enters `ideation`, Idea Team agents research the market landscape, competitors, prior art/patents, technical feasibility, and target audience. Research must include a market summary, competitor list, prior-art references, and feasibility assessment.
-- Research claims require provenance references, such as source URLs or documents, and the work must complete within a configurable time budget.
-- Novelty validation must produce a novelty score, prior-art references, and freedom-to-operate analysis, with confidence recorded. The assessment is a formal Work Item artifact.
-- After ideation approval, Product Team output must include product requirements, user stories, roadmap phases, effort estimates, and success metrics. Roadmap estimates include agent-hours and projected compute cost.
-- Every decision and artifact needs auditable provenance: agent attribution, timestamp where applicable, reasoning, source/evidence references, confidence or trust classification, and alternatives when relevant. Artifacts must remain queryable and reviewable through the Work Item history.
-- Agent actions remain distinguishable from human-controlled actions; Chief of Staff approval is required for the cross-department handoff. Do not introduce arbitrary code execution or bypass filesystem safety boundaries.
+- Work proceeds within a Work Item lifecycle. Epic 11 spans the `ideation` and `product_definition` phases; phase transitions must record timestamps, owning Team, and provenance, and the full lifecycle history must remain visible.
+- The Idea Team owns autonomous research and decides which sources to consult and how deeply to investigate. Research must address market landscape, competitors, technical feasibility, target audience, and prior art or patent evidence.
+- Research output must include a market summary, competitor list, prior-art references, and feasibility assessment. Every claim must cite a source URL or document, and execution must respect a configurable time budget.
+- Access to web search, knowledge bases, and patent databases is an explicit planning assumption. Do not treat those capabilities as guaranteed without configured tools.
+- Novelty validation must assess novelty claims and potential patentability. Its formal Work Item artifact must include a novelty score, prior-art references, a freedom-to-operate analysis, references, confidence, and full provenance.
+- A concept may advance to product definition only after ideation validation and approval. The Product Team must then produce product requirements, user stories, a phased roadmap, effort estimates, and success metrics.
+- The product requirements document must be stored as a Work Item artifact. Roadmap phases require an effort estimate per phase; estimates must include agent-hours and projected compute cost.
+- The Chief of Staff must review and approve the cross-department handoff before Technology begins delivery. The approval and handoff must be logged.
+- Every decision must capture agent identity, timestamp, reasoning, consulted sources, confidence, and alternatives considered in a human-readable form.
+- Every artifact must carry agent attribution, source and evidence references, and a trust level of `generated`, `trusted`, `verified-tool-call`, or `fallback`. Provenance completeness is expected for all artifacts.
+- Accuracy must not be traded for speed or autonomy. Key lifecycle outputs require an accuracy review and score, with verified and failed claims and human attention for low-accuracy results. The exact mix of self-review, peer review, and human review remains undecided.
 
 ## Technical Decisions
 
-- Use LangGraph Supervisor plus DeepAgents team subgraphs exclusively. The supervisor routes work; Idea and Product Team agents return structured results. Do not use deprecated FSM, transitions, scheduler, scoring, or legacy research modules.
-- Relevant runtime namespaces are `backend/app/orchestrator/`, `backend/app/agent/teams/`, `backend/app/agent/tools/`, `backend/app/state/`, and `backend/app/storage/`. Team and agent definitions are loaded dynamically from `config/teams.yaml`.
-- Ideas and research artifacts are canonical workspace-filesystem entities, written through `CompositeBackend` with explicit route mappings and workspace-root restrictions. Runtime state, checkpoints, approvals, and preferences belong in SQLite; LangGraph checkpoints use the global `SqliteSaver` singleton.
-- External research capabilities use configured tools/MCP. Platform stdio servers come from `config/mcp.json`; user-configured MCP servers are HTTP-only. MCP permissions do not replace filesystem route enforcement.
-- User-facing progress uses the approved `graph.astream(..., version="v2")` path and existing HTTP/SSE integration. Enforce `LANGGRAPH_STRICT_MSGPACK=true` in every environment.
+- Agent execution, state, streaming, and tool calling use LangGraph graphs and DeepAgents agents exclusively. The Ideation workflow must remain agent-driven rather than becoming a fixed rule-based state machine.
+- The product retains a two-service topology: a React/Vite frontend and a FastAPI backend with LangGraph running in-process. Client updates and approval interactions use HTTP and SSE; no queue or separate orchestration service is introduced.
+- Agent streaming uses `graph.astream(..., version="v2")`, with custom frontend SSE hooks.
+- Ideas and research artifacts have canonical ownership in their respective Ideas and Research teams and are stored in the workspace filesystem. Agent file access must pass through `CompositeBackend` route mappings and remain inside the configured workspace root.
+- Work Item and runtime relational state use the provider-agnostic PostgreSQL layer. Database access is async through SQLAlchemy interfaces and repositories; LangGraph checkpoints use `AsyncPostgresSaver`; schema changes use Alembic. SQLite is not permitted under the finalized migration architecture.
+- Team and agent definitions are loaded from versioned, validated YAML configuration, including each team's agents, tools, subgraph, and routing keys. Research connectors use configured MCP tools: platform stdio or HTTP servers are configuration-controlled, while user-added servers are HTTP-only.
+- Background activity runs in-process. No separate workers or schedulers are introduced.
+- Filesystem mutations require a LangGraph human-approval interrupt; reads do not. Tooling that bypasses workspace permission routing is a known security gap and must not be assumed to have equivalent containment.
 
 ## UX & Interaction Patterns
 
-- The idea detail view should expose the complete research packet, including market analysis, novelty assessment, roadmap, and requirements, with provenance references available alongside artifacts.
-- Research progress and results should be understandable as they stream into the Work Item. At the end of Epic 11, the Command Center should communicate ideation completion and the “handed to Technology” transition.
-- Chief of Staff review and approval is the user-controlled gate before Product Team output is handed to Technology; the decision and its evidence must be visible in the audit trail.
+- Research, novelty, and product-definition outputs must be attached to the Work Item in a reviewable form rather than exposed only as transient agent conversation.
+- The Work Item detail experience should present the complete research packet—market analysis, novelty assessment, roadmap, and requirements—and make lifecycle status and the Ideation-to-Technology handoff clear.
+- Provenance appears alongside each artifact, with source references users can open. Accuracy scores and low-confidence or low-accuracy warnings must be visible at key milestones.
+- The Chief of Staff is the primary review and communication surface: users can inspect progress, ask why a decision was made, and approve or reject gated actions and the Technology handoff.
 
 ## Cross-Story Dependencies
 
-- Epic 11 starts after Epic 10.4 establishes idea maturity and a concept is ready for research.
-- Story 11.2 requires Story 11.1’s completed research artifacts and references.
-- Story 11.3 requires Story 11.2’s novelty/patentability assessment and approval state.
-- Story 11.3’s approved product definition is the prerequisite handoff for Epic 12, Story 12.1 (development).
-- Stories execute sequentially in order 11.1 → 11.2 → 11.3; no overlap is planned.
+- Story 11.1 starts only after Story 10.4 has established a validated, stage-assigned idea.
+- Story 11.2 depends on the completed evidence packet from Story 11.1.
+- Story 11.3 depends on the completed novelty and patentability assessment from Story 11.2.
+- Epic 12 delivery work begins only after Story 11.3 produces an approved product definition and Chief of Staff handoff.

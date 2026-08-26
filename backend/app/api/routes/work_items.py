@@ -30,6 +30,14 @@ _TITLE_MAX_LENGTH = 200
 _DESCRIPTION_MAX_LENGTH = 5000
 
 
+def _product_definition_metadata(work_item_id: str, metadata: dict) -> dict | None:
+    """Return idea metadata, including durable failures without an idea mapping."""
+    if "product_definition" in metadata:
+        return metadata.get("product_definition")
+    _, status = service.get_work_item_product_definition(work_item_id)
+    return None if status.get("state") == "unknown" else status
+
+
 @router.post("/work-items", status_code=201)
 async def submit_work_item(request: SubmitWorkItemRequest) -> dict:
     """Submit a work item; the Chief of Staff receives and routes it."""
@@ -84,13 +92,14 @@ async def list_work_items(
     work_items = []
     for item in items:
         idea_id = get_idea_id_for_work_item(item.work_item_id)
-        metadata = load_idea_yaml(idea_id, "idea.yaml") if idea_id else {}
+        metadata = (load_idea_yaml(idea_id, "idea.yaml") or {}) if idea_id else {}
         work_items.append(
             {
                 **item.model_dump(),
                 "idea_id": idea_id,
                 "research": metadata.get("research"),
                 "validation": metadata.get("validation"),
+                "product_definition": _product_definition_metadata(item.work_item_id, metadata),
             }
         )
     return {"work_items": work_items, "count": len(work_items)}
@@ -123,13 +132,14 @@ async def transition_work_item(
         ) from exc
     response = item.model_dump()
     idea_id = get_idea_id_for_work_item(work_item_id)
-    metadata = load_idea_yaml(idea_id, "idea.yaml") if idea_id else {}
+    metadata = (load_idea_yaml(idea_id, "idea.yaml") or {}) if idea_id else {}
     return {
         "work_item": {
             **response,
             "idea_id": idea_id,
             "research": metadata.get("research"),
             "validation": metadata.get("validation"),
+            "product_definition": _product_definition_metadata(work_item_id, metadata),
         },
         "event": event.model_dump(),
     }
@@ -151,6 +161,7 @@ async def get_work_item_research(work_item_id: str = Path(..., max_length=64)) -
         "idea_id": idea_id,
         "research": metadata.get("research"),
         "validation": metadata.get("validation"),
+        "product_definition": _product_definition_metadata(work_item_id, metadata),
     }
 
 
@@ -221,13 +232,14 @@ async def get_work_item(work_item_id: str = Path(..., max_length=64)) -> dict:
     if item is None:
         raise HTTPException(status_code=404, detail=f"Work item {work_item_id} not found")
     idea_id = get_idea_id_for_work_item(work_item_id)
-    metadata = load_idea_yaml(idea_id, "idea.yaml") if idea_id else {}
+    metadata = (load_idea_yaml(idea_id, "idea.yaml") or {}) if idea_id else {}
     return {
         "work_item": {
             **item.model_dump(),
             "idea_id": idea_id,
             "research": metadata.get("research"),
             "validation": metadata.get("validation"),
+            "product_definition": _product_definition_metadata(work_item_id, metadata),
         }
     }
 

@@ -51,8 +51,48 @@ export interface WorkItem {
   idea_id?: string | null;
   research?: Record<string, unknown> | null;
   validation?: ValidationStatus | null;
+  product_definition?: ProductDefinitionStatus | null;
 }
 
+export type ProductDefinitionState =
+  | 'unknown' | 'initializing' | 'running' | 'completed' | 'failed' | 'incomplete' | 'cancelled';
+export type ProductDefinitionApprovalState = 'unreviewed' | 'rejected' | 'approved';
+
+export interface ProductRequirement {
+  requirement_id: string; title: string; description: string; priority: string; evidence_refs: string[];
+}
+export interface ProductUserStory {
+  story_id: string; persona: string; need: string; benefit: string;
+  acceptance_criteria: string[]; evidence_refs: string[];
+}
+export interface RoadmapPhase {
+  phase: string; objective: string; deliverables: string[]; agent_hours: number;
+  projected_compute_cost: number; estimate_basis: EstimateBasis; estimate_trust: 'generated';
+}
+export interface EstimateBasis {
+  method: string; assumptions: string[]; evidence_refs: string[];
+}
+export interface SuccessMetric {
+  name: string; target: string; measurement: string; evidence_refs: string[];
+}
+export interface ProductDefinitionSummary {
+  requirements: ProductRequirement[]; user_stories: ProductUserStory[]; roadmap: RoadmapPhase[];
+  success_metrics: SuccessMetric[]; confidence: number; reasoning: string; alternatives: string[];
+  evidence_refs: string[]; provenance: string; agent_id: string; generated_at: string;
+  trust: 'generated'; artifact_name: 'product-definition'; artifact_version?: number | null;
+}
+export interface ProductDefinitionStatus {
+  state: ProductDefinitionState; idea_id: string; work_item_id?: string | null;
+  expected_artifacts?: string[]; completed_artifacts?: string[]; error?: string;
+  retryable?: boolean | null; updated_at?: number; summary?: ProductDefinitionSummary | null;
+  artifact?: Record<string, unknown>; approval_state: ProductDefinitionApprovalState;
+  approval_decision?: { decision: 'approve' | 'reject'; actor_id: string; reasoning: string;
+    alternatives: string[]; artifact_version: number; decided_at: string };
+}
+export interface ProductDefinitionResponse {
+  work_item_id: string; idea_id: string | null; product_definition: ProductDefinitionStatus;
+  lifecycle_status: string | null;
+}
 export interface WorkItemValidationResponse {
   work_item_id: string;
   idea_id: string | null;
@@ -111,6 +151,39 @@ export async function triggerWorkItemValidation(
 ): Promise<WorkItemValidationResponse> {
   return request<WorkItemValidationResponse>(
     `/work-items/${encodeURIComponent(workItemId)}/validation`,
+    { method: 'POST', body: JSON.stringify(payload), ...options },
+  );
+}
+
+export async function fetchWorkItemProductDefinition(
+  workItemId: string, options?: RequestOptions,
+): Promise<ProductDefinitionResponse> {
+  return request<ProductDefinitionResponse>(
+    `/work-items/${encodeURIComponent(workItemId)}/product-definition`, options,
+  );
+}
+
+export async function triggerWorkItemProductDefinition(
+  workItemId: string,
+  payload: { agent_id?: string; time_budget_sec?: number } = {},
+  options?: RequestOptions,
+): Promise<ProductDefinitionResponse> {
+  return request<ProductDefinitionResponse>(
+    `/work-items/${encodeURIComponent(workItemId)}/product-definition`,
+    { method: 'POST', body: JSON.stringify(payload), ...options },
+  );
+}
+
+export async function decideWorkItemProductDefinition(
+  workItemId: string,
+  payload: {
+    actor_id: string; decision: 'approve' | 'reject'; artifact_version: number;
+    reasoning: string; alternatives?: string[];
+  },
+  options?: RequestOptions,
+): Promise<ProductDefinitionResponse & { event?: LifecycleEvent | null }> {
+  return request(
+    `/work-items/${encodeURIComponent(workItemId)}/product-definition/decision`,
     { method: 'POST', body: JSON.stringify(payload), ...options },
   );
 }

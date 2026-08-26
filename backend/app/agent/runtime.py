@@ -362,7 +362,12 @@ def _graph_checkpointer(thread_manager_module):
 
 
 
-def get_deep_agent_runtime(team_name: str = "general"):
+def get_deep_agent_runtime(
+    team_name: str = "general",
+    *,
+    include_domain_tools: bool = True,
+    include_mcp_tools: bool = True,
+):
     """Return a compiled DeepAgents graph for the given team.
 
     Loads team-specific configuration from ``config/teams.yaml`` including
@@ -370,6 +375,10 @@ def get_deep_agent_runtime(team_name: str = "general"):
 
     Args:
         team_name: Team key in teams.yaml (default: ``"general"``).
+        include_domain_tools: Whether to expose app mutation tools to the
+            runtime. Generation runtimes disable these capabilities.
+        include_mcp_tools: Whether to load configured external tools. Product
+            definition generation disables these capabilities as untrusted.
 
     Returns:
         Compiled DeepAgents graph ready for invocation.
@@ -403,10 +412,10 @@ def get_deep_agent_runtime(team_name: str = "general"):
         "delete": True,
     }
 
-    mcp_tools = _load_mcp_tools()
-    # Domain tools (Story 8.2: submit_work_item) are always present,
-    # alongside any configured MCP tools.
-    all_tools = (mcp_tools or []) + list(DOMAIN_TOOLS)
+    mcp_tools = _load_mcp_tools() if include_mcp_tools else []
+    # Generation-specific runtimes can opt out of mutation-capable domain
+    # tools.  This is enforced here, not by the model's prompt.
+    all_tools = (mcp_tools or []) + (list(DOMAIN_TOOLS) if include_domain_tools else [])
 
     # ``resolve_chat_model`` substitutes the deterministic local mock when the
     # configured model is the ``openai:test-model`` sentinel (NFR-A10) so CI /

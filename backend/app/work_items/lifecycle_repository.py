@@ -4,6 +4,7 @@ All operations are fully async, using the shared SQLAlchemy AsyncSession pool.
 """
 
 import json
+from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy import text
@@ -291,7 +292,80 @@ async def record_transition(
             await _insert_lifecycle_event_in_session(session, event)
             if decision:
                 from .repository import _insert_decision_within_session
+                if decision.get("decision_type") in {"handoff", "review"}:
+                    duplicate = await session.execute(
+                        text(
+                            "SELECT 1 FROM decisions "
+                            "WHERE work_item_id = :id AND decision_type IN ('handoff', 'review') "
+                            "AND evidence = :evidence LIMIT 1"
+                        ),
+                        {
+                            "id": work_item_id,
+                            "evidence": json.dumps(decision.get("evidence", [])),
+                        },
+                    )
+                    if duplicate.first() is not None:
+                        raise ValueError("product-definition decision already recorded")
                 await _insert_decision_within_session(session, decision)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def record_transition_with_workspace(
+    work_item_id: str,
+    status: str,
+    department_id: str,
+    updated_at: str,
+    event: dict[str, Any],
+    *,
+    expected_status: str,
+    decision: dict[str, Any],
+    workspace_action: Callable[[], None],
+) -> None:
+    """Persist a transition and workspace mutation under one DB transaction.
+
+    The database CAS and audit rows are written before ``workspace_action`` runs.
+    If the workspace write fails, the open transaction rolls back both the CAS
+    and its audit rows. This coordinates workers through the database row lock;
+    it cannot make a filesystem and database commit globally atomic after a
+    process crash.
+    """
+    async with get_session_factory()() as session:
+        try:
+            result = await session.execute(
+                text(
+                    "UPDATE work_items SET status = :status, department_id = :dept, "
+                    "updated_at = :updated_at "
+                    "WHERE work_item_id = :id AND status = :expected_status"
+                ),
+                {
+                    "status": status,
+                    "dept": department_id,
+                    "updated_at": updated_at,
+                    "id": work_item_id,
+                    "expected_status": expected_status,
+                },
+            )
+            if result.rowcount != 1:
+                exists = await session.execute(
+                    text("SELECT status FROM work_items WHERE work_item_id = :id"),
+                    {"id": work_item_id},
+                )
+                row = exists.mappings().one_or_none()
+                if row is None:
+                    raise ValueError(f"Work item {work_item_id} not found")
+                raise ValueError(
+                    f"Work item {work_item_id} status changed concurrently "
+                    f"(expected '{expected_status}', found '{row['status']}')"
+                )
+
+            await _insert_lifecycle_event_in_session(session, event)
+            from .repository import _insert_decision_within_session
+
+            await _insert_decision_within_session(session, decision)
+            workspace_action()
             await session.commit()
         except Exception:
             await session.rollback()

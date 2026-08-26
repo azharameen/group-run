@@ -11,6 +11,41 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
 
 from . import lifecycle
+from .product_definition_models import (
+    EstimateBasis,
+    EstimateNumber,
+    GeneratedTrust,
+    ProductDefinitionApprovalState,
+    ProductDefinitionDecisionRequest,
+    ProductDefinitionRequest,
+    ProductDefinitionResponse,
+    ProductDefinitionState,
+    ProductDefinitionStatus,
+    ProductDefinitionSummary,
+    ProductRequirement,
+    ProductUserStory,
+    RoadmapPhase,
+    StrictProductModel,
+    SuccessMetric,
+)
+
+__all__ = [
+    "EstimateBasis",
+    "EstimateNumber",
+    "GeneratedTrust",
+    "ProductDefinitionApprovalState",
+    "ProductDefinitionDecisionRequest",
+    "ProductDefinitionRequest",
+    "ProductDefinitionResponse",
+    "ProductDefinitionState",
+    "ProductDefinitionStatus",
+    "ProductDefinitionSummary",
+    "ProductRequirement",
+    "ProductUserStory",
+    "RoadmapPhase",
+    "StrictProductModel",
+    "SuccessMetric",
+]
 
 LIFECYCLE_PHASES = lifecycle.LIFECYCLE_PHASES
 PHASE_DEPARTMENT = lifecycle.PHASE_DEPARTMENT
@@ -63,6 +98,7 @@ class WorkItem(BaseModel):
     created_at: str
     updated_at: str
     template_id: str | None = None
+    product_definition: ProductDefinitionStatus | None = None
 
 
 class SubmitWorkItemRequest(BaseModel):

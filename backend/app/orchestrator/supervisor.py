@@ -167,6 +167,36 @@ async def invoke_idea_team_validation(context: str, *, idea_id: str) -> Any:
     )
 
 
+async def invoke_product_team(context: str, *, idea_id: str) -> Any:
+    """Invoke the configured Product Team with a strict JSON-only contract."""
+    agent = get_deep_agent_runtime(
+        "product", include_domain_tools=False, include_mcp_tools=False
+    )
+    product_config = _teams_config.get("teams", {}).get("product", {})
+    role = product_config.get("definition_role", "product-definition-lead")
+    configured_prompt = product_config.get("definition_prompt", "")
+    prompt = (
+        f"Act as the {role}. Return ONLY one JSON object with requirements, "
+        "user_stories, roadmap, success_metrics, confidence, reasoning, alternatives, "
+        "evidence_refs, and provenance. Every roadmap phase must include positive "
+        "agent_hours, projected_compute_cost, and estimate_basis with method, "
+        "assumptions, and evidence_refs. Use only supplied evidence; never claim "
+        "approval or handoff.\n\n"
+        f"{configured_prompt}\n\n{context}"
+    )
+    return await agent.ainvoke(
+        {"messages": [{"role": "user", "content": prompt}]},
+        config={
+            "recursion_limit": 50,
+            "configurable": {
+                "thread_id": f"{idea_research_thread_id(idea_id)}:product-definition",
+                "team": "product",
+                "role": "definition",
+            },
+        },
+    )
+
+
 def _get_agent() -> Any:
     """Return a cached DeepAgents runtime instance."""
     global _agent

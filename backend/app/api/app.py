@@ -29,6 +29,7 @@ from .routes.knowledge_base import router as knowledge_base_router
 from .routes.maturity import router as maturity_router
 from .routes.mcp import router as mcp_router
 from .routes.organizations import router as organizations_router
+from .routes.product_definitions import router as product_definitions_router
 from .routes.providers import router as providers_router
 from .routes.reviews import router as reviews_router
 from .routes.sse import router as sse_router
@@ -240,6 +241,7 @@ def create_app() -> FastAPI:
     app.include_router(mcp_router)
     app.include_router(organizations_router)
     app.include_router(providers_router)
+    app.include_router(product_definitions_router)
     app.include_router(decisions_router)
     app.include_router(artifacts_router)
     app.include_router(work_item_templates_router)

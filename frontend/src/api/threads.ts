@@ -24,7 +24,14 @@ export type StreamEventType =
   | 'done'
   | 'transition'
   | 'user_message'
-  | 'message';
+  | 'message'
+  | 'product-definition.initializing'
+  | 'product-definition.running'
+  | 'product-definition.completed'
+  | 'product-definition.failed'
+  | 'product-definition.incomplete'
+  | 'product-definition.cancelled'
+  | 'product-definition.progress';
 
 export interface StateUpdateResponse {
   text?: string;
@@ -79,6 +86,7 @@ export interface StreamEvent {
   idea_id?: string;
   research?: Record<string, unknown>;
   validation?: Record<string, unknown>;
+  product_definition?: Record<string, unknown>;
 }
 
 export interface ThreadMetadata {
@@ -190,6 +198,7 @@ export interface SSEPayload extends Record<string, unknown> {
   agent_name?: string;
   message?: string;
   interrupt?: Partial<InterruptPayload>;
+  product_definition?: Record<string, unknown>;
 }
 
 export function connectSSE(
