@@ -29,7 +29,7 @@ test.describe('Thread Management', () => {
     const createThread = async (title: string) => {
       const resp = await fetch(`${api.baseUrl}/api/threads`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
         body: JSON.stringify({ title, idea_id: null }),
       });
       if (!resp.ok) {
@@ -63,7 +63,7 @@ test.describe('Thread Management', () => {
     // prior history before the UI loads it.
     const createResp = await fetch(`${api.baseUrl}/api/threads`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({ title: 'History Thread', idea_id: null }),
     });
     if (!createResp.ok) {
@@ -75,7 +75,7 @@ test.describe('Thread Management', () => {
     // Send a message via stream endpoint and wait for it to complete
     const streamResp = await fetch(`${api.baseUrl}/api/threads/${threadId}/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({ text: 'Remember this idea for later.', idea_id: null }),
     });
     if (!streamResp.ok) {

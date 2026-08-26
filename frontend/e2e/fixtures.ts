@@ -25,6 +25,8 @@ export interface ApiHelpers {
   resetState: () => Promise<void>;
   /** Set the Firebase emulator ID token used by protected API helpers. */
   setIdToken: (token: string) => void;
+  /** Return headers containing the current Firebase emulator ID token. */
+  authHeaders: () => Record<string, string>;
 }
 
 type Fixtures = {
@@ -111,6 +113,7 @@ export const test = base.extend<Fixtures>({
       setIdToken: (token) => {
         idToken = token;
       },
+      authHeaders,
     });
   },
 

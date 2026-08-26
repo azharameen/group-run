@@ -13,13 +13,13 @@ test.describe('Organization Dashboard', () => {
   });
 
   async function createOrgViaApi(
-    api: { baseUrl: string },
+    api: { baseUrl: string; authHeaders: () => Record<string, string> },
     name: string,
     description = ''
   ): Promise<string> {
     const response = await fetch(`${api.baseUrl}/api/organizations`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({ name, description }),
     });
     if (!response.ok) {

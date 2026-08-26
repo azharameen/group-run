@@ -72,7 +72,7 @@ test.describe('Performance Measurements', () => {
     for (let i = 0; i < threadCount; i++) {
       const resp = await fetch(`${api.baseUrl}/api/threads`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
         body: JSON.stringify({ title: `Perf Thread ${i}`, idea_id: null }),
       });
       if (!resp.ok) {
@@ -111,7 +111,7 @@ test.describe('Performance Measurements', () => {
     const createThread = async (title: string) => {
       const resp = await fetch(`${api.baseUrl}/api/threads`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
         body: JSON.stringify({ title, idea_id: null }),
       });
       if (!resp.ok) throw new Error(`Create failed: ${resp.status}`);
@@ -155,7 +155,7 @@ test.describe('Performance Measurements', () => {
     // Create an interrupt via API.
     const resp = await fetch(`${api.baseUrl}/api/interrupts/`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({
         thread_id: 'perf-thread',
         tool_name: 'test_tool',
@@ -185,7 +185,7 @@ test.describe('Performance Measurements', () => {
     const startTime = Date.now();
     const approveResp = await fetch(`${api.baseUrl}/api/interrupts/${interruptId}/approve`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...api.authHeaders() },
       body: JSON.stringify({ decision: 'approved', reason: 'perf test' }),
     });
 
@@ -202,7 +202,7 @@ test.describe('Performance Measurements', () => {
 
     for (let i = 0; i < iterations; i++) {
       const start = Date.now();
-      const resp = await fetch(`${api.baseUrl}/api/ideas`);
+      const resp = await fetch(`${api.baseUrl}/api/ideas`, { headers: api.authHeaders() });
       durations.push(Date.now() - start);
       expect(resp.ok).toBe(true);
     }
