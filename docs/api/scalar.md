@@ -9,7 +9,10 @@ The full REST API for Companion, served live from GCP Cloud Run.
 !!! tip "Health Check"
     Verify the backend is running: [`/api/health`](https://backend-service-601546984807.asia-south1.run.app/api/health)
 
+<div id="app"></div>
 <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.66.1" crossorigin="anonymous"></script>
-<scalar-api-reference
-  configuration='{"url":"https://backend-service-601546984807.asia-south1.run.app/openapi.json"}'
-></scalar-api-reference>
+<script>
+  Scalar.createApiReference("#app", {
+    url: "https://backend-service-601546984807.asia-south1.run.app/openapi.json"
+  });
+</script>
