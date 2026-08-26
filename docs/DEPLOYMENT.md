@@ -258,6 +258,31 @@ credentials and connection strings in **Environment secrets**, not variables:
 | `beta` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `BETA_DATABASE_DIRECT_URL`, `BETA_DATABASE_URL` |
 | `production` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `PROD_DATABASE_DIRECT_URL`, `PROD_DATABASE_URL` |
 
+The service account stored in `GCP_SA_KEY` must have these project-level IAM
+roles. `roles/serviceusage.serviceUsageConsumer` is required even when
+Firestore is already enabled because the Firebase CLI checks service status
+before deploying rules.
+
+```bash
+PROJECT_ID="<firebase-project-id>"
+SERVICE_ACCOUNT="<deployment-service-account-email>"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$SERVICE_ACCOUNT" \
+  --role="roles/serviceusage.serviceUsageConsumer"
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$SERVICE_ACCOUNT" \
+  --role="roles/firebasehosting.admin"
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$SERVICE_ACCOUNT" \
+  --role="roles/firebaserules.admin"
+```
+
+The account also needs the existing Cloud Run deployment permissions used by
+the backend step. If IAM changes are controlled by an organization or folder
+policy, a project owner or IAM administrator must apply them. After granting
+the roles, rerun the failed workflow; no code or secret rotation is required.
+
 After deployment, open **Settings → Provider**, choose OpenAI, Google Gemini, or
 Ollama, enter the endpoint/model/credential, test it, save it, and activate it.
 Provider configuration is stored directly in PostgreSQL.
