@@ -53,48 +53,48 @@ theme:
     - announce.dismiss
 
 nav:
-  - Home: index.md
-  - Getting Started:
+  - Home & Getting Started:
+      - Home: index.md
       - Setup Guide: GETTING_STARTED.md
       - Deployment: DEPLOYMENT.md
-  - Architecture:
-      - Overview: architecture.md
-      - Target Architecture: target-architecture.md
-      - Architecture Decisions: architecture-decisions.md
-      - Architecture Spine (BMad): architecture/spine.md
   - Product:
-      - PRD: prd.md
-      - Product Context: product-context.md
-      - Features: features.md
-      - Feature Roadmap: feature-roadmap.md
-  - Project Planning:
-      - Epics Overview: epics/index.md
-      - Sprint 1: epics/sprint-1.md
-      - Tasks: tasks.md
-      - Milestone Tracker: milestone-tracker.md
-      - Phased Plan: phased-plan.md
-      - Current State Audit: current-state-audit.md
-      - Project Context (AI Rules): context/project-context.md
-  - API Reference:
-      - Interactive Scalar API Reference: api/scalar.md
-  - Backend:
-      - Agents: agents.md
-      - SSE Streaming: sse-streaming.md
-  - Frontend & UX:
-      - Frontend Plan: frontend-plan.md
-      - UI Design: ui-design.md
-  - Testing & Quality:
-      - Testing Guide: testing.md
-      - Performance Testing: performance-testing.md
-      - Code Review Guidelines: code-review-guidelines.md
-  - Standards:
-      - Coding Guidelines: coding-guidelines.md
-      - Technical Debt Policy: technical-debt-policy.md
-  - CI/CD & DevOps:
-      - Overview: cicd/overview.md
-  - For AI Agents:
+      - Product Overview: product-context.md
+      - Requirements (PRD): prd.md
+      - Capabilities & Features: features.md
+  - Engineering Hub:
+      - Architecture:
+          - Overview: architecture.md
+          - Architecture Decisions: architecture-decisions.md
+          - ADR Template: architecture/adr-template.md
+          - Architecture Spine (BMad): architecture/spine.md
+      - Build & Integration:
+          - API Reference (Scalar): api/scalar.md
+          - Backend Agents: agents.md
+          - SSE Streaming: sse-streaming.md
+          - Frontend Plan: frontend-plan.md
+          - UI Design: ui-design.md
+      - Quality & Delivery:
+          - Testing Guide: testing.md
+          - Performance Testing: performance-testing.md
+          - CI/CD Overview: cicd/overview.md
+          - Automation Index: generated/workflows.md
+          - Code Review Guidelines: code-review-guidelines.md
+      - Engineering Standards:
+          - Coding Guidelines: coding-guidelines.md
+          - Technical Debt Policy: technical-debt-policy.md
+      - Planning & Operations:
+          - Epics Overview: epics/index.md
+          - Sprint 1: epics/sprint-1.md
+          - Tasks: tasks.md
+          - Project Context (AI Rules): context/project-context.md
+      - Archive:
+          - Feature Roadmap (Phases 0–7): feature-roadmap.md
+          - Phased Plan (Phases 0–7): phased-plan.md
+          - Milestone Tracker (Phases 0–7): milestone-tracker.md
+          - Current State Audit (Phases 0–7): current-state-audit.md
+          - Target Architecture (Phases 0–7): target-architecture.md
+  - AI & Community:
       - Context Guide: ai-agents/context-guide.md
-  - Community:
       - Changelog: CHANGELOG.md
       - Contributing: CONTRIBUTING.md
       - License: LICENSE.md
@@ -117,6 +117,11 @@ plugins:
       minify_html: true
       minify_js: true
       minify_css: true
+  - gen-files:
+      scripts:
+        - docs/gen_pages.py
+  - macros:
+      module_name: docs/macros
   - llmstxt:
       markdown_description: |
         Group Run is a multi-agent AI platform powered by LangGraph and DeepAgents.
@@ -129,12 +134,10 @@ plugins:
           - DEPLOYMENT.md
         Architecture:
           - architecture.md
-          - target-architecture.md
           - architecture-decisions.md
         Product:
           - prd.md
           - features.md
-          - feature-roadmap.md
         API Reference:
           - api/scalar.md
         Backend:
@@ -209,3 +212,6 @@ extra:
 
 extra_css:
   - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/scalar-init.js

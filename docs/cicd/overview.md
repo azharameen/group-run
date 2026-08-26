@@ -1,6 +1,6 @@
 # CI/CD Overview
 
-All automation runs on **GitHub Actions**. There are 4 active workflows and 1 security scanner.
+All automation runs on **GitHub Actions**. There are 6 active workflows, 1 reusable workflow, and 1 security scanner.
 
 ## Workflow Map
 
@@ -10,7 +10,10 @@ All automation runs on **GitHub Actions**. There are 4 active workflows and 1 se
 | Release - Beta | `release-beta.yml` | Push to `develop` | Deploy to Cloud Run + Firebase |
 | Release - Preview | `release-preview.yml` | PR targeting `main` | Preview deploy for review |
 | Release - Production | `release-prod.yml` | PR merged into `main` | `release-please` tag + changelog |
-| CodeQL | GitHub default | Push to `develop`/`main` | Security vulnerability scan |
+| Heartbeat | `heartbeat.yml` | Scheduled (weekdays 02:00 PKT) + manual | Nightly E2E smoke test + full dependency audit sweep |
+| DB Migrate (reusable) | `db-migrate.yml` | Called by `release-beta`/`release-prod` | Alembic migration gate before deploy |
+| Deploy Docs | `docs.yml` | Push to `develop`/`main` touching `docs/**` | Build & publish this MkDocs site to GitHub Pages |
+| CodeQL | GitHub default (Security tab) | Push to `develop`/`main` | Security vulnerability scan |
 
 ## CI Pipeline Jobs
 

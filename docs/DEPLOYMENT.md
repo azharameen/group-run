@@ -10,6 +10,29 @@ Deploy the Companion application using Docker Compose. The application runs as t
 
 ## Quick Start
 
+### Environment commands
+
+=== "Local"
+
+    ```bash
+    docker compose up --build
+    curl http://localhost:8000/api/health
+    ```
+
+=== "Beta"
+
+    ```bash
+    git push origin develop
+    gh run watch --workflow release-beta.yml
+    ```
+
+=== "Production"
+
+    ```bash
+    gh pr merge <number> --merge
+    gh run list --workflow release-prod.yml --limit 5
+    ```
+
 ```bash
 # Build and start both services
 docker compose up --build
