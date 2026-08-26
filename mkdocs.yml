@@ -1,5 +1,5 @@
-site_name: "Group Run — Companion AI Platform"
-site_description: "Documentation for the Group Run multi-agent AI platform."
+site_name: "Companion Docs"
+site_description: "Documentation for the Companion multi-agent AI platform."
 site_author: "azharameen"
 site_url: "https://azharameen.github.io/group-run/"
 repo_url: "https://github.com/azharameen/group-run"
@@ -76,7 +76,7 @@ nav:
       - Current State Audit: current-state-audit.md
       - Project Context (AI Rules): context/project-context.md
   - API Reference:
-      - Interactive Swagger UI: api/swagger.md
+      - Interactive Scalar API Reference: api/scalar.md
   - Backend:
       - Agents: agents.md
       - SSE Streaming: sse-streaming.md
@@ -108,8 +108,6 @@ plugins:
   - include-markdown:
       opening_tag: "{!"
       closing_tag: "!}"
-  - swagger-ui-tag:
-      background: ""
   - glightbox:
       touchNavigation: true
       loop: false
@@ -138,7 +136,7 @@ plugins:
           - features.md
           - feature-roadmap.md
         API Reference:
-          - api/swagger.md
+          - api/scalar.md
         Backend:
           - agents.md
           - sse-streaming.md

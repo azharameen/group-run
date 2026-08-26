@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, Response
 
 from ..auth.middleware import FirebaseAuthenticationMiddleware
 from ..config import settings
@@ -38,6 +38,8 @@ from .routes.work_item_templates import router as work_item_templates_router
 from .routes.work_items import router as work_items_router
 
 logger = logging.getLogger(__name__)
+
+SCALAR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.66.1"
 
 
 class TimingMiddleware(BaseHTTPMiddleware):
@@ -155,9 +157,11 @@ async def lifespan(_app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Agentic Organization Platform",
+        title="Companion API",
         version="1.0.0",
         lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
     )
 
     app.add_middleware(FirebaseAuthenticationMiddleware)
@@ -165,7 +169,7 @@ def create_app() -> FastAPI:
     app.add_middleware(TimingMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+        allow_origin_regex=r"https://azharameen\.github\.io|http://(localhost|127\.0\.0\.1):\d+",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -202,6 +206,28 @@ def create_app() -> FastAPI:
             )
         response.headers["X-Request-ID"] = request_id
         return response
+
+    @app.get("/scalar", include_in_schema=False)
+    async def scalar_reference() -> HTMLResponse:
+        return HTMLResponse(
+            f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Companion API Reference</title>
+  </head>
+  <body>
+    <script src="{SCALAR_SCRIPT_URL}"></script>
+    <script>
+      Scalar.createApiReference("#app", {{
+        url: "/openapi.json"
+      }});
+    </script>
+    <div id="app"></div>
+  </body>
+</html>"""
+        )
 
     app.include_router(health_router)
     # Idea maturity routes extend the /ideas API surface (story 10.4).
