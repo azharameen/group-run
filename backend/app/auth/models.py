@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Mapping
+from typing import Any
 
 
 def _string_or_none(value: Any) -> str | None:
@@ -38,7 +39,7 @@ class AuthenticatedPrincipal:
     claims: Mapping[str, Any]
 
     @classmethod
-    def from_claims(cls, claims: Mapping[str, Any]) -> "AuthenticatedPrincipal":
+    def from_claims(cls, claims: Mapping[str, Any]) -> AuthenticatedPrincipal:
         uid = _string_or_none(claims.get("uid")) or _string_or_none(claims.get("sub"))
         if not uid:
             raise ValueError("Verified token missing uid")
@@ -77,7 +78,7 @@ class UserProfile:
         document: Mapping[str, Any],
         *,
         fallback_now: datetime | None = None,
-    ) -> "UserProfile":
+    ) -> UserProfile:
         now = fallback_now or datetime.now(UTC)
         return cls(
             uid=principal.uid,

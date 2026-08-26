@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Any, Mapping
+from typing import Any
 
 from firebase_admin import firestore
 
@@ -59,5 +60,5 @@ def bootstrap_user(principal: AuthenticatedPrincipal) -> AuthBootstrapResult:
         )
     except FirebaseUserBootstrapError:
         raise
-    except Exception:
+    except (RuntimeError, ValueError, TypeError):
         raise FirebaseUserBootstrapError("User profile unavailable") from None

@@ -41,7 +41,7 @@ describe('config.ts API module', () => {
 
       const result = await fetchTeamsConfig();
       expect(result).toEqual(mockConfig);
-      expect(fetch).toHaveBeenCalledWith('/api/config');
+      expect(fetch).toHaveBeenCalledWith('/api/config', expect.any(Object));
       expect(warnSpy).not.toHaveBeenCalled();
     });
 
@@ -79,7 +79,7 @@ describe('config.ts API module', () => {
       );
 
       await expect(fetchTeamsConfig()).rejects.toThrow(
-        'Failed to fetch team configuration: 500 Internal Server Error',
+        'API 500: Internal Server Error',
       );
     });
 
@@ -125,9 +125,9 @@ describe('config.ts API module', () => {
 
       const result = await reloadTeamsConfig();
       expect(result).toEqual(mockReloadResponse);
-      expect(fetch).toHaveBeenCalledWith('/api/config/reload', {
+      expect(fetch).toHaveBeenCalledWith('/api/config/reload', expect.objectContaining({
         method: 'POST',
-      });
+      }));
     });
 
     it('throws error with detail message on non-ok HTTP response', async () => {
@@ -157,7 +157,7 @@ describe('config.ts API module', () => {
       );
 
       await expect(reloadTeamsConfig()).rejects.toThrow(
-        'Internal Error',
+        'API 500',
       );
     });
 
@@ -173,7 +173,7 @@ describe('config.ts API module', () => {
       );
 
       await expect(reloadTeamsConfig()).rejects.toThrow(
-        'Failed to reload configuration: 503',
+        'API 503',
       );
     });
 

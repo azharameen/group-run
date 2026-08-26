@@ -13,12 +13,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from ..config import settings
 from ..auth.middleware import FirebaseAuthenticationMiddleware
+from ..config import settings
 from ..infrastructure.observability import configure_langsmith_tracing
 from ..services.thread_manager import close_pg_checkpointer, reset_pg_checkpointer
-from .routes.auth import router as auth_router
 from .routes.artifacts import router as artifacts_router
+from .routes.auth import router as auth_router
 from .routes.chat import router as chat_router
 from .routes.config import router as config_router
 from .routes.decisions import router as decisions_router

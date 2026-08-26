@@ -33,6 +33,20 @@ export function onAuthExpired(handler: () => void): () => void {
   return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handler)
 }
 
+async function responseErrorBody(response: Response): Promise<string> {
+  if (typeof response.text === "function") {
+    return response.text()
+  }
+  if (typeof response.json === "function") {
+    try {
+      return JSON.stringify(await response.json())
+    } catch {
+      return typeof response.statusText === "string" ? response.statusText : ""
+    }
+  }
+  return typeof response.statusText === "string" ? response.statusText : ""
+}
+
 export async function authenticatedFetch(
   path: string,
   options: RequestInit = {},
@@ -45,6 +59,9 @@ export async function authenticatedFetch(
   }
 
   const token = await user.getIdToken(forceRefresh)
+  if (options.signal?.aborted) {
+    throw options.signal.reason ?? new DOMException("The operation was aborted", "AbortError")
+  }
   const headers = new Headers(options.headers)
   headers.set("Authorization", `Bearer ${token}`)
   if (!(options.body instanceof FormData) && options.body && !headers.has("Content-Type")) {
@@ -79,10 +96,15 @@ export async function request<T>(path: string, options?: RequestOptions): Promis
       signal: controller.signal,
     })
     if (!response.ok) {
-      throw new ApiError(response.status, formatApiError(response.status, await response.text()))
+      const body = await responseErrorBody(response)
+      throw new ApiError(response.status, formatApiError(response.status, body))
     }
-    if (response.status === 204) return undefined as T
-    return (await response.json()) as T
+    if (response.status === 204 || response.status === 205) return undefined as T
+    try {
+      return (await response.json()) as T
+    } catch {
+      throw new Error("Invalid JSON response from server")
+    }
   } catch (error) {
     if (timedOut) {
       throw new Error(`API timeout after ${timeoutMs} ms`)

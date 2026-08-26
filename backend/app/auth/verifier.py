@@ -60,7 +60,7 @@ def verify_request_headers(headers: Headers) -> AuthenticatedPrincipal:
             public_detail="Authentication service unavailable",
             status_code=HTTPStatus.SERVICE_UNAVAILABLE,
         ) from None
-    except Exception:
+    except (auth.CertificateFetchError, auth.UnexpectedResponseError):
         raise AuthenticationError(
             code="auth_unavailable",
             public_detail="Authentication service unavailable",

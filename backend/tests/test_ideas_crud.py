@@ -118,7 +118,11 @@ class TestIdeasCrud:
         async def run_concurrent():
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 tasks = [
-                    ac.post("/api/ideas", json={"title": f"Idea {i}"})
+                    ac.post(
+                        "/api/ideas",
+                        json={"title": f"Idea {i}"},
+                        headers={"Authorization": "Bearer test-id-token"},
+                    )
                     for i in range(10)
                 ]
                 results = await asyncio.gather(*tasks)
@@ -143,7 +147,11 @@ class TestIdeasCrud:
         async def run_concurrent_updates():
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 tasks = [
-                    ac.post("/api/ideas/IDEA-0020/update", json={"field": "title", "value": f"Title {i}"})
+                    ac.post(
+                        "/api/ideas/IDEA-0020/update",
+                        json={"field": "title", "value": f"Title {i}"},
+                        headers={"Authorization": "Bearer test-id-token"},
+                    )
                     for i in range(10)
                 ]
                 results = await asyncio.gather(*tasks)
@@ -181,7 +189,12 @@ class TestIdeasCrud:
 
                 with patch("app.api.routes.ideas._list_ideas_sync", side_effect=slow_list):
                     monitor_task = asyncio.create_task(monitor_event_loop())
-                    req_task = asyncio.create_task(ac.get("/api/ideas"))
+                    req_task = asyncio.create_task(
+                        ac.get(
+                            "/api/ideas",
+                            headers={"Authorization": "Bearer test-id-token"},
+                        )
+                    )
 
                     res, _ = await asyncio.gather(req_task, monitor_task)
                     assert res.status_code == 200

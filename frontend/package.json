@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run --pool=forks --maxWorkers=1 --fileParallelism=false",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-companion-auth \"vitest run src/__tests__/firestore.rules.test.ts --pool=forks --maxWorkers=1 --fileParallelism=false\"",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-companion-auth \"vitest run --config vitest.rules.config.ts --pool=forks --maxWorkers=1 --fileParallelism=false\"",
     "test:watch": "vitest --pool=forks --maxWorkers=1 --fileParallelism=false",
     "test:coverage": "vitest run --coverage --pool=forks --maxWorkers=1 --fileParallelism=false",
     "lint": "eslint src",
