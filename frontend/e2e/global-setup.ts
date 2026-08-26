@@ -133,6 +133,12 @@ async function warmUpFrontend(): Promise<void> {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
+    page.on('pageerror', (error) => console.log(`[warm-up pageerror] ${error.message}`));
+    page.on('console', (message) => {
+      if (message.type() === 'error') {
+        console.log(`[warm-up console.error] ${message.text()}`);
+      }
+    });
     await page.goto(`${FRONTEND_URL}/sign-in`, {
       waitUntil: 'domcontentloaded',
       timeout: WARMUP_TIMEOUT_MS,
