@@ -4,6 +4,11 @@
 
 [![CI Pipeline](https://github.com/azharameen/group-run/actions/workflows/ci.yml/badge.svg)](https://github.com/azharameen/group-run/actions/workflows/ci.yml)
 [![Deploy – Beta](https://github.com/azharameen/group-run/actions/workflows/release-beta.yml/badge.svg)](https://github.com/azharameen/group-run/actions/workflows/release-beta.yml)
+[![Deploy – Production](https://github.com/azharameen/group-run/actions/workflows/release-prod.yml/badge.svg)](https://github.com/azharameen/group-run/actions/workflows/release-prod.yml)
+[![Deploy Docs](https://github.com/azharameen/group-run/actions/workflows/docs.yml/badge.svg)](https://github.com/azharameen/group-run/actions/workflows/docs.yml)
+[![Heartbeat](https://github.com/azharameen/group-run/actions/workflows/heartbeat.yml/badge.svg)](https://github.com/azharameen/group-run/actions/workflows/heartbeat.yml)
+[![CodeQL](https://img.shields.io/badge/CodeQL-enabled-brightgreen?logo=github)](https://github.com/azharameen/group-run/security/code-scanning)
+[![License](https://img.shields.io/github/license/azharameen/group-run)](https://github.com/azharameen/group-run/blob/main/LICENSE.md)
 
 ---
 
@@ -13,6 +18,8 @@ Group Run is a production-ready AI platform where teams of specialized agents co
 
 ## Quick Navigation
 
+Use the tabs above by intent: **Home & Getting Started** for orientation, setup, and deployment; **Product** for requirements and capabilities; **Engineering Hub** for architecture, implementation, quality, operations, and historical material; and **AI & Community** for agent context and contribution resources.
+
 | I want to... | Go to |
 |---|---|
 | Set up the project locally | [Getting Started](GETTING_STARTED.md) |
@@ -21,6 +28,7 @@ Group Run is a production-ready AI platform where teams of specialized agents co
 | Browse the API endpoints interactively | [Scalar API Reference](api/scalar.md) |
 | Check CI/CD pipeline status | [CI/CD Overview](cicd/overview.md) |
 | Feed this docs to an AI agent | [For AI Agents](ai-agents/context-guide.md) |
+| Read historical/completed planning docs (Phases 0–7) | [Archive](feature-roadmap.md) |
 
 ## Live Services
 
@@ -32,8 +40,8 @@ Group Run is a production-ready AI platform where teams of specialized agents co
 ## Tech Stack
 
 ```
-Backend:   FastAPI · LangGraph · DeepAgents · SQLite · Python 3.13
+Backend:   FastAPI · LangGraph · DeepAgents · PostgreSQL · Python 3.13
 Frontend:  React · Vite · TypeScript · Tailwind · shadcn/ui
 Infra:     GCP Cloud Run · Firebase Hosting · GitHub Actions · Docker
-Agents:    LangGraph Supervisor · MCP Tools · SQLite Checkpointer
+Agents:    LangGraph Supervisor · MCP Tools · PostgreSQL Checkpointer
 ```
