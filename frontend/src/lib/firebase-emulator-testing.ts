@@ -1,6 +1,6 @@
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth"
 
-import { auth } from "@/lib/firebase"
+import { auth, authPersistenceReady } from "@/lib/firebase"
 
 export interface EmulatorGoogleProfile {
   sub: string
@@ -16,6 +16,7 @@ export async function signInWithGoogleEmulatorForTesting(
     throw new Error("Firebase emulator sign-in is available only in emulator development builds")
   }
 
+  await authPersistenceReady
   const credential = GoogleAuthProvider.credential(
     JSON.stringify({
       sub: profile.sub,
