@@ -133,11 +133,6 @@ async function warmUpFrontend(): Promise<void> {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
-    page.on('response', (response) => {
-      if (response.url().includes('/api/auth/bootstrap')) {
-        console.log(`[warm-up auth bootstrap] ${response.status()}`);
-      }
-    });
     await page.goto(`${FRONTEND_URL}/sign-in`, {
       waitUntil: 'domcontentloaded',
       timeout: WARMUP_TIMEOUT_MS,
@@ -190,7 +185,6 @@ async function warmUpFrontend(): Promise<void> {
 }
 
 export default async function globalSetup(): Promise<void> {
-  const startedAt = Date.now();
   await waitForHealthy();
   await authenticateWithEmulator();
 
@@ -228,8 +222,4 @@ export default async function globalSetup(): Promise<void> {
   if (!resetResp.ok) {
     console.warn(`[global-setup] Post-warmup reset failed: ${resetResp.status}`);
   }
-
-  console.log(
-    `[global-setup] Backend agent + frontend warm-up & state reset complete in ${Date.now() - startedAt}ms`
-  );
 }
