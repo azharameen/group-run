@@ -1,6 +1,6 @@
-# Group Run — Companion AI Platform
+# Companion Docs
 
-> Documentation for the Group Run multi-agent AI platform.
+> Documentation for the Companion multi-agent AI platform.
 
 Group Run is a multi-agent AI platform powered by LangGraph and DeepAgents.
 Backend: FastAPI + LangGraph on GCP Cloud Run. Frontend: React + Vite on Firebase Hosting.
@@ -27,7 +27,7 @@ MCP tools are loaded at runtime from mcp.json.
 
 ## API Reference
 
-- [Interactive Swagger UI](https://azharameen.github.io/group-run/api/swagger/index.md)
+- [Interactive Scalar API Reference](https://azharameen.github.io/group-run/api/scalar/index.md)
 
 ## Backend
 

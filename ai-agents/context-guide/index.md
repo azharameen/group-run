@@ -22,7 +22,7 @@ context = httpx.get("https://azharameen.github.io/group-run/llms.txt").text
 # Pass `context` as system prompt or tool result to your agent
 ```
 
-### Option 2: Fetch `openapi.json` for API-aware agents
+### Option 2: Fetch the OpenAPI schema for API-aware agents
 
 ```python
 schema = httpx.get(
