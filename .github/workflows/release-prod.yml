@@ -182,11 +182,16 @@ jobs:
             --filter='status:ACTIVE' \
             --format='value(account)' | head -n 1)"
           echo "Google Cloud deployment identity: $ACTIVE_ACCOUNT"
-          if ! FIRESTORE_STATUS="$(gcloud services describe firestore.googleapis.com \
+          if ! ENABLED_SERVICES="$(gcloud services list \
+            --enabled \
             --project "$GCP_PROJECT_ID" \
             --format='value(config.name)' 2>&1)"; then
-            printf '%s\n' "$FIRESTORE_STATUS" >&2
-            echo "::error::Unable to read Firestore API status as $ACTIVE_ACCOUNT in project $GCP_PROJECT_ID. The Google Cloud error above identifies whether the API is disabled or the identity lacks roles/serviceusage.serviceUsageConsumer."
+            printf '%s\n' "$ENABLED_SERVICES" >&2
+            echo "::error::Unable to list enabled APIs as $ACTIVE_ACCOUNT in project $GCP_PROJECT_ID. Grant roles/serviceusage.serviceUsageConsumer to this identity."
+            exit 1
+          fi
+          if ! grep -Fxq 'firestore.googleapis.com' <<<"$ENABLED_SERVICES"; then
+            echo "::error::Firestore API is not enabled in project $GCP_PROJECT_ID. Enable firestore.googleapis.com, then rerun this workflow."
             exit 1
           fi
           npm ci --prefix frontend
