@@ -216,13 +216,13 @@ def create_app() -> FastAPI:
     <title>Companion API Reference</title>
   </head>
   <body>
+    <div id="app"></div>
     <script src="{SCALAR_SCRIPT_URL}"></script>
     <script>
       Scalar.createApiReference("#app", {{
         url: "/openapi.json"
       }});
     </script>
-    <div id="app"></div>
   </body>
 </html>"""
         )
