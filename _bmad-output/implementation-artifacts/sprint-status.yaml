@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-16
-last_updated: '2026-08-20T11:15:00+05:30'
+last_updated: '2026-08-25T15:17:00+05:30'
 project: Companion
 project_key: NOKEY
 tracking_system: file-system
@@ -49,31 +49,31 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # EP-8: Orchestration Core and Workflow Trust
-  epic-8: in-progress
+  epic-8: done
   8-1-create-and-initialize-an-organization-structure: done
   8-2-submit-and-route-a-work-item-to-the-correct-department: done
-  8-3-manage-lifecycle-status-and-handoffs-for-work-items: ready-for-dev
-  8-4-enforce-approval-for-risky-filesystem-changes: backlog
+  8-3-manage-lifecycle-status-and-handoffs-for-work-items: done
+  8-4-enforce-approval-for-risky-filesystem-changes: done
   epic-8-retrospective: optional
 
   # EP-9: Team Health, Monitoring, and Reuse
-  epic-9: backlog
+  epic-9: done
   9-1-surface-organization-health-and-team-capacity: done
-  9-2-reassign-idle-agents-and-escalate-blocked-work: backlog
-  9-3-save-and-replay-a-workflow-as-a-template: backlog
+  9-2-reassign-idle-agents-and-escalate-blocked-work: done
+  9-3-save-and-replay-a-workflow-as-a-template: done
   epic-9-retrospective: optional
 
   # EP-10: Provenance, Trust, and Idea Maturity
-  epic-10: backlog
-  10-1-record-decisions-with-provenance-metadata: backlog
-  10-2-persist-artifact-provenance-and-review-access: backlog
-  10-3-support-accuracy-review-and-confidence-flagging: backlog
+  epic-10: in-progress
+  10-1-record-decisions-with-provenance-metadata: done
+  10-2-persist-artifact-provenance-and-review-access: done
+  10-3-support-accuracy-review-and-confidence-flagging: done
   10-4-introduce-idea-refinement-and-maturity-stages: backlog
   epic-10-retrospective: optional
 
   # EP-11: Idea Research and Product Definition
-  epic-11: backlog
-  11-1-research-the-concept-and-compile-market-evidence: backlog
+  epic-11: in-progress
+  11-1-research-the-concept-and-compile-market-evidence: done
   11-2-validate-novelty-and-patentability: backlog
   11-3-create-product-definition-from-validated-concepts: backlog
   epic-11-retrospective: optional

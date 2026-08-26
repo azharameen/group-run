@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import UTC, datetime
 from difflib import unified_diff
 from pathlib import Path
@@ -17,6 +18,15 @@ def _artifact_dir(idea_id: str) -> Path:
     path = Path(idea_folder_path(idea_id)) / "revisions"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _validate_artifact_name(artifact_name: str) -> str:
+    if (
+        not isinstance(artifact_name, str)
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,99}", artifact_name)
+    ):
+        raise ValueError("Invalid artifact name")
+    return artifact_name
 
 
 def _artifact_index_path(idea_id: str) -> Path:
@@ -41,6 +51,17 @@ def save_artifact_revision(
     evidence_refs: list[str] | None = None,
     agent_id: str = "unknown",
 ) -> dict[str, Any]:
+    _validate_artifact_name(artifact_name)
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("Artifact content must be a non-empty string")
+    if not isinstance(provenance, str) or not provenance.strip():
+        raise ValueError("Artifact provenance must be a non-empty string")
+    if evidence_refs is not None and (
+        not isinstance(evidence_refs, list)
+        or not evidence_refs
+        or any(not isinstance(ref, str) or not ref.strip() for ref in evidence_refs)
+    ):
+        raise ValueError("evidence_refs must contain only non-empty strings")
     revisions = load_artifact_revisions(idea_id)
     version = len([r for r in revisions if r.get("artifact_name") == artifact_name]) + 1
     timestamp = datetime.now(UTC).isoformat()
@@ -53,7 +74,13 @@ def save_artifact_revision(
     )
     previous_content = ""
     if previous and previous.get("path") and os.path.exists(previous["path"]):
-        previous_content = Path(previous["path"]).read_text(encoding="utf-8")
+        previous_path = Path(previous["path"]).resolve()
+        try:
+            previous_path.relative_to(_artifact_dir(idea_id).resolve())
+        except ValueError:
+            previous_path = None
+        if previous_path is not None:
+            previous_content = previous_path.read_text(encoding="utf-8")
 
     write_markdown(str(artifact_path), content)
     diff_text = "\n".join(
@@ -99,6 +126,7 @@ def save_artifact_revision(
 
 
 def build_artifact_comparison(idea_id: str, artifact_name: str) -> dict[str, Any]:
+    _validate_artifact_name(artifact_name)
     revisions = [r for r in load_artifact_revisions(idea_id) if r.get("artifact_name") == artifact_name]
     if len(revisions) < 2:
         return {

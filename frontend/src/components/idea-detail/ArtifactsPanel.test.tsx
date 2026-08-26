@@ -65,4 +65,24 @@ describe("ArtifactsPanel", () => {
     await waitFor(() => expect(screen.getByTestId("artifact-diff")).toBeInTheDocument());
     expect(screen.getByText("content 1 → content 2")).toBeInTheDocument();
   });
+
+  test("shows incomplete research and missing artifacts", async () => {
+    vi.mocked(fetchIdeaRevisions).mockResolvedValue([]);
+    render(
+      <ArtifactsPanel
+        ideaId="idea-1"
+        research={{
+          state: "incomplete",
+          expected_artifacts: ["market-summary", "competitors"],
+          completed_artifacts: ["market-summary"],
+          error: "research time budget exceeded",
+        }}
+      />,
+    );
+
+    expect(await screen.findByTestId("research-status")).toHaveTextContent("Research incomplete");
+    expect(screen.getByText("Artifacts completed: 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("Missing: competitors")).toBeInTheDocument();
+    expect(screen.getByText("research time budget exceeded")).toBeInTheDocument();
+  });
 });

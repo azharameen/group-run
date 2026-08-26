@@ -21,6 +21,8 @@ async def list_decisions(
         records = await decisions.list_decisions(work_item_id, agent_id, from_, to)
     except UnknownWorkItemError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=500, detail="Failed to load decisions") from exc
     return {"decisions": [d.model_dump() for d in records], "count": len(records)}
@@ -32,6 +34,8 @@ async def create_decision(request: RecordDecisionRequest) -> dict:
         record = await decisions.record_decision(request)
     except UnknownWorkItemError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=500, detail="Failed to record decision") from exc
     return {"decision": record.model_dump()}

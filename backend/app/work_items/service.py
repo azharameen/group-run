@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from ..organization import service as org_service
 from ..organization.models import Organization
 from . import repository
+from .idea_mapping import ensure_idea_for_work_item, validate_work_item_id
 from .lifecycle import LIFECYCLE_PHASES, PHASE_DEPARTMENT
 from .mapping import row_to_work_item
 from .models import (
@@ -113,6 +114,7 @@ async def submit_work_item(
 
 
 async def get_work_item(work_item_id: str) -> WorkItem | None:
+    validate_work_item_id(work_item_id)
     rows = await repository.get_work_item_rows(work_item_id)
     return row_to_work_item(rows) if rows else None
 
@@ -140,6 +142,7 @@ async def transition_work_item(
     reasoning: str = "",
     decided_by: str = OWNER_AGENT_ID,
 ) -> tuple[WorkItem, LifecycleEvent]:
+    validate_work_item_id(work_item_id)
     item = await get_work_item(work_item_id)
     if item is None:
         raise UnknownWorkItemError(f"Work item {work_item_id} not found")
@@ -200,6 +203,21 @@ async def transition_work_item(
     updated = await get_work_item(work_item_id)
     if updated is None:
         raise RuntimeError(f"Work item {work_item_id} vanished after transition")
+    if status == "ideation":
+        # Keep the lifecycle transition authoritative while making research
+        # deterministic and observable; failures are recorded in the workspace.
+        from ..agent.teams.idea_team import run_idea_research
+
+        idea_id = ensure_idea_for_work_item(
+            work_item_id,
+            title=updated.title,
+            description=updated.description,
+        )
+        await run_idea_research(
+            idea_id,
+            f"{updated.title}\n{updated.description}",
+            work_item_id=work_item_id,
+        )
     return updated, event
 
 

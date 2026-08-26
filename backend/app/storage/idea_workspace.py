@@ -6,6 +6,7 @@ import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from ..config import WORKSPACE_DIR
@@ -14,7 +15,28 @@ from .base import read_yaml, write_yaml
 
 
 def idea_folder_path(idea_id: str) -> str:
-    return os.path.join(WORKSPACE_DIR, "ideas", idea_id)
+    if not isinstance(idea_id, str) or not idea_id or idea_id in {".", ".."}:
+        raise ValueError("Invalid idea_id")
+    root = Path(WORKSPACE_DIR).resolve()
+    ideas_root = (root / "ideas").resolve()
+    candidate = (ideas_root / idea_id).resolve()
+    try:
+        candidate.relative_to(ideas_root)
+    except ValueError as exc:
+        raise ValueError("idea path must remain inside the workspace") from exc
+    return str(candidate)
+
+
+def _idea_file_path(idea_id: str, filename: str) -> str:
+    folder = Path(idea_folder_path(idea_id)).resolve()
+    if not isinstance(filename, str) or not filename:
+        raise ValueError("Invalid workspace filename")
+    candidate = (folder / filename).resolve()
+    try:
+        candidate.relative_to(folder)
+    except ValueError as exc:
+        raise ValueError("workspace path must remain inside the idea folder") from exc
+    return str(candidate)
 
 
 @contextmanager
@@ -50,7 +72,7 @@ def workspace_transaction(idea_id: str) -> Generator[str, None, None]:
 
 
 def load_idea_yaml(idea_id: str, filename: str) -> Any | None:
-    path = os.path.join(idea_folder_path(idea_id), filename)
+    path = _idea_file_path(idea_id, filename)
     if not os.path.exists(path):
         return None
     return read_yaml(path)
@@ -58,7 +80,7 @@ def load_idea_yaml(idea_id: str, filename: str) -> Any | None:
 
 def save_idea_yaml(idea_id: str, filename: str, data: Any):
     with workspace_transaction(idea_id):
-        write_yaml(os.path.join(idea_folder_path(idea_id), filename), data)
+        write_yaml(_idea_file_path(idea_id, filename), data)
 
 
 def create_idea_folder(idea_id: str) -> str:
@@ -72,7 +94,7 @@ def create_idea_folder(idea_id: str) -> str:
 
 def write_changelog_entry(idea_id: str, entry: str):
     with workspace_transaction(idea_id):
-        path = os.path.join(idea_folder_path(idea_id), "revisions", "changelog.md")
+        path = _idea_file_path(idea_id, os.path.join("revisions", "changelog.md"))
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         content = ""
@@ -98,6 +120,8 @@ def archive_idea_folder(idea_id: str) -> str | None:
         return None
 
     archive_root = os.path.join(WORKSPACE_DIR, "archive", "ideas")
+    # Resolve through the same containment check used for the source folder.
+    idea_folder_path(idea_id)
     archive_target = os.path.join(archive_root, idea_id)
     os.makedirs(os.path.dirname(archive_target), exist_ok=True)
 
@@ -109,7 +133,7 @@ def archive_idea_folder(idea_id: str) -> str | None:
 
 
 def load_comments(idea_id: str) -> list[dict]:
-    path = os.path.join(idea_folder_path(idea_id), "comments.yaml")
+    path = _idea_file_path(idea_id, "comments.yaml")
     if not os.path.exists(path):
         return []
     data = read_yaml(path)
@@ -117,7 +141,7 @@ def load_comments(idea_id: str) -> list[dict]:
 
 
 def _pending_interrupts_path(idea_id: str) -> str:
-    return os.path.join(idea_folder_path(idea_id), "interrupts.yaml")
+    return _idea_file_path(idea_id, "interrupts.yaml")
 
 
 def load_pending_interrupts(idea_id: str) -> list[dict]:
@@ -145,12 +169,12 @@ def save_comment(idea_id: str, author: str, text: str) -> dict:
             "timestamp": datetime.now(UTC).isoformat(),
         }
         comments.append(entry)
-        write_yaml(os.path.join(idea_folder_path(idea_id), "comments.yaml"), comments)
+        write_yaml(_idea_file_path(idea_id, "comments.yaml"), comments)
         return entry
 
 
 def load_transcript_events(idea_id: str) -> list[dict]:
-    path = os.path.join(idea_folder_path(idea_id), "transcript.yaml")
+    path = _idea_file_path(idea_id, "transcript.yaml")
     if not os.path.exists(path):
         return []
     data = read_yaml(path)
@@ -162,7 +186,7 @@ def save_transcript_event(idea_id: str, event: dict) -> dict:
         events = load_transcript_events(idea_id)
         normalized = normalize_transcript_event(idea_id, event)
         events.append(normalized)
-        write_yaml(os.path.join(idea_folder_path(idea_id), "transcript.yaml"), events)
+        write_yaml(_idea_file_path(idea_id, "transcript.yaml"), events)
         return normalized
 
 

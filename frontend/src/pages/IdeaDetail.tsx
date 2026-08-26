@@ -203,7 +203,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 							</CardContent>
 						</Card>
 					</TabsContent>
-					<TabsContent value="artifacts" className="space-y-4 pt-4"><ArtifactsPanel ideaId={ideaId || ""} /></TabsContent>
+					<TabsContent value="artifacts" className="space-y-4 pt-4"><ArtifactsPanel ideaId={ideaId || ""} research={idea?.research} /></TabsContent>
 					<TabsContent value="maturity" className="space-y-4 pt-4"><MaturityPanel key={ideaId || ""} ideaId={ideaId || ""} /></TabsContent>
 				</Tabs>
 			</div>

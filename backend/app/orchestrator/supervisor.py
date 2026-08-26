@@ -111,6 +111,36 @@ _agent: Any = None
 _graph: Any = None
 
 
+def idea_research_thread_id(idea_id: str) -> str:
+    """Build a deterministic checkpoint ID for one automatic research run."""
+    return f"{settings.research_thread_id.strip()}:{idea_id}"
+
+
+async def invoke_idea_team_research(concept: str, *, idea_id: str) -> Any:
+    """Invoke the configured Idea Team through the supervisor boundary."""
+    agent = get_deep_agent_runtime("idea")
+    thread_id = idea_research_thread_id(idea_id)
+    return await agent.ainvoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": (
+                        "Research this concept and return ONLY a JSON object with keys "
+                        "market-summary, competitors, prior-art, feasibility, target-audience. "
+                        "Each value must contain content, provenance, and evidence_refs.\n\n"
+                        + concept
+                    ),
+                }
+            ]
+        },
+        config={
+            "recursion_limit": 50,
+            "configurable": {"thread_id": thread_id, "team": "idea"},
+        },
+    )
+
+
 def _get_agent() -> Any:
     """Return a cached DeepAgents runtime instance."""
     global _agent
@@ -323,4 +353,3 @@ async def get_supervisor_graph():
         checkpointer = await get_pg_checkpointer()
         _graph = graph.compile(checkpointer=checkpointer)
     return _graph
-
