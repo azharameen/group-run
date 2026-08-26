@@ -2,7 +2,8 @@
 title: 'Story 11.2: Validate novelty and patentability'
 type: 'feature'
 created: '2026-08-26'
-status: 'in-review'
+status: 'done'
+final_revision: '3860db0'
 baseline_revision: '2be8d5553d1f18cbb2fe2462fd8432880c3ec60c'
 review_loop_iteration: 0
 followup_review_recommended: false
