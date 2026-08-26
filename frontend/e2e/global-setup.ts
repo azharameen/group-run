@@ -137,9 +137,6 @@ async function warmUpFrontend(): Promise<void> {
       waitUntil: 'domcontentloaded',
       timeout: WARMUP_TIMEOUT_MS,
     });
-    const signedIn = page.waitForURL((url) => url.pathname !== '/sign-in', {
-      timeout: WARMUP_TIMEOUT_MS,
-    });
     await page.evaluate(async () => {
       const modulePath = '/src/lib/firebase-emulator-testing.ts';
       const { signInWithGoogleEmulatorForTesting } = await import(/* @vite-ignore */ modulePath);
@@ -149,7 +146,12 @@ async function warmUpFrontend(): Promise<void> {
         name: 'Warmup User',
       });
     });
-    await signedIn;
+    // Reload after seeding the emulator session so AuthProvider registers its
+    // token listener against the persisted Firebase user before routing.
+    await page.goto(FRONTEND_URL, {
+      waitUntil: 'domcontentloaded',
+      timeout: WARMUP_TIMEOUT_MS,
+    });
     for (const visit of visited) {
       await page.goto(`${FRONTEND_URL}${visit.path}`, {
         waitUntil: 'domcontentloaded',
