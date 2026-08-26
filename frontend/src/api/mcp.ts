@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+import { request } from './request';
 
 export interface MCPServer {
   name: string;
@@ -22,46 +22,26 @@ export interface MCPServersResponse {
 }
 
 export async function fetchMCPServers(): Promise<MCPServer[]> {
-  const res = await fetch(`${API_BASE}/mcp/servers/`);
-  if (!res.ok) {
-    const error = await res.text();
-    throw new Error(`Failed to fetch MCP servers: ${res.status} ${error}`);
-  }
-  const data: MCPServersResponse = await res.json().catch(() => { throw new Error('Invalid JSON response from server'); });
+  const data = await request<MCPServersResponse>('/mcp/servers/');
   return data.servers;
 }
 
 export async function addMCPServer(name: string, url: string, timeout: number = 10): Promise<MCPServer> {
-  const res = await fetch(`${API_BASE}/mcp/servers/`, {
+  return request<MCPServer>('/mcp/servers/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, url, timeout }),
   });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(errorData.detail || `Failed to add MCP server: ${res.status}`);
-  }
-  return res.json().catch(() => { throw new Error('Invalid JSON response from server'); });
 }
 
 export async function removeMCPServer(name: string): Promise<void> {
   if (!name.trim()) throw new Error('Server name is required');
-  const res = await fetch(`${API_BASE}/mcp/servers/${encodeURIComponent(name)}`, {
+  await request<void>(`/mcp/servers/${encodeURIComponent(name)}`, {
     method: 'DELETE',
   });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(errorData.detail || `Failed to remove MCP server: ${res.status}`);
-  }
 }
 
 export async function pingMCPServer(name: string): Promise<MCPServerStatus> {
-  const res = await fetch(`${API_BASE}/mcp/servers/${encodeURIComponent(name)}/health`, {
+  return request<MCPServerStatus>(`/mcp/servers/${encodeURIComponent(name)}/health`, {
     method: 'POST',
   });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(errorData.detail || `Failed to ping server: ${res.status}`);
-  }
-  return res.json();
 }

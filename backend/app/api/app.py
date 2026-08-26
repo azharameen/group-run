@@ -14,8 +14,10 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from ..config import settings
+from ..auth.middleware import FirebaseAuthenticationMiddleware
 from ..infrastructure.observability import configure_langsmith_tracing
 from ..services.thread_manager import close_pg_checkpointer, reset_pg_checkpointer
+from .routes.auth import router as auth_router
 from .routes.artifacts import router as artifacts_router
 from .routes.chat import router as chat_router
 from .routes.config import router as config_router
@@ -158,6 +160,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.add_middleware(FirebaseAuthenticationMiddleware)
+    # Timing middleware — adds X-Process-Time header to non-streaming responses
+    app.add_middleware(TimingMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
@@ -165,9 +170,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Timing middleware — adds X-Process-Time header to non-streaming responses
-    app.add_middleware(TimingMiddleware)
 
     @app.middleware("http")
     async def capture_unhandled_exceptions(request: Request, call_next):
@@ -204,6 +206,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     # Idea maturity routes extend the /ideas API surface (story 10.4).
     app.include_router(maturity_router)
+    app.include_router(auth_router)
     app.include_router(ideas_router)
     app.include_router(knowledge_base_router)
     app.include_router(chat_router)

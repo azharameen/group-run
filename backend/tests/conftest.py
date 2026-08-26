@@ -13,6 +13,7 @@ mock_supervisor : Stubbed supervisor graph for chat endpoint tests (AC-2)
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 from unittest.mock import AsyncMock, MagicMock
 
 import asyncio
@@ -36,6 +37,10 @@ os.environ.setdefault(
 )
 os.environ.setdefault("DB_SSL_MODE", "prefer")
 os.environ.setdefault("DB_AUTO_MIGRATE", "false")
+os.environ.setdefault("FIREBASE_PROJECT_ID", "demo-test-project")
+
+_AUTO_TEST_AUTH_HEADERS = True
+_DEFAULT_TEST_ID_TOKEN = "test-id-token"
 
 
 @pytest.fixture(scope="session")
@@ -65,6 +70,7 @@ def temp_workspace(tmp_path: Path) -> str:
 def isolate_test_env(monkeypatch: pytest.MonkeyPatch):
     """Prevent real LLM calls in tests by clearing credentials."""
     monkeypatch.setenv("LANGGRAPH_STRICT_MSGPACK", "true")
+    monkeypatch.setenv("FIREBASE_PROJECT_ID", "demo-test-project")
     monkeypatch.setattr("app.config.settings.openai_api_key", "")
     monkeypatch.setattr("app.config.settings.openai_api_base", "")
     monkeypatch.setattr("app.config.settings.openai_model_name", "")
@@ -176,3 +182,78 @@ def mock_supervisor(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     sup._graph = graph
 
     return graph
+
+
+def _is_protected_api_request(method: str, url: str) -> bool:
+    path = urlsplit(url).path or url
+    return method.upper() != "OPTIONS" and path.startswith("/api") and path not in {
+        "/api/health",
+        "/api/ready",
+    }
+
+
+@pytest.fixture
+def firebase_token_claims() -> dict[str, object]:
+    return {
+        _DEFAULT_TEST_ID_TOKEN: {
+            "uid": "test-user-123",
+            "sub": "test-user-123",
+            "email": "test@example.com",
+            "email_verified": True,
+            "name": "Test User",
+            "picture": "https://example.com/avatar.png",
+            "firebase": {"sign_in_provider": "google.com"},
+        }
+    }
+
+
+@pytest.fixture(autouse=True)
+def mock_firebase_token_verifier(
+    monkeypatch: pytest.MonkeyPatch,
+    firebase_token_claims: dict[str, object],
+):
+    def fake_verify(token: str):
+        response = firebase_token_claims.get(token)
+        if isinstance(response, Exception):
+            raise response
+        if isinstance(response, dict):
+            return dict(response)
+        raise ValueError("invalid test token")
+
+    monkeypatch.setattr("app.auth.firebase.verify_firebase_token", fake_verify)
+
+
+@pytest.fixture(autouse=True)
+def auto_authenticate_test_clients(monkeypatch: pytest.MonkeyPatch):
+    from starlette.testclient import TestClient
+
+    original_request = TestClient.request
+
+    def request_with_default_auth(self, method, url, *args, **kwargs):
+        headers = dict(kwargs.pop("headers", {}) or {})
+        has_authorization = any(key.lower() == "authorization" for key in headers)
+        if (
+            _AUTO_TEST_AUTH_HEADERS
+            and not has_authorization
+            and isinstance(url, str)
+            and _is_protected_api_request(method, url)
+        ):
+            headers["Authorization"] = f"Bearer {_DEFAULT_TEST_ID_TOKEN}"
+        return original_request(self, method, url, *args, headers=headers, **kwargs)
+
+    monkeypatch.setattr(TestClient, "request", request_with_default_auth)
+
+
+@pytest.fixture
+def disable_auto_auth_headers(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(sys.modules[__name__], "_AUTO_TEST_AUTH_HEADERS", False)
+
+
+@pytest.fixture
+def auth_headers():
+    def _build(token: str = _DEFAULT_TEST_ID_TOKEN, **extra_headers: str) -> dict[str, str]:
+        headers = {"Authorization": f"Bearer {token}"}
+        headers.update(extra_headers)
+        return headers
+
+    return _build

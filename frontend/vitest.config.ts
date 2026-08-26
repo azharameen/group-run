@@ -17,6 +17,7 @@ export default defineConfig({
     fileParallelism: false,
     setupFiles: ['./src/setupTests.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'src/__tests__/**/*.test.{ts,tsx}'],
+    exclude: ['src/__tests__/firestore.rules.test.ts'],
     testTimeout: 60000,
     hookTimeout: 60000,
     coverage: {

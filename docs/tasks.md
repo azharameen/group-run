@@ -12,6 +12,7 @@ The thread-system foundation is already in place. The next implementation slice 
 | --- | --- | --- |
 | Thread persistence | [COMPLETED] | LangGraph checkpoint-backed threads are already implemented |
 | Thread list + streaming | [COMPLETED] | Sorted list and SSE event streaming are in place |
+| Firebase authentication | [COMPLETED] | Google sign-in, protected API/SSE, profile bootstrap, guards, rules, and safe errors |
 | Idea-scoped threads | [IN PROGRESS] | Thread metadata now tracks `idea_id` instead of a separate work-item object |
 | Supervisor + team routing | [PENDING] | Generalized routing will replace Siemens pipeline assumptions |
 | Siemens-specific FSM | [DEFERRED] | Kept as legacy behavior until the new core stabilizes |
@@ -22,6 +23,7 @@ The thread-system foundation is already in place. The next implementation slice 
 - Preserve the existing thread/checkpointer behavior while adding new domain objects.
 - Prefer additive changes over rewrites until idea-scoped thread routing is proven.
 - Keep the core platform domain-agnostic; Siemens-specific logic must remain isolated.
+- Require a verified Firebase principal for every non-health API and never log raw tokens or auth errors.
 
 ---
 

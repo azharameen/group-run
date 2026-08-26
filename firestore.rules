@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow list, create, delete: if false;
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['display_name', 'photo_url', 'updated_at'])
+        && (request.resource.data.display_name == null
+          || (request.resource.data.display_name is string
+            && request.resource.data.display_name.size() <= 200))
+        && (request.resource.data.photo_url == null
+          || (request.resource.data.photo_url is string
+            && request.resource.data.photo_url.size() <= 2048))
+        && request.resource.data.updated_at == request.time;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

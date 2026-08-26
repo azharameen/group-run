@@ -81,6 +81,9 @@ Solo developer Ameen is pivoting the "Companion" project from a Siemens Patent I
 - **CAP-15** — Observability
   - **intent:** System provides health checks, statistics, and observability endpoints.
   - **success:** `GET /api/health` returns system status, `GET /api/stats` returns usage statistics, and LangSmith tracing is configurable via environment variables.
+- **CAP-16** — Firebase Authentication
+  - **intent:** Users authenticate with Google before accessing the platform, and the same identity contract supports future mobile clients.
+  - **success:** Google sign-in provisions or refreshes `users/{uid}`, all non-health APIs reject missing/invalid/revoked Firebase ID tokens, token refresh keeps active sessions working, and sign-out removes access.
 
 ## Constraints
 
@@ -99,6 +102,11 @@ Solo developer Ameen is pivoting the "Companion" project from a Siemens Patent I
 - **All background work** runs in-process within the FastAPI backend. No separate worker processes, no Celery/RQ, no external schedulers.
 - **Docker-based deployment** with `docker-compose`. `APP_ROOT_DIR` env var pins workspace root in Docker.
 - **Frontend uses custom SSE hooks** (`useChatStream`). No `langchain-react` or AI SDK.
+- **Firebase Auth is the identity authority.** Web and future mobile clients send short-lived
+  Firebase ID-token JWTs as Bearer tokens; only `/api/health`, `/api/ready`, and CORS preflight
+  are public.
+- **Firestore `users/{uid}` is the canonical user profile.** The backend owns creation and
+  identity/audit fields; Security Rules allow owners only narrow direct profile access.
 - **Version pins:** Python 3.12, FastAPI 0.115.x, LangGraph 0.6.x, DeepAgents 0.6.8, React 18.3.x, Vite 5.4.x, TypeScript 5.5.x, Tailwind 3.4.x.
 - **Naming conventions:** UUIDs v4 for all entities, ISO 8601 with timezone for dates, `snake_case` for Python/backend, `camelCase` for TypeScript/frontend.
 - **File size limits:** route files < 150 lines, services/repositories < 200 lines, agent runtime < 200 lines.
@@ -109,7 +117,6 @@ Solo developer Ameen is pivoting the "Companion" project from a Siemens Patent I
 
 - **Postgres migration** — SQLite is sufficient for solo developer + small team. Migration happens only when measurable bottlenecks are hit.
 - **Code execution sandbox** — high complexity (container runtime, seccomp, resource limits) not justified for core chat/ideas flow.
-- **JWT authentication** — session-based auth sufficient for current scope.
 - **Database-backed persistent data** — workspace filesystem works. Dual-write adds migration complexity.
 - **Connector framework** (Slack, Gmail, Azure DevOps, etc.) — MCP covers the integration pattern. Specific connectors are future feature work.
 - **Multi-tenant support** — solo dev + small team doesn't need tenant isolation.
@@ -126,7 +133,7 @@ The system runs as two Docker services (frontend + backend). A user opens the ch
 
 - Solo developer context — architecture optimized for maintainability over operational simplicity.
 - Postgres migration deferred until measurable bottlenecks (connection contention, WAL lock waits > 100ms p99).
-- JWT authentication deferred — session-based auth sufficient for current scope.
+- Firebase bearer-token authentication is required; role and tenant authorization remain deferred.
 - Major version upgrades reviewed quarterly, applied every 6 months at minimum.
 
 ## Open Questions

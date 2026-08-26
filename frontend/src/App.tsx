@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ProtectedRoute } from "@/components/protected-route";
 import { SiteHeader } from "@/components/site-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -17,6 +18,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const IdeaDetail = lazy(() => import("./pages/IdeaDetail"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 const Organization = lazy(() => import("./pages/Organization"));
+const SignIn = lazy(() => import("./pages/SignIn"));
 
 function AppContent() {
 	const location = useLocation();
@@ -107,14 +109,27 @@ function AppContent() {
 	);
 }
 
+function ProtectedApp() {
+	return (
+		<ThreadProvider>
+			<WorkspaceProvider>
+				<AppContent />
+			</WorkspaceProvider>
+		</ThreadProvider>
+	);
+}
+
 export default function App() {
 	return (
 		<ErrorBoundary>
-			<ThreadProvider>
-				<WorkspaceProvider>
-					<AppContent />
-				</WorkspaceProvider>
-			</ThreadProvider>
+			<Suspense fallback={<div className="min-h-svh bg-background" />}>
+				<Routes>
+					<Route path="/sign-in" element={<SignIn />} />
+					<Route element={<ProtectedRoute />}>
+						<Route path="/*" element={<ProtectedApp />} />
+					</Route>
+				</Routes>
+			</Suspense>
 		</ErrorBoundary>
 	);
 }
