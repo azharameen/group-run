@@ -156,11 +156,13 @@ def create_app() -> FastAPI:
         title="Agentic Organization Platform",
         version="1.0.0",
         lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
     )
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+        allow_origin_regex=r"https://azharameen\.github\.io|http://(localhost|127\.0\.0\.1):\d+",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

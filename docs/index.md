@@ -18,7 +18,7 @@ Group Run is a production-ready AI platform where teams of specialized agents co
 | Set up the project locally | [Getting Started](GETTING_STARTED.md) |
 | Understand the system architecture | [Architecture Overview](architecture.md) |
 | Read the product requirements | [PRD](prd.md) |
-| Browse the API endpoints interactively | [Swagger UI](api/swagger.md) |
+| Browse the API endpoints interactively | [Scalar API Reference](api/scalar.md) |
 | Check CI/CD pipeline status | [CI/CD Overview](cicd/overview.md) |
 | Feed this docs to an AI agent | [For AI Agents](ai-agents/context-guide.md) |
 
@@ -27,7 +27,7 @@ Group Run is a production-ready AI platform where teams of specialized agents co
 | Service | URL |
 |---|---|
 | Backend API (Cloud Run) | [https://backend-service-601546984807.asia-south1.run.app/api/health](https://backend-service-601546984807.asia-south1.run.app/api/health) |
-| API Docs (Swagger) | [https://backend-service-601546984807.asia-south1.run.app/docs](https://backend-service-601546984807.asia-south1.run.app/docs) |
+| API Docs (Scalar) | [Interactive API Reference](https://azharameen.github.io/group-run/api/scalar/) |
 
 ## Tech Stack
 
