@@ -165,7 +165,13 @@ async function warmUpFrontend(): Promise<void> {
       });
       // The 'load' event can be held hostage by the long-lived /api/sse
       // connection, so a page-specific readiness locator is the signal.
-      await page.locator(visit.ready).waitFor({ state: 'visible', timeout: WARMUP_TIMEOUT_MS });
+      try {
+        await page.locator(visit.ready).waitFor({ state: 'visible', timeout: WARMUP_TIMEOUT_MS });
+      } catch (error) {
+        console.log(`[warm-up diagnostics] URL: ${page.url()}`);
+        console.log(`[warm-up diagnostics] Body: ${(await page.locator('body').innerText()).slice(0, 1000)}`);
+        throw error;
+      }
     }
 
     // /ideas/:id needs a real idea to render; create one, warm the
