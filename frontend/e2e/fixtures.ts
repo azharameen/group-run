@@ -118,6 +118,7 @@ export const test = base.extend<Fixtures>({
     async ({ page, api }, use) => {
       await api.waitForHealthy();
       await page.goto('/sign-in');
+      const signedIn = page.waitForURL((url) => url.pathname !== '/sign-in');
       await page.evaluate(async () => {
         const modulePath = '/src/lib/firebase-emulator-testing.ts';
         const { signInWithGoogleEmulatorForTesting } = await import(/* @vite-ignore */ modulePath);
@@ -128,7 +129,7 @@ export const test = base.extend<Fixtures>({
           picture: 'https://example.com/playwright.png',
         });
       });
-      await page.waitForURL((url) => url.pathname !== '/sign-in');
+      await signedIn;
       const idToken = await page.evaluate(async () => {
         const modulePath = '/src/lib/firebase.ts';
         const { auth } = await import(/* @vite-ignore */ modulePath);
