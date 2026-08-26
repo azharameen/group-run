@@ -16,22 +16,20 @@ MCP tools are loaded at runtime from mcp.json.
 ## Architecture
 
 - [Overview](https://azharameen.github.io/group-run/architecture/index.md)
-- [Target Architecture](https://azharameen.github.io/group-run/target-architecture/index.md)
 - [Architecture Decisions](https://azharameen.github.io/group-run/architecture-decisions/index.md)
 
 ## Product
 
-- [PRD](https://azharameen.github.io/group-run/prd/index.md)
-- [Features](https://azharameen.github.io/group-run/features/index.md)
-- [Feature Roadmap](https://azharameen.github.io/group-run/feature-roadmap/index.md)
+- [Requirements (PRD)](https://azharameen.github.io/group-run/prd/index.md)
+- [Capabilities & Features](https://azharameen.github.io/group-run/features/index.md)
 
 ## API Reference
 
-- [Interactive Scalar API Reference](https://azharameen.github.io/group-run/api/scalar/index.md)
+- [API Reference (Scalar)](https://azharameen.github.io/group-run/api/scalar/index.md)
 
 ## Backend
 
-- [Agents](https://azharameen.github.io/group-run/agents/index.md)
+- [Backend Agents](https://azharameen.github.io/group-run/agents/index.md)
 - [SSE Streaming](https://azharameen.github.io/group-run/sse-streaming/index.md)
 
 ## Frontend
@@ -51,7 +49,7 @@ MCP tools are loaded at runtime from mcp.json.
 
 ## CI/CD
 
-- [Overview](https://azharameen.github.io/group-run/cicd/overview/index.md)
+- [CI/CD Overview](https://azharameen.github.io/group-run/cicd/overview/index.md)
 
 ## For AI Agents
 

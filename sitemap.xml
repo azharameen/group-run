@@ -113,6 +113,10 @@
          <lastmod>2026-08-26</lastmod>
     </url>
     <url>
+         <loc>https://azharameen.github.io/group-run/architecture/adr-template/</loc>
+         <lastmod>2026-08-26</lastmod>
+    </url>
+    <url>
          <loc>https://azharameen.github.io/group-run/architecture/spine/</loc>
          <lastmod>2026-08-26</lastmod>
     </url>
@@ -130,6 +134,10 @@
     </url>
     <url>
          <loc>https://azharameen.github.io/group-run/epics/sprint-1/</loc>
+         <lastmod>2026-08-26</lastmod>
+    </url>
+    <url>
+         <loc>https://azharameen.github.io/group-run/generated/workflows/</loc>
          <lastmod>2026-08-26</lastmod>
     </url>
 </urlset>

@@ -60,12 +60,12 @@ graph TB
         Supervisor["Supervisor Agent (graph node)"]
         TeamAlpha["Team Alpha (subgraph)"]
         TeamBeta["Team Beta (subgraph)"]
-        Checkpointer["Checkpointer (SQLiteSaver)"]
+        Checkpointer["Checkpointer (PostgreSQL)"]
         Middleware["Middleware Stack"]
     end
 
     subgraph Domain["Domain Layer"]
-        WorkItems["Work Items (SQLite)"]
+        WorkItems["Work Items (PostgreSQL)"]
         Config["Team Config (YAML)"]
         Teams["Team/Agent Registry"]
         Memories["Long-term Memories"]
@@ -89,6 +89,11 @@ graph TB
     Domain --> Teams
     Graph -->|prompt| LLM
     Graph --> Memories
+    click Frontend "/group-run/frontend-plan/" "Frontend design and implementation"
+    click API "/group-run/api/scalar/" "Interactive Scalar API reference"
+    click Supervisor "/group-run/agents/" "Agent and team architecture"
+    click Checkpointer "/group-run/architecture/spine/" "Persistence architecture spine"
+    click WorkItems "/group-run/architecture-decisions/" "Architecture decision log"
 ```
 
 ## 2. Backend Architecture

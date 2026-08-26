@@ -41,6 +41,27 @@ See [`.env.example`](https://azharameen.github.io/group-run/.env.example) for al
 
 ## Step 3: Set Up the Backend
 
+Choose the environment you are working with:
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+cd backend
+pip install -r requirements.txt
+```
+
+Beta is deployed by pushing to `develop`. Monitor the deployment with:
+
+```bash
+gh run list --workflow release-beta.yml --limit 5
+```
+
+Production is released through a pull request merged into `main`:
+
+```bash
+gh run list --workflow release-prod.yml --limit 5
+```
+
 ```bash
 # Create virtual environment
 python -m venv .venv
