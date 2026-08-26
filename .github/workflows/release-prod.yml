@@ -178,6 +178,12 @@ jobs:
           VITE_FIREBASE_MEASUREMENT_ID: ${{ vars.VITE_FIREBASE_MEASUREMENT_ID }}
         run: |
           set -euo pipefail
+          if ! gcloud services describe firestore.googleapis.com \
+            --project "$GCP_PROJECT_ID" \
+            --format='value(config.name)' >/dev/null 2>&1; then
+            echo "::error::The deployment service account cannot read Firestore API status. Grant roles/serviceusage.serviceUsageConsumer on project $GCP_PROJECT_ID, then rerun this workflow."
+            exit 1
+          fi
           npm ci --prefix frontend
           npm run build --prefix frontend
           npm exec --prefix frontend -- firebase deploy \

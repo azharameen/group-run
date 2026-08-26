@@ -172,6 +172,12 @@ jobs:
         run: |
           set -euo pipefail
           echo "Deploying shared Firebase Hosting target in project $GCP_PROJECT_ID"
+          if ! gcloud services describe firestore.googleapis.com \
+            --project "$GCP_PROJECT_ID" \
+            --format='value(config.name)' >/dev/null 2>&1; then
+            echo "::error::The deployment service account cannot read Firestore API status. Grant roles/serviceusage.serviceUsageConsumer on project $GCP_PROJECT_ID, then rerun this workflow."
+            exit 1
+          fi
           npm exec --prefix frontend -- firebase deploy \
             --only hosting,firestore:rules \
             --project "$GCP_PROJECT_ID" \
