@@ -57,7 +57,7 @@ def verify_firebase_token(token: str) -> dict:
     return auth.verify_id_token(
         token,
         app=get_firebase_app(),
-        check_revoked=True,
+        check_revoked=not bool(os.environ.get("FIREBASE_AUTH_EMULATOR_HOST")),
     )
 
 
