@@ -9,5 +9,3 @@ The backend-hosted Scalar UI is available at [`/scalar`](https://backend-service
 Health Check
 
 Verify the backend is running: [`/api/health`](https://backend-service-601546984807.asia-south1.run.app/api/health)
-
-\<scalar-api-reference configuration='{"url":"https://backend-service-601546984807.asia-south1.run.app/openapi.json"}'
