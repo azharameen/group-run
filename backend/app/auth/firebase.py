@@ -7,6 +7,7 @@ import threading
 
 import firebase_admin
 from firebase_admin import auth, firestore
+from google.auth.credentials import AnonymousCredentials
 
 from ..config import settings
 
@@ -39,8 +40,15 @@ def get_firebase_app():
             try:
                 return firebase_admin.get_app(_APP_NAME)
             except ValueError:
+                options = {"projectId": project_id}
+                credential = None
+                if os.environ.get("FIRESTORE_EMULATOR_HOST") or os.environ.get(
+                    "FIREBASE_AUTH_EMULATOR_HOST"
+                ):
+                    credential = AnonymousCredentials()
                 return firebase_admin.initialize_app(
-                    options={"projectId": project_id},
+                    credential=credential,
+                    options=options,
                     name=_APP_NAME,
                 )
 
