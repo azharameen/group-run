@@ -131,6 +131,9 @@ async def run_idea_research(
     async def _await_deadline(awaitable: Awaitable[Any]) -> Any:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
+            close = getattr(awaitable, "close", None)
+            if callable(close):
+                close()
             raise TimeoutError
         task = asyncio.ensure_future(awaitable)
         try:
@@ -168,6 +171,9 @@ async def run_idea_research(
     ) -> Any:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
+            close = getattr(awaitable, "close", None)
+            if callable(close):
+                close()
             raise TimeoutError
         task = asyncio.ensure_future(awaitable)
         try:

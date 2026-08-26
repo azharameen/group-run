@@ -2,8 +2,9 @@
 title: 'Story 11.1: Research the concept and compile market evidence'
 type: 'feature'
 created: '2026-08-25'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'b17c87dcc6ec903768b366db33739ae633779d55'
+final_revision: 'dfc2ff0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
