@@ -133,6 +133,11 @@ async function warmUpFrontend(): Promise<void> {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
+    page.on('response', (response) => {
+      if (response.url().includes('/api/auth/bootstrap')) {
+        console.log(`[warm-up auth bootstrap] ${response.status()}`);
+      }
+    });
     await page.goto(`${FRONTEND_URL}/sign-in`, {
       waitUntil: 'domcontentloaded',
       timeout: WARMUP_TIMEOUT_MS,
