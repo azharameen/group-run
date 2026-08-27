@@ -8,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchOrganizations, fetchWorkItems } from "../../api/client";
+import { fetchOrganizations, fetchWorkItems } from "@/api/client";
 import {
 	createReview, fetchLifecycleHistory, listDecisions, listReviews,
 	transitionWorkItem, LIFECYCLE_PHASES,

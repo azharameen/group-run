@@ -45,12 +45,17 @@ export function useChatStream({
 	const [pendingInterrupt, setPendingInterrupt] = useState<InterruptPayload | null>(null);
 	const isInterruptActive = pendingInterrupt !== null;
 	const activeInterruptIdRef = useRef<string | null>(null);
+	const activeThreadIdRef = useRef(activeThreadId);
 
 	const abortRef = useRef<AbortController | null>(null);
 	const streamMsgIdRef = useRef<string | null>(null);
 	const queueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const fetchCounterRef = useRef(0);
 	const streamCounterRef = useRef(0);
+
+	useEffect(() => {
+		activeThreadIdRef.current = activeThreadId;
+	}, [activeThreadId]);
 
 	// Clean up pending timeouts and abort controllers on unmount
 	useEffect(() => {
@@ -105,14 +110,16 @@ export function useChatStream({
 				// On SSE reconnect, fetch pending interrupts to reconcile state
 				try {
 					const interrupts = await fetchPendingInterrupts();
-					if (interrupts.length > 0) {
-						// Restore the most recent pending interrupt
-						const latest = interrupts[interrupts.length - 1];
+					const currentThreadId = activeThreadIdRef.current;
+					const latest = interrupts.find(
+						(interrupt) => interrupt.thread_id === currentThreadId,
+					);
+					if (latest) {
 						activeInterruptIdRef.current = latest.id;
 						setPendingInterrupt(latest);
 					}
-				} catch {
-					// Silently fail — SSE will catch up with new events
+				} catch (error) {
+					console.error("Error reconciling pending interrupts:", error);
 				}
 			},
 			(eventType, payload) => {
@@ -120,7 +127,8 @@ export function useChatStream({
 				if (eventType === "interrupt.created") {
 					const interrupt = payload.interrupt || (payload as unknown as InterruptPayload);
 					const id = interrupt.id;
-					if (!id) return;
+					const threadId = interrupt.thread_id ?? payload.thread_id;
+					if (!id || (threadId && threadId !== activeThreadIdRef.current)) return;
 					// skip if already showing this interrupt (dedup)
 					if (id === activeInterruptIdRef.current) return;
 					activeInterruptIdRef.current = id;
@@ -207,8 +215,38 @@ export function useChatStream({
 					}
 				})
 				.catch((err) => console.error("Error fetching thread messages:", err));
+
+			fetchPendingInterrupts()
+				.then((interrupts) => {
+					if (fetchCounter !== fetchCounterRef.current) return;
+					const latest = interrupts.find(
+						(interrupt) => interrupt.thread_id === activeThreadId,
+					);
+					activeInterruptIdRef.current = latest?.id ?? null;
+					setPendingInterrupt(latest ?? null);
+				})
+				.catch((err) => console.error("Error fetching pending interrupts:", err));
+
+			// SSE events can be published before the browser finishes subscribing.
+			// Reconcile periodically so durable pending interrupts are not missed.
+			const reconciliationTimer = window.setInterval(() => {
+				fetchPendingInterrupts()
+					.then((interrupts) => {
+						const latest = interrupts.find(
+							(interrupt) => interrupt.thread_id === activeThreadIdRef.current,
+						);
+						if (!latest || latest.id === activeInterruptIdRef.current) return;
+						activeInterruptIdRef.current = latest.id;
+						setPendingInterrupt(latest);
+					})
+					.catch((err) => console.error("Error polling pending interrupts:", err));
+			}, 1000);
+
+			return () => window.clearInterval(reconciliationTimer);
 		} else {
 			setRawMessages([]);
+			activeInterruptIdRef.current = null;
+			setPendingInterrupt(null);
 		}
 	}, [activeThreadId]);
 

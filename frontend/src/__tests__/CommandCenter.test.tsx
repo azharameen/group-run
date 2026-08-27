@@ -36,6 +36,7 @@ vi.mock('@/api/client', () => ({
   getThreadMessages: vi.fn(),
   streamThreadMessage: vi.fn(),
   connectSSE: vi.fn(),
+  fetchPendingInterrupts: vi.fn().mockResolvedValue([]),
 }));
 
 // Mock sub-components
