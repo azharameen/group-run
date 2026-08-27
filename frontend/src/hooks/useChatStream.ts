@@ -226,6 +226,23 @@ export function useChatStream({
 					setPendingInterrupt(latest ?? null);
 				})
 				.catch((err) => console.error("Error fetching pending interrupts:", err));
+
+			// SSE events can be published before the browser finishes subscribing.
+			// Reconcile periodically so durable pending interrupts are not missed.
+			const reconciliationTimer = window.setInterval(() => {
+				fetchPendingInterrupts()
+					.then((interrupts) => {
+						const latest = interrupts.find(
+							(interrupt) => interrupt.thread_id === activeThreadIdRef.current,
+						);
+						if (!latest || latest.id === activeInterruptIdRef.current) return;
+						activeInterruptIdRef.current = latest.id;
+						setPendingInterrupt(latest);
+					})
+					.catch((err) => console.error("Error polling pending interrupts:", err));
+			}, 1000);
+
+			return () => window.clearInterval(reconciliationTimer);
 		} else {
 			setRawMessages([]);
 			activeInterruptIdRef.current = null;
