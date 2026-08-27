@@ -127,7 +127,8 @@ export function useChatStream({
 				if (eventType === "interrupt.created") {
 					const interrupt = payload.interrupt || (payload as unknown as InterruptPayload);
 					const id = interrupt.id;
-					if (!id || interrupt.thread_id !== activeThreadIdRef.current) return;
+					const threadId = interrupt.thread_id ?? payload.thread_id;
+					if (!id || (threadId && threadId !== activeThreadIdRef.current)) return;
 					// skip if already showing this interrupt (dedup)
 					if (id === activeInterruptIdRef.current) return;
 					activeInterruptIdRef.current = id;
