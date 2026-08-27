@@ -33,16 +33,19 @@ import {
 	TooltipTrigger,
 	TooltipContent,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
+import { useThreadContext } from "@/context/ThreadContext";
+import { useWorkspaceContext } from "@/context/WorkspaceContext";
 
 export function SiteHeader({
 	ideaTitle,
-	activeThreadId,
-	activeThreadTitle,
-	threads = [],
-	onSelectThread,
-	onThreadsUpdate,
-	isWorkspaceOpen = true,
-	onToggleWorkspace,
+	activeThreadId: propsActiveThreadId,
+	activeThreadTitle: propsActiveThreadTitle,
+	threads: propsThreads,
+	onSelectThread: propsOnSelectThread,
+	onThreadsUpdate: propsOnThreadsUpdate,
+	isWorkspaceOpen: propsIsWorkspaceOpen,
+	onToggleWorkspace: propsOnToggleWorkspace,
 }: {
 	ideaTitle?: string;
 	activeThreadId?: string | null;
@@ -56,6 +59,31 @@ export function SiteHeader({
 	const location = useLocation();
 	const path = location.pathname;
 	const [threadSearch, setThreadSearch] = useState("");
+	const { toast } = useToast();
+
+	let threadCtx: ReturnType<typeof useThreadContext> | null = null;
+	try {
+		threadCtx = useThreadContext();
+	} catch {
+		threadCtx = null;
+	}
+
+	let workspaceCtx: ReturnType<typeof useWorkspaceContext> | null = null;
+	try {
+		workspaceCtx = useWorkspaceContext();
+	} catch {
+		workspaceCtx = null;
+	}
+
+	const threads = propsThreads ?? threadCtx?.threads ?? [];
+	const activeThreadId = propsActiveThreadId ?? threadCtx?.activeThreadId ?? null;
+	const activeThreadTitle =
+		propsActiveThreadTitle ??
+		(activeThreadId ? threads.find((t) => t.thread_id === activeThreadId)?.title : undefined);
+	const onSelectThread = propsOnSelectThread ?? threadCtx?.setActiveThreadId;
+	const onThreadsUpdate = propsOnThreadsUpdate ?? threadCtx?.setThreads;
+	const isWorkspaceOpen = propsIsWorkspaceOpen ?? workspaceCtx?.isWorkspaceOpen ?? true;
+	const onToggleWorkspace = propsOnToggleWorkspace ?? workspaceCtx?.toggleWorkspace;
 
 	const handleCreateNewThread = async () => {
 		try {
@@ -63,7 +91,13 @@ export function SiteHeader({
 			if (onSelectThread) onSelectThread(thread.thread_id);
 			const allThreads = await listThreads();
 			if (onThreadsUpdate) onThreadsUpdate(allThreads);
-		} catch {}
+		} catch (err) {
+			toast({
+				title: "Failed to create thread",
+				description: err instanceof Error ? err.message : "Unexpected error",
+				variant: "destructive",
+			});
+		}
 	};
 
 	const filteredThreads = threads.filter((t) =>
@@ -120,6 +154,15 @@ export function SiteHeader({
 									<BreadcrumbSeparator />
 									<BreadcrumbItem>
 										<BreadcrumbPage>Knowledge Base</BreadcrumbPage>
+									</BreadcrumbItem>
+								</>
+							)}
+
+							{path === "/organization" && (
+								<>
+									<BreadcrumbSeparator />
+									<BreadcrumbItem>
+										<BreadcrumbPage>Organization</BreadcrumbPage>
 									</BreadcrumbItem>
 								</>
 							)}

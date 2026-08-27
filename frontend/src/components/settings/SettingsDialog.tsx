@@ -74,14 +74,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     {data.nav.map((item) => (
                       <SidebarMenuItem key={item.name}>
                         <SidebarMenuButton
-                          asChild
                           isActive={item.name === activeItem.name}
                           onClick={() => setActiveItem(item)}
                         >
-                          <a href="#" onClick={(e) => e.preventDefault()}>
-                            <item.icon />
-                            <span>{item.name}</span>
-                          </a>
+                          <item.icon />
+                          <span>{item.name}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}

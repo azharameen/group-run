@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 import { BarChart3, Database, Bot, Building2 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 import { type ThreadMetadata } from "@/api/client";
 import { useAuth } from "@/context/AuthContext";
+import { useThreadContext } from "@/context/ThreadContext";
 
 const data = {
 	navMain: [
@@ -43,10 +45,10 @@ const data = {
 };
 
 export function AppSidebar({
-	threads = [],
-	activeThreadId,
-	onSelectThread,
-	onThreadsUpdate,
+	threads: propsThreads,
+	activeThreadId: propsActiveThreadId,
+	onSelectThread: propsOnSelectThread,
+	onThreadsUpdate: propsOnThreadsUpdate,
 	...props
 }: React.ComponentProps<typeof Sidebar> & {
 	threads?: ThreadMetadata[];
@@ -55,6 +57,17 @@ export function AppSidebar({
 	onThreadsUpdate?: (threads: ThreadMetadata[]) => void;
 }) {
 	const { user } = useAuth();
+	let threadCtx: ReturnType<typeof useThreadContext> | null = null;
+	try {
+		threadCtx = useThreadContext();
+	} catch {
+		threadCtx = null;
+	}
+
+	const threads = propsThreads ?? threadCtx?.threads ?? [];
+	const activeThreadId = propsActiveThreadId ?? threadCtx?.activeThreadId ?? null;
+	const onSelectThread = propsOnSelectThread ?? threadCtx?.setActiveThreadId;
+	const onThreadsUpdate = propsOnThreadsUpdate ?? threadCtx?.setThreads;
 
 	return (
 		<Sidebar collapsible="icon" {...props}>
@@ -62,7 +75,7 @@ export function AppSidebar({
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton size="lg" asChild tooltip="Companion">
-							<a href="/">
+							<Link to="/">
 								<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
 									<Bot className="size-5" />
 								</div>
@@ -72,7 +85,7 @@ export function AppSidebar({
 										Companion Engine
 									</span>
 								</div>
-							</a>
+							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>

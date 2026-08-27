@@ -171,11 +171,11 @@ export function MaturityPanel({ ideaId }: MaturityPanelProps) {
           <CardTitle className="text-sm font-semibold">Transition History</CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-1">
-          {maturity.history.length === 0 ? (
+          {(!maturity.history || maturity.history.length === 0) ? (
             <p className="text-xs text-muted-foreground">No transitions recorded yet.</p>
           ) : (
             <ol className="space-y-3">
-              {maturity.history.map((record, index) => (
+              {(maturity.history || []).map((record, index) => (
                 <li key={record.recorded_at + index} className="rounded-md border p-3 text-xs" data-testid="history-entry">
                   <div className="flex items-center justify-between">
                     <Badge variant="outline">{record.stage}</Badge>

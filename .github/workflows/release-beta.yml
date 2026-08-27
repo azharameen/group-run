@@ -10,15 +10,10 @@
 # Shared-target mode: beta and production intentionally use the same
 # infrastructure until beta has users. The last successful deploy owns traffic.
 
-name: "Release - Beta & Deployment Test"
+name: Release - Beta
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [develop]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

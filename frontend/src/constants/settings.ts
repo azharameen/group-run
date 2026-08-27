@@ -31,11 +31,10 @@ export const LLM_PROVIDERS: LLMProviderOption[] = [
 // ─── Default Account Profile ──────────────────────────────────────────────────
 
 export const DEFAULT_ACCOUNT_PROFILE = {
-	username: "Azhar Ameen",
-	email: "azharameen52@gmail.com",
-	avatarUrl:
-		"https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=150&h=150&q=80",
-	avatarFallback: "AA",
+	username: "User",
+	email: "",
+	avatarUrl: "",
+	avatarFallback: "U",
 };
 
 // ─── Theme Options ────────────────────────────────────────────────────────────

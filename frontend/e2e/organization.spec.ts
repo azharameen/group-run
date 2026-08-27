@@ -68,11 +68,11 @@ test.describe('Organization Dashboard', () => {
       'DevOps Team',
     ]);
     await expect(orgPage.teamCapacities).toHaveText([
-      'Capacity 0/3',
-      'Capacity 0/3',
-      'Capacity 0/3',
-      'Capacity 0/3',
-      'Capacity 0/3',
+      '0/3 active',
+      '0/3 active',
+      '0/3 active',
+      '0/3 active',
+      '0/3 active',
     ]);
 
     // Verify persistence in backend API
@@ -108,11 +108,11 @@ test.describe('Organization Dashboard', () => {
       'DevOps Team',
     ]);
     await expect(orgPage.teamCapacities).toHaveText([
-      'Capacity 0/3',
-      'Capacity 0/3',
-      'Capacity 0/3',
-      'Capacity 0/3',
-      'Capacity 0/3',
+      '0/3 active',
+      '0/3 active',
+      '0/3 active',
+      '0/3 active',
+      '0/3 active',
     ]);
   });
 });

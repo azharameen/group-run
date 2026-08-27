@@ -37,6 +37,7 @@ vi.mock('@/api/client', () => ({
   getThreadMessages: vi.fn(),
   streamThreadMessage: vi.fn(),
   connectSSE: vi.fn(),
+  fetchPendingInterrupts: vi.fn().mockResolvedValue([]),
 }));
 
 // ModelSelector has its own dedicated test; keep it inert here so the page

@@ -9,8 +9,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ThreadProvider, useThreadContext } from "@/context/ThreadContext";
 import {
 	WorkspaceProvider,
-	useWorkspaceContext,
 } from "@/context/WorkspaceContext";
+import { RealtimeProvider } from "@/context/RealtimeContext";
 import { trackEvent } from "@/lib/firebase";
 
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
@@ -22,18 +22,7 @@ const SignIn = lazy(() => import("./pages/SignIn"));
 
 function AppContent() {
 	const location = useLocation();
-	const {
-		activeThreadId,
-		setActiveThreadId,
-		activeThreadTitle,
-		setActiveThreadTitle,
-		threads,
-		setThreads,
-		currentIdeaTitle,
-		setCurrentIdeaTitle,
-	} = useThreadContext();
-
-	const { isWorkspaceOpen, toggleWorkspace } = useWorkspaceContext();
+	const { currentIdeaTitle, setCurrentIdeaTitle } = useThreadContext();
 
 	useEffect(() => {
 		trackEvent("page_view", { page_path: location.pathname });
@@ -41,23 +30,9 @@ function AppContent() {
 
 	return (
 		<SidebarProvider defaultOpen={false} className="flex h-full">
-			<AppSidebar
-				threads={threads}
-				activeThreadId={activeThreadId}
-				onSelectThread={setActiveThreadId}
-				onThreadsUpdate={setThreads}
-			/>
+			<AppSidebar />
 			<SidebarInset className="flex flex-col h-full overflow-hidden">
-				<SiteHeader
-					ideaTitle={currentIdeaTitle}
-					activeThreadId={activeThreadId}
-					activeThreadTitle={activeThreadTitle}
-					threads={threads}
-					onSelectThread={setActiveThreadId}
-					onThreadsUpdate={setThreads}
-					isWorkspaceOpen={isWorkspaceOpen}
-					onToggleWorkspace={toggleWorkspace}
-				/>
+				<SiteHeader ideaTitle={currentIdeaTitle} />
 				<main className="flex-1 overflow-y-auto pt-0">
 					<Suspense
 						fallback={
@@ -76,19 +51,7 @@ function AppContent() {
 						}
 					>
 						<Routes>
-							<Route
-								path="/"
-								element={
-									<CommandCenter
-										activeThreadId={activeThreadId}
-										setActiveThreadId={setActiveThreadId}
-										onActiveThreadTitleChange={setActiveThreadTitle}
-										onThreadsUpdate={setThreads}
-										threads={threads}
-										isWorkspaceOpen={isWorkspaceOpen}
-									/>
-								}
-							/>
+							<Route path="/" element={<CommandCenter />} />
 							<Route path="/ideas" element={<Dashboard />} />
 							<Route
 								path="/ideas/:ideaId"
@@ -111,11 +74,13 @@ function AppContent() {
 
 function ProtectedApp() {
 	return (
-		<ThreadProvider>
-			<WorkspaceProvider>
-				<AppContent />
-			</WorkspaceProvider>
-		</ThreadProvider>
+		<RealtimeProvider>
+			<ThreadProvider>
+				<WorkspaceProvider>
+					<AppContent />
+				</WorkspaceProvider>
+			</ThreadProvider>
+		</RealtimeProvider>
 	);
 }
 

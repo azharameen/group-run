@@ -21,7 +21,7 @@ import {
 	TooltipTrigger,
 	TooltipContent,
 } from "@/components/ui/tooltip";
-import { BotMessageSquare, Send, Plus, Mic, Square } from "lucide-react";
+import { BotMessageSquare, Send, Plus, Square } from "lucide-react";
 import type { ChatMessage } from "@/types/chat";
 import type { InterruptPayload } from "@/api/threads";
 import { EVENT_LABELS, messageBadgeVariant } from "@/lib/chat-utils";
@@ -358,15 +358,16 @@ export function CommandCenterChatPane({
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											data-testid="send-button"
 											size="icon"
-											variant="ghost"
-											className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
+											disabled
+											className="h-6 w-6 rounded-md bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
 										>
-											<Mic className="w-3.5 h-3.5" />
+											<Send className="w-3.5 h-3.5" />
 										</Button>
 									</TooltipTrigger>
 									<TooltipContent side="top" className="text-xs">
-										Voice input
+										Enter a message to send
 									</TooltipContent>
 								</Tooltip>
 							)}

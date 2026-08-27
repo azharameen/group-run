@@ -33,6 +33,8 @@ import {
   LLM_PROVIDERS,
   DEFAULT_ACCOUNT_PROFILE,
 } from "@/constants/settings"
+import { useAuth } from "@/context/AuthContext"
+import { useTheme } from "@/components/theme-provider"
 import {
   deleteProvider,
   fetchProviderCatalog,
@@ -53,7 +55,8 @@ import {
 // 1. Account Settings
 // -------------------------------------------------------------
 export function AccountSettings() {
-  const [username, setUsername] = React.useState(DEFAULT_ACCOUNT_PROFILE.username)
+  const { user, signOut } = useAuth()
+  const [username, setUsername] = React.useState(user?.display_name || DEFAULT_ACCOUNT_PROFILE.username)
   const [isEditing, setIsEditing] = React.useState(false)
   const [tempUsername, setTempUsername] = React.useState(username)
 
@@ -73,8 +76,10 @@ export function AccountSettings() {
         <div className="flex items-center justify-between py-5">
           <span className="text-sm font-medium text-muted-foreground">Avatar</span>
           <Avatar className="h-12 w-12 border-2 border-border/80 shadow-sm cursor-pointer hover:opacity-90 transition-opacity">
-            <AvatarImage src={DEFAULT_ACCOUNT_PROFILE.avatarUrl} alt="Avatar" />
-            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold">{DEFAULT_ACCOUNT_PROFILE.avatarFallback}</AvatarFallback>
+            <AvatarImage src={user?.photo_url || DEFAULT_ACCOUNT_PROFILE.avatarUrl} alt="Avatar" />
+            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold">
+              {(user?.display_name || username || "U").slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
         </div>
 
@@ -120,13 +125,14 @@ export function AccountSettings() {
         {/* Email Section */}
         <div className="flex items-center justify-between py-5">
           <span className="text-sm font-medium text-muted-foreground">Email</span>
-          <span className="text-sm text-foreground">{DEFAULT_ACCOUNT_PROFILE.email}</span>
+          <span className="text-sm text-foreground">{user?.email || DEFAULT_ACCOUNT_PROFILE.email || "—"}</span>
         </div>
 
         {/* Sign Out Section */}
         <div className="flex items-center justify-end py-6">
           <Button
             variant="destructive"
+            onClick={() => signOut()}
             className="h-9 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 shadow-none gap-2 hover:text-red-700 font-medium"
           >
             <span>Sign out</span>
@@ -142,7 +148,7 @@ export function AccountSettings() {
 // 2. Preference Settings
 // -------------------------------------------------------------
 export function PreferenceSettings() {
-  const [theme, setTheme] = React.useState<"system" | "light" | "dark">("light")
+  const { theme, setTheme } = useTheme()
 
   return (
     <div className="space-y-8">

@@ -1,23 +1,37 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type {
   ButtonHTMLAttributes,
-  ChangeEvent,
   InputHTMLAttributes,
   ReactNode,
   TextareaHTMLAttributes,
 } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import React from 'react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import Dashboard from '@/pages/Dashboard';
-import * as apiClient from '@/api/client';
-import type { IdeaListItem } from '@/api/client';
+import * as apiClient from '@/api/ideas';
+import type { IdeaListItem } from '@/api/ideas';
+import { renderWithProviders } from '@/test-utils';
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 // Mock API
-vi.mock('@/api/client', () => ({
+vi.mock('@/api/ideas', () => ({
   fetchIdeas: vi.fn(),
+  fetchIdeaDetail: vi.fn(),
+  fetchIdeaFiles: vi.fn(),
   createIdea: vi.fn(),
   updateIdea: vi.fn(),
   deleteIdea: vi.fn(),
-  connectSSE: vi.fn(() => ({ close: vi.fn() })),
+  addIdeaComment: vi.fn(),
+  recordIdeaMaturity: vi.fn(),
+  retryNoveltyAssessment: vi.fn(),
 }));
 
 // Mock IdeaCard component
@@ -52,16 +66,20 @@ vi.mock('@/components/IdeaCard', () => ({
 
 // Mock shadcn components
 vi.mock('@/components/ui/input', () => ({
-  Input: ({ value, onChange, placeholder, type, className, maxLength }: InputHTMLAttributes<HTMLInputElement>) => (
-    <input
-      data-testid="input"
-      value={value}
-      onChange={(e: ChangeEvent<HTMLInputElement>) => onChange?.(e)}
-      placeholder={placeholder}
-      type={type}
-      className={className}
-      maxLength={maxLength}
-    />
+  Input: React.forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+    ({ value, onChange, placeholder, type, className, maxLength, ...props }, ref) => (
+      <input
+        ref={ref}
+        data-testid="input"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        type={type}
+        className={className}
+        maxLength={maxLength}
+        {...props}
+      />
+    )
   ),
 }));
 
@@ -77,8 +95,9 @@ vi.mock('@/components/ui/skeleton', () => ({
 }));
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, variant, size, disabled, className }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string }) => (
+  Button: ({ children, onClick, variant, size, disabled, className, type }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string }) => (
     <button
+      type={type}
       data-testid={`button-${variant || 'default'}-${size || 'default'}`}
       onClick={onClick}
       disabled={disabled}
@@ -90,14 +109,18 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/ui/textarea', () => ({
-  Textarea: ({ value, onChange, placeholder, rows }: TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-    <textarea
-      data-testid="textarea"
-      value={value}
-      onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange?.(e)}
-      placeholder={placeholder}
-      rows={rows}
-    />
+  Textarea: React.forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+    ({ value, onChange, placeholder, rows, ...props }, ref) => (
+      <textarea
+        ref={ref}
+        data-testid="textarea"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        rows={rows}
+        {...props}
+      />
+    )
   ),
 }));
 
@@ -169,12 +192,12 @@ describe('Dashboard', () => {
 
   test('shows loading skeleton initially', async () => {
     vi.mocked(apiClient.fetchIdeas).mockReturnValueOnce(new Promise(() => {}));
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
   test('displays ideas after loading', async () => {
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       expect(screen.getByTestId('idea-card-idea-1')).toBeDefined();
     });
@@ -182,39 +205,39 @@ describe('Dashboard', () => {
 
   test('shows empty state when no ideas', async () => {
     vi.mocked(apiClient.fetchIdeas).mockResolvedValueOnce([]);
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       expect(screen.getByText('No ideas found')).toBeDefined();
     });
   });
 
   test('renders search input', async () => {
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Filter ideas by keyword...')).toBeDefined();
     });
   });
 
   test('filters ideas by search query', async () => {
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       expect(screen.getByTestId('idea-card-idea-1')).toBeDefined();
     });
     const searchInput = screen.getByPlaceholderText('Filter ideas by keyword...');
     fireEvent.change(searchInput, { target: { value: 'Second' } });
-    expect(screen.queryByTestId('idea-card-idea-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('idea-card-idea-1')).toBeNull();
     expect(screen.getByTestId('idea-card-idea-2')).toBeDefined();
   });
 
   test('renders New Idea button', async () => {
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       expect(screen.getByText('New Idea')).toBeDefined();
     });
   });
 
   test('opens create dialog when New Idea clicked', async () => {
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       const newIdeaBtn = screen.getByText('New Idea');
       fireEvent.click(newIdeaBtn);
@@ -225,7 +248,7 @@ describe('Dashboard', () => {
   test('creates idea when form submitted', async () => {
     vi.mocked(apiClient.createIdea).mockResolvedValue({ idea_id: 'new-idea', message: 'created' });
 
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       const newIdeaBtn = screen.getByText('New Idea');
       fireEvent.click(newIdeaBtn);
@@ -233,6 +256,10 @@ describe('Dashboard', () => {
 
     const titleInput = screen.getByPlaceholderText('Enter idea title');
     fireEvent.change(titleInput, { target: { value: 'My New Idea' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Idea')).not.toBeDisabled();
+    });
 
     const createBtn = screen.getByText('Create Idea');
     fireEvent.click(createBtn);
@@ -243,7 +270,7 @@ describe('Dashboard', () => {
   });
 
   test('prompts delete confirmation when delete clicked', async () => {
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       expect(screen.getByTestId('delete-btn-idea-1')).toBeDefined();
     });
@@ -254,7 +281,7 @@ describe('Dashboard', () => {
   test('deletes idea when confirmed', async () => {
     vi.mocked(apiClient.deleteIdea).mockResolvedValue({ idea_id: 'idea-1', deleted: true });
 
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       fireEvent.click(screen.getByTestId('delete-btn-idea-1'));
     });
@@ -267,17 +294,13 @@ describe('Dashboard', () => {
   });
 
   test('toggles idea selection via card', async () => {
-    render(<Dashboard />);
+    renderWithProviders(<Dashboard />);
     await waitFor(() => {
       expect(screen.getByTestId('idea-card-idea-1')).toBeDefined();
     });
-    // The card renders with onSelect prop, verify the checkbox exists
     const checkbox = screen.getByTestId('checkbox-idea-1');
     expect(checkbox).toBeDefined();
-    // Click triggers onSelect via the mock
     fireEvent.change(checkbox, { target: { checked: true } });
-    // The mock calls onSelect but the Dashboard state drives the "X selected" display
-    // Verify the checkbox was interacted with
     expect(checkbox).toBeDefined();
   });
 });

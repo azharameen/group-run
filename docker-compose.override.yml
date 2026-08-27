@@ -9,6 +9,9 @@
 #    mount the local alembic dir + ini into /app so
 #    `alembic upgrade head` can run at startup.
 services:
+  postgres:
+    healthcheck:
+      interval: 6h
   backend:
     command:
       - sh
@@ -20,7 +23,7 @@ services:
       - "8000:8080"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
-      interval: 10s
+      interval: 6h
       timeout: 5s
       retries: 12
       start_period: 40s
@@ -30,7 +33,7 @@ services:
   frontend:
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/ || exit 1"]
-      interval: 10s
+      interval: 6h
       timeout: 5s
       retries: 12
       start_period: 15s
