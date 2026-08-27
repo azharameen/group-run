@@ -178,6 +178,41 @@ def test_thread_create_uses_idea_id_and_streams(monkeypatch, tmp_path, patch_con
         assert '"type": "done"' in body
 
 
+def test_thread_stream_fallback_mode_without_provider_selection(
+    monkeypatch, tmp_path, patch_config
+):
+    """NFR-A10: a user with no provider configurations streams through the
+    DEEPAGENTS_MODEL fallback — the E2E warm-up path."""
+    import app.api.routes.threads as threads_mod
+
+    _patch_thread_storage(monkeypatch, tmp_path)
+    _patch_stream(monkeypatch, [
+        {"type": "message", "speaker": "assistant", "content": "Warm-up response."},
+        {"type": "done"},
+    ])
+
+    class _FallbackService:
+        async def resolve_model(self, user_id, provider_id, model_id):
+            assert (provider_id, model_id) == (None, None)
+            return None, None, None
+
+        @asynccontextmanager
+        async def execution(self, user_id, provider_id):
+            raise AssertionError("no lease in fallback mode")
+            yield  # pragma: no cover
+
+    monkeypatch.setattr(threads_mod, "provider_service", _FallbackService())
+
+    with TestClient(create_app()) as client:
+        thread = client.post("/api/threads", json={"title": "Fallback"}).json()["thread"]
+        res = client.post(
+            f"/api/threads/{thread['thread_id']}/stream",
+            json={"text": "Warm-up: can you help me capture an idea?"},
+        )
+        assert res.status_code == 200
+        assert "Warm-up response." in res.text
+
+
 def test_thread_stream_falls_back_to_final_output(monkeypatch, tmp_path, patch_config):
     """Final-output message events from the runner pass through the stream."""
     _patch_thread_storage(monkeypatch, tmp_path)

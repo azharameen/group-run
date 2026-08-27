@@ -277,13 +277,20 @@ def test_resume_uses_the_owned_thread_provider_without_global_fallback(monkeypat
 
 
 def test_resume_rejects_missing_persisted_provider_without_default(monkeypatch):
-    """A historical interrupt without an exact selection cannot fall back."""
+    """A historical interrupt without an exact selection resolves through the
+    user default; without one (and no fallback model) it still 409s."""
+    from app.providers.service import ProviderSelectionError
+
     class FakeInterruptService:
         async def get_interrupt(self, _interrupt_id):
             return {"id": "interrupt-1", "thread_id": "thread-1", "status": "approved"}
 
     class FakeProviderService:
-        resolve_model = AsyncMock()
+        resolve_model = AsyncMock(
+            side_effect=ProviderSelectionError(
+                "Choose an enabled provider model before starting a chat"
+            )
+        )
 
     app = FastAPI()
 
@@ -307,5 +314,5 @@ def test_resume_rejects_missing_persisted_provider_without_default(monkeypatch):
     response = TestClient(app).post("/api/interrupts/interrupt-1/resume", json={})
 
     assert response.status_code == 409
-    assert "persisted provider model" in response.json()["detail"]
-    fake_provider_service.resolve_model.assert_not_awaited()
+    assert "provider" in response.json()["detail"].lower()
+    fake_provider_service.resolve_model.assert_awaited_once_with("user-a", None, None)

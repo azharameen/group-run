@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 
+from ..config import settings
 from .adapters import CatalogResult, ProviderDefinition, get_adapter
 from .crypto import CredentialCipher
 from .repository import ProviderExecutionActiveError, ProviderRepository
@@ -141,12 +142,26 @@ class ProviderConfigService:
 
     async def resolve_model(
         self, user_id: str, provider_id: str | None, model_id: str | None
-    ) -> tuple[str, str, ProviderDefinition]:
+    ) -> tuple[str | None, str | None, ProviderDefinition | None]:
+        """Resolve the exact (provider, model) pair a chat must use.
+
+        Raises ProviderSelectionError when the selection is invalid, stale, or
+        absent — the endpoint layer maps that to a 409.
+
+        When the user has no provider configurations at all and a fallback model
+        is configured via DEEPAGENTS_MODEL (CI/local deterministic mode,
+        NFR-A10), resolves to ``(None, None, None)`` so the agent runs on the
+        environment model instead of failing. A user who does have provider
+        configurations but no usable default still gets an explicit error — a
+        disabled or stale selection never falls back silently.
+        """
         if bool(provider_id) != bool(model_id):
             raise ProviderSelectionError("Provider configuration and model must be selected together")
         if not provider_id or not model_id:
             default = await self.get_default(user_id)
             if not default:
+                if settings.deepagents_model and not await self.repository.list(user_id):
+                    return None, None, None
                 raise ProviderSelectionError("Choose an enabled provider model before starting a chat")
             provider_id, model_id = default["provider_id"], default["model_id"]
         result = await self.catalog(user_id, provider_id)

@@ -275,6 +275,24 @@ class TestProviderDiscoveryAndRuntime:
         with pytest.raises(RuntimeError, match="provider configuration"):
             get_configured_chat_model(None, "live-model", "openai:test-model")
 
+    @pytest.mark.asyncio
+    async def test_environment_fallback_only_for_users_without_providers(
+        self, service, monkeypatch
+    ):
+        """NFR-A10: a user with no provider configurations at all resolves to
+        the DEEPAGENTS_MODEL fallback (CI/local deterministic mode) — but only
+        while that fallback is configured."""
+        from app.config import settings
+
+        # The autouse isolate_test_env fixture sets DEEPAGENTS_MODEL.
+        assert settings.deepagents_model
+        provider_id, model_id, definition = await service.resolve_model("user-a", None, None)
+        assert (provider_id, model_id, definition) == (None, None, None)
+
+        monkeypatch.setattr(settings, "deepagents_model", "")
+        with pytest.raises(ProviderSelectionError, match="Choose an enabled"):
+            await service.resolve_model("user-a", None, None)
+
 
 class TestProviderAdapters:
     @pytest.mark.asyncio

@@ -1,5 +1,7 @@
 """Interrupt management endpoints."""
 
+from contextlib import nullcontext
+
 from fastapi import APIRouter, HTTPException, Request, status
 
 from ...api.schemas import CreateInterruptRequest, InterruptDecisionRequest, InterruptResponse, ResumeInterruptRequest
@@ -118,16 +120,12 @@ async def resume_interrupt(
     thread = await get_or_claim_thread(interrupt["thread_id"], principal.uid)
     if not thread:
         raise HTTPException(status_code=404, detail="Interrupt not found")
-    provider_id = thread.get("provider_id")
-    model_id = thread.get("model_id")
-    if not provider_id or not model_id:
-        raise HTTPException(
-            status_code=409,
-            detail="No persisted provider model is available for this interrupted thread",
-        )
+    # Resolve the thread's persisted pair; threads without one fall back to the
+    # user default or, in CI/local fallback mode (DEEPAGENTS_MODEL), the
+    # environment model — mirroring the initial stream request.
     try:
-        _, _, definition = await provider_service.resolve_model(
-            principal.uid, provider_id, model_id
+        provider_id, model_id, definition = await provider_service.resolve_model(
+            principal.uid, thread.get("provider_id"), thread.get("model_id")
         )
     except (LookupError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -138,13 +136,14 @@ async def resume_interrupt(
         decisions = [{"type": "reject", "message": interrupt.get("reason") or "User rejected this action. Do not retry."}]
 
     try:
-        async with provider_service.execution(principal.uid, provider_id):
+        lease = provider_service.execution(principal.uid, provider_id) if provider_id else nullcontext()
+        async with lease:
             final_state = await resume_agent(
                 interrupt["thread_id"],
                 decisions,
                 user_id=principal.uid,
-                provider_id=provider_id,
-                model_id=model_id,
+                provider_id=provider_id or "",
+                model_id=model_id or "",
                 provider_definition=definition,
             )
     except Exception as exc:  # no resumable state → 409, never fabricate

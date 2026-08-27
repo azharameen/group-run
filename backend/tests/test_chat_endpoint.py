@@ -214,3 +214,64 @@ async def test_chat_stream_requires_provider_selection(monkeypatch: pytest.Monke
         resp = client.post("/api/chat/stream", json={"text": "hello"})
         assert resp.status_code == 409
         assert "provider" in resp.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# NFR-A10: CI/local fallback mode (DEEPAGENTS_MODEL, no per-user providers)
+# ---------------------------------------------------------------------------
+
+
+class _FallbackProviderService:
+    """Service double in fallback mode: no user provider configurations exist,
+    so resolution returns the environment-model tuple (None, None, None)."""
+
+    async def resolve_model(self, user_id: str, provider_id: str | None, model_id: str | None):
+        return None, None, None
+
+    @asynccontextmanager
+    async def execution(self, user_id: str, provider_id: str):
+        raise AssertionError("execution lease must not be acquired in fallback mode")
+        yield  # pragma: no cover
+
+
+@pytest.mark.asyncio
+async def test_fallback_selection_streams_without_lease(monkeypatch: pytest.MonkeyPatch):
+    """A (None, None, None) selection streams through the environment model
+    and never acquires a provider execution lease (NFR-A10)."""
+    runner_calls: list[dict[str, Any]] = []
+
+    async def _runner(*args: Any, **kwargs: Any):
+        runner_calls.append(kwargs)
+        yield {"type": "state_update", "response": "fallback ok", "routing_key": "general"}
+
+    monkeypatch.setattr(chat_mod, "execute_deep_agent_workflow_streaming", _runner)
+
+    events = []
+    async for evt in chat_mod._chat_stream_generator(
+        "hello", "uid-1", None, None, None, "thread-1", _FallbackProviderService()
+    ):
+        events.append(evt)
+
+    assert any('"state_update"' in e for e in events)
+    assert runner_calls[0]["provider_id"] == ""
+    assert runner_calls[0]["model_id"] == ""
+    assert runner_calls[0]["provider_definition"] is None
+
+
+@pytest.mark.asyncio
+async def test_stream_chat_endpoint_fallback_mode_returns_200(
+    monkeypatch: pytest.MonkeyPatch, patch_config
+):
+    """Without a per-user provider, /api/chat/stream uses the DEEPAGENTS_MODEL
+    fallback instead of 409 — the E2E warm-up scenario (NFR-A10)."""
+    monkeypatch.setattr(chat_mod, "provider_service", _FallbackProviderService())
+    monkeypatch.setattr(
+        chat_mod,
+        "execute_deep_agent_workflow_streaming",
+        _make_runner([{"type": "state_update", "response": "fallback ok", "routing_key": "general"}]),
+    )
+
+    with TestClient(create_app()) as client:
+        resp = client.post("/api/chat/stream", json={"text": "hello"})
+        assert resp.status_code == 200
+        assert "fallback ok" in resp.text

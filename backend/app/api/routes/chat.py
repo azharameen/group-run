@@ -3,6 +3,7 @@
 import json
 import logging
 from collections.abc import AsyncGenerator
+from contextlib import nullcontext
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -40,24 +41,30 @@ def _error_shape(error) -> dict:
 async def _chat_stream_generator(
     text: str,
     user_id: str,
-    provider_id: str,
-    model_id: str,
+    provider_id: str | None,
+    model_id: str | None,
     definition,
     thread_id: str,
     service: ProviderConfigService,
 ) -> AsyncGenerator[str, None]:
-    """Stream an exact enabled provider/model selection through DeepAgents."""
+    """Stream an exact enabled provider/model selection through DeepAgents.
+
+    ``provider_id``/``model_id`` are ``None`` in fallback mode (no per-user
+    provider configured, DEEPAGENTS_MODEL set) — the execution lease only
+    applies to real provider configurations.
+    """
     emitted_done = False
 
     try:
-        async with service.execution(user_id, provider_id):
+        lease = service.execution(user_id, provider_id) if provider_id else nullcontext()
+        async with lease:
             async for event in execute_deep_agent_workflow_streaming(
                 "",
                 text,
                 thread_id,
                 user_id=user_id,
-                provider_id=provider_id,
-                model_id=model_id,
+                provider_id=provider_id or "",
+                model_id=model_id or "",
                 provider_definition=definition,
             ):
                 emitted_done = emitted_done or event.get("type") == "done"

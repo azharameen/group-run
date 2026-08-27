@@ -3,6 +3,7 @@
 import json
 import logging
 from collections.abc import AsyncGenerator
+from contextlib import nullcontext
 from typing import Any
 
 from ...providers.service import ProviderConfigService
@@ -15,24 +16,31 @@ async def thread_stream_generator(
     text: str,
     idea_id: str | None = None,
     user_id: str = "",
-    provider_id: str = "",
-    model_id: str = "",
+    provider_id: str | None = None,
+    model_id: str | None = None,
     definition: Any = None,
     service: ProviderConfigService | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Stream one resolved provider model through the DeepAgents runtime."""
+    """Stream one resolved provider model through the DeepAgents runtime.
+
+    ``provider_id``/``model_id`` are ``None`` in fallback mode (no per-user
+    provider configured, DEEPAGENTS_MODEL set) — the execution lease only
+    applies to real provider configurations.
+    """
     from ...agent.runner import execute_deep_agent_workflow_streaming
 
     emitted_done = False
     try:
-        async with (service or ProviderConfigService()).execution(user_id, provider_id):
+        provider_service = service or ProviderConfigService()
+        lease = provider_service.execution(user_id, provider_id) if provider_id else nullcontext()
+        async with lease:
             async for event in execute_deep_agent_workflow_streaming(
                 idea_id or "",
                 text,
                 thread_id,
                 user_id=user_id,
-                provider_id=provider_id,
-                model_id=model_id,
+                provider_id=provider_id or "",
+                model_id=model_id or "",
                 provider_definition=definition,
             ):
                 emitted_done = emitted_done or event.get("type") == "done"
