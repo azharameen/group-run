@@ -98,6 +98,13 @@ export interface ThreadMetadata {
   idea_id: string | null;
   tags: string[];
   agent_names: string[];
+  provider_id?: string | null;
+  model_id?: string | null;
+}
+
+export interface ChatModelSelection {
+  provider_id: string;
+  model_id: string;
 }
 
 export interface CreateThreadRequest {
@@ -382,10 +389,16 @@ export async function streamThreadMessage(
   ideaId?: string,
   onEvent?: (event: StreamEvent) => void,
   signal?: AbortSignal,
+  selection?: ChatModelSelection,
 ): Promise<void> {
   const res = await authenticatedFetch(`/threads/${threadId}/stream`, {
     method: 'POST',
-    body: JSON.stringify({ text, idea_id: ideaId ?? null }),
+    body: JSON.stringify({
+      text,
+      idea_id: ideaId ?? null,
+      provider_id: selection?.provider_id ?? null,
+      model_id: selection?.model_id ?? null,
+    }),
     signal,
   });
 

@@ -11,14 +11,23 @@ from typing import Any
 _logger = logging.getLogger(__name__)
 
 from ..models.transcript import normalize_transcript_event
+from ..providers.adapters import ProviderDefinition
 from ..storage.yaml_io import load_idea_yaml, save_idea_yaml
 from .domain_tools import (
     draft_patent_section,
 )
-from .runtime import get_deep_agent_runtime
+from .runtime import get_deep_agent_runtime, get_deep_agent_runtime_async
 
 
-async def resume_agent(thread_id: str, decisions: list[dict[str, Any]]) -> dict[str, Any]:
+async def resume_agent(
+    thread_id: str,
+    decisions: list[dict[str, Any]],
+    *,
+    user_id: str,
+    provider_id: str,
+    model_id: str,
+    provider_definition: ProviderDefinition,
+) -> dict[str, Any]:
     """Resume a checkpointed agent run after a HITL decision.
 
     Re-invokes the DeepAgents runtime with ``Command(resume=...)`` using the
@@ -31,19 +40,34 @@ async def resume_agent(thread_id: str, decisions: list[dict[str, Any]]) -> dict[
     # Verify a checkpoint exists for this thread before resuming. Interrupts
     # created via the API (no agent run) have no checkpointed state — resuming
     # them must fail with a clear error, never a fabricated result (Story 8.4 AC-5).
-    from ..services.thread_manager import get_async_checkpointer
+    from ..services.thread_manager import get_pg_checkpointer
 
-    checkpointer = get_async_checkpointer()
+    checkpointer = await get_pg_checkpointer()
     checkpoint_tuple = await checkpointer.aget_tuple(
         {"configurable": {"thread_id": thread_id}}
     )
     if checkpoint_tuple is None:
         raise RuntimeError(f"no resumable state for thread {thread_id}")
 
-    runtime = get_deep_agent_runtime()
+    runtime = await get_deep_agent_runtime_async(
+        provider_definition=provider_definition,
+        model_id=model_id,
+    )
     result = await runtime.ainvoke(
         Command(resume={"decisions": decisions}),
-        config={"configurable": {"thread_id": thread_id}},
+        config={
+            "configurable": {
+                "thread_id": thread_id,
+                "user_id": user_id,
+                "provider_id": provider_id,
+                "model_id": model_id,
+            },
+            "context": {
+                "user_id": user_id,
+                "provider_id": provider_id,
+                "model_id": model_id,
+            },
+        },
     )
     if isinstance(result, dict):
         return result
@@ -650,6 +674,11 @@ async def execute_deep_agent_workflow_streaming(
     idea_id: str,
     user_feedback: str,
     thread_id: str | None = None,
+    *,
+    user_id: str = "",
+    provider_id: str = "",
+    model_id: str = "",
+    provider_definition: ProviderDefinition | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Stream runtime-produced events through DeepAgents.
 
@@ -662,16 +691,26 @@ async def execute_deep_agent_workflow_streaming(
     """
     provenance = f"idea:{idea_id or 'global'}"
 
-    # Idea-scoped workflow — use DeepAgents graph
-    idea_data = load_idea_yaml(idea_id, "idea.yaml") or {}
+    # Idea-scoped workflow — use DeepAgents graph. Global threads carry an
+    # empty idea_id, which has no workspace file (load_idea_yaml rejects it).
+    idea_data = (load_idea_yaml(idea_id, "idea.yaml") or {}) if idea_id else {}
     title = idea_data.get("title", idea_id)
     state = idea_data.get("workflow_state", "ideascope_draft")
 
     provenance = f"idea:{idea_id}|state:{state}"
-    runtime = get_deep_agent_runtime()
+    runtime = await get_deep_agent_runtime_async(
+        provider_definition=provider_definition,
+        model_id=model_id,
+    )
 
     # Build graph config with thread_id (bound to checkpointer)
-    configurable: dict[str, Any] = {"idea_id": idea_id, "workflow_state": state}
+    configurable: dict[str, Any] = {
+        "idea_id": idea_id,
+        "workflow_state": state,
+        "user_id": user_id,
+        "provider_id": provider_id,
+        "model_id": model_id,
+    }
     if thread_id:
         configurable["thread_id"] = thread_id
 
@@ -709,7 +748,16 @@ async def execute_deep_agent_workflow_streaming(
             stream = await runtime.astream_events(
                 input_payload,
                 version="v3",
-                config={"configurable": configurable},
+                config={
+                    "configurable": configurable,
+                    "context": {
+                        "user_id": user_id,
+                        "idea_id": idea_id,
+                        "workflow_state": state,
+                        "provider_id": provider_id,
+                        "model_id": model_id,
+                    },
+                },
             )
 
         if _looks_like_v3_stream(stream):
@@ -731,7 +779,16 @@ async def execute_deep_agent_workflow_streaming(
             )
             raw_stream = await runtime.astream_events(
                 input_payload,
-                config={"configurable": configurable},
+                config={
+                    "configurable": configurable,
+                    "context": {
+                        "user_id": user_id,
+                        "idea_id": idea_id,
+                        "workflow_state": state,
+                        "provider_id": provider_id,
+                        "model_id": model_id,
+                    },
+                },
             )
         if _looks_like_v3_stream(raw_stream):
             async for event in _consume_v3_stream(raw_stream, idea_id, provenance):

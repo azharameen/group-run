@@ -416,6 +416,27 @@ describe('useChatStream', () => {
     expect(result.current.isGenerating).toBe(false);
   });
 
+  test('stream request failures are shown in the transcript and as a toast', async () => {
+    vi.mocked(apiClient.streamThreadMessage).mockRejectedValue(new Error('Provider disabled'));
+    const { result } = renderHook(() => useChatStream(defaultOptions));
+
+    act(() => {
+      result.current.setChatInput('Test');
+    });
+    await act(async () => {
+      result.current.handleSendOrQueue();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await waitFor(() =>
+      expect(result.current.messages.some((message) => message.text === 'Provider disabled')).toBe(true),
+    );
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Chat Request Failed',
+      description: 'Provider disabled',
+    }));
+  });
+
   test('state_update events append text to streaming message', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,

@@ -43,6 +43,7 @@ interface CommandCenterChatPaneProps {
 	pendingInterrupt?: InterruptPayload | null;
 	onApproveInterrupt?: (id: string, decision: string, reason: string) => Promise<void>;
 	onRejectInterrupt?: (id: string, reason: string) => Promise<void>;
+	modelSelector?: React.ReactNode;
 }
 
 export function CommandCenterChatPane({
@@ -60,6 +61,7 @@ export function CommandCenterChatPane({
 	pendingInterrupt,
 	onApproveInterrupt,
 	onRejectInterrupt,
+	modelSelector,
 }: CommandCenterChatPaneProps) {
 	const messageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -265,6 +267,7 @@ export function CommandCenterChatPane({
 			{/* Chat Input Footer */}
 			<div className="border-t p-3 shrink-0">
 				<div className="space-y-2">
+					{modelSelector}
 					{messageQueue.length > 0 && (
 						<div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
 							<span>

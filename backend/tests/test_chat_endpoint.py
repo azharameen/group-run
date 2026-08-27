@@ -1,98 +1,69 @@
 """Tests for the chat endpoint streaming behavior (AC-2).
 
-Validates SSE event format, error propagation, empty-input handling,
-and done-event generation in the finally block.
+Validates SSE event format, error propagation, done-event generation, and the
+provider-model contract of /api/chat/stream (an enabled provider configuration
+plus a discovered model is required; selection failures surface as 409).
 """
 
 import json
-import sys
-from unittest.mock import MagicMock, patch
+from contextlib import asynccontextmanager
+from typing import Any
 
+import app.api.routes.chat as chat_mod
 import pytest
-from fastapi import FastAPI
-from starlette.testclient import TestClient
-
+from app.api.app import create_app
+from app.providers.adapters import ProviderDefinition
+from app.providers.service import ProviderSelectionError
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+# NOTE: patches target the `chat_mod` module OBJECT (not dotted strings).
+# pytest's string resolution walks parent package attributes, which other
+# tests' module purges can leave pointing at orphaned module instances;
+# patching the object the routes' globals actually reference is immune.
 
-def _clear_modules(monkeypatch: pytest.MonkeyPatch):
-    """Clear modules so imports are fresh."""
-    for mod in list(sys.modules.keys()):
-        if any(mod.startswith(p) for p in (
-            "app.api.routes.chat",
-            "app.orchestrator.supervisor",
-            "app.orchestrator.supervisor_graph",
-            # NOTE: do NOT purge app.services.thread_manager here — re-importing
-            # it orphans the singletons referenced by already-imported routes
-            # (module-identity split). Its state is reset in place by the tests.
-            "app.config",
-        )):
-            # monkeypatch.delitem (not bare del) so the purge reverts at
-            # teardown — a permanent purge leaves cached modules referencing
-            # the old settings object (module-identity split).
-            monkeypatch.delitem(sys.modules, mod, raising=False)
+_DEFINITION = ProviderDefinition("test-provider", "https://api.example.com/v1", {"api_key": "k"})
 
 
-def _stub_deepagents(monkeypatch: pytest.MonkeyPatch):
-    """Provide stub modules for deepagents."""
-    import types
-    da = types.ModuleType("deepagents")
-    backends = types.ModuleType("deepagents.backends")
+class _StubProviderService:
+    """Provider service double: fixed enabled selection, no-op execution lease."""
 
-    class _CompositeBackend:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
+    async def resolve_model(self, user_id: str, provider_id: str | None, model_id: str | None):
+        return "prov-1", "model-1", _DEFINITION
 
-    class _FilesystemBackend:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
+    @asynccontextmanager
+    async def execution(self, user_id: str, provider_id: str):
+        yield
 
-    class _StateBackend:
-        pass
 
-    class _FilesystemPermission:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
+def _make_runner(events: list[dict[str, Any]], *, fail: Exception | None = None):
+    """Build a fake execute_deep_agent_workflow_streaming with a fixed event list."""
 
-    def _create_deep_agent(**kwargs):
-        return MagicMock()
+    async def _runner(*args: Any, **kwargs: Any):
+        if fail is not None:
+            raise fail
+        for event in events:
+            yield event
 
-    backends.CompositeBackend = _CompositeBackend
-    backends.FilesystemBackend = _FilesystemBackend
-    backends.StateBackend = _StateBackend
-    da.FilesystemPermission = _FilesystemPermission
-    da.create_deep_agent = _create_deep_agent
-
-    monkeypatch.setitem(sys.modules, "deepagents", da)
-    monkeypatch.setitem(sys.modules, "deepagents.backends", backends)
+    return _runner
 
 
 # ---------------------------------------------------------------------------
 # AC-2: Error shape helper
 # ---------------------------------------------------------------------------
 
-def test_error_shape_from_dict(monkeypatch: pytest.MonkeyPatch):
+def test_error_shape_from_dict():
     """_error_shape normalizes dict errors with defaults (AC-2)."""
-    _clear_modules(monkeypatch)
-    _stub_deepagents(monkeypatch)
-
-    from app.api.routes.chat import _error_shape
-
-    result = _error_shape({"custom": "error"})
+    result = chat_mod._error_shape({"custom": "error"})
     assert result["code"] == "agent_failure"
     assert result["retryable"] is False
 
 
-def test_error_shape_from_exception(monkeypatch: pytest.MonkeyPatch):
+def test_error_shape_from_exception():
     """_error_shape normalizes exception errors (AC-2)."""
-    _clear_modules(monkeypatch)
-    _stub_deepagents(monkeypatch)
-
-    from app.api.routes.chat import _error_shape
-
-    result = _error_shape(Exception("something broke"))
+    result = chat_mod._error_shape(Exception("something broke"))
     assert result["code"] == "agent_failure"
     assert "something broke" in result["message"]
 
@@ -103,55 +74,26 @@ def test_error_shape_from_exception(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.asyncio
 async def test_sse_data_format(monkeypatch: pytest.MonkeyPatch):
-    """SSE events use 'data: {json}\n\n' format (AC-2)."""
-    _clear_modules(monkeypatch)
-    _stub_deepagents(monkeypatch)
+    """SSE events use 'data: {json}\\n\\n' format (AC-2)."""
+    monkeypatch.setattr(
+        chat_mod,
+        "execute_deep_agent_workflow_streaming",
+        _make_runner([{"type": "state_update", "response": "hello", "routing_key": "general"}]),
+    )
+    monkeypatch.setattr(chat_mod, "provider_service", _StubProviderService())
 
-    mock_graph = MagicMock()
+    events = []
+    async for evt in chat_mod._chat_stream_generator(
+        "test message", "uid-1", "prov-1", "model-1", _DEFINITION, "thread-1", _StubProviderService()
+    ):
+        events.append(evt)
 
-    async def astream_gen(**kwargs):
-        yield {"response": "hello", "routing_key": "general"}
-
-    mock_graph.astream = MagicMock(return_value=astream_gen())
-
-    with patch("app.api.routes.chat.get_supervisor_graph", return_value=mock_graph):
-        from app.api.routes.chat import _chat_stream_generator
-
-        events = []
-        async for evt in _chat_stream_generator("test message"):
-            events.append(evt)
-
-        assert len(events) >= 1
-        # Events use data: {json}\n\n format
-        assert events[0].startswith("data: ")
-        parsed = json.loads(events[0][6:].strip())
-        assert parsed["type"] == "state_update"
-        assert parsed["response"] == "hello"
-
-
-# ---------------------------------------------------------------------------
-# AC-2: Empty input
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_empty_input_yields_done(monkeypatch: pytest.MonkeyPatch):
-    """Empty input yields done event without invoking supervisor (AC-2)."""
-    _clear_modules(monkeypatch)
-    _stub_deepagents(monkeypatch)
-
-    mock_graph = MagicMock()
-
-    with patch("app.api.routes.chat.get_supervisor_graph", return_value=mock_graph):
-        from app.api.routes.chat import _chat_stream_generator
-
-        events = []
-        async for evt in _chat_stream_generator(""):
-            events.append(evt)
-
-        done_found = any("done" in e for e in events)
-        assert done_found
-        # astream should not have been called with empty input
-        # (empty string produces a HumanMessage but content is blank)
+    assert len(events) >= 1
+    # Events use data: {json}\n\n format
+    assert events[0].startswith("data: ")
+    parsed = json.loads(events[0][6:].strip())
+    assert parsed["type"] == "state_update"
+    assert parsed["response"] == "hello"
 
 
 # ---------------------------------------------------------------------------
@@ -160,27 +102,23 @@ async def test_empty_input_yields_done(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.asyncio
 async def test_error_propagates_as_sse(monkeypatch: pytest.MonkeyPatch):
-    """Supervisor errors are emitted as SSE error events (AC-2)."""
-    _clear_modules(monkeypatch)
-    _stub_deepagents(monkeypatch)
+    """Runner failures are emitted as SSE error events (AC-2)."""
+    monkeypatch.setattr(
+        chat_mod,
+        "execute_deep_agent_workflow_streaming",
+        _make_runner([], fail=Exception("agent failure")),
+    )
+    monkeypatch.setattr(chat_mod, "provider_service", _StubProviderService())
 
-    mock_graph = MagicMock()
+    events = []
+    async for evt in chat_mod._chat_stream_generator(
+        "hello", "uid-1", "prov-1", "model-1", _DEFINITION, "thread-1", _StubProviderService()
+    ):
+        events.append(evt)
 
-    async def astream_gen(**kwargs):
-        raise Exception("agent failure")
-        yield  # make this an async generator
-
-    mock_graph.astream = MagicMock(return_value=astream_gen())
-
-    with patch("app.api.routes.chat.get_supervisor_graph", return_value=mock_graph):
-        from app.api.routes.chat import _chat_stream_generator
-
-        events = []
-        async for evt in _chat_stream_generator("hello"):
-            events.append(evt)
-
-        error_found = any("error" in e for e in events)
-        assert error_found
+    error_found = any("error" in e for e in events)
+    assert error_found
+    assert events[-1] == 'data: {"type": "done"}\n\n'
 
 
 # ---------------------------------------------------------------------------
@@ -189,53 +127,57 @@ async def test_error_propagates_as_sse(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.asyncio
 async def test_done_event_always_emitted(monkeypatch: pytest.MonkeyPatch):
-    """Done event is emitted when processing completes (AC-2)."""
-    _clear_modules(monkeypatch)
-    _stub_deepagents(monkeypatch)
+    """Done event is emitted even when the runner yields no done event (AC-2)."""
+    monkeypatch.setattr(
+        chat_mod,
+        "execute_deep_agent_workflow_streaming",
+        _make_runner([{"type": "state_update", "response": "test", "routing_key": "general"}]),
+    )
+    monkeypatch.setattr(chat_mod, "provider_service", _StubProviderService())
 
-    mock_graph = MagicMock()
+    events = []
+    async for evt in chat_mod._chat_stream_generator(
+        "hello", "uid-1", "prov-1", "model-1", _DEFINITION, "thread-1", _StubProviderService()
+    ):
+        events.append(evt)
 
-    async def astream_gen(**kwargs):
-        yield {"response": "test", "routing_key": "general"}
+    assert events[-1] == 'data: {"type": "done"}\n\n'
 
-    mock_graph.astream = MagicMock(return_value=astream_gen())
 
-    with patch("app.api.routes.chat.get_supervisor_graph", return_value=mock_graph):
-        from app.api.routes.chat import _chat_stream_generator
+@pytest.mark.asyncio
+async def test_done_emitted_when_runner_yields_nothing(monkeypatch: pytest.MonkeyPatch):
+    """An empty runner run still terminates with a single done event (AC-2)."""
+    monkeypatch.setattr(
+        chat_mod,
+        "execute_deep_agent_workflow_streaming",
+        _make_runner([]),
+    )
+    monkeypatch.setattr(chat_mod, "provider_service", _StubProviderService())
 
-        events = []
-        async for evt in _chat_stream_generator("test"):
-            events.append(evt)
+    events = []
+    async for evt in chat_mod._chat_stream_generator(
+        "hello", "uid-1", "prov-1", "model-1", _DEFINITION, "thread-1", _StubProviderService()
+    ):
+        events.append(evt)
 
-        # Should have at least one event (the state_update)
-        assert len(events) >= 1
+    assert events == ['data: {"type": "done"}\n\n']
 
 
 # ---------------------------------------------------------------------------
-# AC-2: TestClient endpoint test
+# AC-5: TestClient endpoint test (full app, auth middleware, provider contract)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_stream_chat_endpoint_via_test_client(monkeypatch: pytest.MonkeyPatch):
-    """TestClient hits the actual /api/chat/stream endpoint (AC-2)."""
-    _clear_modules(monkeypatch)
-    _stub_deepagents(monkeypatch)
+async def test_stream_chat_endpoint_via_test_client(monkeypatch: pytest.MonkeyPatch, patch_config):
+    """TestClient hits the actual /api/chat/stream endpoint (AC-5)."""
+    monkeypatch.setattr(chat_mod, "provider_service", _StubProviderService())
+    monkeypatch.setattr(
+        chat_mod,
+        "execute_deep_agent_workflow_streaming",
+        _make_runner([{"type": "state_update", "response": "hello from agent", "routing_key": "general"}]),
+    )
 
-    from app.api.routes.chat import router
-
-    app = FastAPI()
-    app.include_router(router)
-    client = TestClient(app)
-
-    mock_graph = MagicMock()
-
-    async def astream_gen(**kwargs):
-        yield {"response": "hello from agent", "routing_key": "general"}
-
-    mock_graph.astream = MagicMock(return_value=astream_gen())
-
-    with patch("app.api.routes.chat.get_supervisor_graph", return_value=mock_graph):
-        # StreamingResponse events are buffered by TestClient
+    with TestClient(create_app()) as client:
         resp = client.post("/api/chat/stream", json={"text": "hello"})
         assert resp.status_code == 200
         assert "text/event-stream" in resp.headers["content-type"]
@@ -245,41 +187,30 @@ async def test_stream_chat_endpoint_via_test_client(monkeypatch: pytest.MonkeyPa
         for line in body.split("\n"):
             if line.startswith("data: "):
                 parsed = json.loads(line[6:])
-                assert parsed["type"] == "state_update"
-                assert parsed["response"] == "hello from agent"
-                break
+                if parsed.get("type") == "state_update":
+                    assert parsed["response"] == "hello from agent"
+                    break
+        else:
+            pytest.fail("no state_update event in stream")
 
 
 # ---------------------------------------------------------------------------
-# AC-5: Full integration test (POST -> supervisor -> SSE)
+# AC-6: Provider selection contract
 # ---------------------------------------------------------------------------
+
+class _NoSelectionProviderService(_StubProviderService):
+    """Service double with no saved/usable provider model for the user."""
+
+    async def resolve_model(self, user_id: str, provider_id: str | None, model_id: str | None):
+        raise ProviderSelectionError("Choose an enabled provider model before starting a chat")
+
 
 @pytest.mark.asyncio
-async def test_full_integration_post_to_sse(monkeypatch: pytest.MonkeyPatch):
-    """Full POST request flows through supervisor and produces SSE (AC-5)."""
-    _clear_modules(monkeypatch)
-    _stub_deepagents(monkeypatch)
+async def test_chat_stream_requires_provider_selection(monkeypatch: pytest.MonkeyPatch, patch_config):
+    """Without an enabled provider model, /api/chat/stream returns 409 (AC-6)."""
+    monkeypatch.setattr(chat_mod, "provider_service", _NoSelectionProviderService())
 
-    from app.api.routes.chat import _chat_stream_generator
-
-    # Mock the supervisor graph
-    mock_graph = MagicMock()
-
-    async def astream_gen(**kwargs):
-        yield {"response": "integration response", "routing_key": "general"}
-
-    mock_graph.astream = MagicMock(return_value=astream_gen())
-
-    with patch("app.api.routes.chat.get_supervisor_graph", return_value=mock_graph):
-        # Collect all SSE events from the generator
-        events = []
-        async for evt in _chat_stream_generator("integration test"):
-            events.append(evt)
-
-        assert len(events) >= 1
-        # First event should be a state_update
-        first_line = events[0]
-        assert first_line.startswith("data: ")
-        parsed = json.loads(first_line[6:])
-        assert parsed["type"] == "state_update"
-        assert "integration response" in parsed["response"]
+    with TestClient(create_app()) as client:
+        resp = client.post("/api/chat/stream", json={"text": "hello"})
+        assert resp.status_code == 409
+        assert "provider" in resp.json()["detail"].lower()

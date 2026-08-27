@@ -10,6 +10,8 @@ import { useThreadManager } from "@/hooks/useThreadManager";
 import { useChatStream } from "@/hooks/useChatStream";
 import { CommandCenterChatPane } from "@/components/command-center/CommandCenterChatPane";
 import { CommandCenterWorkspacePane } from "@/components/command-center/CommandCenterWorkspacePane";
+import { ModelSelector } from "@/components/command-center/ModelSelector";
+import type { ChatModelSelection } from "@/api/threads";
 
 interface CommandCenterProps {
 	activeThreadId: string | null;
@@ -29,14 +31,7 @@ export default function CommandCenter({
 	threads,
 	isWorkspaceOpen = true,
 }: CommandCenterProps) {
-
-	useThreadManager({
-		activeThreadId,
-		setActiveThreadId,
-		onActiveThreadTitleChange,
-		onThreadsUpdate,
-		threads,
-	});
+	const [modelSelection, setModelSelection] = React.useState<ChatModelSelection | null>(null);
 
 	const threadManager = useThreadManager({
 		activeThreadId,
@@ -45,6 +40,13 @@ export default function CommandCenter({
 		onThreadsUpdate,
 		threads,
 	});
+
+	React.useEffect(() => {
+		const { provider_id, model_id } = threadManager.activeThread ?? {};
+		setModelSelection(
+			provider_id && model_id ? { provider_id, model_id } : null,
+		);
+	}, [threadManager.activeThread]);
 
 	const ensureThread = useCallback(async (): Promise<string> => {
 		if (threadManager?.ensureThread) {
@@ -75,6 +77,7 @@ export default function CommandCenter({
 		activeThreadId,
 		ensureThread,
 		onThreadsUpdate,
+		modelSelection,
 	});
 
 	const handleCreateNewThread = useCallback(async () => {
@@ -107,6 +110,7 @@ export default function CommandCenter({
 							pendingInterrupt={pendingInterrupt}
 							onApproveInterrupt={handleApproveInterrupt}
 							onRejectInterrupt={handleRejectInterrupt}
+							modelSelector={<ModelSelector value={modelSelection} onChange={setModelSelection} disabled={isGenerating} />}
 						/>
 					</div>
 				) : (
@@ -135,6 +139,7 @@ export default function CommandCenter({
 										pendingInterrupt={pendingInterrupt}
 										onApproveInterrupt={handleApproveInterrupt}
 										onRejectInterrupt={handleRejectInterrupt}
+										modelSelector={<ModelSelector value={modelSelection} onChange={setModelSelection} disabled={isGenerating} />}
 									/>
 								</ResizablePanel>
 

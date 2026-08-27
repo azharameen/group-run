@@ -1,19 +1,15 @@
-import queue
-import threading
-from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
-
-from app.api.app import create_app
 import app.services.interrupt_service as interrupt_module
+import pytest
+from app.api.app import create_app
 from app.services.interrupt_service import InterruptService
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
 async def ctx(monkeypatch):
-    from sqlalchemy import text
     from app.db.session import get_session_factory
+    from sqlalchemy import text
     async with get_session_factory()() as session:
         await session.execute(text("DELETE FROM interrupts"))
         await session.commit()
@@ -27,8 +23,14 @@ async def ctx(monkeypatch):
     InterruptService._instance = None
 
 
-def _create_interrupt(ctx, thread_id="thread-1", tool_name="edit_file", message="Approve?", tool_input=None):
-    payload = {"thread_id": thread_id, "tool_name": tool_name, "message": message}
+def _create_interrupt(ctx, thread_id=None, tool_name="edit_file", message="Approve?", tool_input=None):
+    # Interrupt creation requires an existing owner-scoped thread; create one
+    # via the API. The thread_id argument only distinguishes separate threads
+    # across calls (its literal value is not used).
+    created = ctx["client"].post("/api/threads", json={"title": thread_id or "Interrupt thread"})
+    assert created.status_code == 200
+    real_thread_id = created.json()["thread"]["thread_id"]
+    payload = {"thread_id": real_thread_id, "tool_name": tool_name, "message": message}
     if tool_input is not None:
         payload["tool_input"] = tool_input
     res = ctx["client"].post("/api/interrupts/", json=payload)

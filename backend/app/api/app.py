@@ -124,12 +124,6 @@ async def lifespan(_app: FastAPI):
     from ..db.session import dispose_engine, get_engine, reset_engine
     get_engine()
     logger.info("[Startup] PostgreSQL engine initialized")
-    try:
-        from .routes.providers import service as provider_service
-        await provider_service.refresh_runtime()
-    except Exception:
-        logger.warning("[Startup] Could not load active provider configuration", exc_info=True)
-
     # Checkpointer initialization is lazy so Cloud Run can bind its port even
     # when an external database is temporarily unavailable. The readiness
     # endpoint and request path still surface database failures explicitly.

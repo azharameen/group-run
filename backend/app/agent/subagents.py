@@ -7,12 +7,17 @@ from typing import Any
 import yaml
 
 from ..config import TEAMS_CONFIG_PATH, settings
-from ..providers.runtime import get_configured_chat_model, has_active_provider
+from ..providers.adapters import ProviderDefinition
+from ..providers.runtime import get_configured_chat_model
 
 logger = logging.getLogger(__name__)
 
 
-def build_agent_subagents(team_name: str = "general") -> list[dict[str, Any]]:
+def build_agent_subagents(
+    team_name: str = "general",
+    provider_definition: ProviderDefinition | None = None,
+    model_id: str | None = None,
+) -> list[dict[str, Any]]:
     """Return subagent definitions from team configuration.
 
     Reads ``config/teams.yaml``, extracts the agents list for the named
@@ -38,7 +43,9 @@ def build_agent_subagents(team_name: str = "general") -> list[dict[str, Any]]:
             continue
         model = agent_entry.get("model", "auto")
         if model == "auto":
-            model = get_configured_chat_model() if has_active_provider() else settings.deepagents_model
+            model = get_configured_chat_model(
+                provider_definition, model_id, settings.deepagents_model
+            )
         system_prompt = agent_entry.get(
             "system_prompt",
             f"{team_description} You are {name}.",

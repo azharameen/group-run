@@ -1,22 +1,42 @@
-from pathlib import Path
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
-import pytest
-from fastapi.testclient import TestClient
-
-from app.api.app import create_app
 import app.services.interrupt_service as interrupt_module
+import pytest
+from app.api.app import create_app
+from app.api.routes import interrupts as interrupt_routes
+from app.auth.models import AuthenticatedPrincipal
+from app.providers.adapters import ProviderDefinition
 from app.services.interrupt_service import InterruptService
+from fastapi import FastAPI, Request
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-async def client():
-    from sqlalchemy import text
+async def client(monkeypatch):
     from app.db.session import get_session_factory
+    from sqlalchemy import text
     async with get_session_factory()() as session:
         await session.execute(text("DELETE FROM interrupts"))
         await session.commit()
     InterruptService._instance = None
+
+    class FakeProviderService:
+        async def resolve_model(self, _user_id, provider_id, model_id):
+            return provider_id, model_id, ProviderDefinition(
+                "ollama", "http://localhost:11434", {}
+            )
+
+        @asynccontextmanager
+        async def execution(self, _user_id, _provider_id):
+            yield
+
+    monkeypatch.setattr(
+        interrupt_routes,
+        "get_or_claim_thread",
+        AsyncMock(return_value={"provider_id": "provider-1", "model_id": "model-1"}),
+    )
+    monkeypatch.setattr(interrupt_routes, "provider_service", FakeProviderService())
     client = TestClient(create_app())
     yield client
     InterruptService._instance = None
@@ -31,8 +51,11 @@ async def test_list_pending_empty(client):
 
 @pytest.mark.asyncio
 async def test_list_pending_with_data(client):
+    from app.services.thread_manager import create_thread
+
+    thread = await create_thread(owner_uid="test-user-123")
     interrupt = await InterruptService.instance().create_interrupt(
-        "thread-1", "write_file", "Need approval", {"path": "x.txt"}
+        thread["thread_id"], "write_file", "Need approval", {"path": "x.txt"}
     )
     res = client.get("/api/interrupts/pending")
     assert res.status_code == 200
@@ -149,7 +172,14 @@ async def test_resume_approve_builds_approve_decision(client):
     with patch("app.agent.runner.resume_agent", new=AsyncMock(return_value={"output": "done"})) as mock_resume:
         res = client.post(f"/api/interrupts/{interrupt['id']}/resume", json={})
     assert res.status_code == 200
-    mock_resume.assert_awaited_once_with(interrupt["thread_id"], [{"type": "approve"}])
+    mock_resume.assert_awaited_once_with(
+        interrupt["thread_id"],
+        [{"type": "approve"}],
+        user_id="test-user-123",
+        provider_id="provider-1",
+        model_id="model-1",
+        provider_definition=ProviderDefinition("ollama", "http://localhost:11434", {}),
+    )
     assert res.json()["response"] == "done"
 
 
@@ -159,7 +189,14 @@ async def test_resume_reject_builds_reject_decision(client):
     with patch("app.agent.runner.resume_agent", new=AsyncMock(return_value={"output": "ok"})) as mock_resume:
         res = client.post(f"/api/interrupts/{interrupt['id']}/resume", json={})
     assert res.status_code == 200
-    mock_resume.assert_awaited_once_with(interrupt["thread_id"], [{"type": "reject", "message": "no"}])
+    mock_resume.assert_awaited_once_with(
+        interrupt["thread_id"],
+        [{"type": "reject", "message": "no"}],
+        user_id="test-user-123",
+        provider_id="provider-1",
+        model_id="model-1",
+        provider_definition=ProviderDefinition("ollama", "http://localhost:11434", {}),
+    )
 
 
 @pytest.mark.asyncio
@@ -178,3 +215,97 @@ def test_create_interrupt_delivery_failure_returns_500(client):
         )
         assert res.status_code == 500
         assert "Failed to deliver interrupt.created event" in res.json()["detail"]
+
+
+def test_resume_uses_the_owned_thread_provider_without_global_fallback(monkeypatch):
+    """HITL resumes exactly the provider/model saved on the owned thread."""
+    interrupt = {
+        "id": "interrupt-1",
+        "thread_id": "thread-1",
+        "status": "approved",
+        "reason": "ok",
+    }
+    definition = object()
+    resolve_model = AsyncMock(return_value=("provider-1", "model-1", definition))
+    resumed = AsyncMock(return_value={"output": "resumed"})
+
+    class FakeInterruptService:
+        async def get_interrupt(self, interrupt_id):
+            return interrupt if interrupt_id == "interrupt-1" else None
+
+    class FakeProviderService:
+        async def resolve_model(self, user_id, provider_id, model_id):
+            return await resolve_model(user_id, provider_id, model_id)
+
+        @asynccontextmanager
+        async def execution(self, user_id, provider_id):
+            yield
+
+    app = FastAPI()
+
+    @app.middleware("http")
+    async def set_principal(request: Request, call_next):
+        request.state.principal = AuthenticatedPrincipal.from_claims({"sub": "user-a"})
+        return await call_next(request)
+
+    app.include_router(interrupt_routes.router)
+    monkeypatch.setattr(
+        interrupt_routes.InterruptService,
+        "instance",
+        classmethod(lambda cls: FakeInterruptService()),
+    )
+    monkeypatch.setattr(
+        interrupt_routes,
+        "get_or_claim_thread",
+        AsyncMock(return_value={"provider_id": "provider-1", "model_id": "model-1"}),
+    )
+    monkeypatch.setattr(interrupt_routes, "provider_service", FakeProviderService())
+    monkeypatch.setattr("app.agent.runner.resume_agent", resumed)
+
+    response = TestClient(app).post("/api/interrupts/interrupt-1/resume", json={})
+
+    assert response.status_code == 200
+    resolve_model.assert_awaited_once_with("user-a", "provider-1", "model-1")
+    resumed.assert_awaited_once_with(
+        "thread-1",
+        [{"type": "approve"}],
+        user_id="user-a",
+        provider_id="provider-1",
+        model_id="model-1",
+        provider_definition=definition,
+    )
+
+
+def test_resume_rejects_missing_persisted_provider_without_default(monkeypatch):
+    """A historical interrupt without an exact selection cannot fall back."""
+    class FakeInterruptService:
+        async def get_interrupt(self, _interrupt_id):
+            return {"id": "interrupt-1", "thread_id": "thread-1", "status": "approved"}
+
+    class FakeProviderService:
+        resolve_model = AsyncMock()
+
+    app = FastAPI()
+
+    @app.middleware("http")
+    async def set_principal(request: Request, call_next):
+        request.state.principal = AuthenticatedPrincipal.from_claims({"sub": "user-a"})
+        return await call_next(request)
+
+    app.include_router(interrupt_routes.router)
+    monkeypatch.setattr(
+        interrupt_routes.InterruptService,
+        "instance",
+        classmethod(lambda cls: FakeInterruptService()),
+    )
+    monkeypatch.setattr(
+        interrupt_routes, "get_or_claim_thread", AsyncMock(return_value={"title": "legacy"})
+    )
+    fake_provider_service = FakeProviderService()
+    monkeypatch.setattr(interrupt_routes, "provider_service", fake_provider_service)
+
+    response = TestClient(app).post("/api/interrupts/interrupt-1/resume", json={})
+
+    assert response.status_code == 409
+    assert "persisted provider model" in response.json()["detail"]
+    fake_provider_service.resolve_model.assert_not_awaited()

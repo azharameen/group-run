@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import CommandCenter from '@/pages/CommandCenter';
 import * as apiClient from '@/api/client';
 import { useChatStream } from '@/hooks/useChatStream';
+import { useThreadManager } from '@/hooks/useThreadManager';
 import type { InterruptPayload } from '@/api/threads';
 import type { HTMLAttributes, ReactNode } from 'react';
 
@@ -36,6 +37,14 @@ vi.mock('@/api/client', () => ({
   getThreadMessages: vi.fn(),
   streamThreadMessage: vi.fn(),
   connectSSE: vi.fn(),
+}));
+
+// ModelSelector has its own dedicated test; keep it inert here so the page
+// test never reaches the provider API layer.
+vi.mock('@/components/command-center/ModelSelector', () => ({
+  ModelSelector: ({ disabled }: { value?: unknown; onChange?: unknown; disabled?: boolean }) => (
+    <div data-testid="model-selector" data-disabled={disabled ? 'true' : 'false'} />
+  ),
 }));
 
 // Mock sub-components
@@ -137,6 +146,7 @@ vi.mock('@/components/ui/resizable', () => ({
 }));
 
 const mockUseChatStream = vi.mocked(useChatStream);
+const mockUseThreadManager = vi.mocked(useThreadManager);
 const mockCreateThread = vi.mocked(apiClient.createThread);
 
 const defaultProps = {
@@ -152,6 +162,14 @@ const defaultProps = {
 describe('CommandCenter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockUseThreadManager.mockReturnValue({
+      activeThread: null,
+      ensureThread: vi.fn().mockResolvedValue('thread-1'),
+      refreshThreads: vi.fn(),
+      updateThread: vi.fn().mockResolvedValue(null),
+      deleteThread: vi.fn().mockResolvedValue(undefined),
+    });
 
     mockUseChatStream.mockReturnValue({
       chatInput: '',

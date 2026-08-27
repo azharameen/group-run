@@ -3,7 +3,7 @@
 import json
 import sys
 import types
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -207,3 +207,40 @@ def test_mcp_custom_timeout_preserved(monkeypatch, _mock_mcp_adapter, _mock_modu
     assert len(tools) == 1
     assert tools[0].timeout == 30
 
+
+@pytest.mark.asyncio
+async def test_async_runtime_initializes_checkpointer_before_compiling(monkeypatch):
+    """The first stream must not compile a graph with a null checkpointer."""
+    from app.agent import runtime as runtime_mod
+    from app.services import thread_manager
+
+    checkpointer = object()
+    definition = object()
+    factory = MagicMock(return_value=object())
+    monkeypatch.setattr(
+        thread_manager, "get_pg_checkpointer", AsyncMock(return_value=checkpointer)
+    )
+    monkeypatch.setattr(runtime_mod, "get_deep_agent_runtime", factory)
+
+    runtime = await runtime_mod.get_deep_agent_runtime_async(
+        provider_definition=definition, model_id="chat-model"
+    )
+
+    assert runtime is factory.return_value
+    factory.assert_called_once_with(
+        "general",
+        provider_definition=definition,
+        model_id="chat-model",
+        checkpointer=checkpointer,
+        include_domain_tools=True,
+        include_mcp_tools=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_runtime_never_compiles_without_a_checkpointer():
+    from app.agent.runtime import _graph_checkpointer
+
+    unloaded_manager = types.SimpleNamespace(_PG_CHECKPOINTER=None)
+    with pytest.raises(RuntimeError, match="get_deep_agent_runtime_async"):
+        _graph_checkpointer(unloaded_manager)

@@ -10,6 +10,7 @@ import {
 	resumeInterrupt,
 	type StreamEvent,
 	type ThreadMetadata,
+	type ChatModelSelection,
 } from "@/api/client";
 import { type InterruptPayload } from "@/api/threads";
 import type { ChatMessage, TaskItem } from "@/types/chat";
@@ -25,6 +26,7 @@ export interface UseChatStreamOptions {
 	activeIdeaId?: string | null;
 	ensureThread: () => Promise<string>;
 	onThreadsUpdate: (threads: ThreadMetadata[]) => void;
+	modelSelection?: ChatModelSelection | null;
 }
 
 export function useChatStream({
@@ -32,6 +34,7 @@ export function useChatStream({
 	activeIdeaId,
 	ensureThread,
 	onThreadsUpdate,
+	modelSelection,
 }: UseChatStreamOptions) {
 	const [chatInput, setChatInput] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
@@ -319,6 +322,14 @@ export function useChatStream({
 
 	const executeSend = useCallback(
 		async (textToSend: string) => {
+			if (modelSelection === null) {
+				toast({
+					variant: "destructive",
+					title: "Choose a model",
+					description: "Add an enabled provider model before sending a message.",
+				});
+				return;
+			}
 			trackEvent("chat_message_sent", { text_length: textToSend.length });
 			const streamTrace = startTrace("message_stream_generation");
 
@@ -350,8 +361,27 @@ export function useChatStream({
 			let tid: string;
 			try {
 				tid = await ensureThread();
-			} catch {
+			} catch (err) {
 				streamTrace?.stop();
+				const errMsg = err instanceof Error ? err.message : "Unable to create a chat thread";
+				toast({
+					variant: "destructive",
+					title: "Chat Request Failed",
+					description: errMsg,
+				});
+				setRawMessages((prev) => {
+					const next = [...prev, {
+						id: `error_${Date.now()}`,
+						sender: "System",
+						text: errMsg,
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
+						eventType: "error",
+					}];
+					return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+				});
 				if (streamCounterRef.current === currentStreamId) {
 					setIsGenerating(false);
 					if (abortRef.current === ctrl) {
@@ -367,11 +397,7 @@ export function useChatStream({
 			}
 
 			try {
-				await streamThreadMessage(
-					tid,
-					textToSend,
-					undefined,
-					(evt: StreamEvent) => {
+				const streamEvent = (evt: StreamEvent) => {
 						if (ctrl.signal.aborted || streamCounterRef.current !== currentStreamId) {
 							return;
 						}
@@ -473,12 +499,38 @@ export function useChatStream({
 							}
 
 						setRawMessages((prev) => [...prev, eventToMessage(evt)]);
-					},
-					ctrl.signal,
-				);
+				}
+				if (modelSelection) {
+					await streamThreadMessage(
+						tid, textToSend, undefined, streamEvent, ctrl.signal, modelSelection,
+					);
+				} else {
+					await streamThreadMessage(tid, textToSend, undefined, streamEvent, ctrl.signal);
+				}
 			} catch (err) {
-				if (err instanceof Error && err.name !== "AbortError") {
+				if (!(err instanceof Error && err.name === "AbortError")) {
 					console.error("[Chat Stream Error]", err);
+					const errMsg = err instanceof Error && err.message
+						? err.message
+						: "Unable to send chat message";
+					toast({
+						variant: "destructive",
+						title: "Chat Request Failed",
+						description: errMsg,
+					});
+					setRawMessages((prev) => {
+						const next = [...prev, {
+							id: `error_${Date.now()}`,
+							sender: "System",
+							text: errMsg,
+							timestamp: new Date().toLocaleTimeString([], {
+								hour: "2-digit",
+								minute: "2-digit",
+							}),
+							eventType: "error",
+						}];
+						return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+					});
 				}
 			} finally {
 				streamTrace?.stop();
@@ -501,7 +553,7 @@ export function useChatStream({
 				}
 			}
 		},
-		[ensureThread, onThreadsUpdate],
+		[ensureThread, modelSelection, onThreadsUpdate],
 	);
 
 	const handleSendOrQueue = useCallback(() => {

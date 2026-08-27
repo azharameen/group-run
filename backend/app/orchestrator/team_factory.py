@@ -33,7 +33,7 @@ from ..agent.runtime import (
 )
 from ..agent.subagents import build_agent_subagents
 from ..config import settings
-from ..providers.runtime import get_configured_chat_model, has_active_provider
+from ..providers.runtime import get_configured_chat_model
 
 logger = logging.getLogger(__name__)
 
@@ -103,13 +103,13 @@ class TeamSubgraphFactory:
         """
         model = agent_config.get("model", "auto")
         if model == "auto":
-            if not settings.deepagents_model and not has_active_provider():
+            if not settings.deepagents_model:
                 raise RuntimeError(
                     "Agent model is 'auto' but settings.deepagents_model is not "
                     "configured — cannot resolve model for agent "
                     f"'{agent_name}'"
                 )
-            model = get_configured_chat_model() if has_active_provider() else settings.deepagents_model
+            model = settings.deepagents_model
 
         system_prompt = _load_system_prompt(team_description)
 
@@ -162,7 +162,7 @@ class TeamSubgraphFactory:
                     # NFR-A10: swap in the deterministic local mock when the
                     # resolved model is the test sentinel so CI runs never
                     # depend on a live LLM; other model strings pass through.
-                    model=get_configured_chat_model(model),
+                    model=get_configured_chat_model(configured_model=model),
                     system_prompt=system_prompt,
                     backend=build_agent_backend(),
                     permissions=build_agent_permissions(),
