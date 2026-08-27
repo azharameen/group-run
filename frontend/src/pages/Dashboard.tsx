@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search, Lightbulb, Plus, Trash2 } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
-  fetchIdeas,
-  connectSSE,
-  createIdea,
-  deleteIdea,
-  type IdeaListItem,
-} from '../api/client'
-import IdeaCard from '../components/IdeaCard'
-
+  useIdeasQuery,
+  useCreateIdeaMutation,
+  useDeleteIdeaMutation,
+} from '@/hooks/queries/useIdeas'
+import {
+  createIdeaSchema,
+  type CreateIdeaFormValues,
+} from '@/lib/schemas/idea'
+import IdeaCard from '@/components/IdeaCard'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,53 +38,45 @@ import {
 import { useToast } from '@/hooks/use-toast'
 
 export default function Dashboard() {
-  const [ideas, setIdeas] = useState<IdeaListItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: ideas = [], isLoading } = useIdeasQuery()
+  const createIdeaMutation = useCreateIdeaMutation()
+  const deleteIdeaMutation = useDeleteIdeaMutation()
+
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIdeas, setSelectedIdeas] = useState<Set<string>>(new Set())
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [ideaToDelete, setIdeaToDelete] = useState<string | null>(null)
-  const [newTitle, setNewTitle] = useState('')
-  const [newSignalText, setNewSignalText] = useState('')
   const { toast } = useToast()
+  const navigate = useNavigate()
 
-  const loadData = useCallback(async () => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isValid },
+  } = useForm<CreateIdeaFormValues>({
+    resolver: zodResolver(createIdeaSchema),
+    mode: 'onChange',
+    defaultValues: {
+      title: '',
+      signalText: 'Autonomous discovery',
+    },
+  })
+
+  const onSubmitCreate = async (values: CreateIdeaFormValues) => {
     try {
-      const ideasData = await fetchIdeas()
-      setIdeas(ideasData)
-    } catch (err) {
-      console.error('Failed to load ideas:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadData()
-
-    const es = connectSSE((event) => {
-      if (['idea.created', 'idea.updated', 'idea.deleted'].includes(event)) {
-        loadData()
-      }
-    })
-
-    return () => es.close()
-  }, [loadData])
-
-  const handleCreate = async () => {
-    if (!newTitle.trim()) return
-    try {
-      const result = await createIdea(newSignalText.trim() || 'Autonomous discovery', newTitle.trim())
+      const result = await createIdeaMutation.mutateAsync({
+        title: values.title.trim(),
+        signalText: values.signalText.trim() || 'Autonomous discovery',
+      })
       toast({
         title: 'Idea Created',
         description: `Created ${result.idea_id}`,
       })
       setIsCreateOpen(false)
-      setNewTitle('')
-      setNewSignalText('')
-      await loadData()
-      window.location.href = `/ideas/${result.idea_id}`
+      reset()
+      navigate(`/ideas/${result.idea_id}`)
     } catch (err: unknown) {
       toast({
         title: 'Error',
@@ -93,17 +89,16 @@ export default function Dashboard() {
   const handleDelete = async () => {
     if (!ideaToDelete) return
     try {
-      await deleteIdea(ideaToDelete)
+      await deleteIdeaMutation.mutateAsync(ideaToDelete)
       toast({
         title: 'Idea Deleted',
         description: `Deleted ${ideaToDelete}`,
       })
-      setSelectedIdeas(prev => {
+      setSelectedIdeas((prev) => {
         const next = new Set(prev)
         next.delete(ideaToDelete)
         return next
       })
-      await loadData()
     } catch (err: unknown) {
       toast({
         title: 'Error',
@@ -121,7 +116,7 @@ export default function Dashboard() {
 
     for (const ideaId of ideasToDelete) {
       try {
-        await deleteIdea(ideaId)
+        await deleteIdeaMutation.mutateAsync(ideaId)
       } catch (err: unknown) {
         console.error(`Failed to delete ${ideaId}:`, err)
       }
@@ -132,11 +127,10 @@ export default function Dashboard() {
       description: `Deleted ${ideasToDelete.length} ideas`,
     })
     setSelectedIdeas(new Set())
-    await loadData()
   }
 
   const toggleIdeaSelection = (ideaId: string) => {
-    setSelectedIdeas(prev => {
+    setSelectedIdeas((prev) => {
       const next = new Set(prev)
       if (next.has(ideaId)) {
         next.delete(ideaId)
@@ -152,7 +146,7 @@ export default function Dashboard() {
     return true
   })
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6 md:p-8 pt-6 max-w-7xl w-full mx-auto space-y-6 flex-1">
         <div className="space-y-3">
@@ -233,35 +227,46 @@ export default function Dashboard() {
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Idea</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Title *</label>
-              <Input
-                value={newTitle}
-                data-testid="idea-title-input"
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Enter idea title"
-                maxLength={100}
-              />
+          <form onSubmit={handleSubmit(onSubmitCreate)}>
+            <DialogHeader>
+              <DialogTitle>Create New Idea</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Title *</label>
+                <Input
+                  {...register('title')}
+                  data-testid="idea-title-input"
+                  placeholder="Enter idea title"
+                  maxLength={100}
+                />
+                {errors.title && (
+                  <p className="text-xs text-destructive">{errors.title.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Signal Text (optional)</label>
+                <Textarea
+                  {...register('signalText')}
+                  data-testid="idea-description-input"
+                  placeholder="Describe the problem or opportunity..."
+                  rows={3}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Signal Text (optional)</label>
-              <Textarea
-                value={newSignalText}
-                data-testid="idea-description-input"
-                onChange={(e) => setNewSignalText(e.target.value)}
-                placeholder="Describe the problem or opportunity..."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} data-testid="submit-idea-button" disabled={!newTitle.trim()}>Create Idea</Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                data-testid="submit-idea-button"
+                disabled={!isValid || createIdeaMutation.isPending}
+              >
+                {createIdeaMutation.isPending ? 'Creating...' : 'Create Idea'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -276,7 +281,11 @@ export default function Dashboard() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} data-testid="confirm-delete-button" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              data-testid="confirm-delete-button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete Idea
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -7,6 +7,7 @@ import {
 	type ThreadMetadata,
 	type UpdateThreadRequest,
 } from "@/api/client";
+import { toast } from "@/hooks/use-toast";
 
 interface UseThreadManagerOptions {
 	activeThreadId: string | null;
@@ -64,10 +65,11 @@ export function useThreadManager({
 			.then(onThreadsUpdate)
 			.catch((err) => {
 				console.error("Error refreshing threads:", err);
-				// Surface error to user via a simple toast-like notification
-				if (typeof window !== "undefined" && window.showToast) {
-					window.showToast("Failed to refresh threads", "error");
-				}
+				toast({
+					title: "Failed to refresh threads",
+					description: err instanceof Error ? err.message : "Error refreshing threads",
+					variant: "destructive",
+				});
 			})
 			.finally(() => {
 				refreshingRef.current = false;

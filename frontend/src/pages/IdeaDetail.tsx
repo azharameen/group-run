@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { FileText, Target, AlertTriangle, Lightbulb, Loader2, SendHorizonal } from "lucide-react";
-import { fetchIdeaDetail, fetchIdeaFiles, deleteIdea, addIdeaComment, connectSSE, type IdeaDetail as IdeaDetailType, type IdeaFile } from "../api/client";
-import { fetchPendingInterrupts } from "@/api/client";
-import { InterruptItem } from "../types/deepagents";
-import { IdeaFilesystem } from "../components/IdeaFilesystem";
+import {
+	useIdeaDetailQuery,
+	useIdeaFilesQuery,
+	useDeleteIdeaMutation,
+	useAddIdeaCommentMutation,
+} from "@/hooks/queries/useIdeas";
+import { usePendingInterruptsQuery } from "@/hooks/queries/useThreads";
+import { IdeaFilesystem } from "@/components/IdeaFilesystem";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -21,96 +25,37 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { IdeaActionsHeader } from "../components/idea-detail/IdeaActionsHeader";
-import { ArtifactsPanel } from "../components/idea-detail/ArtifactsPanel";
-import { MaturityPanel } from "../components/idea-detail/MaturityPanel";
-import { NoveltyAssessmentPanel } from "../components/idea-detail/NoveltyAssessmentPanel";
-import { ProductDefinitionPanel } from "../components/idea-detail/ProductDefinitionPanel";
+import { IdeaActionsHeader } from "@/components/idea-detail/IdeaActionsHeader";
+import { ArtifactsPanel } from "@/components/idea-detail/ArtifactsPanel";
+import { MaturityPanel } from "@/components/idea-detail/MaturityPanel";
+import { NoveltyAssessmentPanel } from "@/components/idea-detail/NoveltyAssessmentPanel";
+import { ProductDefinitionPanel } from "@/components/idea-detail/ProductDefinitionPanel";
 
 export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: string) => void; }) {
 	const { ideaId } = useParams<{ ideaId: string }>();
-	const [detail, setDetail] = useState<IdeaDetailType | null>(null);
-	const [files, setFiles] = useState<IdeaFile[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [deleting, setDeleting] = useState(false);
+	const { data: detail, isLoading: loading, error: queryError, refetch } = useIdeaDetailQuery(ideaId);
+	const { data: files = [] } = useIdeaFilesQuery(ideaId);
+	const { data: interrupts = [] } = usePendingInterruptsQuery();
+	const deleteIdeaMutation = useDeleteIdeaMutation();
+	const addCommentMutation = useAddIdeaCommentMutation();
+
 	const [commentText, setCommentText] = useState("");
-	const [savingComment, setSavingComment] = useState(false);
-	const [error, setError] = useState("");
-	const [interrupts, setInterrupts] = useState<InterruptItem[]>([]);
 	const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-	const loadGeneration = useRef(0);
-	const mounted = useRef(true);
 	const { toast } = useToast();
+	const navigate = useNavigate();
 
-	const loadData = async () => {
-		if (!ideaId) return;
-		const generation = ++loadGeneration.current;
-		const isCurrent = () => mounted.current && generation === loadGeneration.current;
-		try {
-			const [detailResult, filesResult, interruptsResult] = await Promise.allSettled([
-				fetchIdeaDetail(ideaId),
-				fetchIdeaFiles(ideaId),
-				fetchPendingInterrupts(),
-			]);
-
-			if (!isCurrent()) return;
-			if (detailResult.status === "fulfilled") {
-				setDetail(detailResult.value);
-				setError("");
-				if (detailResult.value?.idea?.title && onIdeaLoaded) {
-					onIdeaLoaded(detailResult.value.idea.title);
-				}
-			} else {
-				setError(detailResult.reason instanceof Error ? detailResult.reason.message : "Failed to load idea.");
-			}
-
-			if (!isCurrent()) return;
-			if (filesResult.status === "fulfilled") {
-				setFiles(filesResult.value);
-			} else {
-				setFiles([]);
-			}
-
-			if (!isCurrent()) return;
-			if (interruptsResult.status === "fulfilled") {
-				setInterrupts(interruptsResult.value);
-			} else {
-				setInterrupts([]);
-			}
-		} catch (err: unknown) {
-			if (!isCurrent()) return;
-			setError(err instanceof Error ? err.message : "Failed to load idea.");
-		} finally {
-			if (isCurrent()) setLoading(false);
+	useEffect(() => {
+		if (detail?.idea?.title && onIdeaLoaded) {
+			onIdeaLoaded(detail.idea.title);
 		}
-	};
-
-	useEffect(() => {
-		mounted.current = true;
-		return () => {
-			mounted.current = false;
-			loadGeneration.current += 1;
-		};
-	}, []);
-
-	useEffect(() => {
-		setLoading(true);
-		loadData();
-		if (!ideaId) return;
-
-		const es = connectSSE(() => {
-			loadData();
-		});
-		return () => es.close();
-	}, [ideaId]);
+	}, [detail?.idea?.title, onIdeaLoaded]);
 
 	const handleDelete = async () => {
 		if (!ideaId) return;
-		setDeleting(true);
 		try {
-			const result = await deleteIdea(ideaId);
-			if (result.deleted) return void (window.location.href = "/");
-			await loadData();
+			const result = await deleteIdeaMutation.mutateAsync(ideaId);
+			if (result.deleted) return void navigate("/ideas");
+			await refetch();
 			toast({
 				title: "Delete Request Submitted",
 				description: result.message || "Delete request submitted for approval.",
@@ -123,18 +68,15 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 				variant: "destructive",
 			});
 		} finally {
-			setDeleting(false);
 			setIsConfirmDeleteOpen(false);
 		}
 	};
 
 	const handleComment = async () => {
 		if (!ideaId || !commentText.trim()) return;
-		setSavingComment(true);
 		try {
-			await addIdeaComment(ideaId, commentText.trim());
+			await addCommentMutation.mutateAsync({ ideaId, text: commentText.trim() });
 			setCommentText("");
-			await loadData();
 		} catch (err: unknown) {
 			console.error(err);
 			toast({
@@ -142,13 +84,11 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 				description: err instanceof Error ? err.message : "Failed to add comment.",
 				variant: "destructive",
 			});
-		} finally {
-			setSavingComment(false);
 		}
 	};
 
 	if (loading) return <div className="h-full p-6 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-	if (error || !detail) return <div className="text-center py-16"><AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-3" /><p className="text-destructive font-medium">{error || "Idea not found"}</p><Button variant="link" asChild className="mt-2"><Link to="/">Back to Dashboard</Link></Button></div>;
+	if (queryError || !detail) return <div className="text-center py-16"><AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-3" /><p className="text-destructive font-medium">{queryError instanceof Error ? queryError.message : "Idea not found"}</p><Button variant="link" asChild className="mt-2"><Link to="/">Back to Dashboard</Link></Button></div>;
 
 	const idea = detail.idea;
 
@@ -157,7 +97,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 			<IdeaActionsHeader
 				ideaId={ideaId}
 				title={idea?.title}
-				deleting={deleting}
+				deleting={deleteIdeaMutation.isPending}
 				onDelete={() => setIsConfirmDeleteOpen(true)}
 			/>
 
@@ -216,9 +156,9 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 									placeholder="Write a note for this idea"
 								/>
 								<div className="flex justify-end">
-									<Button onClick={handleComment} data-testid="submit-comment-button" disabled={savingComment || !commentText.trim()} className="gap-2">
+									<Button onClick={handleComment} data-testid="submit-comment-button" disabled={addCommentMutation.isPending || !commentText.trim()} className="gap-2">
 										<SendHorizonal className="w-4 h-4" />
-										Add Comment
+										{addCommentMutation.isPending ? "Adding..." : "Add Comment"}
 									</Button>
 								</div>
 							</CardContent>
@@ -226,7 +166,7 @@ export default function IdeaDetail({ onIdeaLoaded }: { onIdeaLoaded?: (title: st
 					</TabsContent>
 					<TabsContent value="artifacts" className="space-y-4 pt-4"><ArtifactsPanel ideaId={ideaId || ""} research={idea?.research} /></TabsContent>
 					<TabsContent value="novelty" className="space-y-4 pt-4"><NoveltyAssessmentPanel validation={idea?.validation} workItemId={idea?.work_item_id} /></TabsContent>
-					<TabsContent value="product-definition" className="space-y-4 pt-4"><ProductDefinitionPanel productDefinition={idea?.product_definition} workItemId={idea?.work_item_id} onUpdated={loadData} /></TabsContent>
+					<TabsContent value="product-definition" className="space-y-4 pt-4"><ProductDefinitionPanel productDefinition={idea?.product_definition} workItemId={idea?.work_item_id} onUpdated={() => refetch()} /></TabsContent>
 					<TabsContent value="maturity" className="space-y-4 pt-4"><MaturityPanel key={ideaId || ""} ideaId={ideaId || ""} /></TabsContent>
 				</Tabs>
 			</div>

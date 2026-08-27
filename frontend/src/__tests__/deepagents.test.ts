@@ -3,7 +3,7 @@ import {
   fetchPendingInterrupts,
   approveInterrupt,
   rejectInterrupt,
-} from '../api/deepagents';
+} from '../api/threads';
 import { DEFAULT_TIMEOUT_MS } from '../api/request';
 
 describe('deepagents.ts API module', () => {

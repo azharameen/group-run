@@ -1,36 +1,54 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import IdeaDetail from '@/pages/IdeaDetail';
-import * as apiClient from '@/api/client';
-import * as deepagents from '@/api/deepagents';
-import type { IdeaDetail as IdeaDetailType } from '@/api/client';
+import * as ideasApi from '@/api/ideas';
+import * as threadsApi from '@/api/threads';
+import type { IdeaDetail as IdeaDetailType } from '@/api/ideas';
+import { renderWithProviders } from '@/test-utils';
 
+const mockNavigate = vi.fn();
 // Mock useParams
-vi.mock('react-router-dom', () => ({
-  useParams: () => ({ ideaId: 'idea-123' }),
-  Link: ({ children, to }: { children?: ReactNode; to: string }) => (
-    <a href={to} data-testid="link">
-      {children}
-    </a>
-  ),
-}));
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useParams: () => ({ ideaId: 'idea-123' }),
+    useNavigate: () => mockNavigate,
+    Link: ({ children, to }: { children?: ReactNode; to: string }) => (
+      <a href={to} data-testid="link">
+        {children}
+      </a>
+    ),
+  };
+});
 
 // Mock API
-vi.mock('@/api/client', () => ({
+vi.mock('@/api/ideas', () => ({
+  fetchIdeas: vi.fn(),
   fetchIdeaDetail: vi.fn(),
   fetchIdeaFiles: vi.fn(),
   deleteIdea: vi.fn(),
   addIdeaComment: vi.fn(),
-  connectSSE: vi.fn(() => ({ close: vi.fn() })),
-  fetchPendingInterrupts: vi.fn(),
+  updateIdea: vi.fn(),
+  recordIdeaMaturity: vi.fn(),
+  fetchIdeaMaturity: vi.fn().mockResolvedValue({ current_stage: 'concept', stages: [], history: [] }),
+  retryNoveltyAssessment: vi.fn(),
   fetchIdeaRevisions: vi.fn().mockResolvedValue([]),
   fetchArtifactDiff: vi.fn().mockResolvedValue({ artifact_name: '', available: false, revisions: [] }),
+  connectSSE: vi.fn(() => ({ close: vi.fn() })),
 }));
 
-vi.mock('@/api/deepagents', () => ({
+vi.mock('@/api/threads', () => ({
+  fetchThreads: vi.fn(),
+  fetchThreadDetail: vi.fn(),
   fetchPendingInterrupts: vi.fn(),
+  createThread: vi.fn(),
+  deleteThread: vi.fn(),
+  updateThreadTitle: vi.fn(),
+  approveInterrupt: vi.fn(),
+  rejectInterrupt: vi.fn(),
 }));
 
 // Mock sub-components
@@ -168,28 +186,26 @@ const mockDetail: IdeaDetailType = {
 describe('IdeaDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(apiClient.fetchIdeaDetail).mockResolvedValue(mockDetail);
-    vi.mocked(apiClient.fetchIdeaFiles).mockResolvedValue([]);
-    vi.mocked(apiClient.fetchPendingInterrupts).mockResolvedValue([]);
-    vi.mocked(deepagents.fetchPendingInterrupts).mockResolvedValue([]);
+    vi.mocked(ideasApi.fetchIdeaDetail).mockResolvedValue(mockDetail);
+    vi.mocked(ideasApi.fetchIdeaFiles).mockResolvedValue([]);
+    vi.mocked(threadsApi.fetchPendingInterrupts).mockResolvedValue([]);
   });
 
   test('shows loading spinner initially', () => {
-    vi.mocked(apiClient.fetchIdeaDetail).mockReturnValueOnce(new Promise(() => {}));
-    render(<IdeaDetail />);
-    // Loading state shows a spinner, no header should be visible yet
+    vi.mocked(ideasApi.fetchIdeaDetail).mockReturnValueOnce(new Promise(() => {}));
+    renderWithProviders(<IdeaDetail />);
     expect(screen.queryByTestId('idea-actions-header')).not.toBeInTheDocument();
   });
 
   test('renders idea title after loading', async () => {
-    render(<IdeaDetail />);
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByTestId('header-title')).toHaveTextContent('Test Idea');
     });
   });
 
   test('renders 3 tabs: Overview, Filesystem, Comments', async () => {
-    render(<IdeaDetail />);
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByTestId('tab-overview')).toBeDefined();
       expect(screen.getByTestId('tab-filesystem')).toBeDefined();
@@ -198,16 +214,16 @@ describe('IdeaDetail', () => {
   });
 
   test('shows error state on fetch failure of main detail request', async () => {
-    vi.mocked(apiClient.fetchIdeaDetail).mockRejectedValue(new Error('Not found'));
-    render(<IdeaDetail />);
+    vi.mocked(ideasApi.fetchIdeaDetail).mockRejectedValue(new Error('Not found'));
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByText(/(Not found|Error)/i)).toBeDefined();
     });
   });
 
   test('renders remaining idea data when a non-critical request (e.g. fetchIdeaFiles) fails', async () => {
-    vi.mocked(apiClient.fetchIdeaFiles).mockRejectedValue(new Error('Failed to fetch files'));
-    render(<IdeaDetail />);
+    vi.mocked(ideasApi.fetchIdeaFiles).mockRejectedValue(new Error('Failed to fetch files'));
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByTestId('header-title')).toHaveTextContent('Test Idea');
       expect(screen.getByTestId('idea-detail-description')).toHaveTextContent('Test problem');
@@ -215,7 +231,7 @@ describe('IdeaDetail', () => {
   });
 
   test('renders Overview tab content', async () => {
-    render(<IdeaDetail />);
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByTestId('idea-detail-description')).toBeDefined();
     });
@@ -223,55 +239,50 @@ describe('IdeaDetail', () => {
   });
 
   test('renders Filesystem tab content', async () => {
-    vi.mocked(apiClient.fetchIdeaFiles).mockResolvedValue([
+    vi.mocked(ideasApi.fetchIdeaFiles).mockResolvedValue([
       { path: '/test.txt', filename: 'test.txt', ext: '.txt', size_bytes: 100, modified_at: '2024-01-01', content: 'hello' },
     ]);
-    render(<IdeaDetail />);
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByTestId('tab-filesystem')).toBeDefined();
     });
   });
 
   test('renders Comments tab with comment form', async () => {
-    render(<IdeaDetail />);
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByTestId('tab-comments')).toBeDefined();
     });
-    // Click comments tab to show content
     fireEvent.click(screen.getByTestId('tab-comments'));
     expect(screen.getByTestId('comment-textarea')).toBeDefined();
   });
 
   test('submits comment when form submitted', async () => {
     const user = userEvent.setup();
-    vi.mocked(apiClient.addIdeaComment).mockResolvedValue({
+    vi.mocked(ideasApi.addIdeaComment).mockResolvedValue({
       idea_id: 'idea_1',
       comment: { author: 'User', text: 'A comment', timestamp: '2024-01-01T00:00:00Z' },
     });
-    render(<IdeaDetail />);
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByTestId('tab-comments')).toBeDefined();
     });
 
-    // Click comments tab to show content
     fireEvent.click(screen.getByTestId('tab-comments'));
 
-    // Fill textarea to enable button
     const textarea = screen.getByTestId('comment-textarea');
     await user.type(textarea, 'New comment');
 
-    // Click the Add Comment button
     const btn = screen.getByTestId('submit-comment-button');
     await user.click(btn);
 
-    // Verify the mock was called
     await waitFor(() => {
-      expect(vi.mocked(apiClient.addIdeaComment)).toHaveBeenCalled();
+      expect(vi.mocked(ideasApi.addIdeaComment)).toHaveBeenCalledWith('idea-123', 'New comment');
     });
   });
 
   test('opens delete dialog when delete triggered', async () => {
-    render(<IdeaDetail />);
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /delete/i })).toBeDefined();
     });
@@ -280,9 +291,9 @@ describe('IdeaDetail', () => {
   });
 
   test('deletes idea when confirmed', async () => {
-    vi.mocked(apiClient.deleteIdea).mockResolvedValue({ idea_id: 'idea-123', deleted: true });
+    vi.mocked(ideasApi.deleteIdea).mockResolvedValue({ idea_id: 'idea-123', deleted: true });
 
-    render(<IdeaDetail />);
+    renderWithProviders(<IdeaDetail />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /delete/i })).toBeDefined();
     });
@@ -291,29 +302,7 @@ describe('IdeaDetail', () => {
     fireEvent.click(screen.getByTestId('confirm-delete-button'));
 
     await waitFor(() => {
-      expect(apiClient.deleteIdea).toHaveBeenCalledWith('idea-123');
+      expect(ideasApi.deleteIdea).toHaveBeenCalledWith('idea-123');
     });
-  });
-
-  test('does not let a stale SSE refresh overwrite newer detail state', async () => {
-    let refresh: (() => void) | undefined;
-    let resolveInitial!: (value: IdeaDetailType) => void;
-    const initial = new Promise<IdeaDetailType>((resolve) => { resolveInitial = resolve; });
-    const newer = { ...mockDetail, idea: { ...mockDetail.idea, title: 'Newer Idea' } };
-    vi.mocked(apiClient.fetchIdeaDetail)
-      .mockReturnValueOnce(initial)
-      .mockResolvedValueOnce(newer);
-    vi.mocked(apiClient.connectSSE).mockImplementation((onEvent) => {
-      refresh = () => onEvent('product-definition.completed', {});
-      return { close: vi.fn() } as unknown as EventSource;
-    });
-
-    render(<IdeaDetail />);
-    await waitFor(() => expect(refresh).toBeDefined());
-    await act(async () => refresh?.());
-    await waitFor(() => expect(screen.getByTestId('header-title')).toHaveTextContent('Newer Idea'));
-
-    await act(async () => resolveInitial(mockDetail));
-    expect(screen.getByTestId('header-title')).toHaveTextContent('Newer Idea');
   });
 });

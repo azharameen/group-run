@@ -10,33 +10,47 @@ import { useThreadManager } from "@/hooks/useThreadManager";
 import { useChatStream } from "@/hooks/useChatStream";
 import { CommandCenterChatPane } from "@/components/command-center/CommandCenterChatPane";
 import { CommandCenterWorkspacePane } from "@/components/command-center/CommandCenterWorkspacePane";
+import { useThreadContext } from "@/context/ThreadContext";
+import { useWorkspaceContext } from "@/context/WorkspaceContext";
 
 interface CommandCenterProps {
-	activeThreadId: string | null;
-	setActiveThreadId: (id: string | null) => void;
-	onActiveThreadTitleChange: (title: string) => void;
-	onThreadsUpdate: (threads: ThreadMetadata[]) => void;
-	threads: ThreadMetadata[];
+	activeThreadId?: string | null;
+	setActiveThreadId?: (id: string | null) => void;
+	onActiveThreadTitleChange?: (title: string) => void;
+	onThreadsUpdate?: (threads: ThreadMetadata[]) => void;
+	threads?: ThreadMetadata[];
 	isWorkspaceOpen?: boolean;
 	setIsWorkspaceOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export default function CommandCenter({
-	activeThreadId,
-	setActiveThreadId,
-	onActiveThreadTitleChange,
-	onThreadsUpdate,
-	threads,
-	isWorkspaceOpen = true,
-}: CommandCenterProps) {
+	activeThreadId: propsActiveThreadId,
+	setActiveThreadId: propsSetActiveThreadId,
+	onActiveThreadTitleChange: propsOnActiveThreadTitleChange,
+	onThreadsUpdate: propsOnThreadsUpdate,
+	threads: propsThreads,
+	isWorkspaceOpen: propsIsWorkspaceOpen,
+}: CommandCenterProps = {}) {
+	let threadCtx: ReturnType<typeof useThreadContext> | null = null;
+	try {
+		threadCtx = useThreadContext();
+	} catch {
+		threadCtx = null;
+	}
 
-	useThreadManager({
-		activeThreadId,
-		setActiveThreadId,
-		onActiveThreadTitleChange,
-		onThreadsUpdate,
-		threads,
-	});
+	let workspaceCtx: ReturnType<typeof useWorkspaceContext> | null = null;
+	try {
+		workspaceCtx = useWorkspaceContext();
+	} catch {
+		workspaceCtx = null;
+	}
+
+	const activeThreadId = propsActiveThreadId !== undefined ? propsActiveThreadId : (threadCtx?.activeThreadId ?? null);
+	const setActiveThreadId = propsSetActiveThreadId ?? threadCtx?.setActiveThreadId ?? (() => {});
+	const onActiveThreadTitleChange = propsOnActiveThreadTitleChange ?? (() => {});
+	const onThreadsUpdate = propsOnThreadsUpdate ?? threadCtx?.setThreads ?? (() => {});
+	const threads = propsThreads ?? threadCtx?.threads ?? [];
+	const isWorkspaceOpen = propsIsWorkspaceOpen !== undefined ? propsIsWorkspaceOpen : (workspaceCtx?.isWorkspaceOpen ?? true);
 
 	const threadManager = useThreadManager({
 		activeThreadId,
