@@ -410,6 +410,7 @@ def test_migration_resolves_legacy_name_collisions_before_unique_constraint(monk
     migration = module_from_spec(spec)
     fake_alembic = types.ModuleType("alembic")
     fake_alembic.op = types.SimpleNamespace(get_bind=lambda: None)
+    fake_alembic.context = types.SimpleNamespace(is_offline_mode=lambda: False)
     monkeypatch.setitem(sys.modules, "alembic", fake_alembic)
     spec.loader.exec_module(migration)
 
@@ -441,6 +442,41 @@ def test_migration_resolves_legacy_name_collisions_before_unique_constraint(monk
         {"name": "Work (b)", "provider_id": "b"},
         {"name": "Work (b) (c)", "provider_id": "c"},
     ]
+
+
+def test_migration_skips_data_migrations_in_offline_sql_mode(monkeypatch):
+    """``alembic upgrade head --sql`` must render DDL without running data migrations."""
+    migration_path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "003_user_provider_configurations.py"
+    )
+    spec = spec_from_file_location("migration_003_offline", migration_path)
+    assert spec and spec.loader
+    migration = module_from_spec(spec)
+
+    class OfflineConnection:
+        def execute(self, *_args, **_kwargs):
+            raise AssertionError("data migrations must not run in offline --sql mode")
+
+    fake_alembic = types.ModuleType("alembic")
+    fake_alembic.op = types.SimpleNamespace(
+        get_bind=lambda: OfflineConnection(),
+        drop_index=lambda *a, **k: None,
+        add_column=lambda *a, **k: None,
+        alter_column=lambda *a, **k: None,
+        drop_column=lambda *a, **k: None,
+        execute=lambda *a, **k: None,
+        create_unique_constraint=lambda *a, **k: None,
+        create_index=lambda *a, **k: None,
+        create_table=lambda *a, **k: None,
+    )
+    fake_alembic.context = types.SimpleNamespace(is_offline_mode=lambda: True)
+    monkeypatch.setitem(sys.modules, "alembic", fake_alembic)
+    spec.loader.exec_module(migration)
+
+    migration.upgrade()  # must not raise: data path skipped, DDL faked out
 
 
 class TestProviderRoutes:

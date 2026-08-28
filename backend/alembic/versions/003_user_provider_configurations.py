@@ -11,7 +11,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 
-from alembic import op
+from alembic import context, op
 
 revision: str = "003"
 down_revision: str | None = "002"
@@ -19,8 +19,20 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _offline() -> bool:
+    """True when running offline (e.g. ``alembic upgrade head --sql`` dry-run).
+
+    Data migrations require a live connection; DDL still renders to SQL.
+    In --sql mode the context bind is a mock that cannot return results,
+    so ``op.get_bind() is None`` is not a reliable check here.
+    """
+    return context.is_offline_mode()
+
+
 def _encrypt_legacy_credentials() -> None:
     """Encrypt existing rows or fail explicitly rather than retain plaintext."""
+    if _offline():
+        return
     connection = op.get_bind()
     rows = connection.execute(
         sa.text("SELECT provider_id, credentials FROM provider_configs WHERE credentials IS NOT NULL")
@@ -50,6 +62,8 @@ def _encrypt_legacy_credentials() -> None:
 
 def _deduplicate_legacy_names() -> None:
     """Make names unique before assigning all legacy rows to one owner."""
+    if _offline():
+        return
     connection = op.get_bind()
     rows = connection.execute(
         sa.text(
@@ -90,9 +104,13 @@ def upgrade() -> None:
     )
     _encrypt_legacy_credentials()
     _deduplicate_legacy_names()
-    op.execute("UPDATE provider_configs SET user_id = 'legacy-unassigned', is_enabled = is_active")
+    if not _offline():
+        op.execute(
+            "UPDATE provider_configs SET user_id = 'legacy-unassigned', is_enabled = is_active"
+        )
     op.alter_column("provider_configs", "user_id", nullable=False)
-    op.execute("UPDATE provider_configs SET provider = 'google' WHERE provider = 'gemini'")
+    if not _offline():
+        op.execute("UPDATE provider_configs SET provider = 'google' WHERE provider = 'gemini'")
     op.drop_column("provider_configs", "credentials")
     op.drop_column("provider_configs", "model")
     op.drop_column("provider_configs", "is_active")
