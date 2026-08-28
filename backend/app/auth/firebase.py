@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import threading
+import urllib.parse
 
 import firebase_admin
 from firebase_admin import auth, firestore
@@ -115,5 +116,31 @@ def get_firestore_client():
     if _firestore_client is None:
         with _FIRESTORE_LOCK:
             if _firestore_client is None:
-                _firestore_client = firestore.client(app=get_firebase_app())
+                client = firestore.client(app=get_firebase_app())
+                _unquote_database_string(client)
+                _firestore_client = client
     return _firestore_client
+
+
+def _unquote_database_string(client) -> None:
+    """Send the literal ``(default)`` database ID to the Firestore emulator.
+
+    ``google.api_core.path_template.expand`` percent-encodes resource
+    segments, so ``google-cloud-firestore`` sends
+    ``projects/{project}/databases/%28default%29`` in request bodies and
+    RPC metadata. The real API URL-decodes that and accepts it, so
+    production behavior is left untouched. The Firestore standard-edition
+    emulator, however, validates the raw string and rejects the encoded
+    form with ``400 Illegal string "%28default%29" in database`` (legacy
+    emulators tolerated it). When an emulator host is configured, pre-cache
+    the unquoted database string so the emulator receives the canonical
+    ``(default)``.
+    """
+    try:
+        if not client._emulator_host:
+            return
+        database_string = client._database_string
+    except AttributeError:
+        return
+    if "%" in database_string:
+        client._database_string_internal = urllib.parse.unquote(database_string)

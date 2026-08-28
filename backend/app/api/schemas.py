@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 # ── Thread schemas ──────────────────────────────────────────────────────────
 
@@ -26,6 +26,8 @@ class SendMessageRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000)
     sender: str = Field(default="user", max_length=100)
     idea_id: str | None = Field(default=None, max_length=64)
+    provider_id: str | None = Field(default=None, max_length=64)
+    model_id: str | None = Field(default=None, max_length=200)
 
 
 class UserProfile(BaseModel):
@@ -178,18 +180,19 @@ class TeamConfigResponse(BaseModel):
 
 
 class ProviderConfigRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     provider: str = Field(..., min_length=1, max_length=32)
-    name: str | None = Field(default=None, max_length=120)
+    name: str = Field(..., min_length=1, max_length=120)
     endpoint: str | None = Field(default=None, max_length=500)
-    model: str = Field(..., min_length=1, max_length=200)
     credentials: dict[str, Any] | None = None
-    api_key: str | None = Field(default=None, max_length=1000)
-    is_active: bool | None = None
+    is_enabled: bool = False
 
 
-class ProviderCredentialsRequest(BaseModel):
-    credentials: dict[str, Any] | None = None
-    api_key: str | None = Field(default=None, max_length=1000)
+class ProviderEnabledRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    is_enabled: bool
 
 
 class ProviderConfigResponse(BaseModel):
@@ -197,8 +200,7 @@ class ProviderConfigResponse(BaseModel):
     provider: str
     name: str
     endpoint: str
-    model: str
-    is_active: bool
+    is_enabled: bool
     has_credentials: bool = False
     created_at: str
     updated_at: str
@@ -214,6 +216,41 @@ class ProviderTestResponse(BaseModel):
     provider: str
     success: bool
     message: str
+
+
+class ProviderModel(BaseModel):
+    model_id: str
+    display_name: str
+
+
+class ProviderCatalogGroup(BaseModel):
+    provider_id: str
+    provider: str
+    name: str
+    endpoint: str
+    is_enabled: bool
+    available: bool
+    message: str
+    models: list[ProviderModel] = Field(default_factory=list)
+
+
+class ProviderCatalogResponse(BaseModel):
+    groups: list[ProviderCatalogGroup] = Field(default_factory=list)
+
+
+class ProviderDefaultRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider_id: str = Field(..., min_length=1, max_length=64)
+    model_id: str = Field(..., min_length=1, max_length=200)
+
+
+class ProviderDefaultResponse(BaseModel):
+    provider_id: str
+    model_id: str
+    provider: str
+    name: str
+    updated_at: str
 
 
 # ── Knowledge Base schemas ─────────────────────────────────────────────────

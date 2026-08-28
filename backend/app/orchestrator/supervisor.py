@@ -17,7 +17,7 @@ from langgraph.graph.message import add_messages
 
 # NOTE: LangGraph 0.6.x compile() returns CompiledStateGraph internally.
 # We use Any here for version resilience — the consumer contract is astream().
-from ..agent.runtime import _teams_config, get_deep_agent_runtime
+from ..agent.runtime import _teams_config, get_deep_agent_runtime_async
 from ..config import settings
 from ..services.thread_manager import get_pg_checkpointer
 
@@ -118,7 +118,7 @@ def idea_research_thread_id(idea_id: str) -> str:
 
 async def invoke_idea_team_research(concept: str, *, idea_id: str) -> Any:
     """Invoke the configured Idea Team through the supervisor boundary."""
-    agent = get_deep_agent_runtime("idea")
+    agent = await get_deep_agent_runtime_async("idea")
     thread_id = idea_research_thread_id(idea_id)
     return await agent.ainvoke(
         {
@@ -143,7 +143,7 @@ async def invoke_idea_team_research(concept: str, *, idea_id: str) -> Any:
 
 async def invoke_idea_team_validation(context: str, *, idea_id: str) -> Any:
     """Invoke the Idea Team's validation role with a strict JSON contract."""
-    agent = get_deep_agent_runtime("idea")
+    agent = await get_deep_agent_runtime_async("idea")
     thread_id = f"{idea_research_thread_id(idea_id)}:validation"
     idea_config = _teams_config.get("teams", {}).get("idea", {})
     role = idea_config.get("validation_role", "novelty-patentability-validator")
@@ -169,7 +169,7 @@ async def invoke_idea_team_validation(context: str, *, idea_id: str) -> Any:
 
 async def invoke_product_team(context: str, *, idea_id: str) -> Any:
     """Invoke the configured Product Team with a strict JSON-only contract."""
-    agent = get_deep_agent_runtime(
+    agent = await get_deep_agent_runtime_async(
         "product", include_domain_tools=False, include_mcp_tools=False
     )
     product_config = _teams_config.get("teams", {}).get("product", {})
@@ -197,11 +197,11 @@ async def invoke_product_team(context: str, *, idea_id: str) -> Any:
     )
 
 
-def _get_agent() -> Any:
+async def _get_agent() -> Any:
     """Return a cached DeepAgents runtime instance."""
     global _agent
     if _agent is None:
-        _agent = get_deep_agent_runtime()
+        _agent = await get_deep_agent_runtime_async()
     return _agent
 
 
@@ -278,7 +278,7 @@ async def supervisor_general(state: SupervisorState) -> dict[str, Any]:
     except Exception:  # thread_id extraction is non-critical
         logger.debug("Failed to extract thread_id from state", exc_info=True)
 
-    agent = _get_agent()
+    agent = await _get_agent()
     timeout = settings.agent_timeout_sec
     last_exc: Exception | None = None
 

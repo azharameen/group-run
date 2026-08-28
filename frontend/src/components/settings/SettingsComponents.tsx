@@ -3,9 +3,7 @@ import {
   Pencil,
   LogOut,
   Check,
-  Globe,
-  Cpu,
-  Database
+  Server,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,22 +15,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-  OPENAI_MODELS,
   LLM_PROVIDERS,
-  DEFAULT_PROVIDER_CONFIGS,
   DEFAULT_ACCOUNT_PROFILE,
 } from "@/constants/settings"
 import { useAuth } from "@/context/AuthContext"
 import { useTheme } from "@/components/theme-provider"
 import {
-  activateProvider,
   deleteProvider,
+  fetchProviderCatalog,
+  fetchProviderDefault,
   fetchProviders,
   saveProvider,
+  setProviderDefault,
+  setProviderEnabled,
   testProvider,
+  notifyProviderCatalogChanged,
   type ProviderConfig,
+  type ProviderDefault,
+  type ProviderCatalogGroup,
   type ProviderName,
 } from "@/api/providers"
 
@@ -253,9 +268,12 @@ export function ProviderSettings() {
   const [providers, setProviders] = React.useState<ProviderConfig[]>([])
   const [activeProvider, setActiveProvider] = React.useState<ProviderName>("openai")
   const [providerId, setProviderId] = React.useState<string>()
+  const [name, setName] = React.useState("")
   const [endpoint, setEndpoint] = React.useState("")
-  const [model, setModel] = React.useState(OPENAI_MODELS[0].value)
   const [credential, setCredential] = React.useState("")
+  const [isEnabled, setIsEnabled] = React.useState(false)
+  const [catalog, setCatalog] = React.useState<ProviderCatalogGroup[]>([])
+  const [defaultModel, setDefaultModel] = React.useState<ProviderDefault | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [busy, setBusy] = React.useState(false)
   const [testing, setTesting] = React.useState(false)
@@ -265,15 +283,14 @@ export function ProviderSettings() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const result = await fetchProviders()
+      const [result, loadedCatalog, loadedDefault] = await Promise.all([
+        fetchProviders(),
+        fetchProviderCatalog(),
+        fetchProviderDefault(),
+      ])
       setProviders(result.providers)
-      const active = result.providers.find((p) => p.is_active)
-      if (active) {
-        setActiveProvider(active.provider)
-        setProviderId(active.provider_id)
-        setEndpoint(active.endpoint)
-        setModel(active.model)
-      }
+      setCatalog(loadedCatalog.groups)
+      setDefaultModel(loadedDefault)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load providers")
     } finally {
@@ -288,28 +305,64 @@ export function ProviderSettings() {
     setActiveProvider(provider)
     const existing = providers.find((p) => p.provider === provider)
     setProviderId(existing?.provider_id)
-    setEndpoint(existing?.endpoint ?? (provider === "ollama" ? DEFAULT_PROVIDER_CONFIGS.ollama.baseUrl : ""))
-    setModel(existing?.model ?? (provider === "ollama" ? DEFAULT_PROVIDER_CONFIGS.ollama.defaultModel : OPENAI_MODELS[0].value))
+    setName(existing?.name ?? "")
+    setEndpoint(existing?.endpoint ?? "")
+    setIsEnabled(existing?.is_enabled ?? false)
     setCredential("")
     setError("")
     setMessage("")
   }
 
+  const selectConfiguration = (configurationId: string) => {
+    if (configurationId === "new") {
+      setProviderId(undefined); setName(""); setEndpoint(""); setCredential(""); setIsEnabled(false)
+      return
+    }
+    const existing = providers.find((provider) => provider.provider_id === configurationId)
+    if (!existing) return
+    setProviderId(existing.provider_id)
+    setName(existing.name)
+    setEndpoint(existing.endpoint)
+    setIsEnabled(existing.is_enabled)
+    setCredential("")
+  }
+
   const input = () => ({
     provider: activeProvider,
+    name,
     endpoint: endpoint || undefined,
-    model,
     credentials: credential ? { api_key: credential } : undefined,
-    is_active: providers.find((p) => p.provider_id === providerId)?.is_active ?? false,
+    is_enabled: isEnabled,
   })
 
   const handleSave = async () => {
+    const endpointValue = endpoint.trim()
+    if (activeProvider === "ollama" && !endpointValue) {
+      setError("Ollama endpoint is required."); return
+    }
+    if (endpointValue) {
+      try {
+        const parsed = new URL(endpointValue)
+        if (!["http:", "https:"].includes(parsed.protocol) ||
+          (activeProvider !== "ollama" && parsed.protocol !== "https:")) {
+          throw new Error("Use an HTTP(S) endpoint; cloud providers require HTTPS.")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Enter a valid endpoint URL.")
+        return
+      }
+    }
+    if (!name.trim()) { setError("Configuration name is required."); return }
+    if (activeProvider !== "ollama" && !credential && !providers.find((p) => p.provider_id === providerId)?.has_credentials) {
+      setError("An API key is required for this provider."); return
+    }
     setBusy(true); setError(""); setMessage("")
     try {
       const saved = await saveProvider(input(), providerId)
       setProviderId(saved.provider_id)
-      setMessage("Provider saved. Activate it when ready.")
+      setMessage("Provider configuration saved.")
       await load()
+      notifyProviderCatalogChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save provider")
     } finally { setBusy(false) }
@@ -319,7 +372,7 @@ export function ProviderSettings() {
     if (!providerId) { setError("Save this provider before testing it."); return }
     setTesting(true); setError(""); setMessage("")
     try {
-      const result = await testProvider(providerId, credential ? { api_key: credential } : undefined)
+      const result = await testProvider(providerId)
       if (!result.success) throw new Error(result.message)
       setMessage(result.message)
     } catch (err) {
@@ -327,18 +380,29 @@ export function ProviderSettings() {
     } finally { setTesting(false) }
   }
 
-  const handleActivate = async () => {
-    if (!providerId) { setError("Save this provider before activating it."); return }
+  const handleEnabledChange = async (nextEnabled: boolean) => {
+    if (!providerId) { setIsEnabled(nextEnabled); return }
     setBusy(true); setError(""); setMessage("")
-    try { await activateProvider(providerId); setMessage("Provider activated."); await load() }
-    catch (err) { setError(err instanceof Error ? err.message : "Unable to activate provider") }
+    try {
+      const updated = await setProviderEnabled(providerId, nextEnabled)
+      setIsEnabled(updated.is_enabled)
+      setMessage(updated.is_enabled ? "Provider enabled." : "Provider disabled.")
+      await load()
+      notifyProviderCatalogChanged()
+    }
+    catch (err) { setError(err instanceof Error ? err.message : "Unable to update provider") }
     finally { setBusy(false) }
   }
 
   const handleDelete = async () => {
     if (!providerId) return
     setBusy(true); setError(""); setMessage("")
-    try { await deleteProvider(providerId); setProviderId(undefined); setCredential(""); setMessage("Provider deleted."); await load() }
+    try {
+      await deleteProvider(providerId)
+      setProviderId(undefined); setCredential(""); setName(""); setEndpoint(""); setIsEnabled(false)
+      setMessage("Provider deleted."); await load()
+      notifyProviderCatalogChanged()
+    }
     catch (err) { setError(err instanceof Error ? err.message : "Unable to delete provider") }
     finally { setBusy(false) }
   }
@@ -348,13 +412,13 @@ export function ProviderSettings() {
       <div>
         <h2 className="text-xl font-semibold tracking-tight text-foreground">LLM Providers</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Configure external models and APIs to power generation.
+          Configure encrypted, user-owned provider connections. Models come from each provider live.
         </p>
       </div>
 
       {loading ? <p className="text-sm text-muted-foreground">Loading providers...</p> : null}
-      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-      {message ? <p role="status" className="text-sm text-green-600">{message}</p> : null}
+      {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
+      {message ? <Alert><AlertDescription role="status">{message}</AlertDescription></Alert> : null}
       <Tabs value={activeProvider} onValueChange={selectProvider}>
         <TabsList className="w-full">
           {LLM_PROVIDERS.map((provider) => (
@@ -364,110 +428,74 @@ export function ProviderSettings() {
           ))}
         </TabsList>
 
-      {/* Config Form Cards */}
       <div className="mt-4 rounded-xl border border-border/60 bg-card p-5 shadow-sm space-y-4">
-        <TabsContent value="openai">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-foreground font-medium text-sm">
-              <Cpu className="h-4.5 w-4.5 text-indigo-500" />
-              <span>OpenAI API Integration</span>
-            </div>
-
-            <div className="space-y-3">
-             <Input type="url" placeholder="https://api.openai.com/v1" value={endpoint} onChange={(e) => setEndpoint(e.target.value)} />
+        {LLM_PROVIDERS.map((item) => (
+          <TabsContent key={item.value} value={item.value}>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-foreground font-medium text-sm">
+                <Server className="h-4 w-4" /><span>{item.label}</span>
+              </div>
+              <Select value={providerId ?? "new"} onValueChange={selectConfiguration}>
+                <SelectTrigger aria-label="Choose a configuration"><SelectValue placeholder="Choose a configuration" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">New configuration</SelectItem>
+                  {providers.filter((provider) => provider.provider === activeProvider).map((provider) => (
+                    <SelectItem key={provider.provider_id} value={provider.provider_id}>{provider.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">API Key</label>
-                <div className="relative">
-                  <Input
-                    type="password"
-                    placeholder="Leave blank to keep the saved key"
-                    value={credential}
-                    onChange={(e) => setCredential(e.target.value)}
-                    className="pr-10 border-border/80 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500"
-                  />
+                <label htmlFor="provider-configuration-name" className="text-xs font-semibold text-muted-foreground">Configuration name</label>
+                <Input id="provider-configuration-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Work account" />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="provider-endpoint" className="text-xs font-semibold text-muted-foreground">Endpoint URL</label>
+                <Input id="provider-endpoint" type="url" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} placeholder={activeProvider === "ollama" ? "http://localhost:11434" : "https://provider.example"} />
+              </div>
+              {activeProvider !== "ollama" ? (
+                <div className="space-y-1">
+                  <label htmlFor="provider-api-key" className="text-xs font-semibold text-muted-foreground">API key</label>
+                  <Input id="provider-api-key" type="password" autoComplete="new-password" value={credential} onChange={(event) => setCredential(event.target.value)} placeholder={providers.find((p) => p.provider_id === providerId)?.has_credentials ? "Leave blank to keep the saved key" : "Required API key"} />
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Default Model</label>
-                <Select                 value={model} onValueChange={setModel}>
-                  <SelectTrigger className="w-full border-border/80">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OPENAI_MODELS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              ) : <p className="text-xs text-muted-foreground">Ollama uses its endpoint only; no API key is stored.</p>}
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div><p className="text-sm font-medium">Enabled</p><p className="text-xs text-muted-foreground">Enabled configurations are available to chat.</p></div>
+                <Switch checked={isEnabled} onCheckedChange={(checked) => void handleEnabledChange(checked)} disabled={busy} aria-label="Enable provider configuration" />
               </div>
             </div>
-           </div>
-        </TabsContent>
-
-        <TabsContent value="google">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-foreground font-medium text-sm"><Globe className="h-4.5 w-4.5 text-blue-500" /><span>Google Gemini</span></div>
-            <Input type="url" placeholder="https://generativelanguage.googleapis.com" value={endpoint} onChange={(e) => setEndpoint(e.target.value)} />
-            <Input type="password" placeholder="Google API key" value={credential} onChange={(e) => setCredential(e.target.value)} />
-            <Input placeholder="gemini-2.0-flash" value={model} onChange={(e) => setModel(e.target.value)} />
-          </div>
-        </TabsContent>
-        <TabsContent value="ollama">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-foreground font-medium text-sm">
-              <Database className="h-4.5 w-4.5 text-orange-500" />
-              <span>Ollama (Local Models)</span>
-            </div>
-
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Base Connection URL</label>
-                <Input
-                  type="text"
-                  placeholder="http://localhost:11434"
-                  value={endpoint}
-                  onChange={(e) => setEndpoint(e.target.value)}
-                  className="border-border/80 focus-visible:ring-orange-500/20 focus-visible:border-orange-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Model Identifier</label>
-                <Input
-                  type="text"
-                  placeholder="llama3, mistral, etc."
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="border-border/80 focus-visible:ring-orange-500/20 focus-visible:border-orange-500"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTest}
-                  disabled={testing}
-                  className="h-8 border-border/80 text-xs font-medium shadow-none hover:bg-muted/40"
-                >
-                  {testing ? "Testing..." : "Test Connection"}
-                </Button>
-
-              </div>
-            </div>
-           </div>
-        </TabsContent>
-
+          </TabsContent>
+        ))}
       </div>
       </Tabs>
 
+      {providerId ? (
+       <div className="space-y-2">
+         <h3 className="text-sm font-medium">Live models</h3>
+         {catalog.find((group) => group.provider_id === providerId)?.available ? (
+           <Select
+             value={defaultModel?.provider_id === providerId ? defaultModel.model_id : undefined}
+             onValueChange={(modelId) => void setProviderDefault(providerId, modelId).then((value) => { setDefaultModel(value); setMessage("Default model saved."); notifyProviderCatalogChanged() }).catch((err: unknown) => setError(err instanceof Error ? err.message : "Unable to save default model"))}
+           >
+             <SelectTrigger aria-label="Select this configuration's default model"><SelectValue placeholder="Select this configuration's default model" /></SelectTrigger>
+             <SelectContent>
+               {catalog.find((group) => group.provider_id === providerId)?.models.map((model) => (
+                 <SelectItem key={model.model_id} value={model.model_id}>{model.display_name}</SelectItem>
+               ))}
+             </SelectContent>
+           </Select>
+         ) : <p className="text-sm text-muted-foreground">{catalog.find((group) => group.provider_id === providerId)?.message ?? "Save and enable this configuration to discover models."}</p>}
+       </div>
+      ) : null}
       <div className="flex justify-end gap-2 pt-2">
-        <Button variant="outline" onClick={handleTest} disabled={busy || testing}>Test</Button>
-        <Button variant="outline" onClick={handleActivate} disabled={busy || !providerId}>Activate</Button>
-        <Button variant="outline" onClick={handleDelete} disabled={busy || !providerId}>Delete</Button>
-        <Button onClick={handleSave} disabled={busy}>{busy ? "Saving..." : "Save Settings"}</Button>
+       <Button variant="outline" onClick={handleTest} disabled={busy || testing}>Test</Button>
+       <AlertDialog>
+         <AlertDialogTrigger asChild><Button variant="outline" disabled={busy || !providerId}>Delete</Button></AlertDialogTrigger>
+         <AlertDialogContent>
+           <AlertDialogHeader><AlertDialogTitle>Delete provider configuration?</AlertDialogTitle><AlertDialogDescription>This permanently removes the encrypted credentials and clears its default model.</AlertDialogDescription></AlertDialogHeader>
+           <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction></AlertDialogFooter>
+         </AlertDialogContent>
+       </AlertDialog>
+       <Button onClick={handleSave} disabled={busy}>{busy ? "Saving..." : "Save Settings"}</Button>
       </div>
     </div>
   )

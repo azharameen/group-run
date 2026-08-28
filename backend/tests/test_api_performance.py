@@ -11,17 +11,18 @@ Runs each endpoint multiple iterations to capture distributions.
 No hard SLAs — results are informational baseline measurements.
 """
 
-import json
 import sys
 import time
+from contextlib import asynccontextmanager
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import app.api.routes.chat as chat_mod
 import pytest
+from app.api.app import create_app
 from fastapi.testclient import TestClient
 
-from app.api.app import create_app
 from tests.fixtures.perf import percentile
-
 
 # ---------------------------------------------------------------------------
 # Helpers — module isolation & mocking (mirrors test_chat_endpoint.py)
@@ -32,7 +33,6 @@ _ITERATIONS = 5  # number of warm iterations per endpoint
 
 def _clear_modules(monkeypatch: pytest.MonkeyPatch):
     """No-op for PostgreSQL module stability."""
-    pass
 
 
 def _stub_deepagents(monkeypatch):
@@ -92,6 +92,31 @@ def _patch_thread_storage(monkeypatch, tmp_path):
     monkeypatch.setattr("app.services.thread_manager._PG_CHECKPOINTER", None)
 
 
+class _StubProviderService:
+    """Provider service double: fixed enabled selection, no-op execution lease."""
+
+    async def resolve_model(self, user_id: str, provider_id: str | None, model_id: str | None):
+        return "perf-provider", "perf-model", "definition"
+
+    @asynccontextmanager
+    async def execution(self, user_id: str, provider_id: str):
+        yield
+
+
+def _patch_chat_stream(monkeypatch, response_text: str = "mock response", *, fail: Exception | None = None):
+    """Stub provider resolution and the deep-agent streaming runner for /api/chat/stream."""
+
+    async def _runner(*args: Any, **kwargs: Any):
+        if fail is not None:
+            raise fail
+        yield {"type": "state_update", "response": response_text, "routing_key": "general"}
+
+    # Patch the module OBJECT (not dotted strings) so the patch always lands on
+    # the same module instance the route handlers' globals reference.
+    monkeypatch.setattr(chat_mod, "provider_service", _StubProviderService())
+    monkeypatch.setattr(chat_mod, "execute_deep_agent_workflow_streaming", _runner)
+
+
 def _print_metrics(name: str, durations: list[float]):
     """Print p50/p95 metrics to console."""
     sorted_d = sorted(durations)
@@ -113,11 +138,7 @@ class TestChatStreamPerformance:
         _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
-
-        monkeypatch.setattr(
-            "app.orchestrator.supervisor.get_supervisor_graph",
-            lambda: _fake_supervisor_graph(),
-        )
+        _patch_chat_stream(monkeypatch)
 
         with TestClient(create_app()) as client:
             durations = []
@@ -133,8 +154,8 @@ class TestChatStreamPerformance:
                 # Note: X-Process-Time not present on streaming endpoints (middleware skips them)
 
                 body = resp.text
-                # First byte: time until first "data:" line appears
-                first_data_idx = body.index("data:")
+                # The stream body must contain at least one SSE data line
+                assert "data:" in body
                 # Wall-clock measurement for full response
                 durations.append(total_ms)
                 # For streaming, first byte = time until we got the response body start
@@ -152,20 +173,9 @@ class TestChatStreamPerformance:
         _clear_modules(monkeypatch)
         _stub_deepagents(monkeypatch)
         _patch_thread_storage(monkeypatch, tmp_path)
-        async def _error_astream(*args, **kwargs):
-            yield {"error": "mock agent failure", "routing_key": "general"}
-
-        error_graph = MagicMock()
-        error_graph.astream = _error_astream
-
-        async def _async_error_graph():
-            return error_graph
+        _patch_chat_stream(monkeypatch, fail=Exception("mock agent failure"))
 
         with TestClient(create_app()) as client:
-            monkeypatch.setattr(
-                "app.api.routes.chat.get_supervisor_graph",
-                _async_error_graph,
-            )
             resp = client.post("/api/chat/stream", json={"text": "trigger error"})
             assert resp.status_code == 200
             # Streaming endpoint — no X-Process-Time expected
@@ -254,11 +264,14 @@ class TestInterruptApprovalPerformance:
             durations = []
 
             for i in range(_ITERATIONS):
-                # Seed an interrupt
+                # Seed a thread then an interrupt (interrupts require an existing thread)
+                thread_resp = client.post("/api/threads", json={"title": f"Perf thread {i}"})
+                assert thread_resp.status_code == 200
+                thread_id = thread_resp.json()["thread"]["thread_id"]
                 create_resp = client.post(
                     "/api/interrupts/",
                     json={
-                        "thread_id": f"perf-thread-{i}",
+                        "thread_id": thread_id,
                         "tool_name": "write_file",
                         "message": f"Perf interrupt {i}",
                     },

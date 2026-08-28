@@ -19,7 +19,8 @@ from ..config import (
     settings,
 )
 from ..config_schemas import validate_mcp_config, validate_teams_config
-from ..providers.runtime import get_configured_chat_model, has_active_provider
+from ..providers.adapters import ProviderDefinition
+from ..providers.runtime import get_configured_chat_model
 from ..work_items.tools import DOMAIN_TOOLS
 from .backends import build_agent_backend
 from .context import DeepAgentContext
@@ -347,24 +348,21 @@ def _graph_checkpointer(thread_manager_module):
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        try:
-            return asyncio.run(thread_manager_module.get_pg_checkpointer())
-        except RuntimeError:
-            logger.warning(
-                "Async checkpointer unavailable; compiling graph without checkpointer"
-            )
-            return None
+        return asyncio.run(thread_manager_module.get_pg_checkpointer())
 
-    logger.warning(
-        "Async checkpointer unavailable; compiling graph without checkpointer"
+    raise RuntimeError(
+        "The shared checkpointer must be initialized before compiling a runtime "
+        "inside an event loop; use get_deep_agent_runtime_async()."
     )
-    return None
 
 
 
 def get_deep_agent_runtime(
     team_name: str = "general",
     *,
+    provider_definition: ProviderDefinition | None = None,
+    model_id: str | None = None,
+    checkpointer: Any = None,
     include_domain_tools: bool = True,
     include_mcp_tools: bool = True,
 ):
@@ -387,7 +385,7 @@ def get_deep_agent_runtime(
         ValueError: If the named team is not defined in teams.yaml.
         RuntimeError: If DeepAgents model configuration is missing.
     """
-    if not settings.deepagents_model and not has_active_provider():
+    if provider_definition is None and not settings.deepagents_model:
         raise RuntimeError("DeepAgents model configuration is required.")
 
     # Validate team exists
@@ -422,16 +420,42 @@ def get_deep_agent_runtime(
     # E2E runs never make a live LLM call; otherwise the string is passed
     # through for ``create_deep_agent`` to instantiate the real provider.
     return create_deep_agent(
-        model=get_configured_chat_model(settings.deepagents_model),
+        model=get_configured_chat_model(provider_definition, model_id, settings.deepagents_model),
         system_prompt=_load_system_prompt(team_description),
         backend=build_agent_backend(),
         permissions=build_agent_permissions(),
-        subagents=build_agent_subagents(team_name),
+        subagents=build_agent_subagents(team_name, provider_definition, model_id),
         skills=["/skills/"],
         memory=_memory_sources(),
         context_schema=DeepAgentContext,
         interrupt_on=interrupt_on,
-        checkpointer=_graph_checkpointer(thread_manager),
+        checkpointer=(
+            checkpointer
+            if checkpointer is not None
+            else _graph_checkpointer(thread_manager)
+        ),
         name=agent_name,
         tools=all_tools,
+    )
+
+
+async def get_deep_agent_runtime_async(
+    team_name: str = "general",
+    *,
+    provider_definition: ProviderDefinition | None = None,
+    model_id: str | None = None,
+    include_domain_tools: bool = True,
+    include_mcp_tools: bool = True,
+):
+    """Compile a runtime only after the shared checkpoint store is ready."""
+    from ..services.thread_manager import get_pg_checkpointer
+
+    checkpointer = await get_pg_checkpointer()
+    return get_deep_agent_runtime(
+        team_name,
+        provider_definition=provider_definition,
+        model_id=model_id,
+        checkpointer=checkpointer,
+        include_domain_tools=include_domain_tools,
+        include_mcp_tools=include_mcp_tools,
     )

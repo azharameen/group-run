@@ -263,32 +263,53 @@ class ThreadMetadataModel(Base):
     idea_id = Column(String, nullable=True)
     tags = Column(Text, nullable=True, server_default="[]")
     agent_names = Column(Text, nullable=True, server_default="[]")
+    owner_uid = Column(String, nullable=True)
+    provider_id = Column(String, nullable=True)
+    model_id = Column(String, nullable=True)
 
     __table_args__ = (
         Index("idx_thread_metadata_updated", "updated_at"),
+        Index("idx_thread_metadata_owner_uid", "owner_uid"),
     )
 
 
 class ProviderConfigModel(Base):
-    """App-wide LLM provider metadata and credentials."""
+    """A Firebase-user-owned LLM provider configuration."""
 
     __tablename__ = "provider_configs"
 
     provider_id = Column(String, primary_key=True)
+    user_id = Column(String, nullable=False)
     provider = Column(String, nullable=False)
     name = Column(String, nullable=False)
     endpoint = Column(String, nullable=False)
-    model = Column(String, nullable=False)
-    credentials = Column(Text, nullable=True)
-    is_active = Column(Boolean, nullable=False, server_default="false")
+    encrypted_credentials = Column(Text, nullable=True)
+    is_enabled = Column(Boolean, nullable=False, server_default="false")
     created_at = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)
 
     __table_args__ = (
-        Index(
-            "uq_provider_configs_active",
-            "is_active",
-            unique=True,
-            postgresql_where=is_active.is_(True),
-        ),
+        UniqueConstraint("user_id", "name", name="uq_provider_configs_user_name"),
+        Index("idx_provider_configs_user_enabled", "user_id", "is_enabled"),
     )
+
+
+class ProviderDefaultModel(Base):
+    """A user's selected default provider configuration and discovered model."""
+
+    __tablename__ = "provider_default_models"
+
+    user_id = Column(String, primary_key=True)
+    provider_id = Column(String, nullable=False)
+    model_id = Column(String, nullable=False)
+    updated_at = Column(String, nullable=False)
+
+
+class ProviderExecutionLeaseModel(Base):
+    """Cross-process lease count for provider configurations in active use."""
+
+    __tablename__ = "provider_execution_leases"
+
+    provider_id = Column(String, primary_key=True)
+    execution_count = Column(Integer, nullable=False, server_default="0")
+    updated_at = Column(String, nullable=False)

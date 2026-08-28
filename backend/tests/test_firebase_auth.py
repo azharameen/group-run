@@ -330,3 +330,39 @@ def test_bootstrap_user_concurrency_returns_only_one_new_user(monkeypatch):
     stored = fake_firestore.read_user("concurrent-user")
     assert stored is not None
     assert stored["uid"] == "concurrent-user"
+
+
+class _FakeDatabaseStringClient:
+    """Mimics google-cloud-firestore's lazily cached database string."""
+
+    def __init__(self, database_string: str, emulator_host: str | None = None):
+        self._database_string_internal = database_string
+        self._emulator_host = emulator_host
+
+    @property
+    def _database_string(self):
+        return self._database_string_internal
+
+
+def test_unquote_database_string_fixes_encoded_default_database_for_emulator():
+    from app.auth import firebase as auth_firebase
+
+    client = _FakeDatabaseStringClient(
+        "projects/demo/databases/%28default%29", emulator_host="127.0.0.1:8085"
+    )
+    auth_firebase._unquote_database_string(client)
+    assert client._database_string_internal == "projects/demo/databases/(default)"
+
+
+def test_unquote_database_string_keeps_encoded_form_outside_emulator():
+    from app.auth import firebase as auth_firebase
+
+    client = _FakeDatabaseStringClient("projects/demo/databases/%28default%29")
+    auth_firebase._unquote_database_string(client)
+    assert client._database_string_internal == "projects/demo/databases/%28default%29"
+
+
+def test_unquote_database_string_tolerates_clients_without_attributes():
+    from app.auth import firebase as auth_firebase
+
+    auth_firebase._unquote_database_string(object())  # must not raise

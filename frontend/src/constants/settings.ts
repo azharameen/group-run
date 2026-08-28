@@ -12,23 +12,9 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
 	{ value: "de", label: "Deutsch" },
 ];
 
-// ─── OpenAI Model Options ─────────────────────────────────────────────────────
-
-export interface ModelOption {
-	value: string;
-	label: string;
-}
-
-export const OPENAI_MODELS: ModelOption[] = [
-	{ value: "gpt-4o", label: "gpt-4o (Recommended)" },
-	{ value: "gpt-4-turbo", label: "gpt-4-turbo" },
-	{ value: "o1-mini", label: "o1-mini" },
-	{ value: "gpt-3.5-turbo", label: "gpt-3.5-turbo" },
-];
-
 // ─── LLM Provider Options ─────────────────────────────────────────────────────
 
-export type LLMProvider = "openai" | "google" | "ollama";
+export type LLMProvider = "openai" | "google" | "ollama" | "anthropic";
 
 export interface LLMProviderOption {
 	value: LLMProvider;
@@ -37,8 +23,9 @@ export interface LLMProviderOption {
 
 export const LLM_PROVIDERS: LLMProviderOption[] = [
 	{ value: "openai", label: "OpenAI" },
-	{ value: "google", label: "Google Gemini" },
+	{ value: "google", label: "Google Gemini Developer API" },
 	{ value: "ollama", label: "Ollama (Local)" },
+	{ value: "anthropic", label: "Anthropic" },
 ];
 
 // ─── Default Account Profile ──────────────────────────────────────────────────
@@ -48,23 +35,6 @@ export const DEFAULT_ACCOUNT_PROFILE = {
 	email: "",
 	avatarUrl: "",
 	avatarFallback: "U",
-};
-
-// ─── Default Provider Configs ─────────────────────────────────────────────────
-
-export const DEFAULT_PROVIDER_CONFIGS = {
-	openai: {
-		defaultModel: "gpt-4o",
-	},
-	ollama: {
-		baseUrl: "http://localhost:11434",
-		defaultModel: "llama3",
-	},
-	custom: {
-		baseUrl: "",
-		apiKey: "",
-		modelName: "",
-	},
 };
 
 // ─── Theme Options ────────────────────────────────────────────────────────────

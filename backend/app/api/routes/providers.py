@@ -1,110 +1,141 @@
-"""Safe app-wide LLM provider configuration API."""
+"""Authenticated user-scoped LLM provider configuration API."""
 
 from __future__ import annotations
 
-import logging
+from fastapi import APIRouter, HTTPException, Request, Response
 
-from fastapi import APIRouter, HTTPException, Response
-
-from ...providers.service import ProviderConfigService
+from ...auth.middleware import get_request_principal
+from ...providers.service import ProviderConfigService, ProviderSelectionError
 from ..schemas import (
+    ProviderCatalogGroup,
+    ProviderCatalogResponse,
     ProviderConfigRequest,
     ProviderConfigResponse,
-    ProviderCredentialsRequest,
+    ProviderDefaultRequest,
+    ProviderDefaultResponse,
+    ProviderEnabledRequest,
     ProviderListResponse,
     ProviderTestResponse,
 )
+from .provider_responses import (
+    catalog_group_response,
+    catalog_response,
+    provider_error,
+    provider_response,
+)
 
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/providers", tags=["providers"])
 service = ProviderConfigService()
 
 
-def _safe(record: dict) -> ProviderConfigResponse:
-    values = {k: record.get(k) for k in (
-        "provider_id", "provider", "name", "endpoint", "model", "is_active",
-        "has_credentials", "created_at", "updated_at",
-    )}
-    values["has_credentials"] = bool(values["has_credentials"])
-    return ProviderConfigResponse(**values)
-
-
 @router.get("", response_model=ProviderListResponse)
-async def list_providers() -> ProviderListResponse:
-    records = await service.list_safe()
-    return ProviderListResponse(providers=[_safe(r) for r in records], count=len(records))
+async def list_providers(request: Request) -> ProviderListResponse:
+    records = await service.list_safe(get_request_principal(request).uid)
+    return ProviderListResponse(
+        providers=[provider_response(record) for record in records],
+        count=len(records),
+    )
+
+
+@router.get("/catalog", response_model=ProviderCatalogResponse)
+async def list_catalog(request: Request) -> ProviderCatalogResponse:
+    groups = await service.grouped_catalog(get_request_principal(request).uid)
+    return ProviderCatalogResponse(groups=[catalog_group_response(group) for group in groups])
+
+
+@router.get("/default", response_model=ProviderDefaultResponse | None)
+async def get_default(request: Request) -> ProviderDefaultResponse | None:
+    default = await service.get_default(get_request_principal(request).uid)
+    return ProviderDefaultResponse(**default) if default else None
+
+
+@router.put("/default", response_model=ProviderDefaultResponse)
+async def set_default(
+    payload: ProviderDefaultRequest, request: Request
+) -> ProviderDefaultResponse:
+    try:
+        default = await service.set_default(
+            get_request_principal(request).uid, payload.provider_id, payload.model_id
+        )
+        return ProviderDefaultResponse(**default)
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise provider_error(exc) from exc
 
 
 @router.get("/{provider_id}", response_model=ProviderConfigResponse)
-async def get_provider(provider_id: str) -> ProviderConfigResponse:
-    record = await service.get_safe(provider_id)
+async def get_provider(provider_id: str, request: Request) -> ProviderConfigResponse:
+    principal = get_request_principal(request)
+    record = await service.get_safe(principal.uid, provider_id)
     if not record:
         raise HTTPException(status_code=404, detail="Provider not found")
-    return _safe(record)
+    return provider_response(record)
+
+
+@router.get("/{provider_id}/models", response_model=ProviderCatalogGroup)
+async def get_provider_models(provider_id: str, request: Request) -> ProviderCatalogGroup:
+    principal = get_request_principal(request)
+    try:
+        record = await service.get_safe(principal.uid, provider_id)
+        if not record:
+            raise LookupError("Provider not found")
+        return catalog_response(record, await service.catalog(principal.uid, provider_id))
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise provider_error(exc) from exc
 
 
 @router.post("", response_model=ProviderConfigResponse, status_code=201)
-async def create_provider(
-    payload: ProviderConfigRequest,
-) -> ProviderConfigResponse:
+async def create_provider(payload: ProviderConfigRequest, request: Request) -> ProviderConfigResponse:
     try:
-        return _safe(await service.save(payload.model_dump()))
-    except (ValueError, RuntimeError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return provider_response(await service.save(get_request_principal(request).uid, payload.model_dump()))
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise provider_error(exc) from exc
 
 
 @router.put("/{provider_id}", response_model=ProviderConfigResponse)
-@router.patch("/{provider_id}", response_model=ProviderConfigResponse)
 async def update_provider(
-    provider_id: str,
-    payload: ProviderConfigRequest,
+    provider_id: str, payload: ProviderConfigRequest, request: Request
 ) -> ProviderConfigResponse:
-    if not await service.get_safe(provider_id):
-        raise HTTPException(status_code=404, detail="Provider not found")
     try:
-        return _safe(await service.save(payload.model_dump(), provider_id))
-    except (ValueError, RuntimeError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return provider_response(
+            await service.save(get_request_principal(request).uid, payload.model_dump(), provider_id)
+        )
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise provider_error(exc) from exc
 
 
-@router.delete("/{provider_id}", status_code=204)
-async def delete_provider(
-    provider_id: str,
-) -> Response:
-    if not await service.delete(provider_id):
-        raise HTTPException(status_code=404, detail="Provider not found")
-    return Response(status_code=204)
-
-
-@router.post("/{provider_id}/activate", response_model=ProviderConfigResponse)
-async def activate_provider(
-    provider_id: str,
+@router.patch("/{provider_id}/enabled", response_model=ProviderConfigResponse)
+async def set_provider_enabled(
+    provider_id: str, payload: ProviderEnabledRequest, request: Request
 ) -> ProviderConfigResponse:
-    record = await service.activate(provider_id)
+    record = await service.set_enabled(
+        get_request_principal(request).uid, provider_id, payload.is_enabled
+    )
     if not record:
         raise HTTPException(status_code=404, detail="Provider not found")
-    return _safe(record)
+    return provider_response(record)
 
 
 @router.post("/{provider_id}/test", response_model=ProviderTestResponse)
-async def test_provider(
-    provider_id: str,
-    payload: ProviderCredentialsRequest | None = None,
-) -> ProviderTestResponse:
+async def test_provider(provider_id: str, request: Request) -> ProviderTestResponse:
+    principal = get_request_principal(request)
     try:
-        record = await service.get_safe(provider_id)
+        record = await service.get_safe(principal.uid, provider_id)
         if not record:
             raise LookupError("Provider not found")
-        supplied_credentials = None
-        if payload:
-            supplied_credentials = payload.credentials
-            if supplied_credentials is None and payload.api_key:
-                supplied_credentials = {"api_key": payload.api_key}
-        success, message = await service.test(provider_id, supplied_credentials)
+        success, message = await service.test(principal.uid, provider_id)
         return ProviderTestResponse(
-            provider_id=provider_id, provider=record["provider"], success=success, message=message,
+            provider_id=provider_id, provider=record["provider"], success=success, message=message
         )
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (ValueError, RuntimeError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise provider_error(exc) from exc
+
+
+@router.delete("/{provider_id}", status_code=204)
+async def delete_provider(provider_id: str, request: Request) -> Response:
+    try:
+        deleted = await service.delete(get_request_principal(request).uid, provider_id)
+    except ProviderSelectionError as exc:
+        raise provider_error(exc) from exc
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    return Response(status_code=204)

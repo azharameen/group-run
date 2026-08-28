@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     openai_api_base: str = ""
     openai_model_name: str = ""
     deepagents_model: str = ""
+    provider_credentials_encryption_key: str = ""
     langsmith_api_key: str = ""
     langsmith_project: str = "ideator"
     langsmith_endpoint: str = "https://api.smith.langchain.com"
@@ -127,6 +128,10 @@ if settings.openai_api_base and not os.environ.get("OPENAI_API_BASE"):
     os.environ["OPENAI_API_BASE"] = settings.openai_api_base
 if settings.openai_model_name and not os.environ.get("OPENAI_MODEL_NAME"):
     os.environ["OPENAI_MODEL_NAME"] = settings.openai_model_name
+if settings.provider_credentials_encryption_key and not os.environ.get(
+    "PROVIDER_CREDENTIAL_ENCRYPTION_KEY"
+):
+    os.environ["PROVIDER_CREDENTIAL_ENCRYPTION_KEY"] = settings.provider_credentials_encryption_key
 if settings.firebase_project_id:
     os.environ.setdefault("GOOGLE_CLOUD_PROJECT", settings.firebase_project_id)
     os.environ.setdefault("GCLOUD_PROJECT", settings.firebase_project_id)

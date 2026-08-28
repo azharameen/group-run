@@ -96,6 +96,10 @@ if settings.some_api_key and not os.environ.get("SOME_API_KEY"):
     os.environ["SOME_API_KEY"] = settings.some_api_key
 ```
 
+User-managed provider credentials use `PROVIDER_CREDENTIAL_ENCRYPTION_KEY`.
+Keep it server-only, configure it through `Settings`, propagate it to the process
+environment, and never return encrypted or decrypted credential payloads from an API.
+
 ### 2.6 Error Handling
 
 ```python

@@ -99,6 +99,22 @@ class InterruptService:
             )
             return [self._row_dict(dict(r)) for r in result.mappings()]
 
+    async def list_pending_for_owner(self, owner_uid: str) -> list[dict[str, Any]]:
+        """List only pending interrupts whose thread belongs to this user."""
+        async with get_session_factory()() as session:
+            result = await session.execute(
+                text(
+                    """
+                    SELECT i.* FROM interrupts i
+                    JOIN thread_metadata t ON t.thread_id = i.thread_id
+                    WHERE i.status = 'pending' AND t.owner_uid = :owner_uid
+                    ORDER BY i.created_at DESC
+                    """
+                ),
+                {"owner_uid": owner_uid},
+            )
+            return [self._row_dict(dict(r)) for r in result.mappings()]
+
     async def list_all(self) -> list[dict[str, Any]]:
         """Return all interrupts (audit trail), newest first."""
         async with get_session_factory()() as session:

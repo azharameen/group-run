@@ -266,12 +266,12 @@ class TestProductDefinitionWorkflow:
             async def ainvoke(self, *_args, **_kwargs):
                 return {"output": "{}"}
 
-        def runtime(team_name, **kwargs):
+        async def runtime(team_name, **kwargs):
             captured["team_name"] = team_name
             captured.update(kwargs)
             return StubAgent()
 
-        monkeypatch.setattr(supervisor, "get_deep_agent_runtime", runtime)
+        monkeypatch.setattr(supervisor, "get_deep_agent_runtime_async", runtime)
         await supervisor.invoke_product_team("validated context", idea_id="IDEA-0001")
 
         assert captured == {

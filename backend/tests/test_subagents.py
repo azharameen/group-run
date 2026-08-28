@@ -1,26 +1,31 @@
-import pytest
-from unittest.mock import patch
-from app.agent.subagents import build_agent_subagents
-from app.config import settings
 import logging
+from unittest.mock import patch
+
+import pytest
+from app.agent.subagents import build_agent_subagents
 
 
 @pytest.fixture
 def mock_yaml_safe_load():
-    with patch("app.agent.subagents.yaml.safe_load") as mock_load:
-        with patch("app.agent.subagents.Path.read_text", return_value="dummy"):
-            yield mock_load
+    with (
+        patch("app.agent.subagents.yaml.safe_load") as mock_load,
+        patch("app.agent.subagents.Path.read_text", return_value="dummy"),
+    ):
+        yield mock_load
 
 
 def test_build_agent_subagents_happy_path(mock_yaml_safe_load):
     mock_yaml_safe_load.return_value = {
         "teams": {"general": {"description": "General team.", "agents": [{"name": "Agent1"}]}}
     }
-    subagents = build_agent_subagents("general")
+    # An "auto" model resolves to a configured chat model object, not a string.
+    sentinel = object()
+    with patch("app.agent.subagents.get_configured_chat_model", return_value=sentinel):
+        subagents = build_agent_subagents("general")
     assert len(subagents) == 1
     assert subagents[0]["name"] == "Agent1"
     assert subagents[0]["role"] == "assistant"
-    assert subagents[0]["model"] == settings.deepagents_model
+    assert subagents[0]["model"] is sentinel
     assert subagents[0]["system_prompt"] == "General team. You are Agent1."
     assert subagents[0]["description"] == "assistant"
     assert subagents[0]["skills"] == ["/skills/"]
