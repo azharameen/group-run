@@ -137,10 +137,10 @@ def _unquote_database_string(client) -> None:
     ``(default)``.
     """
     try:
-        if not client._emulator_host:  # noqa: SLF001
+        if not client._emulator_host:
             return
-        database_string = client._database_string  # noqa: SLF001
+        database_string = client._database_string
     except AttributeError:
         return
     if "%" in database_string:
-        client._database_string_internal = urllib.parse.unquote(database_string)  # noqa: SLF001
+        client._database_string_internal = urllib.parse.unquote(database_string)
