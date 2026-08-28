@@ -310,22 +310,48 @@ async def get_thread_messages(thread_id: str) -> list[dict[str, Any]]:
     try:
         checkpointer = await get_pg_checkpointer()
         checkpoint = await checkpointer.aget({"configurable": {"thread_id": thread_id}})
-        if checkpoint is None:
-            return []
-        messages = checkpoint.get("channel_values", {}).get("messages", [])
+        messages = (
+            checkpoint.get("channel_values", {}).get("messages", [])
+            if checkpoint is not None
+            else []
+        )
         if hasattr(messages, "wrapped"):
             messages = messages.wrapped
-        result = []
+        if not messages:
+            get_delta_history = getattr(checkpointer, "aget_delta_channel_history", None)
+            if callable(get_delta_history):
+                for attempt in range(3):
+                    delta_history = await get_delta_history(
+                        config={"configurable": {"thread_id": thread_id}},
+                        channels=["messages"],
+                    )
+                    writes = delta_history.get("messages", {}).get("writes", [])
+                    messages = [message for _, _, batch in writes for message in batch]
+                    if messages or attempt == 2:
+                        break
+                    await asyncio.sleep(0.05)
+
+        result: list[dict[str, Any]] = []
         if isinstance(messages, list):
             for msg in messages:
                 if hasattr(msg, "wrapped"):
                     msg = msg.wrapped
                 if hasattr(msg, "type"):
+                    content = getattr(msg, "content", "")
+                    if isinstance(content, list):
+                        content = "".join(
+                            str(block.get("text", block.get("content", "")))
+                            if isinstance(block, dict)
+                            else str(block)
+                            for block in content
+                        )
+                    elif not isinstance(content, str):
+                        content = str(content)
                     result.append(
                         {
                             "id": getattr(msg, "id", ""),
                             "type": msg.type,
-                            "content": msg.content,
+                            "content": content,
                             "role": getattr(msg, "role", ""),
                             "name": getattr(msg, "name", ""),
                             "timestamp": getattr(msg, "timestamp", ""),

@@ -738,13 +738,8 @@ async def execute_deep_agent_workflow_streaming(
     stream = None
 
     try:
-        # Primary path: async v3 event streaming (per DeepAgents docs). Using
-        # astream_events keeps the uvicorn event loop free so deltas flow live.
         with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message="The v3 streaming protocol on Pregel is experimental",
-            )
+            warnings.filterwarnings("ignore", message="The v3 streaming protocol on Pregel is experimental")
             stream = await runtime.astream_events(
                 input_payload,
                 version="v3",
@@ -759,7 +754,6 @@ async def execute_deep_agent_workflow_streaming(
                     },
                 },
             )
-
         if _looks_like_v3_stream(stream):
             async for event in _consume_v3_stream(stream, idea_id, provenance):
                 if event.get("type") == "done":
@@ -771,12 +765,8 @@ async def execute_deep_agent_workflow_streaming(
                     emitted_done = True
                 yield event
     except (TypeError, AttributeError):
-        # Last-resort fallback: raw v2 dict-event iterator.
         with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message="The v3 streaming protocol on Pregel is experimental",
-            )
+            warnings.filterwarnings("ignore", message="The v3 streaming protocol on Pregel is experimental")
             raw_stream = await runtime.astream_events(
                 input_payload,
                 config={
