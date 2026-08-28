@@ -74,9 +74,9 @@ test.describe('Provider configuration lifecycle', () => {
 
     await api.waitForHealthy();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: /playwright user/i }).click();
-    await page.getByText('Settings', { exact: true }).click();
-    await page.getByRole('link', { name: 'Provider' }).click();
+    await page.getByTestId('user-menu-button').click();
+    await page.getByRole('menuitem', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Provider' }).click();
 
     await page.getByLabel('Configuration name').fill(configuration.name);
     await page.getByLabel('Endpoint URL').fill(configuration.endpoint);
@@ -90,21 +90,22 @@ test.describe('Provider configuration lifecycle', () => {
     await expect(page.getByRole('status')).toContainText('Provider enabled.');
 
     const defaultSelector = page.getByRole('combobox', { name: 'Select this configuration\'s default model' });
-    await defaultSelector.focus();
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
+    await defaultSelector.click();
+    await page.getByRole('option', { name: 'Live model' }).click();
     await expect(page.getByRole('status')).toContainText('Default model saved.');
 
     await page.keyboard.press('Escape');
     const chatSelector = page.getByRole('combobox', { name: 'Chat model' });
-    await chatSelector.focus();
-    await page.keyboard.press('ArrowDown');
+    await chatSelector.click();
     await expect(page.getByText('E2E OpenAI · openai')).toBeVisible();
 
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: /playwright user/i }).click();
-    await page.getByText('Settings', { exact: true }).click();
-    await page.getByRole('link', { name: 'Provider' }).click();
+    await page.getByTestId('user-menu-button').click();
+    await page.getByRole('menuitem', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Provider' }).click();
+    const configurationSelector = page.getByRole('combobox', { name: 'Choose a configuration' });
+    await configurationSelector.click();
+    await page.getByRole('option', { name: configuration.name }).click();
     await page.getByRole('button', { name: 'Delete' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByRole('status')).toContainText('Provider deleted.');

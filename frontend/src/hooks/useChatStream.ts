@@ -360,14 +360,6 @@ export function useChatStream({
 
 	const executeSend = useCallback(
 		async (textToSend: string) => {
-			if (modelSelection === null) {
-				toast({
-					variant: "destructive",
-					title: "Choose a model",
-					description: "Add an enabled provider model before sending a message.",
-				});
-				return;
-			}
 			trackEvent("chat_message_sent", { text_length: textToSend.length });
 			const streamTrace = startTrace("message_stream_generation");
 
@@ -486,6 +478,29 @@ export function useChatStream({
 									}
 								})
 								.catch(() => {});
+							return;
+						}
+
+						if (evt.type === "token" || evt.type === "message") {
+							// DeepAgents streams token-level deltas (v3) or discrete
+							// message events; accumulate them into a single streaming
+							// bubble instead of rendering one bubble per event.
+							const text = String(evt.content ?? "");
+							if (!text.trim()) return;
+							const msgId = streamMsgIdRef.current;
+							if (msgId) {
+								setRawMessages((prev) =>
+									prev.map((m) =>
+										m.id === msgId
+											? { ...m, text: (m.text || "") + text, isStreaming: true }
+											: m,
+									),
+								);
+							} else {
+								const newMsg = eventToMessage(evt);
+								streamMsgIdRef.current = newMsg.id;
+								setRawMessages((prev) => [...prev, newMsg]);
+							}
 							return;
 						}
 
