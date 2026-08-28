@@ -30,6 +30,7 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from 'firebase/auth';
+import { gotoRetryingTransientErrors } from './navigation';
 
 const API_BASE_URL = process.env.PLAYWRIGHT_API_BASE_URL || 'http://localhost:8000';
 const FRONTEND_URL = process.env.PLAYWRIGHT_DEV_BASE_URL || 'http://localhost:3000';
@@ -133,12 +134,19 @@ async function warmUpFrontend(): Promise<void> {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
-    await page.goto(`${FRONTEND_URL}/sign-in`, {
+    await gotoRetryingTransientErrors(page, `${FRONTEND_URL}/sign-in`, {
       waitUntil: 'domcontentloaded',
       timeout: WARMUP_TIMEOUT_MS,
     });
     const signedIn = page.waitForURL((url) => url.pathname !== '/sign-in', {
       timeout: WARMUP_TIMEOUT_MS,
+    });
+    // If the page/browser dies while the sign-in evaluate below is in
+    // flight, this promise rejects too — swallow the early rejection so
+    // Node does not crash with an unhandled rejection before the awaited
+    // error (or the warm-up retry) can handle it.
+    signedIn.catch(() => {
+      /* handled by the awaited rejection or the warm-up retry loop */
     });
     await page.evaluate(async () => {
       const modulePath = '/src/lib/firebase-emulator-testing.ts';
@@ -151,7 +159,7 @@ async function warmUpFrontend(): Promise<void> {
     });
     await signedIn;
     for (const visit of visited) {
-      await page.goto(`${FRONTEND_URL}${visit.path}`, {
+      await gotoRetryingTransientErrors(page, `${FRONTEND_URL}${visit.path}`, {
         waitUntil: 'domcontentloaded',
         timeout: WARMUP_TIMEOUT_MS,
       });
@@ -163,7 +171,7 @@ async function warmUpFrontend(): Promise<void> {
     // /ideas/:id needs a real idea to render; create one, warm the
     // lazy-loaded IdeaDetail module, then clean it up.
     ideaId = await createIdea();
-    await page.goto(`${FRONTEND_URL}/ideas/${ideaId}`, {
+    await gotoRetryingTransientErrors(page, `${FRONTEND_URL}/ideas/${ideaId}`, {
       waitUntil: 'domcontentloaded',
       timeout: WARMUP_TIMEOUT_MS,
     });
@@ -207,11 +215,23 @@ export default async function globalSetup(): Promise<void> {
     throw new Error(`Agent warm-up failed: ${String(error)}`);
   }
 
-  try {
-    await warmUpFrontend();
-  } catch (error) {
-    // Fail fast: every test navigates to the frontend first.
-    throw new Error(`Frontend warm-up failed: ${String(error)}`);
+  // A single page or browser hiccup (transient network glitch, browser
+  // crash) must not abort the whole run: retry the frontend warm-up a few
+  // times before giving up. The agent warm-up above stays fail-fast — its
+  // failure means the backend itself is broken.
+  let warmupError: unknown = null;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await warmUpFrontend();
+      warmupError = null;
+      break;
+    } catch (error) {
+      warmupError = error;
+      if (attempt >= 3) break;
+    }
+  }
+  if (warmupError) {
+    throw new Error(`Frontend warm-up failed: ${String(warmupError)}`);
   }
 
   // Reset application state after warm-up so the test run starts from a completely clean slate

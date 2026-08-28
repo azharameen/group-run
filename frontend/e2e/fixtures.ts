@@ -1,4 +1,5 @@
 import { test as base, expect, type Page } from '@playwright/test';
+import { gotoRetryingTransientErrors } from './navigation';
 
 /**
  * Global Playwright fixtures.
@@ -120,8 +121,14 @@ export const test = base.extend<Fixtures>({
   authenticatedSession: [
     async ({ page, api }, use) => {
       await api.waitForHealthy();
-      await page.goto('/sign-in');
+      await gotoRetryingTransientErrors(page, '/sign-in');
       const signedIn = page.waitForURL((url) => url.pathname !== '/sign-in');
+      // Swallow an early rejection (e.g. the page dying mid sign-in) so it
+      // cannot crash the worker as an unhandled rejection; the awaited
+      // rejection below still fails the test.
+      signedIn.catch(() => {
+        /* handled by the awaited rejection */
+      });
       await page.evaluate(async () => {
         const modulePath = '/src/lib/firebase-emulator-testing.ts';
         const { signInWithGoogleEmulatorForTesting } = await import(/* @vite-ignore */ modulePath);

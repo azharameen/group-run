@@ -1,4 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
+import { gotoRetryingTransientErrors } from '../navigation';
 
 /**
  * Page object for the ideas dashboard (route `/ideas`).
@@ -22,7 +23,7 @@ export class DashboardPage {
   async goto(): Promise<void> {
     // domcontentloaded + explicit readiness wait: the 'load' event can be
     // delayed by slow subresources and the app's long-lived /api/sse stream.
-    await this.page.goto('/ideas', { waitUntil: 'domcontentloaded' });
+    await gotoRetryingTransientErrors(this.page, '/ideas');
     await this.filterInput.waitFor({ state: 'visible', timeout: 20_000 });
   }
 
