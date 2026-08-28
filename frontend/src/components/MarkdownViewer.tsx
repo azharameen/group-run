@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -28,10 +28,11 @@ export function MarkdownViewer({
   }
 
   // Basic lightweight clean markdown formatter for preview
-  const renderPreview = (text: string) => {
-    if (!text) return <p className="text-muted-foreground italic">Empty document</p>
+  // ⚡ Bolt: Memoize parsed markdown elements to prevent expensive re-parsing on every render (like when clicking copy)
+  const previewElements = useMemo(() => {
+    if (!content) return <p className="text-muted-foreground italic">Empty document</p>
 
-    const lines = text.split('\n')
+    const lines = content.split('\n')
     const elements: React.ReactNode[] = []
     let inCodeBlock = false
     let codeBuffer: string[] = []
@@ -83,7 +84,7 @@ export function MarkdownViewer({
     })
 
     return <div className="space-y-1">{elements}</div>
-  }
+  }, [content])
 
   return (
     <Card className={`overflow-hidden border ${className}`}>
@@ -131,7 +132,7 @@ export function MarkdownViewer({
       </div>
       <ScrollArea className="max-h-[500px] p-4">
         {mode === 'preview' ? (
-          renderPreview(content)
+          previewElements
         ) : (
           <pre className="text-xs font-mono text-foreground bg-muted/40 p-3 rounded-md overflow-x-auto whitespace-pre-wrap">
             {content}
