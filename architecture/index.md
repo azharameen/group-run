@@ -631,12 +631,13 @@ The following modules are being phased out:
 
 ### 7.2 Environment Variables
 
-| Variable            | Default                     | Purpose                   |
-| ------------------- | --------------------------- | ------------------------- |
-| `OPENAI_API_KEY`    | —                           | OpenAI-compatible API key |
-| `OPENAI_API_BASE`   | `https://api.openai.com/v1` | LLM API base URL          |
-| `OPENAI_MODEL_NAME` | `gpt-4o`                    | LLM model name            |
-| `DEEPAGENTS_MODEL`  | `openai:{model}`            | DeepAgents model spec     |
+| Variable                             | Default                     | Purpose                                                         |
+| ------------------------------------ | --------------------------- | --------------------------------------------------------------- |
+| `OPENAI_API_KEY`                     | —                           | OpenAI-compatible API key                                       |
+| `OPENAI_API_BASE`                    | `https://api.openai.com/v1` | LLM API base URL                                                |
+| `OPENAI_MODEL_NAME`                  | `gpt-4o`                    | LLM model name                                                  |
+| `DEEPAGENTS_MODEL`                   | `openai:{model}`            | DeepAgents model spec                                           |
+| `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` | —                           | Fernet key encrypting user-managed provider credentials at rest |
 
 ## 8. Related Documents
 
