@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
 	MessageSquare,
 	MoreHorizontal,
@@ -144,14 +144,20 @@ export function NavThreads({
 		}
 	};
 
+
+  // ⚡ Bolt Performance Optimization: Memoized list filtering to prevent O(n) string matching on every render,
+  // significantly reducing CPU overhead during unconnected state changes (e.g. dropdowns, modals).
+
+	const filteredThreads = useMemo(() => {
+		return threads.filter((t) =>
+			t.title.toLowerCase().includes(searchQuery.toLowerCase()),
+		);
+	}, [threads, searchQuery]);
+
 	// On Desktop Rail Mode (collapsed & not mobile), hide threads group completely
 	if (isRail) {
 		return null;
 	}
-
-	const filteredThreads = threads.filter((t) =>
-		t.title.toLowerCase().includes(searchQuery.toLowerCase()),
-	);
 
 	return (
 		<>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation, Link } from "react-router-dom";
 import {
 	MessageSquare,
@@ -99,10 +99,14 @@ export function SiteHeader({
 			});
 		}
 	};
+  // ⚡ Bolt Performance Optimization: Memoized list filtering to prevent O(n) string matching on every render,
+  // significantly reducing CPU overhead during unconnected state changes (e.g. dropdowns, modals).
 
-	const filteredThreads = threads.filter((t) =>
-		t.title.toLowerCase().includes(threadSearch.toLowerCase()),
-	);
+	const filteredThreads = useMemo(() => {
+		return threads.filter((t) =>
+			t.title.toLowerCase().includes(threadSearch.toLowerCase()),
+		);
+	}, [threads, threadSearch]);
 
 	return (
 		<header className="top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
