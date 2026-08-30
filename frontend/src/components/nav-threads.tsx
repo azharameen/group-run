@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
 	MessageSquare,
 	MoreHorizontal,
@@ -149,9 +149,11 @@ export function NavThreads({
 		return null;
 	}
 
-	const filteredThreads = threads.filter((t) =>
-		t.title.toLowerCase().includes(searchQuery.toLowerCase()),
-	);
+	const filteredThreads = useMemo(() => {
+		return threads.filter((t) =>
+			t.title.toLowerCase().includes(searchQuery.toLowerCase()),
+		);
+	}, [threads, searchQuery]);
 
 	return (
 		<>

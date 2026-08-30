@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,9 +23,11 @@ export function IdeaFilesystem({ files, ideaId }: Props) {
 
   const selectedFile = files.find((f) => f.path === selectedFilePath) || files[0]
 
-  const filteredFiles = files.filter((f) =>
-    f.path.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredFiles = useMemo(() => {
+    return files.filter((f) =>
+      f.path.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [files, searchQuery])
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text)

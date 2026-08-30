@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Lightbulb, Plus, Trash2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -141,10 +141,12 @@ export default function Dashboard() {
     })
   }
 
-  const filteredIdeas = ideas.filter((idea) => {
-    if (searchQuery && !idea.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    return true
-  })
+  const filteredIdeas = useMemo(() => {
+    return ideas.filter((idea) => {
+      if (searchQuery && !idea.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      return true
+    })
+  }, [ideas, searchQuery])
 
   if (isLoading) {
     return (
