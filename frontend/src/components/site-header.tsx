@@ -99,6 +99,8 @@ export function SiteHeader({
 			});
 		}
 	};
+  // ⚡ Bolt Performance Optimization: Memoized list filtering to prevent O(n) string matching on every render,
+  // significantly reducing CPU overhead during unconnected state changes (e.g. dropdowns, modals).
 
 	const filteredThreads = useMemo(() => {
 		return threads.filter((t) =>

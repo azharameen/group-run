@@ -140,6 +140,8 @@ export default function Dashboard() {
       return next
     })
   }
+  // ⚡ Bolt Performance Optimization: Memoized list filtering to prevent O(n) string matching on every render,
+  // significantly reducing CPU overhead during unconnected state changes (e.g. dropdowns, modals).
 
   const filteredIdeas = useMemo(() => {
     return ideas.filter((idea) => {

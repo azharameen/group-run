@@ -22,6 +22,8 @@ export function IdeaFilesystem({ files, ideaId }: Props) {
   const [copied, setCopied] = useState(false)
 
   const selectedFile = files.find((f) => f.path === selectedFilePath) || files[0]
+  // ⚡ Bolt Performance Optimization: Memoized list filtering to prevent O(n) string matching on every render,
+  // significantly reducing CPU overhead during unconnected state changes (e.g. dropdowns, modals).
 
   const filteredFiles = useMemo(() => {
     return files.filter((f) =>
