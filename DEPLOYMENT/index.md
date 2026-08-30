@@ -257,10 +257,12 @@ Beta and production intentionally share the same Cloud Run service (`backend-ser
 
 Create `beta` and `production` Environments in repository settings. Put credentials and connection strings in **Environment secrets**, not variables:
 
-| Environment  | Required secrets                                                                |
-| ------------ | ------------------------------------------------------------------------------- |
-| `beta`       | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `BETA_DATABASE_DIRECT_URL`, `BETA_DATABASE_URL` |
-| `production` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `PROD_DATABASE_DIRECT_URL`, `PROD_DATABASE_URL` |
+| Environment  | Required secrets                                                                                                      |
+| ------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `beta`       | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `BETA_DATABASE_DIRECT_URL`, `BETA_DATABASE_URL`, `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` |
+| `production` | `GCP_SA_KEY`, `GCP_PROJECT_ID`, `PROD_DATABASE_DIRECT_URL`, `PROD_DATABASE_URL`, `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` |
+
+`PROVIDER_CREDENTIAL_ENCRYPTION_KEY` is a Fernet key (e.g. generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). It is used by migration `003` to encrypt any legacy plaintext provider credentials and by the deployed backend to decrypt them at runtime. Use the **same key** for both the migration and the Cloud Run service, and never rotate it without a re-encryption migration.
 
 The service account stored in `GCP_SA_KEY` must have these project-level IAM roles. `roles/serviceusage.serviceUsageConsumer` is required even when Firestore is already enabled because the Firebase CLI checks service status before deploying rules.
 
