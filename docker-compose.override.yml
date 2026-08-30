@@ -1,17 +1,20 @@
-# LOCAL-ONLY overrides (never commit). Auto-applied by `docker compose` in
-# this directory; deployment/pipeline use the plain docker-compose.yml.
+# Local-dev overrides, auto-applied by `docker compose` in this directory.
+# Deployment/pipeline use the plain docker-compose.yml (`-f docker-compose.yml`).
 #
-# Fixes two pre-existing develop drifts without touching tracked files:
-# 1. backend/Dockerfile listens on 8080 (Cloud Run PR), but compose maps and
-#    health-checks 8000/`/health` — remap port and fix health path.
-# 2. The backend image has no alembic files (Dockerfile only copies
-#    app/, config/, instructions/), so DB_AUTO_MIGRATE=true silently skips —
-#    mount the local alembic dir + ini into /app so
-#    `alembic upgrade head` can run at startup.
+# Local-docker testing stack (see docs/DOCKER_DEVELOPMENT.md):
+# - Adds the firebase-emulators + opt-in ollama services so the whole stack
+#   runs with nothing installed on the host except Docker (and Node for E2E).
+# - Fixes pre-existing drifts: backend/Dockerfile listens on 8080 (Cloud Run)
+#   while compose maps/health-checks 8000; the backend image ships no alembic
+#   files, so the local alembic dir + ini are mounted for the startup
+#   `alembic upgrade head`.
+# - Sensible healthcheck cadence so `docker compose up -d` converges on its
+#   own (postgres init, alembic + uvicorn startup, nginx).
 services:
   postgres:
     healthcheck:
-      interval: 6h
+      interval: 10s
+      retries: 30
   backend:
     command:
       - sh
@@ -23,19 +26,56 @@ services:
       - "8000:8080"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
-      interval: 6h
-      timeout: 5s
-      retries: 12
-      start_period: 40s
+      interval: 15s
+      retries: 20
+      start_period: 90s
     volumes:
       - ./backend/alembic:/app/alembic:ro
       - ./backend/alembic.ini:/app/alembic.ini:ro
+    depends_on:
+      firebase-emulators:
+        condition: service_started
   frontend:
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/ || exit 1"]
-      interval: 6h
-      timeout: 5s
-      retries: 12
-      start_period: 15s
+      interval: 10s
+      retries: 10
+      start_period: 10s
     volumes:
       - ./frontend/nginx-local.conf:/etc/nginx/nginx.conf:ro
+
+  # Firebase auth + Firestore emulators (previously run as host node/java
+  # processes; containerized so `docker compose up` is the only requirement).
+  # Repo is mounted read-write only because the emulators write *-debug.log
+  # into the project directory (already gitignored via *.log).
+  firebase-emulators:
+    build:
+      context: .
+      dockerfile: docker/firebase-emulators.Dockerfile
+    container_name: ideator-firebase-emulators
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    ports:
+      - "9099:9099"
+      - "8085:8085"
+      - "4000:4000"
+    restart: unless-stopped
+
+  # Local Ollama for testing the "ollama" LLM provider (opt-in profile).
+  # Start with: docker compose --profile ollama up -d ollama
+  # Backend reaches it via http://host.docker.internal:11434 (enter that URL
+  # in Settings > Provider when configuring an ollama provider).
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ideator-ollama
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+    driver: local

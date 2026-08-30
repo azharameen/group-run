@@ -2,3 +2,6 @@ node_modules
 dist
 .vite
 .git
+# Build-time config comes from docker compose build args, not from the
+# checkout, so the image is identical for every builder.
+.env*
