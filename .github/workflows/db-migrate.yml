@@ -10,6 +10,9 @@
 # Secrets:
 #   DATABASE_DIRECT_URL: psycopg v3 direct connection URL (not a pooler).
 #                        Production (Supabase): port 5432 direct URL.
+#   PROVIDER_CREDENTIAL_ENCRYPTION_KEY: Fernet key used by migration 003 to
+#                        encrypt legacy provider credentials. Must be the same
+#                        value the deployed backend uses at runtime.
 
 name: DB Migrate
 
@@ -22,6 +25,8 @@ on:
         type: string
     secrets:
       DATABASE_DIRECT_URL:
+        required: true
+      PROVIDER_CREDENTIAL_ENCRYPTION_KEY:
         required: true
 
 jobs:
@@ -58,6 +63,7 @@ jobs:
         working-directory: backend
         env:
           DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+          PROVIDER_CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.PROVIDER_CREDENTIAL_ENCRYPTION_KEY }}
         run: alembic upgrade head
 
       - name: Verify migration head

@@ -37,10 +37,11 @@ jobs:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
           BETA_DATABASE_DIRECT_URL: ${{ secrets.BETA_DATABASE_DIRECT_URL }}
           BETA_DATABASE_URL: ${{ secrets.BETA_DATABASE_URL }}
+          PROVIDER_CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.PROVIDER_CREDENTIAL_ENCRYPTION_KEY }}
         run: |
           set -euo pipefail
           missing=()
-          for name in GCP_SA_KEY GCP_PROJECT_ID BETA_DATABASE_DIRECT_URL BETA_DATABASE_URL; do
+          for name in GCP_SA_KEY GCP_PROJECT_ID BETA_DATABASE_DIRECT_URL BETA_DATABASE_URL PROVIDER_CREDENTIAL_ENCRYPTION_KEY; do
             if [ -z "${!name}" ]; then missing+=("$name"); fi
           done
           if [ "${#missing[@]}" -gt 0 ]; then
@@ -59,6 +60,7 @@ jobs:
       environment: beta
     secrets:
       DATABASE_DIRECT_URL: ${{ secrets.BETA_DATABASE_DIRECT_URL }}
+      PROVIDER_CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.PROVIDER_CREDENTIAL_ENCRYPTION_KEY }}
 
   # ------------------------------------------------------------------
   # Backend & Frontend Deploy (depends on migration success)
@@ -96,6 +98,7 @@ jobs:
           GCP_REGION: ${{ secrets.GCP_REGION || vars.GCP_REGION || 'asia-south1' }}
           CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'backend-service' }}
           DATABASE_URL: ${{ secrets.BETA_DATABASE_URL }}
+          PROVIDER_CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.PROVIDER_CREDENTIAL_ENCRYPTION_KEY }}
         run: |
           set -euo pipefail
           gcloud run deploy "$CLOUD_RUN_SERVICE" \
@@ -110,6 +113,7 @@ jobs:
             --set-env-vars "LANGGRAPH_STRICT_MSGPACK=true" \
             --set-env-vars "APP_ROOT_DIR=/app" \
             --set-env-vars "FIREBASE_PROJECT_ID=$GCP_PROJECT_ID" \
+            --set-env-vars "PROVIDER_CREDENTIAL_ENCRYPTION_KEY=$PROVIDER_CREDENTIAL_ENCRYPTION_KEY" \
             --min-instances 0 \
             --max-instances 3 \
             --cpu 1 \
