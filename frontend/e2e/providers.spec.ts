@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { gotoRetryingTransientErrors } from './navigation';
 
 const configuration = {
   provider_id: 'provider-e2e',
@@ -73,7 +74,7 @@ test.describe('Provider configuration lifecycle', () => {
     });
 
     await api.waitForHealthy();
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await gotoRetryingTransientErrors(page, '/');
     await page.getByTestId('user-menu-button').click();
     await page.getByRole('menuitem', { name: 'Settings' }).click();
     await page.getByRole('button', { name: 'Provider' }).click();

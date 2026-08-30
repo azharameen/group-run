@@ -306,7 +306,31 @@ async def touch_thread(thread_id: str, owner_uid: str | None = None) -> None:
 
 
 async def get_thread_messages(thread_id: str) -> list[dict[str, Any]]:
-    """Retrieve messages from a thread's latest checkpoint."""
+    """Retrieve messages from a thread's latest checkpoint.
+
+    If the shared checkpointer connection is stale (e.g. a cancelled run
+    interrupted an in-flight checkpoint write), reset it and retry once so a
+    poisoned connection cannot permanently blank a thread's history.
+    """
+    try:
+        return await _get_thread_messages_once(thread_id)
+    except Exception:
+        _logger.exception(
+            "Failed to get messages for thread %s; resetting checkpointer and retrying", thread_id
+        )
+        try:
+            await close_pg_checkpointer()
+        except Exception as err:  # noqa: BLE001  # best-effort reset
+            _logger.warning("close_pg_checkpointer failed during reset: %s", err)
+        try:
+            return await _get_thread_messages_once(thread_id)
+        except Exception:
+            _logger.exception("Retried get messages for thread %s also failed", thread_id)
+            return []
+
+
+async def _get_thread_messages_once(thread_id: str) -> list[dict[str, Any]]:
+    """Single-attempt message retrieval from a thread's latest checkpoint."""
     try:
         checkpointer = await get_pg_checkpointer()
         checkpoint = await checkpointer.aget({"configurable": {"thread_id": thread_id}})
@@ -363,7 +387,7 @@ async def get_thread_messages(thread_id: str) -> list[dict[str, Any]]:
         return result
     except Exception:
         _logger.exception("Failed to get messages for thread %s", thread_id)
-        return []
+        raise
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────

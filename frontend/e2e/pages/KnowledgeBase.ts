@@ -1,4 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
+import { gotoRetryingTransientErrors } from '../navigation';
 
 /**
  * Page object for the knowledge base management page (route `/knowledge-base`).
@@ -21,7 +22,7 @@ export class KnowledgeBasePage {
     // domcontentloaded: the 'load' event can be delayed by slow subresources
     // and the app's long-lived /api/sse stream; waitForLoaded() covers the
     // page-specific readiness below.
-    await this.page.goto('/knowledge-base', { waitUntil: 'domcontentloaded' });
+    await gotoRetryingTransientErrors(this.page, '/knowledge-base');
   }
 
   async waitForLoaded(): Promise<void> {

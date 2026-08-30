@@ -1,4 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
+import { gotoRetryingTransientErrors } from '../navigation';
 
 /**
  * Page object for the main chat interface ("CommandCenter", route `/`).
@@ -38,7 +39,7 @@ export class CommandCenterPage {
     // slow subresources and long-lived connections (the app keeps
     // /api/sse open for the lifetime of the page). App readiness is
     // established explicitly below (sidebar trigger visible).
-    await this.page.goto('/', { waitUntil: 'domcontentloaded' });
+    await gotoRetryingTransientErrors(this.page, '/');
     await this.ensureSidebarOpen();
   }
 

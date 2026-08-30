@@ -1,4 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
+import { gotoRetryingTransientErrors } from '../navigation';
 
 /**
  * Page object for the Organization dashboard page (route `/organization`).
@@ -34,7 +35,7 @@ export class OrganizationPage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/organization', { waitUntil: 'domcontentloaded' });
+    await gotoRetryingTransientErrors(this.page, '/organization');
   }
 
   async createOrganization(name: string, description?: string): Promise<void> {

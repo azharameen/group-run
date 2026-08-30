@@ -463,12 +463,27 @@ jobs:
           VITE_FIRESTORE_EMULATOR_HOST: 127.0.0.1:8085
         run: npx playwright test --project=dev --reporter=html
 
+      - name: Show backend log on E2E failure
+        if: failure()
+        working-directory: backend
+        run: |
+          echo "===== uvicorn.log (last 300 lines) ====="
+          tail -n 300 uvicorn.log || true
+
       - name: Upload Playwright report
         if: always() && hashFiles('frontend/playwright-report/**') != ''
         uses: actions/upload-artifact@v5
         with:
           name: e2e-results
           path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload backend log
+        if: always() && hashFiles('backend/uvicorn.log') != ''
+        uses: actions/upload-artifact@v5
+        with:
+          name: e2e-backend-log
+          path: backend/uvicorn.log
           retention-days: 7
 
   # ------------------------------------------------------------------

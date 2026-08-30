@@ -1,4 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
+import { gotoRetryingTransientErrors } from '../navigation';
 
 /**
  * Page object for the idea detail view (route `/ideas/:ideaId`).
@@ -33,7 +34,7 @@ export class IdeaDetailPage {
 
   async goto(ideaId: string): Promise<void> {
     // domcontentloaded + explicit readiness wait (see DashboardPage.goto).
-    await this.page.goto(`/ideas/${ideaId}`, { waitUntil: 'domcontentloaded' });
+    await gotoRetryingTransientErrors(this.page, `/ideas/${ideaId}`);
     await this.title.waitFor({ state: 'visible', timeout: 20_000 });
   }
 
