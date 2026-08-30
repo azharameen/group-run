@@ -735,71 +735,98 @@ async def execute_deep_agent_workflow_streaming(
     }
 
     emitted_done = False
-    stream = None
+    open_stream: Any = None
+
+    async def _close_stream_quietly(stream: Any) -> None:
+        """Best-effort close of an abandoned astream_events iterator.
+
+        When the SSE client disconnects (e.g. the UI stop button), this
+        generator is cancelled mid-consumption. Without an explicit close,
+        the underlying Pregel run keeps executing in the background and
+        interleaves its checkpoint writes with the next request on the
+        shared checkpointer connection. Swallowing CancelledError here is
+        intentional: the caller's original cancellation keeps propagating
+        after the finally-block completes.
+        """
+        if stream is None:
+            return
+        aclose = getattr(stream, "aclose", None)
+        if not callable(aclose):
+            return
+        try:
+            await asyncio.wait_for(aclose(), timeout=5.0)
+        except BaseException as err:  # noqa: BLE001  # best-effort cleanup only
+            _logger.debug("Abandoned stream cleanup skipped: %s", err)
 
     try:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="The v3 streaming protocol on Pregel is experimental")
-            stream = await runtime.astream_events(
-                input_payload,
-                version="v3",
-                config={
-                    "configurable": configurable,
-                    "context": {
-                        "user_id": user_id,
-                        "idea_id": idea_id,
-                        "workflow_state": state,
-                        "provider_id": provider_id,
-                        "model_id": model_id,
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="The v3 streaming protocol on Pregel is experimental")
+                open_stream = await runtime.astream_events(
+                    input_payload,
+                    version="v3",
+                    config={
+                        "configurable": configurable,
+                        "context": {
+                            "user_id": user_id,
+                            "idea_id": idea_id,
+                            "workflow_state": state,
+                            "provider_id": provider_id,
+                            "model_id": model_id,
+                        },
                     },
-                },
-            )
-        if _looks_like_v3_stream(stream):
-            async for event in _consume_v3_stream(stream, idea_id, provenance):
-                if event.get("type") == "done":
-                    emitted_done = True
-                yield event
-        else:
-            async for event in _consume_v2_stream(stream, idea_id, provenance):
-                if event.get("type") == "done":
-                    emitted_done = True
-                yield event
-    except (TypeError, AttributeError):
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="The v3 streaming protocol on Pregel is experimental")
-            raw_stream = await runtime.astream_events(
-                input_payload,
-                config={
-                    "configurable": configurable,
-                    "context": {
-                        "user_id": user_id,
-                        "idea_id": idea_id,
-                        "workflow_state": state,
-                        "provider_id": provider_id,
-                        "model_id": model_id,
+                )
+            if _looks_like_v3_stream(open_stream):
+                async for event in _consume_v3_stream(open_stream, idea_id, provenance):
+                    if event.get("type") == "done":
+                        emitted_done = True
+                    yield event
+            else:
+                async for event in _consume_v2_stream(open_stream, idea_id, provenance):
+                    if event.get("type") == "done":
+                        emitted_done = True
+                    yield event
+        except (TypeError, AttributeError):
+            await _close_stream_quietly(open_stream)
+            open_stream = None
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="The v3 streaming protocol on Pregel is experimental")
+                open_stream = await runtime.astream_events(
+                    input_payload,
+                    config={
+                        "configurable": configurable,
+                        "context": {
+                            "user_id": user_id,
+                            "idea_id": idea_id,
+                            "workflow_state": state,
+                            "provider_id": provider_id,
+                            "model_id": model_id,
+                        },
                     },
-                },
-            )
-        if _looks_like_v3_stream(raw_stream):
-            async for event in _consume_v3_stream(raw_stream, idea_id, provenance):
-                if event.get("type") == "done":
-                    emitted_done = True
-                yield event
-        else:
-            async for event in _consume_v2_stream(raw_stream, idea_id, provenance):
-                if event.get("type") == "done":
-                    emitted_done = True
-                yield event
-    except Exception as exc:  # noqa: BLE001  # stream contract: always end with a failed event
-        yield normalize_transcript_event(idea_id, {
-            "type": "failed",
-            "speaker": "workflow-orchestrator",
-            "role": "orchestrator",
-            "content": str(exc),
-            "reason": str(exc),
-            "provenance": provenance,
-        })
-        emitted_done = True
+                )
+            raw_stream = open_stream
+            if _looks_like_v3_stream(raw_stream):
+                async for event in _consume_v3_stream(raw_stream, idea_id, provenance):
+                    if event.get("type") == "done":
+                        emitted_done = True
+                    yield event
+            else:
+                async for event in _consume_v2_stream(raw_stream, idea_id, provenance):
+                    if event.get("type") == "done":
+                        emitted_done = True
+                    yield event
+        except Exception as exc:  # noqa: BLE001  # stream contract: always end with a failed event
+            yield normalize_transcript_event(idea_id, {
+                "type": "failed",
+                "speaker": "workflow-orchestrator",
+                "role": "orchestrator",
+                "content": str(exc),
+                "reason": str(exc),
+                "provenance": provenance,
+            })
+            emitted_done = True
+    finally:
+        await _close_stream_quietly(open_stream)
 
     if not emitted_done:
         yield normalize_transcript_event(idea_id, {

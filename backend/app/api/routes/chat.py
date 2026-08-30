@@ -83,9 +83,12 @@ async def _chat_stream_generator(
         }
         yield f"data: {json.dumps(error_event)}\n\n"
 
-    finally:
-        if not emitted_done:
-            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+    # Yielding inside a finally-block would raise when the client disconnects
+    # mid-cleanup (GeneratorExit), so the fallback lives here instead. The
+    # runner always emits its own done/failed, so this only covers the case
+    # where an error was raised before the runner could emit one.
+    if not emitted_done:
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
 
 @router.post("/chat/stream")
