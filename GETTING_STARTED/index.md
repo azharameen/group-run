@@ -2,6 +2,8 @@
 
 Get the Companion application running on your local machine in 15 minutes.
 
+> **Prefer Docker?** The entire stack (backend, Postgres, frontend, Firebase emulators) can run in containers with no local Python/Node services — see [Docker Dev & Testing](https://azharameen.github.io/group-run/DOCKER_DEVELOPMENT/index.md).
+
 ## Prerequisites
 
 Install these before starting:
